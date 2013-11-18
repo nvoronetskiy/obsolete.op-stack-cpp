@@ -26,6 +26,7 @@
 		0069B079177C9A1900A7A4EA /* libcryptopp_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0069B05D177C98BB00A7A4EA /* libcryptopp_ios.a */; };
 		0069B07A177C9A1F00A7A4EA /* libudns_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0069B06C177C98BB00A7A4EA /* libudns_ios.a */; };
 		0069B07B177C9A2600A7A4EA /* libzsLib_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0069B058177C98B300A7A4EA /* libzsLib_ios.a */; };
+		007844B01839A4C400E9622C /* boost.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007844AF1839A4C400E9622C /* boost.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -145,12 +146,13 @@
 		0063CD2016CADF3100E6DB4D /* ProvisioningManager.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ProvisioningManager.mm; sourceTree = "<group>"; };
 		0063CD2116CADF3100E6DB4D /* ServiceIdentitySessionDelegateWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServiceIdentitySessionDelegateWrapper.h; sourceTree = "<group>"; };
 		0063CD2216CADF3100E6DB4D /* ServiceIdentitySessionDelegateWrapper.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ServiceIdentitySessionDelegateWrapper.mm; sourceTree = "<group>"; };
-		0063CD3016CAE01500E6DB4D /* libcurl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcurl.a; path = ../../../libs/curl/staging/libcurl.a; sourceTree = SOURCE_ROOT; };
-		0063D27D16CB055700E6DB4D /* zsLib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = zsLib_ios.xcodeproj; path = ../../../libs/zsLib/projects/xcode/zsLib_ios/zsLib_ios.xcodeproj; sourceTree = SOURCE_ROOT; };
-		0063D28616CB069600E6DB4D /* udns_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = udns_ios.xcodeproj; path = ../../../libs/udns/projects/xcode/udns_ios/udns_ios.xcodeproj; sourceTree = SOURCE_ROOT; };
-		0063D28C16CB06A200E6DB4D /* cryptopp_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp_ios.xcodeproj; path = ../../../libs/cryptopp/projects/xcode/cryptopp_ios/cryptopp_ios.xcodeproj; sourceTree = "<group>"; };
-		0063D29216CB06AA00E6DB4D /* hfservices_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfservices_ios.xcodeproj; path = ../hfservices_ios/hfservices_ios.xcodeproj; sourceTree = SOURCE_ROOT; };
+		0063CD3016CAE01500E6DB4D /* libcurl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcurl.a; path = "../../../../ortc-lib/libs/curl/staging/libcurl.a"; sourceTree = SOURCE_ROOT; };
+		0063D27D16CB055700E6DB4D /* zsLib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = zsLib_ios.xcodeproj; path = "../../../../ortc-lib/libs/zsLib/projects/xcode/zsLib_ios/zsLib_ios.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		0063D28616CB069600E6DB4D /* udns_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = udns_ios.xcodeproj; path = "../../../../ortc-lib/libs/udns/projects/xcode/udns_ios/udns_ios.xcodeproj"; sourceTree = SOURCE_ROOT; };
+		0063D28C16CB06A200E6DB4D /* cryptopp_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp_ios.xcodeproj; path = "../../../../ortc-lib/libs/cryptopp/projects/xcode/cryptopp_ios/cryptopp_ios.xcodeproj"; sourceTree = "<group>"; };
+		0063D29216CB06AA00E6DB4D /* hfservices_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfservices_ios.xcodeproj; path = "../../../../ortc-lib/libs/op-services-cpp/projects/xcode/hfservices_ios/hfservices_ios.xcodeproj"; sourceTree = SOURCE_ROOT; };
 		0063D33716CB27DD00E6DB4D /* hfstack_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack_ios.xcodeproj; path = ../hfstack_ios/hfstack_ios.xcodeproj; sourceTree = SOURCE_ROOT; };
+		007844AF1839A4C400E9622C /* boost.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = boost.framework; path = "../../../../ortc-lib/libs/boost/ios/framework/boost.framework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,14 +160,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00243920178F46B900B79368 /* Security.framework in Frameworks */,
 				0012C518177CE23D0017FF5E /* libz.dylib in Frameworks */,
 				0069B07B177C9A2600A7A4EA /* libzsLib_ios.a in Frameworks */,
 				0069B07A177C9A1F00A7A4EA /* libudns_ios.a in Frameworks */,
 				0069B079177C9A1900A7A4EA /* libcryptopp_ios.a in Frameworks */,
 				0069B078177C9A1200A7A4EA /* libhfservices_ios.a in Frameworks */,
 				0069B077177C9A0B00A7A4EA /* libhfstack_ios.a in Frameworks */,
+				007844B01839A4C400E9622C /* boost.framework in Frameworks */,
 				0063CA8016CAC8AA00E6DB4D /* Foundation.framework in Frameworks */,
+				00243920178F46B900B79368 /* Security.framework in Frameworks */,
 				0063CD3416CAE01500E6DB4D /* libcurl.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -197,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				0012C517177CE23D0017FF5E /* libz.dylib */,
+				007844AF1839A4C400E9622C /* boost.framework */,
 				0024391F178F46B900B79368 /* Security.framework */,
 				0063CA7F16CAC8AA00E6DB4D /* Foundation.framework */,
 			);
@@ -536,7 +540,7 @@
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				FRAMEWORK_SEARCH_PATHS = ../../../libs/boost/ios/framework;
+				FRAMEWORK_SEARCH_PATHS = "../../../../ortc-lib/libs/boost/ios/framework";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
@@ -551,13 +555,14 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					../../../libs/zsLib,
-					../../../libs,
-					../../../libs/boost/ios/framework/boost.framework/Headers,
-					../../../libs/curl/include,
+					"../../../../ortc-lib/libs/op-services-cpp",
+					"../../../../ortc-lib/libs/zsLib",
+					"../../../../ortc-lib/libs",
+					"../../../../ortc-lib/libs/boost/ios/framework/boost.framework/Headers",
+					"../../../../ortc-lib/libs/curl/include",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
-				LIBRARY_SEARCH_PATHS = ../../../libs/curl/staging;
+				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl/staging";
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 			};
@@ -575,7 +580,7 @@
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
-				FRAMEWORK_SEARCH_PATHS = ../../../libs/boost/ios/framework;
+				FRAMEWORK_SEARCH_PATHS = "../../../../ortc-lib/libs/boost/ios/framework";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -588,13 +593,14 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					../../../libs/zsLib,
-					../../../libs,
-					../../../libs/boost/ios/framework/boost.framework/Headers,
-					../../../libs/curl/include,
+					"../../../../ortc-lib/libs/op-services-cpp",
+					"../../../../ortc-lib/libs/zsLib",
+					"../../../../ortc-lib/libs",
+					"../../../../ortc-lib/libs/boost/ios/framework/boost.framework/Headers",
+					"../../../../ortc-lib/libs/curl/include",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
-				LIBRARY_SEARCH_PATHS = ../../../libs/curl/staging;
+				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl/staging";
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -604,6 +610,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DSTROOT = /tmp/hfstackTest_ios.dst;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/ios/framework",
+				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "hfstackTest_ios/hfstackTest_ios-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -625,6 +635,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DSTROOT = /tmp/hfstackTest_ios.dst;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/ios/framework",
+				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "hfstackTest_ios/hfstackTest_ios-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (

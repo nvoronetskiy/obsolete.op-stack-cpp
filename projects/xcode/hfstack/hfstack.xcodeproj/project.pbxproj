@@ -1211,9 +1211,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					../../../libs/zsLib,
-					../../../libs,
-					../../../libs/boost/osx/framework/boost.framework/Headers,
+					"../../../../ortc-lib/libs/op-services-cpp",
+					"../../../../ortc-lib/libs/zsLib",
+					"../../../../ortc-lib/libs",
+					"../../../../ortc-lib/libs/boost/osx/framework/boost.framework/Headers",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1249,9 +1250,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					../../../libs/zsLib,
-					../../../libs,
-					../../../libs/boost/osx/framework/boost.framework/Headers,
+					"../../../../ortc-lib/libs/op-services-cpp",
+					"../../../../ortc-lib/libs/zsLib",
+					"../../../../ortc-lib/libs",
+					"../../../../ortc-lib/libs/boost/osx/framework/boost.framework/Headers",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				SDKROOT = macosx;
