@@ -1667,6 +1667,7 @@ namespace openpeer
               break;
             }
             case IICESocketSession::ICESocketSessionState_Nominated:
+            case IICESocketSession::ICESocketSessionState_Completed:
             {
               ZS_THROW_BAD_STATE_IF(!mRUDPSocketSession)  // how is this possible since it's created with the ICE socket
 
