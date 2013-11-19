@@ -32,6 +32,7 @@
 #include <openpeer/stack/message/namespace-grant/NamespaceGrantStartNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 #include <openpeer/stack/internal/stack_Stack.h>
+#include <openpeer/stack/internal/stack_Helper.h>
 
 #include <openpeer/services/IHelper.h>
 
@@ -54,6 +55,7 @@ namespace openpeer
       {
         using zsLib::Seconds;
         using internal::MessageHelper;
+        using stack::internal::Helper;
         using stack::internal::IStackForInternal;
 
         //---------------------------------------------------------------------
@@ -119,6 +121,8 @@ namespace openpeer
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {
+            ElementPtr agentEl = MessageHelper::createElement(agentInfo);
+            agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
             root->adoptAsLastChild(MessageHelper::createElement(agentInfo));
           }
 

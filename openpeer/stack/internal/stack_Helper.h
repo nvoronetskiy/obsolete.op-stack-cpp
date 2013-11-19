@@ -87,6 +87,8 @@ namespace openpeer
                                                SecureByteBlock &key,
                                                const char *hexIVAndBase64EncodedData
                                                );
+
+        static const char *getJavaScriptLogLevel();
       };
     }
   }

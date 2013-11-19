@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		000CBEB017A2F75A0075E86C /* stack_FinderRelayChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */; };
+		001BB9C0183B8FF400F14A64 /* stack_javascript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */; };
 		00384C44175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */; };
 		00384C51175BFF9500113845 /* MessageFactoryRolodex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C47175BFF9500113845 /* MessageFactoryRolodex.cpp */; };
 		00384C52175BFF9500113845 /* RolodexAccessRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C48175BFF9500113845 /* RolodexAccessRequest.cpp */; };
@@ -148,6 +149,7 @@
 		000CBEAC17A2CBC50075E86C /* stack_IFinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderRelayChannel.h; sourceTree = "<group>"; };
 		000CBEAE17A2F7440075E86C /* stack_FinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderRelayChannel.h; sourceTree = "<group>"; };
 		000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderRelayChannel.cpp; sourceTree = "<group>"; };
+		001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_javascript.cpp; sourceTree = "<group>"; };
 		00384C42175BFEE900113845 /* stack_ServiceNamespaceGrantSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServiceNamespaceGrantSession.h; sourceTree = "<group>"; };
 		00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServiceNamespaceGrantSession.cpp; sourceTree = "<group>"; };
 		00384C47175BFF9500113845 /* MessageFactoryRolodex.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessageFactoryRolodex.cpp; sourceTree = "<group>"; };
@@ -556,6 +558,7 @@
 			isa = PBXGroup;
 			children = (
 				0063BA0D16CA92CF00E6DB4D /* stack.cpp */,
+				001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */,
 				0063BA0E16CA92CF00E6DB4D /* stack_Account.cpp */,
 				0063BA0F16CA92CF00E6DB4D /* stack_AccountFinder.cpp */,
 				0063BA1016CA92CF00E6DB4D /* stack_AccountPeerLocation.cpp */,
@@ -1123,6 +1126,7 @@
 				0063BBCC16CA92D000E6DB4D /* SignedSaltGetResult.cpp in Sources */,
 				0063BBCD16CA92D000E6DB4D /* MessageFactoryPeerToPeer.cpp in Sources */,
 				0063BBCE16CA92D000E6DB4D /* PeerIdentifyRequest.cpp in Sources */,
+				001BB9C0183B8FF400F14A64 /* stack_javascript.cpp in Sources */,
 				0063BBCF16CA92D000E6DB4D /* PeerIdentifyResult.cpp in Sources */,
 				0063BBD016CA92D000E6DB4D /* PeerKeepAliveRequest.cpp in Sources */,
 				0063BBD116CA92D000E6DB4D /* PeerKeepAliveResult.cpp in Sources */,

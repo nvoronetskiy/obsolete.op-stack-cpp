@@ -32,7 +32,7 @@
 #include <openpeer/stack/message/identity/IdentityAccessStartNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 #include <openpeer/stack/internal/stack_Stack.h>
-#include <openpeer/stack/IHelper.h>
+#include <openpeer/stack/internal/stack_Helper.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
@@ -49,6 +49,7 @@ namespace openpeer
       {
         using zsLib::Seconds;
         using internal::MessageHelper;
+        using stack::internal::Helper;
         using stack::internal::IStackForInternal;
 
         //---------------------------------------------------------------------
@@ -124,7 +125,9 @@ namespace openpeer
           }
 
           if (agentInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            ElementPtr agentEl = MessageHelper::createElement(agentInfo);
+            agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
+            root->adoptAsLastChild(agentEl);
           }
 
           if (identityInfo.hasData()) {

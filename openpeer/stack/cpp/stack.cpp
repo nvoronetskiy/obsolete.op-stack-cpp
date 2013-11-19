@@ -37,7 +37,6 @@
 
 namespace openpeer { namespace stack { ZS_IMPLEMENT_SUBSYSTEM(openpeer_stack) } }
 
-
 namespace openpeer
 {
   namespace stack
