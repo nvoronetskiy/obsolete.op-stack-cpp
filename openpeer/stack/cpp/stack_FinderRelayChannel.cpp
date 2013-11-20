@@ -639,7 +639,7 @@ namespace openpeer
           }
           case IMessageLayerSecurityChannel::SessionState_Connected:   break;
           case IMessageLayerSecurityChannel::SessionState_Shutdown:  {
-            ZS_LOG_WARNING(Detail, log("MLS channel shutdown") + ", error=" + string(error) + ", reason" + reason)
+            ZS_LOG_WARNING(Detail, log("MLS channel shutdown") + ", error=" + string(error) + ", reason=" + reason)
             setError(error, reason);
             cancel();
             return false;
