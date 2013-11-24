@@ -507,7 +507,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (timer != mInactivityTimer) {
-          ZS_LOG_WARNING(Detail, log("notified about an obsolete timer"))
+          ZS_LOG_WARNING(Detail, log("notified about an obsolete timer") + ", timer ID=" + string(timer->getID()))
           return;
         }
 

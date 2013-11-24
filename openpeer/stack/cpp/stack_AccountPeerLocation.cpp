@@ -701,7 +701,7 @@ namespace openpeer
             ZS_LOG_WARNING(Debug, log("incoming RUDP session replacing existing RUDP session since the outgoing RUDP session was not connected"))
             // out messaging was not connected so use this one instead since it is connected
 
-            ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
+            ITransportStreamPtr receiveStream = ITransportStream::create();
             ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
 
             IRUDPMessagingPtr messaging = IRUDPMessaging::acceptChannel(IStackForInternal::queueServices(), mRUDPSocketSession, mThisWeak.lock(), receiveStream, sendStream);
@@ -758,7 +758,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("incoming RUDP session being answered"))
 
-        ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
+        ITransportStreamPtr receiveStream = ITransportStream::create();
         ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
 
         // no messaging present, accept this incoming channel
@@ -870,7 +870,7 @@ namespace openpeer
 
         if ((reader != mMLSReceiveStream) &&
             (reader != mRelayReceiveStream)) {
-          ZS_LOG_WARNING(Debug, log("messaging ready ready arrived for obsolete stream") + ", stream reader id=" + string(reader->getID()))
+          ZS_LOG_WARNING(Debug, log("messaging reader ready arrived for obsolete stream") + ", stream reader id=" + string(reader->getID()))
           return;
         }
 
