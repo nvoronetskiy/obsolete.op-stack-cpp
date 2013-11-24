@@ -2154,6 +2154,7 @@ namespace openpeer
         if (!stepLockboxSession()) return;
         if (!stepLocations()) return;
         if (!stepSocket()) return;
+        if (!stepFinderDNS()) return;
         if (!stepFinder()) return;
 
         setState(AccountState_Ready);
@@ -2314,7 +2315,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool Account::stepFinder()
+      bool Account::stepFinderDNS()
       {
         if (mFindersGetMonitor) {
           ZS_LOG_TRACE(log("waiting for finders get monitor to complete"))
@@ -2324,15 +2325,6 @@ namespace openpeer
         if (mFinderDNSLookup) {
           ZS_LOG_TRACE(log("waiting for finder DNS lookup to complete"))
           return false;
-        }
-
-        if (mFinder) {
-          if (IAccount::AccountState_Ready != mFinder->forAccount().getState()) {
-            ZS_LOG_TRACE(log("waiting for the finder to connect"))
-            return false;
-          }
-          ZS_LOG_TRACE(log("finder already created"))
-          return true;
         }
 
         Time tick = zsLib::now();
@@ -2355,7 +2347,7 @@ namespace openpeer
 
           mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(mThisWeak.lock(), network, "bootstrapped-finders", "finders-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
 
-          ZS_LOG_TRACE(log("attempting to get finders"))
+          ZS_LOG_DEBUG(log("attempting to get finders"))
           return false;
         }
 
@@ -2373,11 +2365,27 @@ namespace openpeer
           }
 
           mFinderDNSLookup = IDNS::lookupSRV(mThisWeak.lock(), srv, "finder", "tcp");
-          ZS_LOG_TRACE(log("performing DNS lookup on finder"))
+          ZS_LOG_DEBUG(log("performing DNS lookup on finder"))
           return false;
         }
 
-        ZS_LOG_TRACE(log("creating finder instance"))
+        ZS_LOG_TRACE(log("step - finder DNS ready"))
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::stepFinder()
+      {
+        if (mFinder) {
+          if (IAccount::AccountState_Ready != mFinder->forAccount().getState()) {
+            ZS_LOG_TRACE(log("waiting for the finder to connect"))
+            return false;
+          }
+          ZS_LOG_TRACE(log("finder already created"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("creating finder instance"))
         mFinder = IAccountFinderForAccount::create(mThisWeak.lock(), mThisWeak.lock());
 
         if (mFinder) {
@@ -2390,7 +2398,7 @@ namespace openpeer
         cancel();
         return false;
       }
-
+      
       //-----------------------------------------------------------------------
       bool Account::stepPeers()
       {

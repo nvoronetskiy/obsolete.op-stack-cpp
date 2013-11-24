@@ -652,6 +652,7 @@ namespace openpeer
         bool stepLockboxSession();
         bool stepLocations();
         bool stepSocket();
+        bool stepFinderDNS();
         bool stepFinder();
         bool stepPeers();
 

@@ -338,7 +338,7 @@ namespace openpeer
                                                          IFinderConnection::SessionStates state
                                                          )
       {
-        ZS_LOG_DEBUG(log("finder connection state changed"))
+        ZS_LOG_DEBUG(log("finder connection state changed") + ", finder connection ID=" + string(connection->getID()) + ", state=" + IFinderConnection::toString(state))
 
         AutoRecursiveLock lock(getLock());
         step();
@@ -808,11 +808,6 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("step") + getDebugValueString())
 
-        if (isReady()) {
-          ZS_LOG_TRACE(log("finder is already ready"))
-          return;
-        }
-
         AccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("account object is gone thus shutting down"))
@@ -878,126 +873,6 @@ namespace openpeer
         mReceiveStream->notifyReaderReadyToRead();
         return false;
       }
-
-#if 0
-      //-----------------------------------------------------------------------
-      bool AccountFinder::stepSocketSubscription(IRUDPICESocketPtr socket)
-      {
-        if (mSocketSubscription) {
-          socket->wakeup();
-
-          if (IRUDPICESocket::RUDPICESocketState_Ready != socket->getState()) {
-            ZS_LOG_TRACE(log("waiting for RUDP ICE socket to wake up"))
-            return true;
-          }
-
-          ZS_LOG_TRACE(log("RUDP socket is awake"))
-          return true;
-        }
-
-        ZS_LOG_DEBUG(log("subscribing to the socket state"))
-
-        mSocketSubscription = socket->subscribe(mThisWeak.lock());
-        if (!mSocketSubscription) {
-          ZS_LOG_ERROR(Detail, log("failed to subscribe to socket"))
-          cancel();
-          return false;
-        }
-
-        // ensure the socket has been woken up during the subscription process
-        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      bool AccountFinder::stepSocketSession(IRUDPICESocketPtr socket)
-      {
-        if (mSocketSession) {
-          if (IRUDPICESocketSession::RUDPICESocketSessionState_Ready == mSocketSession->getState()) {
-            ZS_LOG_TRACE(log("RUDP ICE socket socket is ready"))
-            return true;
-          }
-
-          ZS_LOG_TRACE(log("waiting for the RUDP ICE socket socket session to be ready"))
-          return false;
-        }
-
-        AccountPtr outer = mOuter.lock();
-        ZS_THROW_BAD_STATE_IF(!outer)
-
-        if (!outer->forAccountFinder().extractNextFinder(mFinder, mFinderIP)) {
-          ZS_LOG_TRACE(log("waiting for account to obtain a finder"))
-          return false;
-        }
-
-//        mFinderConnection = IFinderConnection::connect(mThisWeak);
-
-        // found an IP, put into a candidate structure
-
-        IICESocket::Candidate candidate;
-        candidate.mType = IICESocket::Type_Unknown;
-        candidate.mIPAddress = mFinderIP;
-        candidate.mPriority = 0;
-        candidate.mLocalPreference = 0;
-
-        IICESocket::CandidateList candidateList;
-        candidateList.push_back(candidate);
-
-        // ready for the next time if we need to prepare again...
-
-        ZS_LOG_DEBUG(log("reqesting to connect to server") + ", ip=" + mFinderIP.string())
-
-        // create the socket session now
-        mSocketSession =  socket->createSessionFromRemoteCandidates(mThisWeak.lock(), IHelper::randomString(32), NULL, candidateList, IICESocket::ICEControl_Controlling);
-        // well, this is bad...
-        if (!mSocketSession) {
-          ZS_LOG_ERROR(Detail, log("cannot create a socket session"))
-          cancel();
-          return false;
-        }
-
-        ZS_LOG_DEBUG(log("setting keep alive properties for socket session"))
-        mSocketSession->setKeepAliveProperties(
-                                               Seconds(OPENPEER_STACK_ACCOUNT_FINDER_SEND_ICE_KEEP_ALIVE_INDICATIONS_IN_SECONDS),
-                                               Seconds(OPENPEER_STACK_ACCOUNT_FINDER_EXPECT_SESSION_DATA_IN_SECONDS),
-                                               Duration(),
-                                               Seconds(OPENPEER_STACK_ACCOUNT_BACKGROUNDING_TIMEOUT_IN_SECONDS)
-                                               );
-
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      bool AccountFinder::stepMessaging()
-      {
-        if (mMessaging) {
-          if (IRUDPMessaging::RUDPMessagingState_Connected != mMessaging->getState()) {
-            ZS_LOG_TRACE(log("waiting for RUDP messaging to be connected"))
-            return false;
-          }
-          ZS_LOG_TRACE(log("RUDP messaging is connected"))
-          return true;
-        }
-
-        ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
-        ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
-
-        mMessaging = IRUDPMessaging::openChannel(IStackForInternal::queueServices(), mSocketSession, mThisWeak.lock(), "text/x-openpeer-xml-plain", receiveStream, sendStream);
-        if (!mMessaging) {
-          ZS_LOG_WARNING(Detail, log("failed to open messaging channel"))
-          cancel();
-          return false;
-        }
-
-        mReceiveStream = receiveStream->getReader();
-        mSendStream = sendStream->getWriter();
-
-        mReceiveStream->notifyReaderReadyToRead();
-
-        ZS_LOG_DEBUG(log("RUDP messaging object created"))
-        return false;
-      }
-#endif //0
 
       //-----------------------------------------------------------------------
       bool AccountFinder::stepCreateSession()
