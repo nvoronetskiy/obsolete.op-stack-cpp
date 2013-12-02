@@ -203,10 +203,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::toDebugString(IPublicationRepositoryPtr repository, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::toDebug(IPublicationRepositoryPtr repository)
       {
-        if (!repository) return includeCommaPrefix ? String(", repository=(null)") : String("repository=(null)");
-        return PublicationRepository::convert(repository)->getDebugValueString(includeCommaPrefix);
+        if (!repository) return ElementPtr();
+        return PublicationRepository::convert(repository)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -242,7 +242,7 @@ namespace openpeer
         LocationPtr publishedLocation = publication->forRepo().getPublishedLocation();
 
         if (ILocation::LocationType_Local == publishedLocation->forRepo().getLocationType()) {
-          ZS_LOG_DEBUG(log("publicaton is local thus can publish immediately") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("publicaton is local thus can publish immediately") + publication->forRepo().toDebug())
 
           publication->forRepo().setBaseVersion(inPublication->getVersion());
 
@@ -266,29 +266,29 @@ namespace openpeer
           mCachedLocalPublications[publication] = publication;
           mCachedPermissionDocuments[publication->forRepo().getName()] = publication;
 
-          ZS_LOG_DEBUG(log("publication inserted into local cache") + ", local cache total=" + string(mCachedLocalPublications.size()) + ", local permissions total=" + string(mCachedPermissionDocuments.size()))
+          ZS_LOG_DEBUG(log("publication inserted into local cache") + ZS_PARAM("local cache total", mCachedLocalPublications.size()) + ZS_PARAM("local permissions total", mCachedPermissionDocuments.size()))
 
           publisher->notifyCompleted();
 
-          ZS_LOG_DEBUG(log("notifying local subscribers of publish") + ", total=" + string(mSubscriptionsLocal.size()))
+          ZS_LOG_DEBUG(log("notifying local subscribers of publish") + ZS_PARAM("total", mSubscriptionsLocal.size()))
 
           // notify subscriptions about updated publication
           for (SubscriptionLocalMap::iterator iter = mSubscriptionsLocal.begin(); iter != mSubscriptionsLocal.end(); ++iter) {
-            ZS_LOG_TRACE(log("notifying local subscription of publish") + ", subscriber ID=" + string((*iter).first))
+            ZS_LOG_TRACE(log("notifying local subscription of publish") + ZS_PARAM("subscriber ID", (*iter).first))
             (*iter).second->notifyUpdated(publication);
           }
 
-          ZS_LOG_DEBUG(log("notifying incoming subscribers of publish") + ", total=" + string(mPeerSubscriptionsIncoming.size()))
+          ZS_LOG_DEBUG(log("notifying incoming subscribers of publish") + ZS_PARAM("total", mPeerSubscriptionsIncoming.size()))
 
           for (PeerSubscriptionIncomingMap::iterator iter = mPeerSubscriptionsIncoming.begin(); iter != mPeerSubscriptionsIncoming.end(); ++iter) {
-            ZS_LOG_TRACE(log("notifying peer subscription of publish") + ", subscriber ID=" + string((*iter).first))
+            ZS_LOG_TRACE(log("notifying peer subscription of publish") + ZS_PARAM("subscriber ID", (*iter).first))
             (*iter).second->notifyUpdated(publication);
           }
 
           return publisher;
         }
 
-        ZS_LOG_DEBUG(log("publication requires publishing to an external source") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("publication requires publishing to an external source") + publication->forRepo().toDebug())
 
         mPendingPublishers.push_back(publisher);
         activatePublisher(publication);
@@ -311,7 +311,7 @@ namespace openpeer
 
         PublicationMetaDataPtr metaData = IPublicationMetaDataForPublicationRepository::createFrom(inMetaData);
 
-        ZS_LOG_DEBUG(log("requesting to fetch publication") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("requesting to fetch publication") + metaData->forRepo().toDebug())
 
         FetcherPtr fetcher = Fetcher::create(getAssociatedMessageQueue(), mThisWeak.lock(), delegate, metaData);
 
@@ -354,7 +354,7 @@ namespace openpeer
 
         PublicationPtr publication = Publication::convert(inPublication);
 
-        ZS_LOG_DEBUG(log("requesting to remove publication") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("requesting to remove publication") + publication->forRepo().toDebug())
 
         RemoverPtr remover = Remover::create(getAssociatedMessageQueue(), mThisWeak.lock(), delegate, publication);
 
@@ -397,7 +397,7 @@ namespace openpeer
                   mCachedPermissionDocuments.erase(found);
                   wasErased = true;
                 } else {
-                  ZS_LOG_DEBUG(log("found permission publication but it doesn't have the same lineage thus will not erase") + existingPublication->forRepo().getDebugValuesString())
+                  ZS_LOG_DEBUG(log("found permission publication but it doesn't have the same lineage thus will not erase") + existingPublication->forRepo().toDebug())
                 }
               } else {
                 ZS_LOG_DEBUG(log("did not find permisison document to remove"))
@@ -448,7 +448,7 @@ namespace openpeer
 
         LocationPtr subscribeToLocation = Location::convert(inSubscribeToLocation);
 
-        ZS_LOG_DEBUG(log("creating subcription") + ", publication path=" + string(publicationPath) + subscribeToLocation->forRepo().getDebugValueString())
+        ZS_LOG_DEBUG(log("creating subcription") + ZS_PARAM("publication path", publicationPath) + subscribeToLocation->forRepo().toDebug())
 
         AccountPtr account = mAccount.lock();
 
@@ -463,7 +463,7 @@ namespace openpeer
             for (CachedPublicationMap::iterator iter = mCachedLocalPublications.begin(); iter != mCachedLocalPublications.end(); ++iter)
             {
               PublicationPtr publication = (*iter).second;
-              ZS_LOG_TRACE(log("notifying location subcription about document") + publication->forRepo().getDebugValuesString())
+              ZS_LOG_TRACE(log("notifying location subcription about document") + publication->forRepo().toDebug())
               subscriber->notifyUpdated(publication);
             }
             return subscriber;
@@ -495,7 +495,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_WARNING(Detail, log("subscribing to unknown location type") + subscribeToLocation->forRepo().getDebugValueString())
+        ZS_LOG_WARNING(Detail, log("subscribing to unknown location type") + subscribeToLocation->forRepo().toDebug())
         return IPublicationSubscriptionPtr();
       }
 
@@ -547,7 +547,7 @@ namespace openpeer
 
         LocationPtr location = Location::convert(inLocation);
 
-        ZS_LOG_DEBUG(log("peer location state changed") + ", state=" + ILocation::toString(state) + location->forRepo().getDebugValueString())
+        ZS_LOG_DEBUG(log("peer location state changed") + ZS_PARAM("state", ILocation::toString(state)) + location->forRepo().toDebug())
         switch (state)
         {
           case ILocation::LocationConnectionState_Pending:        break;
@@ -560,7 +560,7 @@ namespace openpeer
 
               const char *ignoredReaon = NULL;
               if (0 == ILocationForPublicationRepository::locationCompare(location, publication->forRepo().getPublishedLocation(), ignoredReaon)) {
-                ZS_LOG_TRACE(log("removing expiry time on document") + ", recommend=" + string(recommendedExpires) + publication->forRepo().getDebugValuesString())
+                ZS_LOG_TRACE(log("removing expiry time on document") + ZS_PARAM("recommend", recommendedExpires) + publication->forRepo().toDebug())
                 publication->forRepo().setExpires(Time());
               }
             }
@@ -572,7 +572,7 @@ namespace openpeer
               if (found != mCachedPeerSources.end()) {
                 PeerCachePtr &peerCache = (*found).second;
 
-                ZS_LOG_DEBUG(log("removing the peer source cache expiry") + ", recommended=" + string(recommendedExpires))
+                ZS_LOG_DEBUG(log("removing the peer source cache expiry") + ZS_PARAM("recommended", recommendedExpires))
                 peerCache->setExpires(Time());
               }
             }
@@ -592,7 +592,7 @@ namespace openpeer
               const char *ignoredReaon = NULL;
 
               if (0 == ILocationForPublicationRepository::locationCompare(publication->forRepo().getCreatorLocation(), location, ignoredReaon)) {
-                ZS_LOG_DEBUG(log("removing publication published by peer") + publication->forRepo().getDebugValuesString())
+                ZS_LOG_DEBUG(log("removing publication published by peer") + publication->forRepo().toDebug())
 
                 // remove this document from the cache
                 mCachedLocalPublications.erase(current);
@@ -606,7 +606,7 @@ namespace openpeer
 
               const char *ignoredReaon = NULL;
               if (0 == ILocationForPublicationRepository::locationCompare(publication->forRepo().getPublishedLocation(), location, ignoredReaon)) {
-                ZS_LOG_TRACE(log("setting expiry time on document") + ", recommend=" + string(recommendedExpires) + publication->forRepo().getDebugValuesString())
+                ZS_LOG_TRACE(log("setting expiry time on document") + ZS_PARAM("recommend", recommendedExpires) + publication->forRepo().toDebug())
                 publication->forRepo().setExpires(recommendedExpires);
               }
             }
@@ -623,7 +623,7 @@ namespace openpeer
                 } else {
                   PeerCachePtr &peerCache = (*found).second;
 
-                  ZS_LOG_DEBUG(log("setting the peer source cache to expire at the recommended time") + ", recommended=" + string(recommendedExpires))
+                  ZS_LOG_DEBUG(log("setting the peer source cache to expire at the recommended time") + ZS_PARAM("recommended", recommendedExpires))
                   peerCache->setExpires(recommendedExpires);
                 }
               }
@@ -641,7 +641,7 @@ namespace openpeer
               const char *ignoredReaon = NULL;
               if (0 == ILocationForPublicationRepository::locationCompare(source->getPublishedLocation(), location, ignoredReaon)) {
                 // cancel this subscription since its no longer valid
-                ZS_LOG_DEBUG(log("shutting down outgoing peer subscription") + ", id=" + string(outgoing->getID()))
+                ZS_LOG_DEBUG(log("shutting down outgoing peer subscription") + ZS_PARAM("id", outgoing->getID()))
 
                 outgoing->cancel();
                 mPeerSubscriptionsOutgoing.erase(current);
@@ -659,7 +659,7 @@ namespace openpeer
               const char *ignoredReaon = NULL;
               if (0 == ILocationForPublicationRepository::locationCompare(source->getCreatorLocation(), location, ignoredReaon)) {
                 // cancel this subscription since its no longer valid
-                ZS_LOG_DEBUG(log("shutting down incoming subscriptions coming from the peer") + ", id=" + string(incoming->getID()))
+                ZS_LOG_DEBUG(log("shutting down incoming subscriptions coming from the peer") + ZS_PARAM("id", incoming->getID()))
                 incoming->cancel();
                 mPeerSubscriptionsIncoming.erase(current);
               }
@@ -677,7 +677,7 @@ namespace openpeer
       {
         LocationPtr location = Location::convert(messageIncoming->getLocation());
         message::MessagePtr message = messageIncoming->getMessage();
-        ZS_LOG_TRACE(log("received notification of incoming message") + ", message ID=" + message->messageID() +  + ", type=" + message::Message::toString(message->messageType()) + ", method=" + message->methodAsString() + location->forRepo().getDebugValueString())
+        ZS_LOG_TRACE(log("received notification of incoming message") + ZS_PARAM("message ID", message->messageID()) + ZS_PARAM("type", message::Message::toString(message->messageType())) + ZS_PARAM("method", message->methodAsString()) + location->forRepo().toDebug())
 
         if (message->factory() != MessageFactoryPeerCommon::singleton()) {
           ZS_LOG_DEBUG(log("reposity does not handle messages from non \"peer-common\" factories"))
@@ -752,7 +752,7 @@ namespace openpeer
           }
 
           if (Time() == expires) {
-            ZS_LOG_TRACE(log("publication does not have an expiry") + publication->forRepo().getDebugValuesString())
+            ZS_LOG_TRACE(log("publication does not have an expiry") + publication->forRepo().toDebug())
             continue;
           }
 
@@ -760,12 +760,12 @@ namespace openpeer
             expires = cacheExpires;
 
           if (expires < tick) {
-            ZS_LOG_DEBUG(log("document is now expiring") + publication->forRepo().getDebugValuesString())
+            ZS_LOG_DEBUG(log("document is now expiring") + publication->forRepo().toDebug())
             mCachedRemotePublications.erase(current);
             continue;
           }
 
-          ZS_LOG_TRACE(log("publication is not expirying yet") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("publication is not expirying yet") + publication->forRepo().toDebug())
         }
 
         // go through the peer sources and see if any should expire...
@@ -779,17 +779,17 @@ namespace openpeer
 
           Time expires = peerCache->getExpires();
           if (Time() == expires) {
-            ZS_LOG_TRACE(log("peer source does not have an expiry") + peerSource->forRepo().getDebugValuesString())
+            ZS_LOG_TRACE(log("peer source does not have an expiry") + peerSource->forRepo().toDebug())
             continue;
           }
 
           if (expires < tick) {
-            ZS_LOG_DEBUG(log("peer source is now expiring") + peerSource->forRepo().getDebugValuesString())
+            ZS_LOG_DEBUG(log("peer source is now expiring") + peerSource->forRepo().toDebug())
             mCachedPeerSources.erase(current);
             continue;
           }
 
-          ZS_LOG_TRACE(log("peer source is not expirying yet") + peerSource->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("peer source is not expirying yet") + peerSource->forRepo().toDebug())
         }
       }
 
@@ -821,7 +821,7 @@ namespace openpeer
           PublisherPtr &foundPublisher = (*iter);
           if (foundPublisher->getID() == publisher->getID()) {
             publication = Publication::convert(foundPublisher->getPublication());
-            ZS_LOG_DEBUG(log("removing remote publisher") + ", publisher ID=" + string(publisher->getID()) + publication->forRepo().getDebugValuesString())
+            ZS_LOG_DEBUG(log("removing remote publisher") + ZS_PARAM("publisher ID", publisher->getID()) + publication->forRepo().toDebug())
             mPendingPublishers.erase(iter);
             break;
           }
@@ -848,7 +848,7 @@ namespace openpeer
 
         PublicationMetaDataPtr metaData = PublicationMetaData::convert(fetcher->getPublicationMetaData());
 
-        ZS_LOG_DEBUG(log("publication was fetched") + ", fetcher ID=" + string(fetcher->getID()) + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("publication was fetched") + ZS_PARAM("fetcher ID", fetcher->getID()) + metaData->forRepo().toDebug())
 
         PublicationPtr publication = Publication::convert(fetcher->getFetchedPublication());
 
@@ -860,7 +860,7 @@ namespace openpeer
         if (found != mCachedRemotePublications.end()) {
           PublicationPtr &existingPublication = (*found).second;
 
-          ZS_LOG_DEBUG(log("existing internal publication found thus updating") + existingPublication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("existing internal publication found thus updating") + existingPublication->forRepo().toDebug())
           try {
             existingPublication->forRepo().updateFromFetchedPublication(publication);
 
@@ -870,10 +870,10 @@ namespace openpeer
             ZS_LOG_ERROR(Detail, log("version fetched is not compatible with the version already known"))
           }
         } else {
-          ZS_LOG_DEBUG(log("new entry for cache will be created since existing publication in cache was not found") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("new entry for cache will be created since existing publication in cache was not found") + publication->forRepo().toDebug())
           mCachedRemotePublications[publication] = publication;
 
-          ZS_LOG_DEBUG(log("publication inserted into remote cache") + ", remote cache total=" + string(mCachedRemotePublications.size()))
+          ZS_LOG_DEBUG(log("publication inserted into remote cache") + ZS_PARAM("remote cache total", mCachedRemotePublications.size()))
         }
       }
 
@@ -889,7 +889,7 @@ namespace openpeer
         {
           FetcherPtr &foundFetcher = (*iter);
           if (foundFetcher->getID() == fetcher->getID()) {
-            ZS_LOG_DEBUG(log("fetcher is being removed from pending fetchers list") + ", fetcher ID=" + string(fetcher->getID()))
+            ZS_LOG_DEBUG(log("fetcher is being removed from pending fetchers list") + ZS_PARAM("fetcher ID", fetcher->getID()))
             metaData = PublicationMetaData::convert(fetcher->getPublicationMetaData());
             mPendingFetchers.erase(iter);
             break;
@@ -897,7 +897,7 @@ namespace openpeer
         }
 
         if (metaData) {
-          ZS_LOG_DEBUG(log("will attempt to activate next fetcher based on previous fetch's publication meta data") + metaData->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("will attempt to activate next fetcher based on previous fetch's publication meta data") + metaData->forRepo().toDebug())
           // ensure that only one fectcher for the same publication is activated at a time...
           activateFetcher(metaData);
         }
@@ -917,13 +917,13 @@ namespace openpeer
         PublicationMetaDataPtr metaData = PublicationMetaData::convert(remover->getPublication());
         CachedPublicationMap::iterator found = mCachedRemotePublications.find(metaData);
         if (found == mCachedRemotePublications.end()) {
-          ZS_LOG_DEBUG(log("unable to locate publication in 'remote' cache") + metaData->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("unable to locate publication in 'remote' cache") + metaData->forRepo().toDebug())
           return;
         }
 
         PublicationPtr &existingPublication = (*found).second;
 
-        ZS_LOG_DEBUG(log("removing remotely cached publication") + existingPublication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("removing remotely cached publication") + existingPublication->forRepo().toDebug())
         mCachedRemotePublications.erase(found);
       }
 
@@ -938,7 +938,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::notifySubscribed(PeerSubscriptionOutgoingPtr subscriber)
       {
-        ZS_LOG_DEBUG(log("notify outoing subscription is subscribed") + ", subscriber ID=" + string(subscriber->getID()))
+        ZS_LOG_DEBUG(log("notify outoing subscription is subscribed") + ZS_PARAM("subscriber ID", subscriber->getID()))
       }
 
       //-----------------------------------------------------------------------
@@ -946,11 +946,11 @@ namespace openpeer
       {
         PeerSubscriptionOutgoingMap::iterator found = mPeerSubscriptionsOutgoing.find(subscription->getID());
         if (found == mPeerSubscriptionsOutgoing.end()) {
-          ZS_LOG_WARNING(Detail, log("outoing subscription was shutdown but it was not found in local subscription map") + ", subscription ID=" + string(subscription->getID()))
+          ZS_LOG_WARNING(Detail, log("outoing subscription was shutdown but it was not found in local subscription map") + ZS_PARAM("subscription ID", subscription->getID()))
           return;
         }
 
-        ZS_LOG_DEBUG(log("outgoing subscription was shutdown") + string(subscription->getID()))
+        ZS_LOG_DEBUG(log("outgoing subscription was shutdown") + ZS_PARAM("subscription id", subscription->getID()))
         mPeerSubscriptionsOutgoing.erase(found);
       }
 
@@ -967,11 +967,11 @@ namespace openpeer
       {
         SubscriptionLocalMap::iterator found = mSubscriptionsLocal.find(subscription->getID());
         if (found == mSubscriptionsLocal.end()) {
-          ZS_LOG_WARNING(Detail, log("local subscription was shutdown but it was not found in local subscription map") + ", subscription ID=" + string(subscription->getID()))
+          ZS_LOG_WARNING(Detail, log("local subscription was shutdown but it was not found in local subscription map") + ZS_PARAM("subscription ID", subscription->getID()))
           return;
         }
 
-        ZS_LOG_DEBUG(log("local subscription was shutdown") + string(subscription->getID()))
+        ZS_LOG_DEBUG(log("local subscription was shutdown") + ZS_PARAM("subscription id", subscription->getID()))
         mSubscriptionsLocal.erase(found);
       }
 
@@ -994,7 +994,7 @@ namespace openpeer
         {
           DocumentName name = (*iter).first;
 
-          ZS_LOG_TRACE(log("resolving relationships for document") + ", name=" + name)
+          ZS_LOG_TRACE(log("resolving relationships for document") + ZS_PARAM("name", name))
 
           const PermissionAndPeerURIListPair &permissionPair = (*iter).second;
           const PeerURIList &diffContacts = permissionPair.second;
@@ -1010,7 +1010,7 @@ namespace openpeer
           }
 
           if (!relationshipsPublication) {
-            ZS_LOG_WARNING(Detail, log("failed to find relationships document for resolving") + ", name=" + name)
+            ZS_LOG_WARNING(Detail, log("failed to find relationships document for resolving") + ZS_PARAM("name", name))
             continue;
           }
 
@@ -1019,7 +1019,7 @@ namespace openpeer
           switch (permissionPair.first) {
             case IPublicationMetaData::Permission_All:    {
               for (RelationshipList::iterator relIter = (*docContacts).begin(); relIter != (*docContacts).end(); ++relIter) {
-                ZS_LOG_TRACE(log("adding all contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*relIter))
+                ZS_LOG_TRACE(log("adding all contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*relIter)))
                 contacts[(*relIter)] = (*relIter);
               }
               break;
@@ -1028,10 +1028,10 @@ namespace openpeer
               for (RelationshipList::iterator relIter = (*docContacts).begin(); relIter != (*docContacts).end(); ++relIter) {
                 PeerURIMap::iterator found = contacts.find(*relIter);
                 if (found == contacts.end()) {
-                  ZS_LOG_TRACE(log("failed to remove all contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*relIter))
+                  ZS_LOG_TRACE(log("failed to remove all contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*relIter)))
                   continue;
                 }
-                ZS_LOG_TRACE(log("removing all contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*relIter))
+                ZS_LOG_TRACE(log("removing all contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*relIter)))
                 contacts.erase(found);
               }
               break;
@@ -1041,10 +1041,10 @@ namespace openpeer
               for (RelationshipList::const_iterator diffIter = diffContacts.begin(); diffIter != diffContacts.end(); ++diffIter) {
                 PeerURIList::const_iterator found = find((*docContacts).begin(), (*docContacts).end(), (*diffIter));
                 if (found == (*docContacts).end()) {
-                  ZS_LOG_TRACE(log("cannot add some of the contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*diffIter))
+                  ZS_LOG_TRACE(log("cannot add some of the contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*diffIter)))
                   continue; // cannot add anyone that isn't part of the relationship list
                 }
-                ZS_LOG_TRACE(log("adding some of the contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*diffIter))
+                ZS_LOG_TRACE(log("adding some of the contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*diffIter)))
                 contacts[(*diffIter)] = (*diffIter);
               }
               break;
@@ -1053,16 +1053,16 @@ namespace openpeer
               for (RelationshipList::const_iterator diffIter = diffContacts.begin(); diffIter != diffContacts.end(); ++diffIter) {
                 PeerURIList::const_iterator found = find((*docContacts).begin(), (*docContacts).end(), (*diffIter));
                 if (found == (*docContacts).end()) {
-                  ZS_LOG_TRACE(log("cannot remove some of the contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*diffIter))
+                  ZS_LOG_TRACE(log("cannot remove some of the contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*diffIter)))
                   continue; // cannot remove anyone that isn't part of the relationship list
                 }
 
                 PeerURIMap::iterator foundExisting = contacts.find(*diffIter);
                 if (foundExisting == contacts.end()) {
-                  ZS_LOG_TRACE(log("cannot removing some of the contacts found as the contact was never added to relationships document") + ", name=" + name + ", peer URI=" + (*diffIter))
+                  ZS_LOG_TRACE(log("cannot removing some of the contacts found as the contact was never added to relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*diffIter)))
                   continue;
                 }
-                ZS_LOG_TRACE(log("removing some of the contacts found in relationships document") + ", name=" + name + ", peer URI=" + (*diffIter))
+                ZS_LOG_TRACE(log("removing some of the contacts found in relationships document") + ZS_PARAM("name", name) + ZS_PARAM("peer URI", (*diffIter)))
                 contacts.erase(foundExisting);
               }
               break;
@@ -1071,7 +1071,7 @@ namespace openpeer
         }
 
         for (PeerURIMap::const_iterator iter = contacts.begin(); iter != contacts.end(); ++iter) {
-          ZS_LOG_TRACE(log("final list of the resolved relationships contains this contact") + ", peer URI=" + (*iter).first)
+          ZS_LOG_TRACE(log("final list of the resolved relationships contains this contact") + ZS_PARAM("peer URI", (*iter).first))
           outContacts.push_back((*iter).first);
         }
       }
@@ -1090,7 +1090,7 @@ namespace openpeer
 
         PeerPtr peer = location->forRepo().getPeer();
         if (!peer) {
-          ZS_LOG_ERROR(Detail, log("peer contact on incoming message was empty") + location->forRepo().getDebugValueString())
+          ZS_LOG_ERROR(Detail, log("peer contact on incoming message was empty") + location->forRepo().toDebug())
           return false;
         }
 
@@ -1110,11 +1110,11 @@ namespace openpeer
         }
 
         if (!found) {
-          ZS_LOG_WARNING(Detail, log("publication is not published to this fetcher contact") + ", fetcher peer URI=" + peerURI)
+          ZS_LOG_WARNING(Detail, log("publication is not published to this fetcher contact") + ZS_PARAM("fetcher peer URI", peerURI))
           return false; // does not publish to this contact...
         }
 
-        ZS_LOG_TRACE(log("publication is publishing to this fetcher contact (thus safe to fetch)") + ", fetcher peer URI=" + peerURI)
+        ZS_LOG_TRACE(log("publication is publishing to this fetcher contact (thus safe to fetch)") + ZS_PARAM("fetcher peer URI", peerURI))
         return true;
       }
 
@@ -1134,7 +1134,7 @@ namespace openpeer
 
         if ((!publicationPeer) ||
             (!subscriberPeer)) {
-          ZS_LOG_TRACE(log("publisher is not publishing to this subscriber contact") + ", publication: " + publicationCreatorLocation->forRepo().getDebugValueString(false) + ", subscriber: " + subscriberLocation->forRepo().getDebugValueString(false))
+          ZS_LOG_TRACE(log("publisher is not publishing to this subscriber contact") + ZS_PARAM("publication", publicationCreatorLocation->forRepo().toDebug()) + ZS_PARAM("subscriber", subscriberLocation->forRepo().toDebug()))
           return false;
         }
 
@@ -1149,7 +1149,7 @@ namespace openpeer
         }
 
         if (!found) {
-          ZS_LOG_TRACE(log("publisher is not publishing to this subscriber contact") + ", publication: " + publicationCreatorLocation->forRepo().getDebugValueString(false) + ", subscriber: " + subscriberLocation->forRepo().getDebugValueString(false))
+          ZS_LOG_TRACE(log("publisher is not publishing to this subscriber contact") + ZS_PARAM("publication", publicationCreatorLocation->forRepo().toDebug()) + ZS_PARAM("subscriber", subscriberLocation->forRepo().toDebug()))
           return false; // does not publish to this contact...
         }
 
@@ -1167,11 +1167,11 @@ namespace openpeer
         }
 
         if (!found) {
-          ZS_LOG_TRACE(log("subscriber is not subscribing to this publisher") + ", publication: " + publicationCreatorLocation->forRepo().getDebugValueString(false) + ", subscriber: " + subscriberLocation->forRepo().getDebugValueString(false))
+          ZS_LOG_TRACE(log("subscriber is not subscribing to this publisher") + ZS_PARAM("publication", publicationCreatorLocation->forRepo().toDebug()) + ZS_PARAM("subscriber", subscriberLocation->forRepo().toDebug()))
           return false; // does not publish to this contact...
         }
 
-        ZS_LOG_TRACE(log("subscriber is subscribing to this publication's creator and creator is publishing this publication to the subscriber") + ", publication: " + publicationCreatorLocation->forRepo().getDebugValueString(false) + ", subscriber: " + subscriberLocation->forRepo().getDebugValueString(false))
+        ZS_LOG_TRACE(log("subscriber is subscribing to this publication's creator and creator is publishing this publication to the subscriber") + ZS_PARAM("publication", publicationCreatorLocation->forRepo().toDebug()) + ZS_PARAM("subscriber", subscriberLocation->forRepo().toDebug()))
         return true;
       }
 
@@ -1184,27 +1184,33 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::log(const char *message) const
+      Log::Params PublicationRepository::log(const char *message) const
       {
-        return String("PublicationRepository [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("repository id", string(mID), firstTime) +
-               Helper::getDebugValue("cached local", mCachedLocalPublications.size() > 0 ? string(mCachedLocalPublications.size()) : String(), firstTime) +
-               Helper::getDebugValue("cached remote", mCachedRemotePublications.size() > 0 ? string(mCachedRemotePublications.size()) : String(), firstTime) +
-               IPeerSubscription::toDebugString(mPeerSubscription) +
-               Helper::getDebugValue("cached permissions", mCachedPermissionDocuments.size() > 0 ? string(mCachedPermissionDocuments.size()) : String(), firstTime) +
-               Helper::getDebugValue("subscriptions local", mSubscriptionsLocal.size() > 0 ? string(mSubscriptionsLocal.size()) : String(), firstTime) +
-               Helper::getDebugValue("subscriptions incoming", mPeerSubscriptionsIncoming.size() > 0 ? string(mPeerSubscriptionsIncoming.size()) : String(), firstTime) +
-               Helper::getDebugValue("subscriptions outgoing", mPeerSubscriptionsOutgoing.size() > 0 ? string(mPeerSubscriptionsOutgoing.size()) : String(), firstTime) +
-               Helper::getDebugValue("pending fetchers", mPendingFetchers.size() > 0 ? string(mPendingFetchers.size()) : String(), firstTime) +
-               Helper::getDebugValue("pending publishers", mPendingPublishers.size() > 0 ? string(mPendingPublishers.size()) : String(), firstTime) +
-               Helper::getDebugValue("cached peer sources", mCachedPeerSources.size() > 0 ? string(mCachedPeerSources.size()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository");
+
+        IHelper::debugAppend(resultEl, "repository id", mID);
+        IHelper::debugAppend(resultEl, "cached local", mCachedLocalPublications.size());
+        IHelper::debugAppend(resultEl, "cached remote", mCachedRemotePublications.size());
+        IHelper::debugAppend(resultEl, IPeerSubscription::toDebug(mPeerSubscription));
+        IHelper::debugAppend(resultEl, "cached permissions", mCachedPermissionDocuments.size());
+        IHelper::debugAppend(resultEl, "subscriptions local", mSubscriptionsLocal.size());
+        IHelper::debugAppend(resultEl, "subscriptions incoming", mPeerSubscriptionsIncoming.size());
+        IHelper::debugAppend(resultEl, "subscriptions outgoing", mPeerSubscriptionsOutgoing.size());
+        IHelper::debugAppend(resultEl, "pending fetchers", mPendingFetchers.size());
+        IHelper::debugAppend(resultEl, "pending publishers", mPendingPublishers.size());
+        IHelper::debugAppend(resultEl, "cached peer sources", mCachedPeerSources.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1217,7 +1223,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("activating next fetcher found with this meta data") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("activating next fetcher found with this meta data") + metaData->forRepo().toDebug())
 
         for (PendingFetcherList::iterator iter = mPendingFetchers.begin(); iter != mPendingFetchers.end(); ++iter)
         {
@@ -1225,7 +1231,7 @@ namespace openpeer
 
           PublicationMetaDataPtr fetcherMetaData = PublicationMetaData::convert(fetcher->getPublicationMetaData());
 
-          ZS_LOG_TRACE(log("comparing against fetcher's meta data") + fetcherMetaData->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("comparing against fetcher's meta data") + fetcherMetaData->forRepo().toDebug())
 
           if (!metaData->forRepo().isMatching(fetcherMetaData->forRepo().toPublicationMetaData())) {
             ZS_LOG_TRACE(log("activation meta data does not match fetcher"))
@@ -1246,10 +1252,10 @@ namespace openpeer
           if (found != mCachedRemotePublications.end()) {
             PublicationPtr &existingPublication = (*found).second;
 
-            ZS_LOG_TRACE(log("existing publication found in 'remote' cache for meta data") + existingPublication->forRepo().getDebugValuesString())
+            ZS_LOG_TRACE(log("existing publication found in 'remote' cache for meta data") + existingPublication->forRepo().toDebug())
             ULONG fetchingVersion = metaData->forRepo().getVersion();
             if (existingPublication->forRepo().getVersion() >= fetchingVersion) {
-              ZS_LOG_DETAIL(log("short circuit the fetch since the document is already in our cache") + existingPublication->forRepo().getDebugValuesString())
+              ZS_LOG_DETAIL(log("short circuit the fetch since the document is already in our cache") + existingPublication->forRepo().toDebug())
 
               fetcher->setPublication(existingPublication);
               fetcher->notifyCompleted();
@@ -1286,7 +1292,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        ZS_LOG_DEBUG(log("attempting to activate next publisher for publication") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("attempting to activate next publisher for publication") + publication->forRepo().toDebug())
 
         for (PendingPublisherList::iterator iter = mPendingPublishers.begin(); iter != mPendingPublishers.end(); ++iter)
         {
@@ -1294,7 +1300,7 @@ namespace openpeer
           PublicationPtr publisherPublication = Publication::convert(publisher->getPublication());
 
           if (publication->forRepo().getID() != publisherPublication->forRepo().getID()) {
-            ZS_LOG_TRACE(log("pending publication is not the correct one to activate") + string(publisherPublication->forRepo().getID()))
+            ZS_LOG_TRACE(log("pending publication is not the correct one to activate") + ZS_PARAM("publisher publication", publisherPublication->forRepo().getID()))
             continue;
           }
 
@@ -1330,7 +1336,7 @@ namespace openpeer
       PublicationRepository::PeerSubscriptionIncomingPtr PublicationRepository::findIncomingSubscription(PublicationMetaDataPtr inMetaData) const
       {
         LocationPtr location = inMetaData->forRepo().getCreatorLocation();
-        ZS_LOG_TRACE(log("finding incoming peer subscription with publication path, publication name=") + inMetaData->forRepo().getName() + location->forRepo().getDebugValueString())
+        ZS_LOG_TRACE(log("finding incoming peer subscription with publication path") + ZS_PARAM("publication name", inMetaData->forRepo().getName()) + location->forRepo().toDebug())
 
         for (PeerSubscriptionIncomingMap::const_iterator iter = mPeerSubscriptionsIncoming.begin(); iter != mPeerSubscriptionsIncoming.end(); ++iter)
         {
@@ -1368,7 +1374,7 @@ namespace openpeer
         publication->forRepo().setCreatorLocation(Location::convert(messageIncoming->getLocation()));
         publication->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
 
-        ZS_LOG_TRACE(log("incoming request to publish document") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("incoming request to publish document") + publication->forRepo().toDebug())
 
         CachedPublicationMap::iterator found = mCachedLocalPublications.find(publication);
 
@@ -1376,7 +1382,7 @@ namespace openpeer
         if (found != mCachedLocalPublications.end()) {
           PublicationPtr &existingPublication = (*found).second;
 
-          ZS_LOG_DEBUG(log("updating existing publication in 'local' cache with remote publication") + existingPublication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("updating existing publication in 'local' cache with remote publication") + existingPublication->forRepo().toDebug())
           try {
             existingPublication->forRepo().updateFromFetchedPublication(publication);
           } catch(IPublicationForPublicationRepository::Exceptions::VersionMismatch &) {
@@ -1388,11 +1394,11 @@ namespace openpeer
 
           responceMetaData = existingPublication;
         } else {
-          ZS_LOG_DEBUG(log("creating new entry in 'local' cache for remote publication") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("creating new entry in 'local' cache for remote publication") + publication->forRepo().toDebug())
           mCachedLocalPublications[publication] = publication;
           responceMetaData = publication;
 
-          ZS_LOG_DEBUG(log("publication inserted into local cache") + ", local cache total=" + string(mCachedLocalPublications.size()))
+          ZS_LOG_DEBUG(log("publication inserted into local cache") + ZS_PARAM("local cache total", mCachedLocalPublications.size()))
         }
 
         PeerPublishResultPtr reply = PeerPublishResult::create(request);
@@ -1429,7 +1435,7 @@ namespace openpeer
         // the publication must have be published to "this" repository...
         metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
 
-        ZS_LOG_DEBUG(log("incoming request to get a document published to the local cache") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("incoming request to get a document published to the local cache") + metaData->forRepo().toDebug())
 
         CachedPublicationMap::iterator found = mCachedLocalPublications.find(metaData);
         if (found == mCachedLocalPublications.end()) {
@@ -1448,7 +1454,7 @@ namespace openpeer
 
         ZS_LOG_TRACE(log("requesting peer has authorization to get the requested document"))
 
-        ZS_LOG_TRACE(log("incoming get request to will return this document") + existingPublication->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("incoming get request to will return this document") + existingPublication->forRepo().toDebug())
 
         PeerCachePtr peerCache = PeerCache::find(sourceMetaData, mThisWeak.lock());
         peerCache->notifyFetched(existingPublication);
@@ -1478,7 +1484,7 @@ namespace openpeer
         metaData->forRepo().setCreatorLocation(Location::convert(messageIncoming->getLocation()));
         metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
 
-        ZS_LOG_DEBUG(log("incoming request to delete document") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("incoming request to delete document") + metaData->forRepo().toDebug())
 
         CachedPublicationMap::iterator found = mCachedLocalPublications.find(metaData);
         if (found == mCachedLocalPublications.end()) {
@@ -1488,7 +1494,7 @@ namespace openpeer
 
         PublicationPtr &existingPublication = (*found).second;
 
-        ZS_LOG_DEBUG(log("delete request will delete this publication") + existingPublication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("delete request will delete this publication") + existingPublication->forRepo().toDebug())
 
         mCachedLocalPublications.erase(found);
 
@@ -1528,14 +1534,14 @@ namespace openpeer
         PublicationMetaDataPtr metaData = PublicationMetaData::convert(request->publicationMetaData());
 
         if (!location->forRepo().getPeer()) {
-          ZS_LOG_WARNING(Detail, log("incoming request from a location that does not have a peer (thus ignoring)") + ", location: " + location->forRepo().getDebugValueString() + ", publication: " + metaData->forRepo().getDebugValuesString(false))
+          ZS_LOG_WARNING(Detail, log("incoming request from a location that does not have a peer (thus ignoring)") + ZS_PARAM("location", location->forRepo().toDebug()) + ZS_PARAM("publication", metaData->forRepo().toDebug()))
           return;
         }
 
         metaData->forRepo().setCreatorLocation(location);
         metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
 
-        ZS_LOG_DEBUG(log("incoming request to subscribe to document path") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("incoming request to subscribe to document path") + metaData->forRepo().toDebug())
 
         PeerSubscriptionIncomingPtr existingSubscription = findIncomingSubscription(metaData);
         if (existingSubscription) {
@@ -1592,25 +1598,25 @@ namespace openpeer
 
         LocationPtr location = Location::convert(messageIncoming->getLocation());
 
-        ZS_LOG_DEBUG(log("received publish notification") + ", total publications=" + string(publicationList.size()) + location->forRepo().getDebugValueString())
+        ZS_LOG_DEBUG(log("received publish notification") + ZS_PARAM("total publications", publicationList.size()) + location->forRepo().toDebug())
 
         for (PublicationList::const_iterator iter = publicationList.begin(); iter != publicationList.end(); ++iter) {
           const IPublicationMetaDataPtr &requestMetaData = (*iter);
           PublicationMetaDataPtr metaData = PublicationMetaData::convert(requestMetaData);
 
-          ZS_LOG_DEBUG(log("received notification of document change") + metaData->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("received notification of document change") + metaData->forRepo().toDebug())
 
           metaData->forRepo().setPublishedLocation(location);
 
           PublicationPtr publication = Publication::convert(metaData->forRepo().toPublication());
           if (publication) {
-            ZS_LOG_DEBUG(log("publication was included with notification") + publication->forRepo().getDebugValuesString())
+            ZS_LOG_DEBUG(log("publication was included with notification") + publication->forRepo().toDebug())
 
             // not only is meta data available an update to the publication is available, search the cache for the document
             CachedPublicationMap::iterator found = mCachedRemotePublications.find(metaData);;
             if (found != mCachedRemotePublications.end()) {
               PublicationPtr &existingPublication = (*found).second;
-              ZS_LOG_DEBUG(log("existing internal publication found thus updating (if possible)") + existingPublication->forRepo().getDebugValuesString())
+              ZS_LOG_DEBUG(log("existing internal publication found thus updating (if possible)") + existingPublication->forRepo().toDebug())
               try {
                 existingPublication->forRepo().updateFromFetchedPublication(publication);
               } catch(IPublicationForPublicationRepository::Exceptions::VersionMismatch &) {
@@ -1624,14 +1630,14 @@ namespace openpeer
                 ElementPtr diffEl = doc->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
                 okayToCreate = !diffEl;
                 if (!okayToCreate) {
-                  ZS_LOG_WARNING(Detail, log("new entry for remote cache cannot be created for publication which only contains diff updates") + publication->forRepo().getDebugValuesString())
+                  ZS_LOG_WARNING(Detail, log("new entry for remote cache cannot be created for publication which only contains diff updates") + publication->forRepo().toDebug())
                 }
               }
               if (okayToCreate) {
-                ZS_LOG_DEBUG(log("new entry for remote cache will be created since existing publication in cache was not found") + publication->forRepo().getDebugValuesString())
+                ZS_LOG_DEBUG(log("new entry for remote cache will be created since existing publication in cache was not found") + publication->forRepo().toDebug())
                 mCachedRemotePublications[publication] = publication;
 
-                ZS_LOG_DEBUG(log("publication inserted into remote cache") + ", remote cache total=" + string(mCachedRemotePublications.size()))
+                ZS_LOG_DEBUG(log("publication inserted into remote cache") + ZS_PARAM("remote cache total", mCachedRemotePublications.size()))
               }
             }
           }
@@ -1639,7 +1645,7 @@ namespace openpeer
           for (PeerSubscriptionOutgoingMap::iterator subIter = mPeerSubscriptionsOutgoing.begin(); subIter != mPeerSubscriptionsOutgoing.end(); ++subIter)
           {
             PeerSubscriptionOutgoingPtr &subscriber = (*subIter).second;
-            ZS_LOG_TRACE(log("notifying outgoing subscription of change") + ", susbcriber ID=" + string(subscriber->getID()))
+            ZS_LOG_TRACE(log("notifying outgoing subscription of change") + ZS_PARAM("susbcriber ID", subscriber->getID()))
             subscriber->notifyUpdated(metaData);
           }
         }
@@ -1669,7 +1675,7 @@ namespace openpeer
           for (PendingFetcherList::iterator iter = pending.begin(); iter != pending.end(); ++iter)
           {
             FetcherPtr &fetcher = (*iter);
-            ZS_LOG_DEBUG(log("cancelling pending fetcher") + string(fetcher->getID()))
+            ZS_LOG_DEBUG(log("cancelling pending fetcher") + ZS_PARAM("fetcher id", fetcher->getID()))
             fetcher->cancel();
           }
         }
@@ -1683,7 +1689,7 @@ namespace openpeer
           for (PendingPublisherList::iterator iter = pending.begin(); iter != pending.end(); ++iter)
           {
             PublisherPtr &publisher = (*iter);
-            ZS_LOG_DEBUG(log("cancelling pending publisher") + string(publisher->getID()))
+            ZS_LOG_DEBUG(log("cancelling pending publisher") + ZS_PARAM("publisher id", publisher->getID()))
             publisher->cancel();
           }
         }
@@ -1698,7 +1704,7 @@ namespace openpeer
             for (SubscriptionLocalMap::iterator subscriberIter = mSubscriptionsLocal.begin(); subscriberIter != mSubscriptionsLocal.end(); ++subscriberIter)
             {
               SubscriptionLocalPtr &subscriber = (*subscriberIter).second;
-              ZS_LOG_DEBUG(log("notifying local subscriber that publication is gone during cancel") + string(subscriber->getID()))
+              ZS_LOG_DEBUG(log("notifying local subscriber that publication is gone during cancel") + ZS_PARAM("subscriber id", subscriber->getID()))
               subscriber->notifyGone(publication);
             }
 
@@ -1706,7 +1712,7 @@ namespace openpeer
             for (PeerSubscriptionIncomingMap::iterator subscriberIter = mPeerSubscriptionsIncoming.begin(); subscriberIter != mPeerSubscriptionsIncoming.end(); ++subscriberIter)
             {
               PeerSubscriptionIncomingPtr &subscriber = (*subscriberIter).second;
-              ZS_LOG_DEBUG(log("notifying incoming subscriber that publication is gone during cancel") + string(subscriber->getID()))
+              ZS_LOG_DEBUG(log("notifying incoming subscriber that publication is gone during cancel") + ZS_PARAM("subscriber id", subscriber->getID()))
               subscriber->notifyGone(publication);
             }
           }
@@ -1722,7 +1728,7 @@ namespace openpeer
           ++subIter;
 
           SubscriptionLocalPtr &subscriber = (*current).second;
-          ZS_LOG_DEBUG(log("cancelling local subscription") + string(subscriber->getID()))
+          ZS_LOG_DEBUG(log("cancelling local subscription") + ZS_PARAM("subscriber id", subscriber->getID()))
           subscriber->cancel();
         }
         mSubscriptionsLocal.clear();
@@ -1731,7 +1737,7 @@ namespace openpeer
         for (PeerSubscriptionIncomingMap::iterator iter = mPeerSubscriptionsIncoming.begin(); iter != mPeerSubscriptionsIncoming.end(); ++iter)
         {
           PeerSubscriptionIncomingPtr &subscriber = (*iter).second;
-          ZS_LOG_DEBUG(log("cancelling incoming subscription") + string(subscriber->getID()))
+          ZS_LOG_DEBUG(log("cancelling incoming subscription") + ZS_PARAM("subscriber id", subscriber->getID()))
           subscriber->cancel();
         }
         mPeerSubscriptionsIncoming.clear();
@@ -1743,7 +1749,7 @@ namespace openpeer
           ++subIter;
 
           PeerSubscriptionOutgoingPtr &subscriber = (*current).second;
-          ZS_LOG_DEBUG(log("cancelling outgoing subscription") + string(subscriber->getID()))
+          ZS_LOG_DEBUG(log("cancelling outgoing subscription") + ZS_PARAM("subscriber id", subscriber->getID()))
           subscriber->cancel();
         }
         mPeerSubscriptionsOutgoing.clear();
@@ -1808,10 +1814,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerCache::toDebugString(IPublicationRepositoryPeerCachePtr cache, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::PeerCache::toDebug(IPublicationRepositoryPeerCachePtr cache)
       {
-        if (!cache) return includeCommaPrefix ? ", peer cache=(null" : "peer cache=(null)";
-        return PeerCache::convert(cache)->getDebugValueString();
+        if (!cache) return ElementPtr();
+        return PeerCache::convert(cache)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -1837,7 +1843,7 @@ namespace openpeer
 
           ULONG nextVersionToNotify = metaData->forRepo().getVersion() + 1;
           if (nextVersionToNotify > publication->forRepo().getVersion()) {
-            ZS_LOG_WARNING(Detail, log("already fetched/notified of this version so why is it being notified? (probably okay and likely because of peer disconnection)") + publication->forRepo().getDebugValuesString())
+            ZS_LOG_WARNING(Detail, log("already fetched/notified of this version so why is it being notified? (probably okay and likely because of peer disconnection)") + publication->forRepo().toDebug())
             return false;
           }
 
@@ -1845,7 +1851,7 @@ namespace openpeer
           publication->forRepo().getDiffVersionsOutputSize(nextVersionToNotify, publication->forRepo().getVersion(), outputSize);
 
           if (outputSize > ioMaxSizeAvailableInBytes) {
-            ZS_LOG_WARNING(Detail, log("diff document is too large for notify") + ", output size=" + string(outputSize) + ", max size=" + string(ioMaxSizeAvailableInBytes))
+            ZS_LOG_WARNING(Detail, log("diff document is too large for notify") + ZS_PARAM("output size", outputSize) + ZS_PARAM("max size", ioMaxSizeAvailableInBytes))
             return false;
           }
 
@@ -1857,10 +1863,10 @@ namespace openpeer
           metaData->forRepo().setVersion(outNotifyToVersion);
 
           ZS_LOG_DETAIL(log("recommend notify about diff version") +
-                        ", from=" + string(outNotifyFromVersion) +
-                        ", to=" + string(outNotifyToVersion)  +
-                        ", size=" + string(outputSize) +
-                        ", remaining=" + string(ioMaxSizeAvailableInBytes))
+                        ZS_PARAM("from", outNotifyFromVersion) +
+                        ZS_PARAM("to", outNotifyToVersion)  +
+                        ZS_PARAM("size", outputSize) +
+                        ZS_PARAM("remaining", ioMaxSizeAvailableInBytes))
           return true;
         }
 
@@ -1868,7 +1874,7 @@ namespace openpeer
         publication->forRepo().getEntirePublicationOutputSize(outputSize);
 
         if (outputSize > ioMaxSizeAvailableInBytes) {
-          ZS_LOG_WARNING(Detail, log("diff document is too large for notify") + ", output size=" + string(outputSize) + ", max size=" + string(ioMaxSizeAvailableInBytes))
+          ZS_LOG_WARNING(Detail, log("diff document is too large for notify") + ZS_PARAM("output size", outputSize) + ZS_PARAM("max size", ioMaxSizeAvailableInBytes))
           return false;
         }
 
@@ -1884,10 +1890,10 @@ namespace openpeer
         ioMaxSizeAvailableInBytes -= outputSize;
 
         ZS_LOG_DETAIL(log("recommend notify about entire document") +
-                      ", from=" + string(outNotifyFromVersion) +
-                      ", to=" + string(outNotifyToVersion)  +
-                      ", size=" + string(outputSize) +
-                      ", remaining=" + string(ioMaxSizeAvailableInBytes))
+                      ZS_PARAM("from", outNotifyFromVersion) +
+                      ZS_PARAM("to", outNotifyToVersion)  +
+                      ZS_PARAM("size", outputSize) +
+                      ZS_PARAM("remaining", ioMaxSizeAvailableInBytes))
         return true;
       }
 
@@ -1948,20 +1954,26 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerCache::log(const char *message) const
+      Log::Params PublicationRepository::PeerCache::log(const char *message) const
       {
-        return String("PublicationRepository::PeerCache [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::PeerCache");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerCache::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::PeerCache::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer cache id", string(mID), firstTime) +
-               IPublicationMetaData::toDebugString(mPeerSource) +
-               Helper::getDebugValue("expires", Time() != mExpires ? IHelper::timeToString(mExpires) : String(), firstTime) +
-               Helper::getDebugValue("cached remote", mCachedPublications.size() > 0 ? string(mCachedPublications.size()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::PeerCache");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(mPeerSource));
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+        IHelper::debugAppend(resultEl, "cached remote", mCachedPublications.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1995,7 +2007,7 @@ namespace openpeer
         mSucceeded(false),
         mErrorCode(0)
       {
-        ZS_LOG_DEBUG(log("created new publisher") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created new publisher") + publication->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -2064,10 +2076,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Publisher::toDebugString(IPublicationPublisherPtr publisher, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::Publisher::toDebug(IPublicationPublisherPtr publisher)
       {
-        if (!publisher) return includeCommaPrefix ? ", publisher=(null" : "publisher=(null)";
-        return Publisher::convert(publisher)->getDebugValueString();
+        if (!publisher) return ElementPtr();
+        return Publisher::convert(publisher)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -2211,22 +2223,28 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Publisher::log(const char *message) const
+      Log::Params PublicationRepository::Publisher::log(const char *message) const
       {
-        return String("PublicationRepository::Publisher [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::Publisher");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Publisher::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::Publisher::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("publisher id", string(mID), firstTime) +
-               IPublication::toDebugString(mPublication) +
-               IMessageMonitor::toDebugString(mMonitor) +
-               Helper::getDebugValue("succeeded", mSucceeded ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mErrorCode ? string(mErrorCode) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mErrorReason, firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::Publisher");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPublication::toDebug(mPublication));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
+        IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
+        IHelper::debugAppend(resultEl, "error code", mErrorCode);
+        IHelper::debugAppend(resultEl, "error reason", mErrorReason);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -2267,7 +2285,7 @@ namespace openpeer
         mSucceeded(false),
         mErrorCode(0)
       {
-        ZS_LOG_DEBUG(log("created") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created") + metaData->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -2341,10 +2359,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Fetcher::toDebugString(IPublicationFetcherPtr fetcher, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::Fetcher::toDebug(IPublicationFetcherPtr fetcher)
       {
-        if (!fetcher) return includeCommaPrefix ? ", publisher=(null" : "publisher=(null)";
-        return Fetcher::convert(fetcher)->getDebugValueString();
+        if (!fetcher) return ElementPtr();
+        return Fetcher::convert(fetcher)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -2493,23 +2511,29 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Fetcher::log(const char *message) const
+      Log::Params PublicationRepository::Fetcher::log(const char *message) const
       {
-        return String("PublicationRepository::Fetcher [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::Fetcher");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Fetcher::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::Fetcher::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("fetcher id", string(mID), firstTime) +
-               IPublicationMetaData::toDebugString(mPublicationMetaData) +
-               IMessageMonitor::toDebugString(mMonitor) +
-               Helper::getDebugValue("succeeded", mSucceeded ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mErrorCode ? string(mErrorCode) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mErrorReason, firstTime) +
-               IPublication::toDebugString(mFetchedPublication);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::Fetcher");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(mPublicationMetaData));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
+        IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
+        IHelper::debugAppend(resultEl, "error code", mErrorCode);
+        IHelper::debugAppend(resultEl, "error reason", mErrorReason);
+        IHelper::debugAppend(resultEl, IPublication::toDebug(mFetchedPublication));
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -2549,7 +2573,7 @@ namespace openpeer
         mSucceeded(false),
         mErrorCode(0)
       {
-        ZS_LOG_DEBUG(log("created") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created") + publication->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -2618,10 +2642,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Remover::toDebugString(IPublicationRemoverPtr remover, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::Remover::toDebug(IPublicationRemoverPtr remover)
       {
-        if (!remover) return includeCommaPrefix ? ", remover=(null" : "remover=(null)";
-        return Remover::convert(remover)->getDebugValueString();
+        if (!remover) return ElementPtr();
+        return Remover::convert(remover)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -2756,22 +2780,28 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Remover::log(const char *message) const
+      Log::Params PublicationRepository::Remover::log(const char *message) const
       {
-        return String("PublicationRepository::Remover [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::Remover");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::Remover::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::Remover::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("remove id", string(mID), firstTime) +
-               IPublication::toDebugString(mPublication) +
-               IMessageMonitor::toDebugString(mMonitor) +
-               Helper::getDebugValue("succeeded", mSucceeded ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mErrorCode ? string(mErrorCode) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mErrorReason, firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::Remover");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPublication::toDebug(mPublication));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
+        IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
+        IHelper::debugAppend(resultEl, "error code", mErrorCode);
+        IHelper::debugAppend(resultEl, "error reason", mErrorReason);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -2803,7 +2833,7 @@ namespace openpeer
         }
 
         mSubscriptionInfo = IPublicationMetaDataForPublicationRepository::create(0, 0, 0, localLocation, publicationPath, "", IPublicationMetaData::Encoding_JSON, relationships, localLocation);
-        ZS_LOG_DEBUG(log("created") + mSubscriptionInfo->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created") + mSubscriptionInfo->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -2851,18 +2881,18 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_TRACE(log("publication is updated") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("publication is updated") + publication->forRepo().toDebug())
 
         String name = publication->forRepo().getName();
         String path = mSubscriptionInfo->forRepo().getName();
 
         if (name.length() < path.length()) {
-          ZS_LOG_TRACE(log("name is too short for subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
         if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-          ZS_LOG_TRACE(log("name does not match subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
@@ -2889,7 +2919,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("notifying about publication update to local subscriber") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("notifying about publication update to local subscriber") + publication->forRepo().toDebug())
 
         // valid to notify about this document...
         try {
@@ -2906,18 +2936,18 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_TRACE(log("notified publication is gone") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("notified publication is gone") + publication->forRepo().toDebug())
 
         String name = publication->forRepo().getName();
         String path = mSubscriptionInfo->forRepo().getName();
 
         if (name.length() < path.length()) {
-          ZS_LOG_TRACE(log("name is too short for subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
         if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-          ZS_LOG_TRACE(log("name does not match subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
@@ -2944,7 +2974,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("notifying about publication gone to local subscriber") + publication->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("notifying about publication gone to local subscriber") + publication->forRepo().toDebug())
 
         // valid to notify about this document...
         try {
@@ -2968,10 +2998,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::SubscriptionLocal::toDebugString(SubscriptionLocalPtr subscription, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::SubscriptionLocal::toDebug(SubscriptionLocalPtr subscription)
       {
-        if (!subscription) return includeCommaPrefix ? ", subscription local=(null" : "subscription local=(null)";
-        return subscription->getDebugValueString();
+        if (!subscription) return ElementPtr();
+        return subscription->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -3014,19 +3044,25 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::SubscriptionLocal::log(const char *message) const
+      Log::Params PublicationRepository::SubscriptionLocal::log(const char *message) const
       {
-        return String("PublicationRepository::SubscriptionLocal [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::SubscriptionLocal");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::SubscriptionLocal::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::SubscriptionLocal::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("subscription local id", string(mID), firstTime) +
-               IPublicationMetaData::toDebugString(mSubscriptionInfo) +
-               Helper::getDebugValue("state", toString(mCurrentState), firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::SubscriptionLocal");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(mSubscriptionInfo));
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -3034,7 +3070,7 @@ namespace openpeer
       {
         if (mCurrentState == state) return;
 
-        ZS_LOG_BASIC(log("state changed") + ", old state=" + IPublicationSubscription::toString(mCurrentState) + ", new state=" + IPublicationSubscription::toString(state))
+        ZS_LOG_BASIC(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
 
         mCurrentState = state;
 
@@ -3083,7 +3119,7 @@ namespace openpeer
       mPeerSource(peerSource),
       mSubscriptionInfo(subscriptionInfo)
       {
-        ZS_LOG_DEBUG(log("created") + subscriptionInfo->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created") + subscriptionInfo->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -3108,10 +3144,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionIncoming::toDebugString(PeerSubscriptionIncomingPtr subscription, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::PeerSubscriptionIncoming::toDebug(PeerSubscriptionIncomingPtr subscription)
       {
-        if (!subscription) return includeCommaPrefix ? ", subscription incoming=(null" : "subscription incoming=(null)";
-        return subscription->getDebugValueString();
+        if (!subscription) return ElementPtr();
+        return subscription->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -3170,18 +3206,18 @@ namespace openpeer
         for (CachedPublicationMap::const_iterator iter = cachedPublications.begin(); iter != cachedPublications.end(); ++iter)
         {
           const PublicationPtr &publication = (*iter).second;
-          ZS_LOG_TRACE(log("notified of updated publication") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("notified of updated publication") + publication->forRepo().toDebug())
 
           String name = publication->forRepo().getName();
           String path = mSubscriptionInfo->forRepo().getName();
 
           if (name.length() < path.length()) {
-            ZS_LOG_TRACE(log("name is too short for subscription path") + ", name=" + name + ", path=" + path)
+            ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
             continue;
           }
 
           if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-            ZS_LOG_TRACE(log("name does not match subscription path") + ", name=" + name + ", path=" + path)
+            ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
             continue;
           }
 
@@ -3196,17 +3232,17 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying about publication updated to subscriber") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("notifying about publication updated to subscriber") + publication->forRepo().toDebug())
 
           list.push_back(publication->forRepo().toPublicationMetaData());
         }
 
         if (list.size() < 1) {
-          ZS_LOG_TRACE(log("no publications updates are needed to be sent to this subscriber") + mSubscriptionInfo->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("no publications updates are needed to be sent to this subscriber") + mSubscriptionInfo->forRepo().toDebug())
           return;
         }
 
-        ZS_LOG_TRACE(log("publications will be notified to this subscriber") + ", total  publications=" + string(list.size()) + mSubscriptionInfo->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("publications will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->forRepo().toDebug())
 
         PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
         request->domain(account->forRepo().getDomain());
@@ -3247,11 +3283,11 @@ namespace openpeer
           String path = mSubscriptionInfo->forRepo().getName();
 
           if (name.length() < path.length()) {
-            ZS_LOG_TRACE(log("name is too short for subscription path") + ", name=" + name + ", path=" + path)
+            ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
             continue;
           }
           if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-            ZS_LOG_TRACE(log("name does not match subscription path") + ", name=" + name + ", path=" + path)
+            ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
             continue;
           }
 
@@ -3266,7 +3302,7 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying about publication gone to subscriber") + publication->forRepo().getDebugValuesString())
+          ZS_LOG_DEBUG(log("notifying about publication gone to subscriber") + publication->forRepo().toDebug())
 
           PublicationMetaDataPtr metaData = IPublicationMetaDataForPublicationRepository::createFrom(publication->forRepo().toPublicationMetaData());
           metaData->forRepo().setVersion(0);
@@ -3276,11 +3312,11 @@ namespace openpeer
         }
 
         if (list.size() < 1) {
-          ZS_LOG_TRACE(log("no 'publications are gone' notification will be send to this subscriber") + mSubscriptionInfo->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("no 'publications are gone' notification will be send to this subscriber") + mSubscriptionInfo->forRepo().toDebug())
           return;
         }
 
-        ZS_LOG_TRACE(log("'publications are gone' notification will be notified to this subscriber") + ", total  publications=" + string(list.size()) + mSubscriptionInfo->forRepo().getDebugValuesString())
+        ZS_LOG_TRACE(log("'publications are gone' notification will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->forRepo().toDebug())
 
         PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
         request->domain(account->forRepo().getDomain());
@@ -3375,20 +3411,26 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionIncoming::log(const char *message) const
+      Log::Params PublicationRepository::PeerSubscriptionIncoming::log(const char *message) const
       {
-        return String("PublicationRepository::PeerSubscriptionIncoming [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::PeerSubscriptionIncoming");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionIncoming::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::PeerSubscriptionIncoming::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer subscription incoming id", string(mID), firstTime) +
-               ", source: " + IPublicationMetaData::toDebugString(mPeerSource, false) +
-               ", subscription info: " + IPublicationMetaData::toDebugString(mSubscriptionInfo, false) +
-               Helper::getDebugValue("notification monitors", mNotificationMonitors.size() > 0 ? string(mNotificationMonitors.size()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::PeerSubscriptionIncoming");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "source", IPublicationMetaData::toDebug(mPeerSource));
+        IHelper::debugAppend(resultEl, "subscription info", IPublicationMetaData::toDebug(mSubscriptionInfo));
+        IHelper::debugAppend(resultEl, "notification monitors", mNotificationMonitors.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -3413,7 +3455,7 @@ namespace openpeer
         mCurrentState(PublicationSubscriptionState_Pending),
         mSubscriptionInfo(subscriptionInfo)
       {
-        ZS_LOG_DEBUG(log("created") + mSubscriptionInfo->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("created") + mSubscriptionInfo->forRepo().toDebug())
       }
 
       //-----------------------------------------------------------------------
@@ -3466,7 +3508,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (!mDelegate) {
-          ZS_LOG_WARNING(Detail, log("notification up an updated document after cancel called") + metaData->forRepo().getDebugValuesString())
+          ZS_LOG_WARNING(Detail, log("notification up an updated document after cancel called") + metaData->forRepo().toDebug())
           return;
         }
 
@@ -3474,22 +3516,22 @@ namespace openpeer
         String path = mSubscriptionInfo->forRepo().getName();
 
         if (name.length() < path.length()) {
-          ZS_LOG_TRACE(log("name is too short for subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
         if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-          ZS_LOG_TRACE(log("name does not match subscription path") + ", name=" + name + ", path=" + path)
+          ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
           return;
         }
 
         const char *ignoreReason = NULL;
         if (0 != ILocationForPublicationRepository::locationCompare(mSubscriptionInfo->forRepo().getPublishedLocation(), metaData->forRepo().getPublishedLocation(), ignoreReason)) {
-          ZS_LOG_TRACE(log("publication update/gone notification for a source other than where subscription was placed (thus ignoring)") + metaData->forRepo().getDebugValuesString())
+          ZS_LOG_TRACE(log("publication update/gone notification for a source other than where subscription was placed (thus ignoring)") + metaData->forRepo().toDebug())
           return;
         }
 
-        ZS_LOG_DEBUG(log("publication update/gone notification is being notified to outgoing subscription delegate") + metaData->forRepo().getDebugValuesString())
+        ZS_LOG_DEBUG(log("publication update/gone notification is being notified to outgoing subscription delegate") + metaData->forRepo().toDebug())
 
         // this appears to be a match thus notify the subscriber...
         try {
@@ -3517,10 +3559,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionOutgoing::toDebugString(PeerSubscriptionOutgoingPtr subscription, bool includeCommaPrefix)
+      ElementPtr PublicationRepository::PeerSubscriptionOutgoing::toDebug(PeerSubscriptionOutgoingPtr subscription)
       {
-        if (!subscription) return includeCommaPrefix ? ", subscription outgoing=(null" : "subscription outgoing=(null)";
-        return subscription->getDebugValueString();
+        if (!subscription) return ElementPtr();
+        return subscription->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -3641,24 +3683,30 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionOutgoing::log(const char *message) const
+      Log::Params PublicationRepository::PeerSubscriptionOutgoing::log(const char *message) const
       {
-        return String("PublicationRepository::PeerSubscriptionOutgoing [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationRepository::PeerSubscriptionOutgoing");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PublicationRepository::PeerSubscriptionOutgoing::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PublicationRepository::PeerSubscriptionOutgoing::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer subscription outgoing id", string(mID), firstTime) +
-               Helper::getDebugValue("state", toString(mCurrentState), firstTime) +
-               IPublicationMetaData::toDebugString(mSubscriptionInfo) +
-               IMessageMonitor::toDebugString(mMonitor) +
-               IMessageMonitor::toDebugString(mCancelMonitor) +
-               Helper::getDebugValue("succeeded", mSucceeded ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mErrorCode ? string(mErrorCode) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mErrorReason, firstTime);
+
+        ElementPtr resultEl = Element::create("PublicationRepository::PeerSubscriptionOutgoing");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(mSubscriptionInfo));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mCancelMonitor));
+        IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
+        IHelper::debugAppend(resultEl, "error code", mErrorCode);
+        IHelper::debugAppend(resultEl, "error reason", mErrorReason);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -3666,7 +3714,7 @@ namespace openpeer
       {
         if (mCurrentState == state) return;
 
-        ZS_LOG_BASIC(log("state changed") + ", old state=" + IPublicationSubscription::toString(mCurrentState) + ", new state=" + IPublicationSubscription::toString(state))
+        ZS_LOG_BASIC(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
 
         mCurrentState = state;
 
@@ -3768,9 +3816,9 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationRepository::toDebugString(IPublicationRepositoryPtr repository, bool includeCommaPrefix)
+    ElementPtr IPublicationRepository::toDebug(IPublicationRepositoryPtr repository)
     {
-      return internal::PublicationRepository::toDebugString(repository, includeCommaPrefix);
+      return internal::PublicationRepository::toDebug(repository);
     }
 
     //-------------------------------------------------------------------------
@@ -3780,37 +3828,37 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationPublisher::toDebugString(IPublicationPublisherPtr publisher, bool includeCommaPrefix)
+    ElementPtr IPublicationPublisher::toDebug(IPublicationPublisherPtr publisher)
     {
-      return internal::PublicationRepository::Publisher::toDebugString(publisher, includeCommaPrefix);
+      return internal::PublicationRepository::Publisher::toDebug(publisher);
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationFetcher::toDebugString(IPublicationFetcherPtr fetcher, bool includeCommaPrefix)
+    ElementPtr IPublicationFetcher::toDebug(IPublicationFetcherPtr fetcher)
     {
-      return internal::PublicationRepository::Fetcher::toDebugString(fetcher, includeCommaPrefix);
+      return internal::PublicationRepository::Fetcher::toDebug(fetcher);
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationRemover::toDebugString(IPublicationRemoverPtr remover, bool includeCommaPrefix)
+    ElementPtr IPublicationRemover::toDebug(IPublicationRemoverPtr remover)
     {
-      return internal::PublicationRepository::Remover::toDebugString(remover, includeCommaPrefix);
+      return internal::PublicationRepository::Remover::toDebug(remover);
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationSubscription::toDebugString(IPublicationSubscriptionPtr subscription, bool includeCommaPrefix)
+    ElementPtr IPublicationSubscription::toDebug(IPublicationSubscriptionPtr subscription)
     {
       internal::PublicationRepository::SubscriptionLocalPtr localSubscription = internal::PublicationRepository::SubscriptionLocal::convert(subscription);
       if (localSubscription) {
-        return internal::PublicationRepository::SubscriptionLocal::toDebugString(localSubscription);
+        return internal::PublicationRepository::SubscriptionLocal::toDebug(localSubscription);
       }
-      return internal::PublicationRepository::PeerSubscriptionOutgoing::toDebugString(internal::PublicationRepository::PeerSubscriptionOutgoing::convert(subscription));
+      return internal::PublicationRepository::PeerSubscriptionOutgoing::toDebug(internal::PublicationRepository::PeerSubscriptionOutgoing::convert(subscription));
     }
 
     //-------------------------------------------------------------------------
-    String IPublicationRepositoryPeerCache::toDebugString(IPublicationRepositoryPeerCachePtr cache, bool includeCommaPrefix)
+    ElementPtr IPublicationRepositoryPeerCache::toDebug(IPublicationRepositoryPeerCachePtr cache)
     {
-      return internal::PublicationRepository::PeerCache::toDebugString(cache, includeCommaPrefix);
+      return internal::PublicationRepository::PeerCache::toDebug(cache);
     }
   }
 }

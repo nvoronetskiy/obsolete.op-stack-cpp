@@ -77,7 +77,7 @@ namespace openpeer
       static const char *toString(Encodings encoding);
       static const char *toString(Permissions permission);
 
-      static String toDebugString(IPublicationMetaDataPtr metaData, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationMetaDataPtr metaData);
 
       virtual PUID getID() const = 0;
 

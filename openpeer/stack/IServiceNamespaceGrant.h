@@ -59,7 +59,7 @@ namespace openpeer
       };
       static const char *toString(SessionStates state);
 
-      static String toDebugString(IServiceNamespaceGrantSessionPtr session, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IServiceNamespaceGrantSessionPtr session);
 
       static IServiceNamespaceGrantSessionPtr create(
                                                      IServiceNamespaceGrantSessionDelegatePtr delegate,

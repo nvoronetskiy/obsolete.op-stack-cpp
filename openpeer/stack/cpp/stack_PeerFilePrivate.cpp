@@ -199,7 +199,7 @@ namespace openpeer
         ElementPtr sectionAEl = findSection("A");
 
         if (!sectionAEl) {
-          ZS_LOG_ERROR(Detail, log("could not find section 'A'") + IPeerFilePrivate::toDebugString(mThisWeak.lock()))
+          ZS_LOG_ERROR(Detail, log("could not find section 'A'") + IPeerFilePrivate::toDebug(mThisWeak.lock()))
           return SecureByteBlockPtr();
         }
 
@@ -207,7 +207,7 @@ namespace openpeer
           return IHelper::convertFromBase64(sectionAEl->findFirstChildElementChecked("salt")->getTextDecoded());
         } catch(CheckFailed &) {
         }
-        ZS_LOG_ERROR(Detail, log("could not find salt in private peer file") + IPeerFilePrivate::toDebugString(mThisWeak.lock()))
+        ZS_LOG_ERROR(Detail, log("could not find salt in private peer file") + IPeerFilePrivate::toDebug(mThisWeak.lock()))
         return SecureByteBlockPtr();
       }
 
@@ -410,7 +410,7 @@ namespace openpeer
         }
 
         if (!pThis->verifySignatures(peerFilePublic)) {
-          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + IPeerFilePublic::toDebugString(peerFilePublic))
+          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + IPeerFilePublic::toDebug(peerFilePublic))
           return false;
         }
 
@@ -429,9 +429,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFilePrivate::log(const char *message) const
+      Log::Params PeerFilePrivate::log(const char *message) const
       {
-        return String("PeerFilePrivate [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PeerFilePrivate");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
@@ -633,7 +635,7 @@ namespace openpeer
             String secretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase((const char *)((const BYTE *)(*mPassword))), "proof:" + contactID, IHelper::HashAlgorthm_SHA256));
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("secretProof", secretProof));
 
-            ZS_LOG_DEBUG(log("calculated secret proof with inputs") + ", password=" + ((const char *)((const BYTE *)(*mPassword))) + ", contact ID=" + contactID + ", result=" + secretProof)
+            ZS_LOG_DEBUG(log("calculated secret proof with inputs") + ZS_PARAM("password", ((const char *)((const BYTE *)(*mPassword)))) + ZS_PARAM("contact ID", contactID) + ZS_PARAM("result", secretProof))
 
             sectionBundleEl->adoptAsLastChild(sectionEl);
             privatePeerEl->adoptAsLastChild(sectionBundleEl);
@@ -727,15 +729,15 @@ namespace openpeer
           String domain;
 
           if (!IPeer::splitURI(contact, domain, contactID)) {
-            ZS_LOG_WARNING(Detail, log("splitting peer URI failed") + ", peer URI=" + contact)
+            ZS_LOG_WARNING(Detail, log("splitting peer URI failed") + ZS_PARAM("peer URI", contact))
             return false;
           }
 
           String calculatedSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase((const char *)((const BYTE *)(*mPassword))), "proof:" + contactID, IHelper::HashAlgorthm_SHA256));
-          ZS_LOG_DEBUG(log("recalculated secret proof with inputs") + ", password=" + ((const char *)((const BYTE *)(*mPassword))) + ", contact ID=" + contactID + ", result=" + secretProof)
+          ZS_LOG_DEBUG(log("recalculated secret proof with inputs") + ZS_PARAM("password", ((const char *)((const BYTE *)(*mPassword)))) + ZS_PARAM("contact ID", contactID) + ZS_PARAM("result", secretProof))
 
           if (calculatedSecretProof != secretProof) {
-            ZS_LOG_ERROR(Detail, log("private peer file password appears to be incorrect, secret proof calculated=") + calculatedSecretProof + ", expecting=" + secretProof)
+            ZS_LOG_ERROR(Detail, log("private peer file password appears to be incorrect") + ZS_PARAM("secret proof calculated", calculatedSecretProof) + ZS_PARAM("expecting", secretProof))
             return false;
           }
 
@@ -745,20 +747,20 @@ namespace openpeer
           String decryptedData = decryptString("data", salt, encryptedPrivateData);
 
           if (decryptedContact != contact) {
-            ZS_LOG_ERROR(Detail, log("contact does not match encrypted contact, expecting contact=") + contact)
+            ZS_LOG_ERROR(Detail, log("contact does not match encrypted contact") + ZS_PARAM("expecting contact", contact))
             return false;
           }
 
           mPeerURI = contact;
           mPrivateKey = IRSAPrivateKey::load(*decryptedPrivateKey);
           if (!mPrivateKey) {
-            ZS_LOG_ERROR(Detail, log("failed to load private key, peer URI=") + mPeerURI)
+            ZS_LOG_ERROR(Detail, log("failed to load private key") + ZS_PARAM("peer URI", mPeerURI))
             return false;
           }
 
           outPublicPeerDocument = Document::createFromParsedJSON(decryptedPeer);
           if (!outPublicPeerDocument) {
-            ZS_LOG_ERROR(Detail, log("failed to create public peer document from private peer file, peer URI=") + mPeerURI)
+            ZS_LOG_ERROR(Detail, log("failed to create public peer document from private peer file") + ZS_PARAM("peer URI", mPeerURI))
             return false;
           }
 
@@ -785,7 +787,7 @@ namespace openpeer
         }
 
         if (mPeerURI != peerFilePublic->forPeerFilePrivate().getPeerURI()) {
-          ZS_LOG_ERROR(Detail, log("public/private peer file URIs do not match, public=") + peerFilePublic->forPeerFilePrivate().getPeerURI() + ", private=" + mPeerURI)
+          ZS_LOG_ERROR(Detail, log("public/private peer file URIs do not match") + ZS_PARAM("public", peerFilePublic->forPeerFilePrivate().getPeerURI()) + ZS_PARAM("private", mPeerURI))
           return false;
         }
 
@@ -793,6 +795,7 @@ namespace openpeer
           ZS_LOG_ERROR(Detail, log("private peer file section A was not signed properly"))
           return false;
         }
+
         if (!peerFilePublic->forPeerFilePrivate().verifySignature(sectionBEl)) {
           ZS_LOG_ERROR(Detail, log("private peer file section B was not signed properly"))
           return false;
@@ -843,10 +846,10 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IPeerFilePrivate::toDebugString(IPeerFilePrivatePtr peerFilePrivate, bool includeCommaPrefix)
+    ElementPtr IPeerFilePrivate::toDebug(IPeerFilePrivatePtr peerFilePrivate)
     {
-      if (!peerFilePrivate) return includeCommaPrefix ? String(", peer file private=(null)") : String("peer file private=(null");
-      return IPeerFiles::toDebugString(peerFilePrivate->getAssociatedPeerFiles(), includeCommaPrefix);
+      if (!peerFilePrivate) return ElementPtr();
+      return IPeerFiles::toDebug(peerFilePrivate->getAssociatedPeerFiles());
     }
   }
 }

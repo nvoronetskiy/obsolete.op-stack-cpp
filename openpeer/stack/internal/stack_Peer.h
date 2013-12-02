@@ -64,7 +64,7 @@ namespace openpeer
 
         virtual void setPeerFilePublic(IPeerFilePublicPtr peerFilePublic) = 0;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -91,7 +91,7 @@ namespace openpeer
 
         virtual String getPeerURI() const = 0;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -143,7 +143,7 @@ namespace openpeer
 
         virtual String getPeerURI() const = 0;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -219,7 +219,7 @@ namespace openpeer
                               const char *contactID
                               );
 
-        static String toDebugString(IPeerPtr peer, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPeerPtr peer);
 
         static PeerPtr create(
                               IAccountPtr account,
@@ -258,7 +258,7 @@ namespace openpeer
 
         virtual void setPeerFilePublic(IPeerFilePublicPtr peerFilePublic);
 
-        // (duplciate) virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        // (duplciate) virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -274,7 +274,7 @@ namespace openpeer
 
         // (duplicate) virtual String getPeerURI() const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -303,7 +303,7 @@ namespace openpeer
 
         // (duplicate) virtual String getPeerURI() const;
 
-        // (duplciate) virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        // (duplciate) virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -319,7 +319,10 @@ namespace openpeer
         #pragma mark
 
         RecursiveLock &getLock() const;
-        String log(const char *message) const;
+
+        static Log::Params slog(const char *message);
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
       protected:
         //---------------------------------------------------------------------

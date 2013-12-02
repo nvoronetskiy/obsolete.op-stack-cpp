@@ -141,10 +141,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String ServiceNamespaceGrantSession::toDebugString(IServiceNamespaceGrantSessionPtr session, bool includeCommaPrefix)
+      ElementPtr ServiceNamespaceGrantSession::toDebug(IServiceNamespaceGrantSessionPtr session)
       {
-        if (!session) return includeCommaPrefix ? String(", peer contact session=(null)") : String("peer contact session=");
-        return ServiceNamespaceGrantSession::convert(session)->getDebugValueString(includeCommaPrefix);
+        if (!session) return ElementPtr();
+        return ServiceNamespaceGrantSession::convert(session)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -303,7 +303,7 @@ namespace openpeer
               QueryPtr query = (*iterQueryCurrent).second;
 
               if (query->getChallengeInfo().mID == challengeID) {
-                ZS_LOG_DEBUG(log("found query that matches challenge ID") + ", challenge ID=" + challengeID)
+                ZS_LOG_DEBUG(log("found query that matches challenge ID") + ZS_PARAM("challenge ID", challengeID))
                 query->notifyComplete(bundleEl);
                 mQueriesInProcess.erase(iterQueryCurrent);
                 found = true;
@@ -312,13 +312,13 @@ namespace openpeer
             }
             if (found) continue;
 
-            ZS_LOG_WARNING(Detail, log("did not find query that matched challenge ID") + ", challenge ID=" + challengeID)
+            ZS_LOG_WARNING(Detail, log("did not find query that matched challenge ID") + ZS_PARAM("challenge ID", challengeID))
           }
 
           for (QueryMap::iterator iterQuery = mQueriesInProcess.begin(); iterQuery != mQueriesInProcess.end(); ++iterQuery)
           {
             QueryPtr query = (*iterQuery).second;
-            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ", challenge ID=" + query->getChallengeInfo().mID)
+            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
             query->notifyComplete(ElementPtr());
           }
           mQueriesInProcess.clear();
@@ -362,7 +362,7 @@ namespace openpeer
           for (QueryMap::iterator iterQuery = mQueriesInProcess.begin(); iterQuery != mQueriesInProcess.end(); ++iterQuery)
           {
             QueryPtr query = (*iterQuery).second;
-            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ", challenge ID=" + query->getChallengeInfo().mID)
+            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
             query->notifyComplete(ElementPtr());
           }
           mQueriesInProcess.clear();
@@ -373,7 +373,7 @@ namespace openpeer
           for (QueryMap::iterator iterQuery = mPendingQueries.begin(); iterQuery != mPendingQueries.end(); ++iterQuery)
           {
             QueryPtr query = (*iterQuery).second;
-            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ", challenge ID=" + query->getChallengeInfo().mID)
+            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
             query->notifyComplete(ElementPtr());
           }
           mPendingQueries.clear();
@@ -424,7 +424,7 @@ namespace openpeer
           WaitPtr wait = Wait::create(mThisWeak.lock());
           ++mTotalWaits;
 
-          ZS_LOG_DEBUG(log("obtained grant wait") + ", total waits=" + string(mTotalWaits))
+          ZS_LOG_DEBUG(log("obtained grant wait") + ZS_PARAM("total waits", mTotalWaits))
           return wait;
         }
 
@@ -487,12 +487,12 @@ namespace openpeer
         while (namespaceEl) {
           String namespaceID = IMessageHelper::getAttributeID(namespaceEl);
           if (namespaceID == namespaceURL) {
-            ZS_LOG_TRACE(log("found namespace inside challenge bundle") + ", namespace=" + namespaceURL)
+            ZS_LOG_TRACE(log("found namespace inside challenge bundle") + ZS_PARAM("namespace", namespaceURL))
             return true;
           }
           namespaceEl = namespaceEl->findNextSiblingElement("namespace");
         }
-        ZS_LOG_WARNING(Debug, log("did not find namespace inside challenge bundle") + ", namespace=" + namespaceURL)
+        ZS_LOG_WARNING(Debug, log("did not find namespace inside challenge bundle") + ZS_PARAM("namespace", namespaceURL))
         return false;
       }
 
@@ -540,7 +540,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::notifyQueryGone(PUID queryID)
       {
-        ZS_LOG_WARNING(Debug, log("removing query") + ", query ID=" + string(queryID))
+        ZS_LOG_WARNING(Debug, log("removing query") + ZS_PARAM("query ID", queryID))
 
         AutoRecursiveLock lock(getLock());
         {
@@ -558,7 +558,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_WARNING(Debug, log("query already gone") + ", query ID=" + string(queryID))
+        ZS_LOG_WARNING(Debug, log("query already gone") + ZS_PARAM("query ID", queryID))
         return;
       }
 
@@ -575,7 +575,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        ZS_LOG_DEBUG(log("removing wait") + ", wait ID=" + string(waitID) + ", total waits=" + string(mTotalWaits))
+        ZS_LOG_DEBUG(log("removing wait") + ZS_PARAM("wait ID", waitID) + ZS_PARAM("total waits", mTotalWaits))
 
         ZS_THROW_BAD_STATE_IF(0 == mTotalWaits)
 
@@ -615,35 +615,47 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String ServiceNamespaceGrantSession::log(const char *message) const
+      Log::Params ServiceNamespaceGrantSession::log(const char *message) const
       {
-        return String("ServiceNamespaceGrantSession [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("ServiceNamespaceGrantSession");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String ServiceNamespaceGrantSession::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params ServiceNamespaceGrantSession::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ServiceNamespaceGrantSession::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("namespace grant id", string(mID), firstTime) +
-               Helper::getDebugValue("delegate", mDelegate ? String("true") : String() , firstTime) +
-               IBootstrappedNetwork::toDebugString(mBootstrappedNetwork) +
-               Helper::getDebugValue("namespace grant validate", mNamespaceGrantValidateMonitor ? String("true") : String() , firstTime) +
-               Helper::getDebugValue("state", toString(mCurrentState), firstTime) +
-               Helper::getDebugValue("error code", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mLastErrorReason, firstTime) +
-               Helper::getDebugValue("grant ID", mGrantID, firstTime) +
-               Helper::getDebugValue("browser window ready", mBrowserWindowReady ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("browser window visible", mBrowserWindowVisible ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("browser window closed", mBrowserWindowClosed ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("need browser window visible", mNeedsBrowserWindowVisible ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("namespace grant start notification", mNamespaceGrantStartNotificationSent ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("received namespace grant complete notification", mReceivedNamespaceGrantCompleteNotify ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("pending messages", mPendingMessagesToDeliver.size() > 0 ? string(mPendingMessagesToDeliver.size()) : String(), firstTime) +
-               Helper::getDebugValue("total waits", 0 != mTotalWaits ? string(mTotalWaits) : String(), firstTime) +
-               Helper::getDebugValue("queries in process", mQueriesInProcess.size() > 0 ? string(mQueriesInProcess.size()) : String(), firstTime) +
-               Helper::getDebugValue("pending queries", mPendingQueries.size() > 0 ? string(mPendingQueries.size()) : String(), firstTime) +
-               Helper::getDebugValue("waiting delegates", mWaitingDelegates.size() > 0 ? string(mWaitingDelegates.size()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("ServiceNamespaceGrantSession");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "namespace grant validate", (bool)mNamespaceGrantValidateMonitor);
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "error code", mLastError);
+        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "grant ID", mGrantID);
+        IHelper::debugAppend(resultEl, "browser window ready", mBrowserWindowReady);
+        IHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "browser window closed", mBrowserWindowClosed);
+        IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "namespace grant start notification", mNamespaceGrantStartNotificationSent);
+        IHelper::debugAppend(resultEl, "received namespace grant complete notification", mReceivedNamespaceGrantCompleteNotify);
+        IHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
+        IHelper::debugAppend(resultEl, "total waits", mTotalWaits);
+        IHelper::debugAppend(resultEl, "queries in process", mQueriesInProcess.size());
+        IHelper::debugAppend(resultEl, "pending queries", mPendingQueries.size());
+        IHelper::debugAppend(resultEl, "waiting delegates", mWaitingDelegates.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -722,12 +734,12 @@ namespace openpeer
           for (SplitMap::iterator iterSplit = domains.begin(); iterSplit != domains.end(); ++iterSplit) {
             String domain = (*iterSplit).second;
             if (!IHelper::isValidDomain(domain)) {
-              ZS_LOG_WARNING(Debug, log("told to use invalid domain") + ", domain=" + domain)
+              ZS_LOG_WARNING(Debug, log("told to use invalid domain") + ZS_PARAM("domain", domain))
               continue;
             }
             DomainUsageMap::iterator found = domainUsages.find(domain);
             if (found == domainUsages.end()) {
-              ZS_LOG_DEBUG(log("found first usage of domain") + ", domain=" + domain)
+              ZS_LOG_DEBUG(log("found first usage of domain") + ZS_PARAM("domain", domain))
               domainUsages[domain] = 1;
               if (0 == mostFoundUsage) {
                 mostFoundUsage = 1;
@@ -743,11 +755,11 @@ namespace openpeer
               mostFoundDomain = domain;
             }
 
-            ZS_LOG_DEBUG(log("found another usage of domain") + ", domain=" + domain + ", total=" + string(usage))
+            ZS_LOG_DEBUG(log("found another usage of domain") + ZS_PARAM("domain", domain) + ZS_PARAM("total", usage))
           }
         }
 
-        ZS_LOG_DEBUG(log("most found domain") + ", domain=" + mostFoundDomain)
+        ZS_LOG_DEBUG(log("most found domain") + ZS_PARAM("domain", mostFoundDomain))
 
         if (mostFoundDomain.isEmpty()) {
           ZS_LOG_WARNING(Detail, log("cannot satisfy any of the pending domain because no usageable domain was found"))
@@ -756,7 +768,7 @@ namespace openpeer
           for (QueryMap::iterator iterQuery = mPendingQueries.begin(); iterQuery != mPendingQueries.end(); ++iterQuery)
           {
             QueryPtr query = (*iterQuery).second;
-            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ", challenge ID=" + query->getChallengeInfo().mID)
+            ZS_LOG_WARNING(Detail, log("did not find signed bundle for challenge ID") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
             query->notifyComplete(ElementPtr());
           }
           mPendingQueries.clear();
@@ -776,7 +788,7 @@ namespace openpeer
           for (SplitMap::iterator iterSplit = domains.begin(); iterSplit != domains.end(); ++iterSplit) {
             String domain = (*iterSplit).second;
             if (domain == mostFoundDomain) {
-              ZS_LOG_DEBUG(log("query is going to execute now") + ", domain=" + domain + ", query ID=" + string(query->getID()))
+              ZS_LOG_DEBUG(log("query is going to execute now") + ZS_PARAM("domain", domain) + ZS_PARAM("query ID", query->getID()))
               mQueriesInProcess[query->getID()] = query;
               mPendingQueries.erase(current);
               break;
@@ -815,7 +827,7 @@ namespace openpeer
           return true;
         }
 
-        ZS_LOG_ERROR(Detail, log("bootstrapped network failed for lockbox") + ", error=" + string(errorCode) + ", reason=" + reason)
+        ZS_LOG_ERROR(Detail, log("bootstrapped network failed for lockbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
         setError(errorCode, reason);
         cancel();
@@ -890,7 +902,7 @@ namespace openpeer
 
           NamespaceGrantChallengeInfoAndNamespaces data(query->getChallengeInfo(), query->getNamespaces());
 
-          ZS_LOG_DEBUG(log("going to process challenge") + ", challenge ID=" + query->getChallengeInfo().mID)
+          ZS_LOG_DEBUG(log("going to process challenge") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
 
           process.push_back(NamespaceGrantChallengeInfoAndNamespaces(query->getChallengeInfo(), query->getNamespaces()));
         }
@@ -978,14 +990,14 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ", state=" + toString(state) + ", old state=" + toString(mCurrentState) + getDebugValueString())
+        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
 
         ServiceNamespaceGrantSessionPtr pThis = mThisWeak.lock();
         if ((pThis) &&
             (mDelegate)) {
           try {
-            ZS_LOG_DEBUG(log("attempting to report state to delegate") + getDebugValueString())
+            ZS_LOG_DEBUG(debug("attempting to report state to delegate"))
             mDelegate->onServiceNamespaceGrantSessionStateChanged(pThis, mCurrentState);
           } catch (IServiceNamespaceGrantSessionDelegateProxy::Exceptions::DelegateGone &) {
             ZS_LOG_WARNING(Detail, log("delegate gone"))
@@ -1002,13 +1014,13 @@ namespace openpeer
           reason = IHTTP::toString(IHTTP::toStatusCode(errorCode));
         }
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("erorr already set thus ignoring new error") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("erorr already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         mLastError = errorCode;
         mLastErrorReason = reason;
-        ZS_LOG_ERROR(Detail, log("error set") + getDebugValueString())
+        ZS_LOG_ERROR(Detail, debug("error set"))
       }
 
       //-----------------------------------------------------------------------
@@ -1200,7 +1212,7 @@ namespace openpeer
         try {
           mDelegate->onServiceNamespaceGrantSessionForServicesQueryComplete(pThis, bundleEl);
         } catch(IServiceNamespaceGrantSessionForServicesQueryDelegateProxy::Exceptions::DelegateGone &) {
-          ZS_LOG_WARNING(Detail, "ServiceNamespaceGrantSession::Query [] delegate gone")
+          ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
 
         mDelegate.reset();
@@ -1220,6 +1232,14 @@ namespace openpeer
         ServiceNamespaceGrantSessionPtr outer = mOuter.lock();
         if (!outer) return mBogusLock;
         return outer->getLock();
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params ServiceNamespaceGrantSession::Query::log(const char *message) const
+      {
+        ElementPtr objectEl = Element::create("ServiceNamespaceGrantSession::Query");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
@@ -1261,9 +1281,9 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IServiceNamespaceGrantSession::toDebugString(IServiceNamespaceGrantSessionPtr session, bool includeCommaPrefix)
+    ElementPtr IServiceNamespaceGrantSession::toDebug(IServiceNamespaceGrantSessionPtr session)
     {
-      return internal::ServiceNamespaceGrantSession::toDebugString(session, includeCommaPrefix);
+      return internal::ServiceNamespaceGrantSession::toDebug(session);
     }
 
     //-------------------------------------------------------------------------

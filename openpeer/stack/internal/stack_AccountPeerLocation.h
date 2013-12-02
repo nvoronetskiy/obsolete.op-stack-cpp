@@ -178,7 +178,7 @@ namespace openpeer
       public:
         ~AccountPeerLocation();
 
-        static String toDebugString(AccountPeerLocationPtr peerLocation, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(AccountPeerLocationPtr peerLocation);
 
       protected:
         //---------------------------------------------------------------------
@@ -358,8 +358,10 @@ namespace openpeer
         RecursiveLock &getLock() const;
         IICESocketPtr getSocket() const;
 
-        String log(const char *message) const;
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         void cancel();
 

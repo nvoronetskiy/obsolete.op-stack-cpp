@@ -68,7 +68,7 @@ namespace openpeer
 
         static const char *toString(SessionStates state);
 
-        static String toDebugString(IFinderRelayChannelPtr channel, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IFinderRelayChannelPtr channel);
 
         //---------------------------------------------------------------------
         // PURPOSE: create a connection via a remote finder

@@ -65,6 +65,12 @@ namespace openpeer
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "PeerIdentifyRequest");
+        }
+
+        //---------------------------------------------------------------------
         PeerIdentifyRequestPtr PeerIdentifyRequest::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<PeerIdentifyRequest>(message);
@@ -101,31 +107,31 @@ namespace openpeer
             ElementPtr peerEl = peerIdentityProofEl->findFirstChildElementChecked("peer");
             ret->mPeerFilePublic = IPeerFilePublic::loadFromElement(peerEl);
             if (!ret->mPeerFilePublic) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] missing remote peer information")
+              ZS_LOG_WARNING(Detail, slog("missing remote peer information"))
               return PeerIdentifyRequestPtr();
             }
 
             LocationPtr locationSource = ILocationForMessages::convert(messageSource);
             if (!locationSource) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] message source could not be identified")
+              ZS_LOG_WARNING(Detail, slog("message source could not be identified"))
               return PeerIdentifyRequestPtr();
             }
 
             AccountPtr account = locationSource->forMessages().getAccount();
             if (!account) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] account gone so peer identify request cannot be verified")
+              ZS_LOG_WARNING(Detail, slog("account gone so peer identify request cannot be verified"))
               return PeerIdentifyRequestPtr();
             }
 
             ILocationPtr localLocation = ILocation::getForLocal(account);
             if (!account) {
-              ZS_LOG_ERROR(Detail, "PeerIdentifyRequest [] local location is null")
+              ZS_LOG_ERROR(Detail, slog("local location is null"))
               return PeerIdentifyRequestPtr();
             }
 
             Time expires = IHelper::stringToTime(peerIdentityProofEl->findFirstChildElementChecked("expires")->getText());
             if (zsLib::now() > expires) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] request expired, expires=" + IHelper::timeToString(expires) + ", now=" + IHelper::timeToString(zsLib::now()))
+              ZS_LOG_WARNING(Detail, slog("request expired") + ZS_PARAM("expires", expires) + ZS_PARAM("now", ::zsLib::now()))
               return PeerIdentifyRequestPtr();
             }
 
@@ -134,40 +140,40 @@ namespace openpeer
 
             PeerPtr remotePeer = IPeerForMessages::create(account, ret->mPeerFilePublic);
             if (!remotePeer) {
-              ZS_LOG_ERROR(Detail, "PeerIdentifyRequest [] remote peer object could not be created")
+              ZS_LOG_ERROR(Detail, slog("remote peer object could not be created"))
               return PeerIdentifyRequestPtr();
             }
 
             LocationPtr location = Location::convert(ret->mLocationInfo.mLocation);
 
             if (!location) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] remote location object could not be created")
+              ZS_LOG_WARNING(Detail, slog("remote location object could not be created"))
               return PeerIdentifyRequestPtr();
             }
 
             if (location->forMessages().getPeerURI() != remotePeer->forMessages().getPeerURI()) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] location peer does not match public peer file" +  ILocation::toDebugString(location) + IPeer::toDebugString(remotePeer))
+              ZS_LOG_WARNING(Detail, slog("location peer does not match public peer file") +  ILocation::toDebug(location) + IPeer::toDebug(remotePeer))
               return PeerIdentifyRequestPtr();
             }
 
             PeerPtr signaturePeer = IPeerForMessages::getFromSignature(account, peerIdentityProofEl);
             if (!signaturePeer) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] signature peer is null")
+              ZS_LOG_WARNING(Detail, slog("signature peer is null"))
               return PeerIdentifyRequestPtr();
             }
 
             if (signaturePeer->forMessages().getID() != remotePeer->forMessages().getID()) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] signature peer does not match identity peer, signature peer: " + IPeer::toDebugString(signaturePeer, false) + ", request peer: " + IPeer::toDebugString(remotePeer, false))
+              ZS_LOG_WARNING(Detail, slog("signature peer does not match identity peer") + ZS_PARAM("signature peer", IPeer::toDebug(signaturePeer)) + ZS_PARAM("request peer", IPeer::toDebug(remotePeer)))
               return PeerIdentifyRequestPtr();
             }
 
             if (!signaturePeer->forMessages().verifySignature(peerIdentityProofEl)) {
-              ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] signature does not validate")
+              ZS_LOG_WARNING(Detail, slog("signature does not validate"))
               return PeerIdentifyRequestPtr();
             }
 
           } catch (CheckFailed &) {
-            ZS_LOG_WARNING(Detail, "PeerIdentifyRequest [] failed to obtain information")
+            ZS_LOG_WARNING(Detail, slog("failed to obtain information"))
             return PeerIdentifyRequestPtr();
           }
           return ret;
@@ -191,18 +197,18 @@ namespace openpeer
         DocumentPtr PeerIdentifyRequest::encode()
         {
           if (!mPeerFiles) {
-            ZS_LOG_ERROR(Detail, "PeerIdentifyRequest [] peer files was null")
+            ZS_LOG_ERROR(Detail, slog("peer files was null"))
             return DocumentPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "PeerIdentifyRequest [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return DocumentPtr();
           }
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "PeerIdentifyRequest [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return DocumentPtr();
           }
 

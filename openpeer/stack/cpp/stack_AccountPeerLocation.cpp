@@ -137,7 +137,7 @@ namespace openpeer
       //---------------------------------------------------------------------
       void AccountPeerLocation::init()
       {
-        ZS_LOG_DEBUG(log("initialized") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("initialized"))
       }
 
       //---------------------------------------------------------------------
@@ -151,10 +151,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String AccountPeerLocation::toDebugString(AccountPeerLocationPtr peerLocation, bool includeCommaPrefix)
+      ElementPtr AccountPeerLocation::toDebug(AccountPeerLocationPtr peerLocation)
       {
-        if (!peerLocation) return includeCommaPrefix ? String(", account peer location=(null)") : String("account peer location=(null)");
-        return peerLocation->getDebugValueString(includeCommaPrefix);
+        if (!peerLocation) return ElementPtr();
+        return peerLocation->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -257,7 +257,7 @@ namespace openpeer
         mRemotePeerSecret = String(remotePeerSecret);
         get(mCandidatesFinal) = candidatesFinal;
 
-        ZS_LOG_DETAIL(log("creating/updating session from remote candidates") + ", total candidates=" + string(candidates.size()) + getDebugValueString())
+        ZS_LOG_DETAIL(debug("creating/updating session from remote candidates") + ZS_PARAM("total candidates", candidates.size()))
 
         // filter out only ICE candidates with a transport type that is understood
         IICESocket::CandidateList iceCandidates;
@@ -356,13 +356,13 @@ namespace openpeer
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
         ZS_LOG_DETAIL(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("PEER SEND MESSAGE") + "=" + "\n" + ((CSTR)(output.get())) + "\n")
+        ZS_LOG_DETAIL(log("PEER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
         ZS_LOG_DETAIL(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
 
         ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-        ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebugString(message))
+        ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
         ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
         mLastActivity = zsLib::now();
@@ -487,14 +487,14 @@ namespace openpeer
             }
 
             if (request->findSecret() != peerFilePublic->getFindSecret()) {
-              ZS_LOG_ERROR(Detail, log("find secret did not match") + ", request find secret=" + request->findSecret() + IPeerFilePublic::toDebugString(peerFilePublic))
+              ZS_LOG_ERROR(Detail, log("find secret did not match") + ZS_PARAM("request find secret", request->findSecret()) + IPeerFilePublic::toDebug(peerFilePublic))
               goto identify_failure;
             }
 
             LocationPtr location = Location::convert(mLocationInfo.mLocation);
 
             if (location->forAccount().getPeerURI() != mPeer->forAccount().getPeerURI()) {
-              ZS_LOG_ERROR(Detail, log("peer file does not match expecting peer URI") + ILocation::toDebugString(location) + IPeer::toDebugString(mPeer))
+              ZS_LOG_ERROR(Detail, log("peer file does not match expecting peer URI") + ILocation::toDebug(location) + IPeer::toDebug(mPeer))
               goto identify_failure;
             }
 
@@ -549,7 +549,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void AccountPeerLocation::notifyIncomingRelayChannel(IFinderRelayChannelPtr channel)
       {
-        ZS_LOG_DEBUG(log("notify incoming relay channel") + IFinderRelayChannel::toDebugString(channel))
+        ZS_LOG_DEBUG(log("notify incoming relay channel") + IFinderRelayChannel::toDebug(channel))
 
         AutoRecursiveLock lock(getLock());
         if (mIncomingRelayChannel == channel) {
@@ -592,7 +592,7 @@ namespace openpeer
                                                                  IFinderRelayChannel::SessionStates state
                                                                  )
       {
-        ZS_LOG_DEBUG(log("on finder relay channel state changed") + ", relay channel=" + string(channel->getID()) + ", state=" + IFinderRelayChannel::toString(state))
+        ZS_LOG_DEBUG(log("on finder relay channel state changed") + ZS_PARAM("relay channel", channel->getID()) + ZS_PARAM("state", IFinderRelayChannel::toString(state)))
         AutoRecursiveLock lock(getLock());
         step();
       }
@@ -650,12 +650,12 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
-          ZS_LOG_WARNING(Detail, log("received socket session state after already shutdown") + ", session ID=" + string(session->getID()))
+          ZS_LOG_WARNING(Detail, log("received socket session state after already shutdown") + ZS_PARAM("session ID", session->getID()))
           return;
         }
 
         if (session != mRUDPSocketSession) {
-          ZS_LOG_WARNING(Detail, log("received socket session state changed from an obsolete session") + ", session ID=" + string(session->getID()))
+          ZS_LOG_WARNING(Detail, log("received socket session state changed from an obsolete session") + ZS_PARAM("session ID", session->getID()))
           return;
         }
 
@@ -666,7 +666,7 @@ namespace openpeer
           String reason;
           session->getState(&errorCode, &reason);
 
-          ZS_LOG_WARNING(Detail, log("notified RUDP ICE socket session is shutdown") + ", error=" + IICESocketSession::toString(static_cast<IICESocketSession::ICESocketSessionShutdownReasons>(errorCode)) + ", reason=" + reason)
+          ZS_LOG_WARNING(Detail, log("notified RUDP ICE socket session is shutdown") + ZS_PARAM("error", IICESocketSession::toString(static_cast<IICESocketSession::ICESocketSessionShutdownReasons>(errorCode))) + ZS_PARAM("reason", reason))
           if ((IICESocketSession::ICESocketSessionShutdownReason_Timeout == errorCode) ||
               (IICESocketSession::ICESocketSessionShutdownReason_BackgroundingTimeout == errorCode)) {
             mShouldRefindNow = true;
@@ -683,7 +683,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!session)
 
-        ZS_LOG_DEBUG(log("received RUDP channel waiting") + ", sessionID=" + string(session->getID()))
+        ZS_LOG_DEBUG(log("received RUDP channel waiting") + ZS_PARAM("sessionID", session->getID()))
 
         AutoRecursiveLock lock(getLock());
 
@@ -708,7 +708,7 @@ namespace openpeer
             if (!messaging) return;
 
             if (OPENPEER_STACK_PEER_TO_PEER_RUDP_CONNECTION_INFO != messaging->getRemoteConnectionInfo()) {
-              ZS_LOG_WARNING(Detail, log("received unknown incoming connection type thus shutting down incoming connection") + ", type=" + messaging->getRemoteConnectionInfo())
+              ZS_LOG_WARNING(Detail, log("received unknown incoming connection type thus shutting down incoming connection") + ZS_PARAM("type", messaging->getRemoteConnectionInfo()))
               messaging->shutdown();
               return;
             }
@@ -771,7 +771,7 @@ namespace openpeer
         mMessagingReceiveStream->notifyReaderReadyToRead();
 
         if (OPENPEER_STACK_PEER_TO_PEER_RUDP_CONNECTION_INFO != mMessaging->getRemoteConnectionInfo()) {
-          ZS_LOG_WARNING(Detail, log("received unknown incoming connection type thus shutting down incoming connection") + ", type=" + mMessaging->getRemoteConnectionInfo())
+          ZS_LOG_WARNING(Detail, log("received unknown incoming connection type thus shutting down incoming connection") + ZS_PARAM("type", mMessaging->getRemoteConnectionInfo()))
 
           mMessaging->shutdown();
           mMessaging.reset();
@@ -799,7 +799,7 @@ namespace openpeer
         if (isShutdown()) return;
 
         if (messaging != mMessaging) {
-          ZS_LOG_WARNING(Detail, log("received messaging state changed from an obsolete RUDP messaging") + ", messaging ID=" + string(messaging->getID()))
+          ZS_LOG_WARNING(Detail, log("received messaging state changed from an obsolete RUDP messaging") + ZS_PARAM("messaging ID", messaging->getID()))
           return;
         }
 
@@ -809,7 +809,7 @@ namespace openpeer
           WORD errorCode = 0;
           String reason;
           messaging->getState(&errorCode, &reason);
-          ZS_LOG_WARNING(Detail, log("notified messaging shutdown") + ", error=" + IRUDPMessaging::toString(static_cast<IRUDPMessaging::RUDPMessagingShutdownReasons>(errorCode)) + ", reason=" + reason)
+          ZS_LOG_WARNING(Detail, log("notified messaging shutdown") + ZS_PARAM("error", IRUDPMessaging::toString(static_cast<IRUDPMessaging::RUDPMessagingShutdownReasons>(errorCode))) + ZS_PARAM("reason", reason))
           if (IRUDPMessaging::RUDPMessagingShutdownReason_Timeout == errorCode) {
             mShouldRefindNow = true;
           }
@@ -870,7 +870,7 @@ namespace openpeer
 
         if ((reader != mMLSReceiveStream) &&
             (reader != mRelayReceiveStream)) {
-          ZS_LOG_WARNING(Debug, log("messaging reader ready arrived for obsolete stream") + ", stream reader id=" + string(reader->getID()))
+          ZS_LOG_WARNING(Debug, log("messaging reader ready arrived for obsolete stream") + ZS_PARAM("stream reader id", reader->getID()))
           return;
         }
 
@@ -884,7 +884,7 @@ namespace openpeer
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("PEER RECEIVED MESSAGE") + (reader == mRelayReceiveStream ? " (VIA RELAY)" : " (VIA RUDP/MLS)") + "=" + "\n" + ((CSTR)(buffer->BytePtr())) + "\n")
+          ZS_LOG_DETAIL(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", reader == mRelayReceiveStream ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
@@ -900,7 +900,7 @@ namespace openpeer
           }
 
           ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebugString(message))
+          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
           ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
           if (IMessageMonitor::handleMessageReceived(message)) {
@@ -945,7 +945,7 @@ namespace openpeer
         }
 
         if (location->forAccount().getPeerURI() != mPeer->forAccount().getPeerURI()) {
-          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + ILocation::toDebugString(location) + IPeer::toDebugString(mPeer))
+          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + ILocation::toDebug(location) + IPeer::toDebug(mPeer))
           cancel();
           return true;
         }
@@ -1043,63 +1043,76 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String AccountPeerLocation::log(const char *message) const
+      Log::Params AccountPeerLocation::log(const char *message) const
       {
-        return String("AccountPeerLocation [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("AccountPeerLocation");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String AccountPeerLocation::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params AccountPeerLocation::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr AccountPeerLocation::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("account peer location id", string(mID), firstTime) +
-        Helper::getDebugValue("delegate", mDelegate ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("graceful reference", mGracefulShutdownReference ? String("true") : String(), firstTime) +
 
-        Helper::getDebugValue("state", IAccount::toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("refind", mShouldRefindNow ? String("true") : String(), firstTime) +
+        ElementPtr resultEl = Element::create("AccountPeerLocation");
 
-        Helper::getDebugValue("last activity", Time() != mLastActivity ? IHelper::timeToString(mLastActivity) : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "graceful reference", (bool)mGracefulShutdownReference);
 
-        Helper::getDebugValue("pending requests", mPendingRequests.size() > 0 ? string(mPendingRequests.size()) : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "refind", mShouldRefindNow);
 
-        Helper::getDebugValue("remote context ID", mRemoteContextID, firstTime) +
-        Helper::getDebugValue("remote peer secret", mRemotePeerSecret, firstTime) +
+        IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
-        mLocationInfo.getDebugValueString() +
-        (mLocation != mLocationInfo.mLocation ? ILocation::toDebugString(mLocation) : String()) +
-        IPeer::toDebugString(mPeer) +
+        IHelper::debugAppend(resultEl, "pending requests", mPendingRequests.size());
 
-        Helper::getDebugValue("ice socket subscription id", mSocketSubscription ? string(mSocketSubscription->getID()) : String(), firstTime) +
-        Helper::getDebugValue("ice socket session id", mSocketSession ? string(mSocketSession->getID()) : String(), firstTime) +
-        Helper::getDebugValue("rudp ice socket session id", mRUDPSocketSession ? string(mRUDPSocketSession->getID()) : String(), firstTime) +
-        Helper::getDebugValue("rudp ice socket subscription id", mRUDPSocketSessionSubscription ? string(mRUDPSocketSessionSubscription->getID()) : String(), firstTime) +
-        Helper::getDebugValue("rudp messagine id", mMessaging ? string(mMessaging->getID()) : String(), firstTime) +
-        Helper::getDebugValue("messaging receive stream id", mMessagingReceiveStream ? string(mMessagingReceiveStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("messaging send stream id", mMessagingSendStream ? string(mMessagingSendStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("candidates final", mCandidatesFinal ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("last candidates version sent", mLastCandidateVersionSent, firstTime) +
+        IHelper::debugAppend(resultEl, "remote context ID", mRemoteContextID);
+        IHelper::debugAppend(resultEl, "remote peer secret", mRemotePeerSecret);
 
-        Helper::getDebugValue("mls id", mMLSChannel ? string(mMLSChannel->getID()) : String(), firstTime) +
-        Helper::getDebugValue("mls receive stream id", mMLSReceiveStream ? string(mMLSReceiveStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("mls send stream id", mMLSSendStream ? string(mMLSSendStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("mls encoding passphrase", mMLSEncodingPassphrase, firstTime) +
-        Helper::getDebugValue("mls did connect", mMLSDidConnect ? String("true") : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "location info", mLocationInfo.toDebug());
+        if (mLocation != mLocationInfo.mLocation) {
+          IHelper::debugAppend(resultEl, "location", ILocation::toDebug(mLocation));
+        }
+        IHelper::debugAppend(resultEl, "peer", IPeer::toDebug(mPeer));
 
-        Helper::getDebugValue("outgoing relay channel id", mOutgoingRelayChannel ? string(mOutgoingRelayChannel->getID()) : String(), firstTime) +
-        Helper::getDebugValue("outgoing relay receive stream id", mRelayReceiveStream ? string(mRelayReceiveStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("outgoing relay send stream id", mRelaySendStream ? string(mRelaySendStream->getID()) : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "ice socket subscription id", mSocketSubscription ? mSocketSubscription->getID() : 0);
+        IHelper::debugAppend(resultEl, "ice socket session id", mSocketSession ? mSocketSession->getID() : 0);
+        IHelper::debugAppend(resultEl, "rudp ice socket session id", mRUDPSocketSession ? mRUDPSocketSession->getID() : 0);
+        IHelper::debugAppend(resultEl, "rudp ice socket subscription id", mRUDPSocketSessionSubscription ? mRUDPSocketSessionSubscription->getID() : 0);
+        IHelper::debugAppend(resultEl, "rudp messagine id", mMessaging ? mMessaging->getID() : 0);
+        IHelper::debugAppend(resultEl, "messaging receive stream id", mMessagingReceiveStream ? mMessagingReceiveStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "messaging send stream id", mMessagingSendStream ? mMessagingSendStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "candidates final", mCandidatesFinal);
+        IHelper::debugAppend(resultEl, "last candidates version sent", mLastCandidateVersionSent);
 
-        Helper::getDebugValue("incoming relay channel id", mIncomingRelayChannel ? string(mIncomingRelayChannel->getID()) : String(), firstTime) +
-        Helper::getDebugValue("incoming relay channel subscription", mRelayChannelSubscription ? String("true") : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "mls id", mMLSChannel ? mMLSChannel->getID() : 0);
+        IHelper::debugAppend(resultEl, "mls receive stream id", mMLSReceiveStream ? mMLSReceiveStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "mls send stream id", mMLSSendStream ? mMLSSendStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "mls encoding passphrase", mMLSEncodingPassphrase);
+        IHelper::debugAppend(resultEl, "mls did connect", mMLSDidConnect);
 
-        Helper::getDebugValue("incoming", mIncoming ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("identify time", Time() != mIdentifyTime ? IHelper::timeToString(mIdentifyTime) : String(), firstTime) +
+        IHelper::debugAppend(resultEl, "outgoing relay channel id", mOutgoingRelayChannel ? mOutgoingRelayChannel->getID() : 0);
+        IHelper::debugAppend(resultEl, "outgoing relay receive stream id", mRelayReceiveStream ? mRelayReceiveStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "outgoing relay send stream id", mRelaySendStream ? mRelaySendStream->getID() : 0);
 
-        Helper::getDebugValue("identity monitor", mIdentifyMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("keep alive monitor", mKeepAliveMonitor ? String("true") : String(), firstTime);
+        IHelper::debugAppend(resultEl, "incoming relay channel id", mIncomingRelayChannel ? mIncomingRelayChannel->getID() : 0);
+        IHelper::debugAppend(resultEl, "incoming relay channel subscription", (bool)mRelayChannelSubscription);
+
+        IHelper::debugAppend(resultEl, "incoming", mIncoming);
+        IHelper::debugAppend(resultEl, "identify time", mIdentifyTime);
+
+        IHelper::debugAppend(resultEl, "identity monitor", (bool)mIdentifyMonitor);
+        IHelper::debugAppend(resultEl, "keep alive monitor", (bool)mKeepAliveMonitor);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1237,7 +1250,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         AccountPtr outer = mOuter.lock();
         if (!outer) {
@@ -1272,7 +1285,7 @@ namespace openpeer
 
         setState(IAccount::AccountState_Ready);
 
-        ZS_LOG_TRACE(log("step complete") + getDebugValueString())
+        ZS_LOG_TRACE(debug("step complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -1389,7 +1402,7 @@ namespace openpeer
 
         mRelayReceiveStream->notifyReaderReadyToRead();
 
-        ZS_LOG_DEBUG(log("created outgoing relay channel") + IFinderRelayChannel::toDebugString(mOutgoingRelayChannel))
+        ZS_LOG_DEBUG(log("created outgoing relay channel") + IFinderRelayChannel::toDebug(mOutgoingRelayChannel))
         return false;
       }
 
@@ -1413,12 +1426,12 @@ namespace openpeer
             break;
           }
           case IFinderRelayChannel::SessionState_Shutdown:  {
-            ZS_LOG_WARNING(Debug, log("incoming relay channel shutdown but RUDP channel is available (or pending)") + ", error code=" + string(errorCode) + ", reason=" + reason)
+            ZS_LOG_WARNING(Debug, log("incoming relay channel shutdown but RUDP channel is available (or pending)") + ZS_PARAM("error code", errorCode) + ZS_PARAM("reason", reason))
             return true;
           }
         }
 
-        ZS_LOG_TRACE(log("incoming relay channel is operational") + IFinderRelayChannel::toDebugString(mIncomingRelayChannel))
+        ZS_LOG_TRACE(log("incoming relay channel is operational") + IFinderRelayChannel::toDebug(mIncomingRelayChannel))
         return true;
       }
 
@@ -1525,7 +1538,7 @@ namespace openpeer
                  } else if (mPeer) {
                    String calculatedPassphrase = outer->forAccountPeerLocation().getLocalPassword(mPeer->forAccount().getPeerURI());
                    mMLSChannel->setReceiveKeyingDecoding(mMLSEncodingPassphrase);
-                   ZS_LOG_DEBUG(log("set receive keying decoding by passphrase (base upon local password for peer URI)") + ", peer URI=" + mPeer->forAccount().getPeerURI() + ", calculated passphrase=" + calculatedPassphrase)
+                   ZS_LOG_DEBUG(log("set receive keying decoding by passphrase (base upon local password for peer URI)") + ZS_PARAM("peer URI", mPeer->forAccount().getPeerURI()) + ZS_PARAM("calculated passphrase", calculatedPassphrase))
                    mMLSChannel->setReceiveKeyingDecoding(calculatedPassphrase);
                  }
               }
@@ -1541,11 +1554,11 @@ namespace openpeer
                   ZS_LOG_DEBUG(log("set send keying encoding public key"))
                   mMLSChannel->setSendKeyingEncoding(remotePeerFilePublic->getPublicKey());
                 } else if (mMLSEncodingPassphrase.hasData()) {
-                  ZS_LOG_DEBUG(log("set send keying encoding passphrase") + ", passphrase=" + mMLSEncodingPassphrase)
+                  ZS_LOG_DEBUG(log("set send keying encoding passphrase") + ZS_PARAM("passphrase", mMLSEncodingPassphrase))
                   mMLSChannel->setSendKeyingEncoding(mMLSEncodingPassphrase);
                 } else if (mPeer) {
                   String calculatedPassphrase = outer->forAccountPeerLocation().getLocalPassword(mPeer->forAccount().getPeerURI());
-                  ZS_LOG_DEBUG(log("set send keying encoding passphrase (base upon local password for peer URI)") + ", peer URI=" + mPeer->forAccount().getPeerURI() + ", calculated passphrase=" + calculatedPassphrase)
+                  ZS_LOG_DEBUG(log("set send keying encoding passphrase (base upon local password for peer URI)") + ZS_PARAM("peer URI", mPeer->forAccount().getPeerURI()) + ZS_PARAM("calculated passphrase", calculatedPassphrase))
                   mMLSChannel->setSendKeyingEncoding(calculatedPassphrase);
                 }
               }
@@ -1571,7 +1584,7 @@ namespace openpeer
               return true;
             }
             case IMessageLayerSecurityChannel::SessionState_Shutdown: {
-              ZS_LOG_ERROR(Detail, log("MLS failed") + ", error=" + string(error) + ", reason=" + reason)
+              ZS_LOG_ERROR(Detail, log("MLS failed") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               cancel();
               return false;
             }
@@ -1626,7 +1639,7 @@ namespace openpeer
               return true;
             }
             case IFinderRelayChannel::SessionState_Shutdown:  {
-              ZS_LOG_WARNING(Trace, log("incoming relay channel is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+              ZS_LOG_WARNING(Trace, log("incoming relay channel is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               break;
             }
           }
@@ -1646,7 +1659,7 @@ namespace openpeer
               return true;
             }
             case IFinderRelayChannel::SessionState_Shutdown: {
-              ZS_LOG_WARNING(Trace, log("outgoing relay channel is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+              ZS_LOG_WARNING(Trace, log("outgoing relay channel is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               return true;
             }
           }
@@ -1686,7 +1699,7 @@ namespace openpeer
                   }
                   case IRUDPICESocketSession::RUDPICESocketSessionState_ShuttingDown:
                   case IRUDPICESocketSession::RUDPICESocketSessionState_Shutdown: {
-                    ZS_LOG_WARNING(Trace, log("rudp socket session is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+                    ZS_LOG_WARNING(Trace, log("rudp socket session is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
                     goto rudp_not_ready;
                   }
                 }
@@ -1720,7 +1733,7 @@ namespace openpeer
                   }
                   case IRUDPMessaging::RUDPMessagingState_ShuttingDown:
                   case IRUDPMessaging::RUDPMessagingState_Shutdown: {
-                    ZS_LOG_WARNING(Trace, log("messaging channel is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+                    ZS_LOG_WARNING(Trace, log("messaging channel is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
                     goto messaging_not_ready;
                   }
                 }
@@ -1749,14 +1762,14 @@ namespace openpeer
                   break;
                 }
                 case IMessageLayerSecurityChannel::SessionState_Shutdown: {
-                  ZS_LOG_WARNING(Trace, log("MLS channel is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+                  ZS_LOG_WARNING(Trace, log("MLS channel is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
                   break;
                 }
               }
               break;
             }
             case IICESocketSession::ICESocketSessionState_Shutdown:
-              ZS_LOG_WARNING(Trace, log("rudp socket session is shutdown (thus unuseable)") + ", error=" + string(error) + ", reason=" + reason)
+              ZS_LOG_WARNING(Trace, log("rudp socket session is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               break;
           }
         }
@@ -1801,7 +1814,7 @@ namespace openpeer
         String candidatesVersion = socket->getLocalCandidatesVersion();
         if ((candidatesVersion != mLastCandidateVersionSent) &&
             (!mCandidatesFinal)) {
-          ZS_LOG_DEBUG(log("candidates have changed since last reported (thus notify another peer location find)") + ", candidates version=" + candidatesVersion + ", last send version=" + mLastCandidateVersionSent)
+          ZS_LOG_DEBUG(log("candidates have changed since last reported (thus notify another peer location find)") + ZS_PARAM("candidates version", candidatesVersion) + ZS_PARAM("last send version", mLastCandidateVersionSent))
           stepRespondLastRequest(socket);
         }
 
@@ -1928,13 +1941,13 @@ namespace openpeer
         mIdentifyMonitor = sendRequest(IMessageMonitorResultDelegate<PeerIdentifyResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CONNECTION_MANAGER_PEER_IDENTIFY_EXPIRES_IN_SECONDS));
         return false;
       }
-      
+
       //-----------------------------------------------------------------------
       void AccountPeerLocation::setState(IAccount::AccountStates state)
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_BASIC(log("state changed") + ", old state=" + IAccount::toString(mCurrentState) + ", new state=" + IAccount::toString(state) + getDebugValueString())
+        ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("old state", IAccount::toString(mCurrentState)) + ZS_PARAM("new state", IAccount::toString(state)))
 
         mCurrentState = state;
 

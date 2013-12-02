@@ -236,7 +236,7 @@ namespace openpeer
         #pragma mark BootstrappedNetwork => IBootstrappedNetwork
         #pragma mark
 
-        static String toDebugString(IBootstrappedNetworkPtr network, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IBootstrappedNetworkPtr network);
 
         static BootstrappedNetworkPtr prepare(
                                               const char *domain,
@@ -404,8 +404,10 @@ namespace openpeer
 
         RecursiveLock &getLock() const;
 
-        String log(const char *message) const;
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         void go();
         void reuse();

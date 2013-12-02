@@ -147,7 +147,7 @@ namespace openpeer
               try {
                 index = (int)(Numeric<Index>(indexStr));
               } catch(Numeric<Index>::ValueOutOfRange &) {
-                ZS_LOG_WARNING(Detail, "Failed to parse diff path list since index was not a number, index=" + indexStr)
+                ZS_LOG_WARNING(Detail, Log::Params("failed to parse diff path list since index was not a number", "Diff") + ZS_PARAM("index", indexStr))
                 return false;
               }
             }
@@ -359,13 +359,13 @@ namespace openpeer
 
             PathComponentList pathList;
             if (!parsePathList(pathStr, pathList)) {
-              ZS_LOG_WARNING(Detail, "Failed to parse path list specified in document, path" + pathStr)
+              ZS_LOG_WARNING(Detail, log("failed to parse path list specified in document") + ZS_PARAM("path", pathStr))
               return false;
             }
 
             ElementPtr pathElement = findPath(originalDocument, pathList);
             if (!pathElement) {
-              ZS_LOG_WARNING(Detail, "Failed to find the path specified in the document" + pathStr)
+              ZS_LOG_WARNING(Detail, log("failed to find the path specified in the document") + ZS_PARAM("path", pathStr))
               return false;
             }
 
@@ -374,12 +374,12 @@ namespace openpeer
             action = toAction(doStr);
             if (IDiff::DiffAction_None == action) {
               if ("a" != doStr) {
-                ZS_LOG_WARNING(Detail, "\'do\' attribute is not valid, do=" + doStr)
+                ZS_LOG_WARNING(Detail, log("\'do\' attribute is not valid") + ZS_PARAM("do", doStr))
                 return false;
               }
             }
 
-            ZS_LOG_TRACE(String("Performing diff action: ") + (IDiff::DiffAction_None == action ? "attribute" : IDiff::toString(action)))
+            ZS_LOG_TRACE(log("performing diff action") + ZS_PARAM("action", (IDiff::DiffAction_None == action ? "attribute" : IDiff::toString(action))))
 
             switch (action) {
               case IDiff::DiffAction_None: {
@@ -495,7 +495,7 @@ namespace openpeer
             }
           } else {
             if (!newNode) {
-              ZS_LOG_WARNING(Detail, String("diff processor told to adopt node but no node was specified, action=") + IDiff::toString(action))
+              ZS_LOG_WARNING(Detail, log("diff processor told to adopt node but no node was specified") + ZS_PARAM("action", IDiff::toString(action)))
               return; // told to adopt in some way but not provided anything to adopt thus this is a NOOP
             }
           }
@@ -512,7 +512,7 @@ namespace openpeer
 
           holder = newNode->toElement();
           if (!holder->hasChildren()) {
-            ZS_LOG_WARNING(Detail, String("diff processor told to adopt or replace node but no new node was specified, action=") + IDiff::toString(action))
+            ZS_LOG_WARNING(Detail, log("diff processor told to adopt or replace node but no new node was specified") + ZS_PARAM("action", IDiff::toString(action)))
             return; // this is a NOOP since there are no children to process
           }
         }
@@ -687,6 +687,12 @@ namespace openpeer
         ElementPtr diffEl;
         createDiffDocument(ioDiffDocument, diffEl);
         diffEl->adoptAsLastChild(itemEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Diff::log(const char *message)
+      {
+        return Log::Params(message, "Diff");
       }
     }
 

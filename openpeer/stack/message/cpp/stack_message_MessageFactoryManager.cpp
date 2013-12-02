@@ -37,6 +37,8 @@
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 #include <openpeer/stack/message/IMessageFactory.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 
@@ -50,6 +52,8 @@ namespace openpeer
     {
       namespace internal
       {
+        using services::IHelper;
+
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         //---------------------------------------------------------------------
@@ -184,9 +188,11 @@ namespace openpeer
         #pragma mark
 
         //---------------------------------------------------------------------
-        String MessageFactoryManager::log(const char *message)
+        Log::Params MessageFactoryManager::log(const char *message)
         {
-          return String("MessageFactoryManager [") + string(mID) + "] " + message;
+          ElementPtr objectEl = Element::create("message::MessageFactoryManager");
+          IHelper::debugAppend(objectEl, "id", mID);
+          return Log::Params(message, objectEl);
         }
 
         //---------------------------------------------------------------------

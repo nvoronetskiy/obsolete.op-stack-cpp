@@ -129,7 +129,7 @@ namespace openpeer
         mErrorCode(0),
         mRedirectionAttempts(0)
       {
-        ZS_LOG_DEBUG(log("created") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("created"))
         mDomain.toLower();
       }
 
@@ -139,7 +139,7 @@ namespace openpeer
         if(isNoop()) return;
         
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("destroyed"))
 
         cancel();
       }
@@ -188,10 +188,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String BootstrappedNetwork::toDebugString(IBootstrappedNetworkPtr network, bool includeCommaPrefix)
+      ElementPtr BootstrappedNetwork::toDebug(IBootstrappedNetworkPtr network)
       {
-        if (!network) return includeCommaPrefix ? String(", network=(null)") : String("network=(null)");
-        return BootstrappedNetwork::convert(network)->getDebugValueString(includeCommaPrefix);
+        if (!network) return ElementPtr();
+        return BootstrappedNetwork::convert(network)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -219,7 +219,7 @@ namespace openpeer
         BootstrappedNetworkPtr useThis = manager->forBootstrappedNetwork().findExistingOrUse(pThis);
 
         if (pThis->getID() != useThis->getID()) {
-          ZS_LOG_DEBUG(useThis->log("reusing existing object") + useThis->getDebugValueString())
+          ZS_LOG_DEBUG(useThis->log("reusing existing object") + useThis->toDebug())
           useThis->reuse();
           pThis->dontUse();
         }
@@ -229,7 +229,7 @@ namespace openpeer
         }
 
         if (pThis->getID() == useThis->getID()) {
-          ZS_LOG_DEBUG(useThis->log("preparing new object") + pThis->getDebugValueString())
+          ZS_LOG_DEBUG(useThis->log("preparing new object") + pThis->toDebug())
           pThis->go();
         }
         return useThis;
@@ -269,7 +269,7 @@ namespace openpeer
                                                    message::MessagePtr message
                                                    )
       {
-        ZS_LOG_DEBUG(log("sending message to service") + ", type=" + serviceType + ", method=" + serviceMethodName + Message::toDebugString(message))
+        ZS_LOG_DEBUG(log("sending message to service") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName) + Message::toDebug(message))
         AutoRecursiveLock lock(getLock());
         if (!mCompleted) {
           ZS_LOG_WARNING(Detail, log("bootstrapper isn't complete and thus cannot send message"))
@@ -283,7 +283,7 @@ namespace openpeer
 
         const Service::Method *service = findServiceMethod(serviceType, serviceMethodName);
         if (!service) {
-          ZS_LOG_WARNING(Detail, log("failed to find service to send to") + ", type=" + serviceType + ", method=" + serviceMethodName)
+          ZS_LOG_WARNING(Detail, log("failed to find service to send to") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName))
           if ((message->isRequest()) ||
               (message->isNotify())) {
             MessageResultPtr result = MessageResult::create(message, ErrorCode_NotFound, toString(ErrorCode_NotFound));
@@ -297,7 +297,7 @@ namespace openpeer
         }
 
         if (service->mURI.isEmpty()) {
-          ZS_LOG_WARNING(Detail, log("failed to find service URI to send to") + ", type=" + serviceType + ", method=" + serviceMethodName)
+          ZS_LOG_WARNING(Detail, log("failed to find service URI to send to") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName))
           return false;
         }
 
@@ -360,24 +360,24 @@ namespace openpeer
         }
 
         if (domain != mDomain) {
-          ZS_LOG_WARNING(Detail, log("signature is not valid as domains do not match") + ", signature domain=" + domain + ", domain=" + mDomain)
+          ZS_LOG_WARNING(Detail, log("signature is not valid as domains do not match") + ZS_PARAM("signature domain", domain) + ZS_PARAM("domain", mDomain))
           return false;
         }
 
         CertificateMap::const_iterator found = mCertificates.find(id);
         if (found == mCertificates.end()) {
-          ZS_LOG_WARNING(Detail, log("no signature with the id specified found") + ", signature id=" + id)
+          ZS_LOG_WARNING(Detail, log("no signature with the id specified found") + ZS_PARAM("signature id", id))
           return false;
         }
 
         const Certificate &certificate = (*found).second;
         if (certificate.mService != service) {
-          ZS_LOG_WARNING(Detail, log("signature is not valid as services do not match") + ", signature service=" + service + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("signature is not valid as services do not match") + ZS_PARAM("signature service", service) + certificate.toDebug())
           return false;
         }
 
         if (!certificate.mPublicKey) {
-          ZS_LOG_WARNING(Detail, log("certificate missing public key") + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("certificate missing public key") + certificate.toDebug())
           return false;
         }
 
@@ -385,7 +385,7 @@ namespace openpeer
         try {
           String algorithm = signatureEl->findFirstChildElementChecked("algorithm")->getTextDecoded();
           if (algorithm != OPENPEER_STACK_PEER_FILE_SIGNATURE_ALGORITHM) {
-            ZS_LOG_WARNING(Detail, log("signature validation algorithm is not understood, algorithm=") + algorithm)
+            ZS_LOG_WARNING(Detail, log("signature validation algorithm is not understood") + ZS_PARAM("algorithm", algorithm))
             return false;
           }
 
@@ -398,18 +398,18 @@ namespace openpeer
 
           if (0 != IHelper::compare(*actualDigest, *IHelper::convertFromBase64(signatureDigestAsString)))
           {
-            ZS_LOG_WARNING(Detail, log("digest values did not match, signature digest=") + signatureDigestAsString + ", actual digest=" + IHelper::convertToBase64(*actualDigest))
+            ZS_LOG_WARNING(Detail, log("digest values did not match") + ZS_PARAM("signature digest", signatureDigestAsString) + ZS_PARAM("actual digest", IHelper::convertToBase64(*actualDigest)))
             return false;
           }
 
           SecureByteBlockPtr signatureDigestSigned = IHelper::convertFromBase64(signatureEl->findFirstChildElementChecked("digestSigned")->getTextDecoded());
 
           if (!certificate.mPublicKey->verify(*actualDigest, *signatureDigestSigned)) {
-            ZS_LOG_WARNING(Detail, log("signature failed to validate") + certificate.getDebugValueString())
+            ZS_LOG_WARNING(Detail, log("signature failed to validate") + certificate.toDebug())
             return false;
           }
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("signature failed to validate due to missing signature element") + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("signature failed to validate due to missing signature element") + certificate.toDebug())
           return false;
         }
         return true;
@@ -492,33 +492,33 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (domain != mDomain) {
-          ZS_LOG_WARNING(Detail, log("signature is not valid as domains do not match") + ", signature domain=" + domain + ", domain=" + mDomain)
+          ZS_LOG_WARNING(Detail, log("signature is not valid as domains do not match") + ZS_PARAM("signature domain", domain) + ZS_PARAM("domain", mDomain))
           return false;
         }
 
         CertificateMap::const_iterator found = mCertificates.find(id);
         if (found == mCertificates.end()) {
-          ZS_LOG_WARNING(Detail, log("no signature with the id specified found") + ", signature id=" + id)
+          ZS_LOG_WARNING(Detail, log("no signature with the id specified found") + ZS_PARAM("signature id", id))
           return false;
         }
 
         const Certificate &certificate = (*found).second;
         if (certificate.mService != service) {
-          ZS_LOG_WARNING(Detail, log("signature is not valid as services do not match") + ", signature service=" + service + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("signature is not valid as services do not match") + ZS_PARAM("signature service", service) + certificate.toDebug())
           return false;
         }
 
         if (!certificate.mPublicKey) {
-          ZS_LOG_WARNING(Detail, log("certificate missing public key") + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("certificate missing public key") + certificate.toDebug())
           return false;
         }
 
         if (!certificate.mPublicKey->verify(*buffer, *bufferSigned)) {
-          ZS_LOG_WARNING(Detail, log("signature failed to validate") + certificate.getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("signature failed to validate") + certificate.toDebug())
           return false;
         }
 
-        ZS_LOG_DEBUG(log("signature validated") + certificate.getDebugValueString())
+        ZS_LOG_DEBUG(log("signature validated") + certificate.toDebug())
         return true;
       }
 
@@ -576,7 +576,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        ZS_LOG_DEBUG(log("on http complete") + ", query ID=" + string(query->getID()))
+        ZS_LOG_DEBUG(log("on http complete") + ZS_PARAM("query ID", query->getID()))
 
         // do step asynchronously
        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -629,26 +629,38 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String BootstrappedNetwork::log(const char *message) const
+      Log::Params BootstrappedNetwork::log(const char *message) const
       {
-        return String("BootstrappedNetwork [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("BootstrappedNetwork");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String BootstrappedNetwork::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params BootstrappedNetwork::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr BootstrappedNetwork::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("bootstrapped network id", string(mID), firstTime) +
-               Helper::getDebugValue("domain", mDomain, firstTime) +
-               Helper::getDebugValue("complete", mCompleted ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mErrorCode ? string(mErrorCode) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mErrorReason, firstTime) +
-               Helper::getDebugValue("service get dns name", mServicesGetDNSName, firstTime) +
-               Helper::getDebugValue("redirection attempts", 0 != mRedirectionAttempts ? string(mRedirectionAttempts) : String(), firstTime) +
-               Helper::getDebugValue("service types", mServiceTypeMap.size() > 0 ? string(mServiceTypeMap.size()) : String(), firstTime) +
-               Helper::getDebugValue("certificates", mCertificates.size() > 0 ? string(mCertificates.size()) : String(), firstTime) +
-               Helper::getDebugValue("pending", mPendingRequests.size() > 0 ? string(mPendingRequests.size()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("BootstrappedNetwork");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "domain", mDomain);
+        IHelper::debugAppend(resultEl, "complete", mCompleted);
+        IHelper::debugAppend(resultEl, "error code", mErrorCode);
+        IHelper::debugAppend(resultEl, "error reason", mErrorReason);
+        IHelper::debugAppend(resultEl, "service get dns name", mServicesGetDNSName);
+        IHelper::debugAppend(resultEl, "redirection attempts", mRedirectionAttempts);
+        IHelper::debugAppend(resultEl, "service types", mServiceTypeMap.size());
+        IHelper::debugAppend(resultEl, "certificates", mCertificates.size());
+        IHelper::debugAppend(resultEl, "pending", mPendingRequests.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -721,7 +733,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!mSRVLookup) {
           ZS_LOG_DEBUG(log("step - creating DNS lookup"))
@@ -746,13 +758,13 @@ namespace openpeer
         if (mServicesGetDNSName.isEmpty()) {
           while (true) {
             if (!mSRVResult) {
-              ZS_LOG_WARNING(Detail, log("SRV lookup failed to find any appropriate DNS records") + getDebugValueString())
+              ZS_LOG_WARNING(Detail, debug("SRV lookup failed to find any appropriate DNS records"))
               setFailure(ErrorCode_ServiceUnavailable);
               cancel();
               return;
             }
             if (mSRVResult->mRecords.size() < 1) {
-              ZS_LOG_WARNING(Detail, log("SRV lookup failed to find any appropriate DNS records") + getDebugValueString())
+              ZS_LOG_WARNING(Detail, debug("SRV lookup failed to find any appropriate DNS records"))
               setFailure(ErrorCode_ServiceUnavailable);
               cancel();
               return;
@@ -778,7 +790,7 @@ namespace openpeer
             }
 
             if (name.length() < mDomain.length()) {
-              ZS_LOG_WARNING(Detail, log("SRV name returned was too short thus is not legal") + ", result=" + name + getDebugValueString())
+              ZS_LOG_WARNING(Detail, debug("SRV name returned was too short thus is not legal") + ZS_PARAM("result", name))
               continue;
             }
 
@@ -789,24 +801,24 @@ namespace openpeer
               String domainAdditive = "." + mDomain;
 
               if (name.length() < domainAdditive.length()) {
-                ZS_LOG_WARNING(Detail, log("SRV domain name does not match legal domain") + ", result=" + name + getDebugValueString())
+                ZS_LOG_WARNING(Detail, debug("SRV domain name does not match legal domain") + ZS_PARAM("result", name))
                 continue;
               }
 
               String postfix = name.substr(name.length() - domainAdditive.length());
               String prefix = name.substr(0, name.length() - domainAdditive.length());
               if (postfix != domainAdditive) {
-                ZS_LOG_WARNING(Detail, log("SRV domain postfix name does not match legal domain") + ", result=" + name + getDebugValueString())
+                ZS_LOG_WARNING(Detail, debug("SRV domain postfix name does not match legal domain") + ZS_PARAM("result", name))
                 continue;
               }
 
               if (String::npos != prefix.find(".")) {
-                ZS_LOG_WARNING(Detail, log("SRV domain prefix contains too many sub-domain levels to be legal") + ", result=" + name + getDebugValueString())
+                ZS_LOG_WARNING(Detail, debug("SRV domain prefix contains too many sub-domain levels to be legal") + ZS_PARAM("result", name))
                 continue;
               }
             }
 
-            ZS_LOG_DEBUG(log("legal boostrapper service name found") + ", result=" + name + getDebugValueString())
+            ZS_LOG_DEBUG(debug("legal boostrapper service name found") + ZS_PARAM("result", name))
             mServicesGetDNSName = name;
             break;
           }
@@ -821,7 +833,7 @@ namespace openpeer
         if (!mServicesGetQuery) {
           bool forceOverHTTP = (0 == OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP ? false : true);
           String serviceURL = (forceOverHTTP ? "http://" : "https://") + mServicesGetDNSName + "/.well-known/" + OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
-          ZS_LOG_DEBUG(log("step - performing services get request") + ", services-get URL=" + serviceURL)
+          ZS_LOG_DEBUG(log("step - performing services get request") + ZS_PARAM("services-get URL", serviceURL))
 
           ServicesGetRequestPtr request = ServicesGetRequest::create();
           request->domain(mDomain);
@@ -860,14 +872,14 @@ namespace openpeer
                   mServicesGetQuery->cancel();
                   mServicesGetQuery.reset();
 
-                  ZS_LOG_DEBUG(log("redirecting services get to a new URL") + ", url=" + redirectionURL)
+                  ZS_LOG_DEBUG(log("redirecting services get to a new URL") + ZS_PARAM("url", redirectionURL))
 
                   ServicesGetRequestPtr request = ServicesGetRequest::create();
                   request->domain(mDomain);
                   mServicesGetQuery = post(redirectionURL, request);
                   return;
                 }
-                ZS_LOG_WARNING(Detail, log("too many redirection attempts") + getDebugValueString())
+                ZS_LOG_WARNING(Detail, debug("too many redirection attempts"))
               }
             }
           }
@@ -1027,7 +1039,7 @@ namespace openpeer
         }
 
         if (0 != mErrorCode) {
-          ZS_LOG_WARNING(Detail, log("failure reason already set") + ", requesting error=" + string(errorCode) + ", requesting reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("failure reason already set") + ZS_PARAM("requesting error", errorCode) + ZS_PARAM("requesting reason", reason))
           return;
         }
 
@@ -1036,7 +1048,7 @@ namespace openpeer
         mErrorCode = errorCode;
         mErrorReason = reason;
 
-        ZS_LOG_WARNING(Detail, log("failure set") + getDebugValueString())
+        ZS_LOG_WARNING(Detail, debug("failure set"))
       }
 
       //-----------------------------------------------------------------------
@@ -1050,19 +1062,19 @@ namespace openpeer
 
         if ((serviceType.isEmpty()) ||
             (method.isEmpty())) {
-          ZS_LOG_WARNING(Detail, log("missing service type or method") + ", type=" + serviceType + ", method=" + method)
+          ZS_LOG_WARNING(Detail, log("missing service type or method") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", method))
           return NULL;
         }
 
         ServiceTypeMap::const_iterator found = mServiceTypeMap.find(serviceType);
         if (found == mServiceTypeMap.end()) {
-          ZS_LOG_WARNING(Debug, log("service type not found") + ", type=" + serviceType + ", method=" + method)
+          ZS_LOG_WARNING(Debug, log("service type not found") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", method))
           return NULL;
         }
 
         const ServiceMap &serviceMap = (*found).second;
         if (serviceMap.size() < 1) {
-          ZS_LOG_WARNING(Debug, log("service method not found") + ", type=" + serviceType + ", method=" + method)
+          ZS_LOG_WARNING(Debug, log("service method not found") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", method))
           return NULL;
         }
 
@@ -1071,11 +1083,11 @@ namespace openpeer
 
         Service::MethodMap::const_iterator foundMethod = methodMap.find(method);
         if (foundMethod == methodMap.end()) {
-          ZS_LOG_WARNING(Debug, log("service method not found") + ", type=" + serviceType + ", method=" + method)
+          ZS_LOG_WARNING(Debug, log("service method not found") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", method))
           return NULL;
         }
 
-        ZS_LOG_TRACE(log("service method found") + ", type=" + serviceType + ", method=" + method)
+        ZS_LOG_TRACE(log("service method found") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", method))
         return &((*foundMethod).second);
       }
 
@@ -1091,9 +1103,9 @@ namespace openpeer
         query->readData(buffer, size);
         ZS_LOG_TRACE(log("------------ http data read start --------------"))
         if (size > 0) {
-          ZS_LOG_TRACE(log("HTTP DATA") + ", size=" + string(size) + ", data=\n" + ((const char *)(buffer.BytePtr())) + "\n")
+          ZS_LOG_TRACE(log("HTTP DATA") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
         } else {
-          ZS_LOG_TRACE(log("HTTP DATA") + ", size=" + string(size) + ", data=null")
+          ZS_LOG_TRACE(log("HTTP DATA") + ZS_PARAM("size", size) + ZS_PARAM("json in", NULL))
         }
         ZS_LOG_TRACE(log("------------- http data read end ---------------"))
         if (size < 1) return MessagePtr();
@@ -1117,7 +1129,7 @@ namespace openpeer
         size_t size = 0;
         boost::shared_array<char> buffer = doc->writeAsJSON(&size);
 
-        ZS_LOG_TRACE(log("posting message") + ", message=" + buffer.get())
+        ZS_LOG_TRACE(log("posting message") + ZS_PARAM("json out", buffer.get()))
 
         return IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, (const BYTE *)buffer.get(), size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
       }
@@ -1130,7 +1142,7 @@ namespace openpeer
       {
         MessageResultPtr result = MessageResult::convert(message);
         if (result->hasError()) {
-          ZS_LOG_WARNING(Detail, log("result has an error") + ", type=" + requestType)
+          ZS_LOG_WARNING(Detail, log("result has an error") + ZS_PARAM("type", requestType))
           setFailure(result->errorCode(), result->errorReason());
           cancel();
           return true;
@@ -1153,9 +1165,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IBootstrappedNetwork::toDebugString(IBootstrappedNetworkPtr network, bool includeCommaPrefix)
+    ElementPtr IBootstrappedNetwork::toDebug(IBootstrappedNetworkPtr network)
     {
-      return internal::BootstrappedNetwork::toDebugString(network);
+      return internal::BootstrappedNetwork::toDebug(network);
     }
 
     //-------------------------------------------------------------------------
@@ -1175,6 +1187,7 @@ namespace openpeer
     #pragma mark IServiceCertificates
     #pragma mark
 
+    //-------------------------------------------------------------------------
     IServiceCertificatesPtr IServiceCertificates::createServiceCertificatesFrom(IBootstrappedNetworkPtr preparedBootstrappedNetwork)
     {
       return internal::BootstrappedNetwork::createServiceCertificatesFrom(preparedBootstrappedNetwork);
@@ -1188,6 +1201,7 @@ namespace openpeer
     #pragma mark IServiceIdentity
     #pragma mark
 
+    //-------------------------------------------------------------------------
     IServiceIdentityPtr IServiceIdentity::createServiceIdentityFrom(IBootstrappedNetworkPtr bootstrappedNetwork)
     {
       return internal::BootstrappedNetwork::createServiceIdentityFrom(bootstrappedNetwork);
@@ -1208,12 +1222,12 @@ namespace openpeer
                                        );
 
       if (domain.isEmpty()) {
-        ZS_LOG_WARNING(Detail, "IServiceIdentity [] domain missing from signture")
+        ZS_LOG_WARNING(Detail, Log::Params("domain missing from signture", "IServiceIdentity"))
         return IServiceIdentityPtr();
       }
 
       if (!services::IHelper::isValidDomain(domain)) {
-        ZS_LOG_WARNING(Detail, String("IServiceIdentity [] domain from signture is not valid") + ", domain=" + domain)
+        ZS_LOG_WARNING(Detail, Log::Params("domain from signture is not valid", "IServiceIdentity") + ZS_PARAM("domain", domain))
         return IServiceIdentityPtr();
       }
 
@@ -1228,6 +1242,7 @@ namespace openpeer
     #pragma mark IServiceLockbox
     #pragma mark
 
+    //-------------------------------------------------------------------------
     IServiceLockboxPtr IServiceLockbox::createServiceLockboxFrom(IBootstrappedNetworkPtr bootstrappedNetwork)
     {
       return internal::BootstrappedNetwork::createServiceLockboxFrom(bootstrappedNetwork);
@@ -1241,6 +1256,7 @@ namespace openpeer
     #pragma mark IServiceSalt
     #pragma mark
 
+    //-------------------------------------------------------------------------
     IServiceSaltPtr IServiceSalt::createServiceSaltFrom(IBootstrappedNetworkPtr bootstrappedNetwork)
     {
       return internal::BootstrappedNetwork::createServiceSaltFrom(bootstrappedNetwork);

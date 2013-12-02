@@ -47,7 +47,7 @@ namespace openpeer
 
     interaction IPeerFiles
     {
-      static String toDebugString(IPeerFilesPtr peerFiles, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPeerFilesPtr peerFiles);
 
       static IPeerFilesPtr generate(
                                     const char *password,

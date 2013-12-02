@@ -85,6 +85,12 @@ namespace openpeer
       #pragma mark IMessageHelper
       #pragma mark
 
+      //---------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "IMessageHelper");
+      }
+
       //-----------------------------------------------------------------------
       DocumentPtr IMessageHelper::createDocumentWithRoot(const Message &message)
       {
@@ -440,7 +446,7 @@ namespace openpeer
                                                 )
         {
           if (!locationInfo.mLocation) {
-            ZS_LOG_WARNING(Detail, "MessageHelper [] missing location object in location info")
+            ZS_LOG_WARNING(Detail, slog("missing location object in location info"))
             return ElementPtr();
           }
 
@@ -1443,7 +1449,7 @@ namespace openpeer
           try {
             return Numeric<int>(s);
           } catch (Numeric<int>::ValueOutOfRange &) {
-            ZS_LOG_WARNING(Detail, "unable to convert value to int, value=" + s)
+            ZS_LOG_WARNING(Detail, slog("unable to convert value to int") + ZS_PARAM("value", s))
           }
           return 0;
         }
@@ -1457,7 +1463,7 @@ namespace openpeer
           try {
             return Numeric<UINT>(s);
           } catch (Numeric<UINT>::ValueOutOfRange &) {
-            ZS_LOG_WARNING(Detail, "unable to convert value to unsigned int, value=" + s)
+            ZS_LOG_WARNING(Detail, slog("unable to convert value to unsigned int") + ZS_PARAM("value", s))
           }
           return 0;
         }
@@ -1476,7 +1482,7 @@ namespace openpeer
           try {
             return (Numeric<WORD>(ec));
           } catch(Numeric<WORD>::ValueOutOfRange &) {
-            ZS_LOG_WARNING(Detail, "unable to convert value to error code, value=" + ec)
+            ZS_LOG_WARNING(Detail, slog("unable to convert value to error code") + ZS_PARAM("value", ec))
           }
           return 0;
         }
@@ -1702,7 +1708,7 @@ namespace openpeer
             }
           }
           catch(CheckFailed &) {
-            ZS_LOG_BASIC("createFinder XML check failure")
+            ZS_LOG_BASIC(slog("createFinder XML check failure"))
           }
 
           return ret;

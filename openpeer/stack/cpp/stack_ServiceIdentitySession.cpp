@@ -123,6 +123,12 @@ namespace openpeer
       #pragma mark (helpers)
       #pragma mark
 
+      //-------------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "IServiceIdentity");
+      }
+      
       //-----------------------------------------------------------------------
       static void getNamespaces(NamespaceInfoMap &outNamespaces)
       {
@@ -234,31 +240,31 @@ namespace openpeer
 
           if (peerFilePublic) {
             if (peerURI != peerFilePublic->getPeerURI()) {
-              ZS_LOG_WARNING(Detail, String("IServiceIdentity [] peer URI check failed") + ", bundle URI=" + peerURI + ", peer file URI=" + peerFilePublic->getPeerURI())
+              ZS_LOG_WARNING(Detail, slog("peer URI check failed") + ZS_PARAM("bundle URI", peerURI) + ZS_PARAM("peer file URI", peerFilePublic->getPeerURI()))
               return false;
             }
             if (peerFilePublic->verifySignature(contactProofEl)) {
-              ZS_LOG_WARNING(Detail, String("IServiceIdentity [] signature validation failed") + ", peer URI=" + peerURI)
+              ZS_LOG_WARNING(Detail, slog("signature validation failed") + ZS_PARAM("peer URI", peerURI))
               return false;
             }
           }
 
           Time tick = zsLib::now();
           if (created < tick + Hours(OPENPEER_STACK_SERVICE_IDENTITY_SIGN_CREATE_SHOULD_NOT_BE_BEFORE_NOW_IN_HOURS)) {
-            ZS_LOG_WARNING(Detail, String("IServiceIdentity [] creation date is invalid") + ", created=" + IHelper::timeToString(created) + ", now=" + IHelper::timeToString(tick))
+            ZS_LOG_WARNING(Detail, slog("creation date is invalid") + ZS_PARAM("created", created) + ZS_PARAM("now", tick))
             return false;
           }
 
           if (tick > expires) {
-            ZS_LOG_WARNING(Detail, String("IServiceIdentity [] signature expired") + ", expires=" + IHelper::timeToString(expires) + ", now=" + IHelper::timeToString(tick))
+            ZS_LOG_WARNING(Detail, slog("signature expired") + ZS_PARAM("expires", expires) + ZS_PARAM("now", tick))
             return false;
           }
           
         } catch (zsLib::XML::Exceptions::CheckFailed &) {
-          ZS_LOG_WARNING(Detail, "IServiceIdentity [] check failure")
+          ZS_LOG_WARNING(Detail, slog("check failure"))
           return false;
         }
-        
+
         return true;
       }
       
@@ -356,10 +362,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String ServiceIdentitySession::toDebugString(IServiceIdentitySessionPtr session, bool includeCommaPrefix)
+      ElementPtr ServiceIdentitySession::toDebug(IServiceIdentitySessionPtr session)
       {
-        if (!session) return includeCommaPrefix ? String(", identity session=(null)") : String("identity session=(null)");
-        return ServiceIdentitySession::convert(session)->getDebugValueString(includeCommaPrefix);
+        if (!session) return ElementPtr();
+        return ServiceIdentitySession::convert(session)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -385,7 +391,7 @@ namespace openpeer
 
           if ((!IServiceIdentity::isValid(identityURI_or_identityBaseURI)) &&
               (!IServiceIdentity::isValidBase(identityURI_or_identityBaseURI))) {
-            ZS_LOG_ERROR(Detail, String("identity URI specified is not valid, uri=") + identityURI_or_identityBaseURI)
+            ZS_LOG_ERROR(Detail, slog("identity URI specified is not valid") + ZS_PARAM("uri", identityURI_or_identityBaseURI))
             return ServiceIdentitySessionPtr();
           }
         } else {
@@ -445,7 +451,7 @@ namespace openpeer
         }
 
         if (!IServiceIdentity::isValid(identityURI)) {
-          ZS_LOG_ERROR(Detail, String("identity URI specified is not valid, uri=") + identityURI)
+          ZS_LOG_ERROR(Detail, slog("identity URI specified is not valid") + ZS_PARAM("uri", identityURI))
           return ServiceIdentitySessionPtr();
         }
 
@@ -509,7 +515,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!outerFrameURLUponReload)
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        ZS_LOG_DEBUG(log("attach delegate called") + ", frame URL=" + outerFrameURLUponReload)
+        ZS_LOG_DEBUG(log("attach delegate called") + ZS_PARAM("frame URL", outerFrameURLUponReload))
 
         AutoRecursiveLock lock(getLock());
 
@@ -543,7 +549,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessToken)
         ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessSecret)
 
-        ZS_LOG_DEBUG(log("attach delegate and preautothorize login called") + ", access token=" + identityAccessToken + ", access secret=" + identityAccessSecret)
+        ZS_LOG_DEBUG(log("attach delegate and preautothorize login called") + ZS_PARAM("access token", identityAccessToken) + ZS_PARAM("access secret", identityAccessSecret))
 
         AutoRecursiveLock lock(getLock());
 
@@ -627,11 +633,11 @@ namespace openpeer
         DocumentPtr result = mPendingMessagesToDeliver.front();
         mPendingMessagesToDeliver.pop_front();
 
-        if (ZS_GET_LOG_LEVEL() >= zsLib::Log::Trace) {
+        if (ZS_GET_LOG_LEVEL() >= Log::Trace) {
           GeneratorPtr generator = Generator::createJSONGenerator();
           boost::shared_array<char> jsonText = generator->write(result);
           ZS_LOG_BASIC(log(">>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>"))
-          ZS_LOG_BASIC(log("sending inner frame message") + ", message=" + (CSTR)(jsonText.get()))
+          ZS_LOG_BASIC(log("sending inner frame message") + ZS_PARAM("json out", (CSTR)(jsonText.get())))
           ZS_LOG_BASIC(log(">>>>>>>>>>>>>  MESSAGE TO INNER FRAME (END)  >>>>>>>>>>>>>"))
         }
 
@@ -651,11 +657,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::handleMessageFromInnerBrowserWindowFrame(DocumentPtr unparsedMessage)
       {
-        if (ZS_GET_LOG_LEVEL() >= zsLib::Log::Trace) {
+        if (ZS_GET_LOG_LEVEL() >= Log::Trace) {
           GeneratorPtr generator = Generator::createJSONGenerator();
           boost::shared_array<char> jsonText = generator->write(unparsedMessage);
           ZS_LOG_BASIC(log("<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<"))
-          ZS_LOG_TRACE(log("handling message from inner frame") + ", message=" + (CSTR)(jsonText.get()))
+          ZS_LOG_TRACE(log("handling message from inner frame") + ZS_PARAM("json in", (CSTR)(jsonText.get())))
           ZS_LOG_BASIC(log("<<<<<<<<<<<<<  MESSAGE FROM INNER FRAME (END)  <<<<<<<<<<<<<"))
         }
 
@@ -698,7 +704,7 @@ namespace openpeer
           const IdentityInfo &identityInfo = completeNotify->identityInfo();
           const LockboxInfo &lockboxInfo = completeNotify->lockboxInfo();
 
-          ZS_LOG_DEBUG(log("received complete notification") + identityInfo.getDebugValueString() + lockboxInfo.getDebugValueString())
+          ZS_LOG_DEBUG(log("received complete notification") + identityInfo.toDebug() + lockboxInfo.toDebug())
 
           mIdentityInfo.mergeFrom(identityInfo, true);
           mLockboxInfo.mergeFrom(lockboxInfo, true);
@@ -771,7 +777,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("returning downloaded contacts") + ", total=" + string(mIdentities.size()))
+        ZS_LOG_DEBUG(log("returning downloaded contacts") + ZS_PARAM("total", mIdentities.size()))
 
         outFlushAllRolodexContacts = refreshed;
         outVersionDownloaded = mRolodexInfo.mVersion;
@@ -1303,12 +1309,12 @@ namespace openpeer
 
             Duration::sec_type percentageUsed = ((consumed.total_seconds() * 100) / total.total_seconds());
             if (percentageUsed > OPENPEER_STACK_SERVICE_IDENTITY_MAX_CONSUMED_TIME_PERCENTAGE_BEFORE_IDENTITY_PROOF_REFRESH) {
-              ZS_LOG_WARNING(Detail, log("identity bundle proof too close to expiry, will recreate identity proof") + ", percentage used=" + string(percentageUsed) + ", consumed=" + string(consumed.total_seconds()) + ", total=" + string(total.total_seconds()))
+              ZS_LOG_WARNING(Detail, log("identity bundle proof too close to expiry, will recreate identity proof") + ZS_PARAM("percentage used", percentageUsed) + ZS_PARAM("consumed (s)", consumed) + ZS_PARAM("total (s)", total))
               validProof = false;
             }
 
             if (stableID != identityInfo.mStableID) {
-              ZS_LOG_WARNING(Detail, log("stabled ID from proof bundle does not match stable ID in identity") + ", proof stable ID=" + stableID + ", identity stable id=" + identityInfo.mStableID)
+              ZS_LOG_WARNING(Detail, log("stabled ID from proof bundle does not match stable ID in identity") + ZS_PARAM("proof stable ID", stableID) + ZS_PARAM("identity stable id", identityInfo.mStableID))
               validProof = false;
             }
           }
@@ -1492,12 +1498,12 @@ namespace openpeer
 
         mRolodexInfo.mergeFrom(result->rolodexInfo());
 
-        ZS_LOG_DEBUG(log("downloaded contacts") + ", total=" + string(identities.size()))
+        ZS_LOG_DEBUG(log("downloaded contacts") + ZS_PARAM("total", identities.size()))
 
         for (IdentityInfoList::const_iterator iter = identities.begin(); iter != identities.end(); ++iter)
         {
           const IdentityInfo &identityInfo = (*iter);
-          ZS_LOG_TRACE(log("downloaded contact") + identityInfo.getDebugValueString())
+          ZS_LOG_TRACE(log("downloaded contact") + identityInfo.toDebug())
           mIdentities.push_back(identityInfo);
         }
 
@@ -1526,7 +1532,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_WARNING(Detail, log("rolodex contacts get failure") + ", error code=" + string(result->errorCode()) + ", error reason=" + result->errorReason())
+        ZS_LOG_WARNING(Detail, log("rolodex contacts get failure") + ZS_PARAM("error code", result->errorCode()) + ZS_PARAM("error reason", result->errorReason()))
         ++mFailuresInARow;
 
         if ((mFailuresInARow < 2) &&
@@ -1567,56 +1573,67 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String ServiceIdentitySession::log(const char *message) const
+      Log::Params ServiceIdentitySession::log(const char *message) const
       {
-        return String("ServiceIdentitySession [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("ServiceIdentitySession");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String ServiceIdentitySession::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params ServiceIdentitySession::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ServiceIdentitySession::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("identity session id", string(mID), firstTime) +
-        Helper::getDebugValue("delegate", mDelegate ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("state", toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("reported", toString(mLastReportedState), firstTime) +
-        Helper::getDebugValue("error code", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-        Helper::getDebugValue("error reason", mLastErrorReason, firstTime) +
-        Helper::getDebugValue("kill association", mKillAssociation ? String("true") : String(), firstTime) +
-        (mIdentityInfo.hasData() ? mIdentityInfo.getDebugValueString() : String()) +
-        IBootstrappedNetwork::toDebugString(mProviderBootstrappedNetwork) +
-        IBootstrappedNetwork::toDebugString(mIdentityBootstrappedNetwork) +
-        Helper::getDebugValue("active boostrapper", (mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String()), firstTime) +
-        Helper::getDebugValue("grant session id", mGrantSession ? string(mGrantSession->forServices().getID()) : String(), firstTime) +
-        Helper::getDebugValue("grant query id", mGrantQuery ? string(mGrantQuery->getID()) : String(), firstTime) +
-        Helper::getDebugValue("grant wait id", mGrantWait ? string(mGrantWait->getID()) : String(), firstTime) +
-        Helper::getDebugValue("identity access lockbox update monitor", mIdentityAccessLockboxUpdateMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("identity lookup update monitor", mIdentityLookupUpdateMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("identity access rolodex credentials get monitor", mIdentityAccessRolodexCredentialsGetMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("rolodex access monitor", mRolodexAccessMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("rolodex grant monitor", mRolodexNamespaceGrantChallengeValidateMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("rolodex contacts get monitor", mRolodexContactsGetMonitor ? String("true") : String(), firstTime) +
-        (mLockboxInfo.hasData() ? mLockboxInfo.getDebugValueString() : String()) +
-        Helper::getDebugValue("browser window ready", mBrowserWindowReady ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("browser window visible", mBrowserWindowVisible ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("browser closed", mBrowserWindowClosed ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("need browser window visible", mNeedsBrowserWindowVisible ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("identity access start notification sent", mIdentityAccessStartNotificationSent ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("lockbox updated", mLockboxUpdated ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("identity lookup updated", mIdentityLookupUpdated ? String("true") : String(), firstTime) +
-        (mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.getDebugValueString() : String()) +
-        Helper::getDebugValue("outer frame url", mOuterFrameURLUponReload, firstTime) +
-        Helper::getDebugValue("pending messages", mPendingMessagesToDeliver.size() > 0 ? string(mPendingMessagesToDeliver.size()) : String(), firstTime) +
-        Helper::getDebugValue("rolodex not supported", mRolodexNotSupportedForIdentity ? String("true") : String(), firstTime) +
-        (mRolodexInfo.hasData() ? mRolodexInfo.getDebugValueString() : String()) +
-        Helper::getDebugValue("download timer", mTimer ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("force refresh", Time() != mForceRefresh ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("fresh download", Time() != mFreshDownload ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("pending identities", mIdentities.size() > 0 ? string(mIdentities.size()) : String(), firstTime) +
-        Helper::getDebugValue("failures in a row", mFailuresInARow > 0 ? string(mFailuresInARow) : String(), firstTime) +
-        Helper::getDebugValue("next retry (seconds)", mNextRetryAfterFailureTime.total_seconds() ? string(mNextRetryAfterFailureTime.total_seconds()) : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("ServiceIdentitySession");
+
+        IHelper::debugAppend(resultEl, "identity session id", mID);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "reported", toString(mLastReportedState));
+        IHelper::debugAppend(resultEl, "error code", mLastError);
+        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
+        IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "provider", IBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "identity", IBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
+        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->forServices().getID() : 0);
+        IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? string(mGrantWait->getID()) : String());
+        IHelper::debugAppend(resultEl, "identity access lockbox update monitor", (bool)mIdentityAccessLockboxUpdateMonitor);
+        IHelper::debugAppend(resultEl, "identity lookup update monitor", (bool)mIdentityLookupUpdateMonitor);
+        IHelper::debugAppend(resultEl, "identity access rolodex credentials get monitor", (bool)mIdentityAccessRolodexCredentialsGetMonitor);
+        IHelper::debugAppend(resultEl, "rolodex access monitor", (bool)mRolodexAccessMonitor);
+        IHelper::debugAppend(resultEl, "rolodex grant monitor", (bool)mRolodexNamespaceGrantChallengeValidateMonitor);
+        IHelper::debugAppend(resultEl, "rolodex contacts get monitor", (bool)mRolodexContactsGetMonitor);
+        IHelper::debugAppend(resultEl, mLockboxInfo.hasData() ? mLockboxInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "browser window ready", mBrowserWindowReady);
+        IHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "browser closed", mBrowserWindowClosed);
+        IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
+        IHelper::debugAppend(resultEl, "lockbox updated", mLockboxUpdated);
+        IHelper::debugAppend(resultEl, "identity lookup updated", mIdentityLookupUpdated);
+        IHelper::debugAppend(resultEl, mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "outer frame url", mOuterFrameURLUponReload);
+        IHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
+        IHelper::debugAppend(resultEl, "rolodex not supported", mRolodexNotSupportedForIdentity);
+        IHelper::debugAppend(resultEl, mRolodexInfo.hasData() ? mRolodexInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "download timer", (bool)mTimer);
+        IHelper::debugAppend(resultEl, "force refresh", mForceRefresh);
+        IHelper::debugAppend(resultEl, "fresh download", mFreshDownload);
+        IHelper::debugAppend(resultEl, "pending identities", mIdentities.size());
+        IHelper::debugAppend(resultEl, "failures in a row", mFailuresInARow);
+        IHelper::debugAppend(resultEl, "next retry (seconds)", mNextRetryAfterFailureTime);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1628,7 +1645,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!mDelegate) {
           ZS_LOG_DEBUG(log("step waiting for delegate to become attached"))
@@ -1657,7 +1674,7 @@ namespace openpeer
         if (!stepDownloadContacts()) return;
 
         if (mKillAssociation) {
-          ZS_LOG_DEBUG(log("association is now killed") + getDebugValueString())
+          ZS_LOG_DEBUG(debug("association is now killed"))
           setError(IHTTP::HTTPStatusCode_Gone, "assocation is now killed");
           cancel();
           return;
@@ -1666,7 +1683,7 @@ namespace openpeer
         // signal the object is ready
         setState(SessionState_Ready);
 
-        ZS_LOG_TRACE(log("step complete") + getDebugValueString())
+        ZS_LOG_TRACE(debug("step complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -1702,7 +1719,7 @@ namespace openpeer
           }
 
           if (!mProviderBootstrappedNetwork) {
-            ZS_LOG_ERROR(Detail, log("bootstrapped network failed for identity and there is no provider identity service specified") + ", error=" + string(errorCode) + ", reason=" + reason)
+            ZS_LOG_ERROR(Detail, log("bootstrapped network failed for identity and there is no provider identity service specified") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
             setError(errorCode, reason);
             cancel();
@@ -1731,7 +1748,7 @@ namespace openpeer
           return true;
         }
 
-        ZS_LOG_ERROR(Detail, log("bootstrapped network failed for provider") + ", error=" + string(errorCode) + ", reason=" + reason)
+        ZS_LOG_ERROR(Detail, log("bootstrapped network failed for provider") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
         setError(errorCode, reason);
         cancel();
@@ -1903,7 +1920,7 @@ namespace openpeer
         }
 
         if (!mActiveBootstrappedNetwork->forServices().supportsRolodex()) {
-          ZS_LOG_WARNING(Detail, log("rolodex service not supported on this domain") + ", domain=" + mActiveBootstrappedNetwork->forServices().getDomain())
+          ZS_LOG_WARNING(Detail, log("rolodex service not supported on this domain") + ZS_PARAM("domain", mActiveBootstrappedNetwork->forServices().getDomain()))
           get(mRolodexNotSupportedForIdentity) = true;
           return true;
         }
@@ -2056,7 +2073,7 @@ namespace openpeer
             return true;
           }
           case IServiceLockboxSession::SessionState_Shutdown: {
-            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ", error=" + string(errorCode) + ", reason=" + reason)
+            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
             setError(errorCode, reason);
             cancel();
@@ -2064,7 +2081,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_ERROR(Detail, log("unknown lockbox state") + getDebugValueString())
+        ZS_LOG_ERROR(Detail, debug("unknown lockbox state"))
 
         ZS_THROW_BAD_STATE("unknown lockbox state")
         return false;
@@ -2234,7 +2251,7 @@ namespace openpeer
           NamespaceInfo &namespaceInfo = (*iter).second;
 
           if (!mGrantSession->forServices().isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
-            ZS_LOG_WARNING(Detail, log("rolodex was not granted required namespace") + ", namespace" + namespaceInfo.mURL)
+            ZS_LOG_WARNING(Detail, log("rolodex was not granted required namespace") + ZS_PARAM("namespace", namespaceInfo.mURL))
             setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access rolodex");
             cancel();
             return false;
@@ -2287,7 +2304,7 @@ namespace openpeer
             return true;
           }
           case IServiceLockboxSession::SessionState_Shutdown: {
-            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ", error=" + string(errorCode) + ", reason=" + reason)
+            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
             setError(errorCode, reason);
             cancel();
@@ -2295,7 +2312,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_ERROR(Detail, log("unknown lockbox state") + getDebugValueString())
+        ZS_LOG_ERROR(Detail, debug("unknown lockbox state"))
 
         ZS_THROW_BAD_STATE("unknown lockbox state")
         return false;
@@ -2366,7 +2383,7 @@ namespace openpeer
           return true;
         }
 
-        ZS_LOG_DEBUG(log("updating identity lookup information (but not preventing other requests from continuing)") + ", lockbox: " + mLockboxInfo.getDebugValueString(false) + ", identity info: " + mIdentityInfo.getDebugValueString(false))
+        ZS_LOG_DEBUG(log("updating identity lookup information (but not preventing other requests from continuing)") + ZS_PARAM("lockbox", mLockboxInfo.toDebug()) + ZS_PARAM("identity info", mIdentityInfo.toDebug()))
 
         LockboxInfo lockboxInfo = lockbox->forServiceIdentity().getLockboxInfo();
         mLockboxInfo.mergeFrom(lockboxInfo, true);
@@ -2431,7 +2448,7 @@ namespace openpeer
           }
           mTimer = Timer::create(mThisWeak.lock(), waitTime, false);
 
-          ZS_LOG_TRACE(log("delaying downloading contacts") + ", wait time (seconds)=" + string(waitTime.total_seconds()))
+          ZS_LOG_TRACE(log("delaying downloading contacts") + ZS_PARAM("wait time (s)", waitTime))
           return true;
         }
 
@@ -2456,7 +2473,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ", state=" + toString(state) + ", old state=" + toString(mCurrentState))
+        ZS_LOG_DEBUG(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
 
         notifyLockboxStateChanged();
@@ -2466,7 +2483,7 @@ namespace openpeer
           if ((pThis) &&
               (mDelegate)) {
             try {
-              ZS_LOG_DEBUG(log("attempting to report state to delegate") + getDebugValueString())
+              ZS_LOG_DEBUG(debug("attempting to report state to delegate"))
               mDelegate->onServiceIdentitySessionStateChanged(pThis, mCurrentState);
               mLastReportedState = mCurrentState;
             } catch (IServiceIdentitySessionDelegateProxy::Exceptions::DelegateGone &) {
@@ -2485,14 +2502,14 @@ namespace openpeer
         }
 
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("error already set thus ignoring new error") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("error already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         get(mLastError) = errorCode;
         mLastErrorReason = reason;
 
-        ZS_LOG_WARNING(Detail, log("error set") + ", code=" + string(mLastError) + ", reason=" + mLastErrorReason + getDebugValueString())
+        ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
       }
 
       //-----------------------------------------------------------------------
@@ -2682,9 +2699,11 @@ namespace openpeer
         #pragma mark
 
         //---------------------------------------------------------------------
-        String log(const char *message) const
+        Log::Params log(const char *message) const
         {
-          return String("IdentityProofBundleQuery [") + string(mID) + "] " + message;
+          ElementPtr objectEl = Element::create("IdentityProofBundleQuery");
+          IHelper::debugAppend(objectEl, "id", mID);
+          return Log::Params(message, objectEl);
         }
 
         //---------------------------------------------------------------------
@@ -2695,14 +2714,14 @@ namespace openpeer
           }
 
           if (0 != mErrorCode) {
-            ZS_LOG_WARNING(Debug, log("attempting to set an error when error already set") + ", new error code=" + string(mErrorCode) + ", new reason=" + reason + ", existing error code=" + string(mErrorCode) + ", existing reason=" + mErrorReason)
+            ZS_LOG_WARNING(Debug, log("attempting to set an error when error already set") + ZS_PARAM("new error code", mErrorCode) + ZS_PARAM("new reason", reason) + ZS_PARAM("existing error code", mErrorCode) + ZS_PARAM("existing reason", mErrorReason))
             return;
           }
 
           mErrorCode = errorCode;
           mErrorReason = reason;
 
-          ZS_LOG_WARNING(Debug, log("setting error code") + ", identity uri=" + mIdentityURI + ", error code=" + string(mErrorCode) + ", reason=" + reason)
+          ZS_LOG_WARNING(Debug, log("setting error code") + ZS_PARAM("identity uri", mIdentityURI) + ZS_PARAM("error code", mErrorCode) + ZS_PARAM("reason", reason))
         }
 
         //---------------------------------------------------------------------
@@ -2756,6 +2775,12 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
+    static Log::Params slog(const char *message)
+    {
+      return internal::slog(message);
+    }
+
+    //-------------------------------------------------------------------------
     bool IServiceIdentity::isValid(const char *identityURI)
     {
       if (!identityURI) {
@@ -2767,7 +2792,7 @@ namespace openpeer
       if (!e.hasMatch(identityURI)) {
         zsLib::RegEx e2("^identity:[a-zA-Z0-9\\-_]{0,61}:.+$");
         if (!e2.hasMatch(identityURI)) {
-          ZS_LOG_WARNING(Detail, String("ServiceIdentity [] identity URI is not valid, uri=") + identityURI)
+          ZS_LOG_WARNING(Detail, slog("identity URI is not valid") + ZS_PARAM("uri", identityURI))
           return false;
         }
       }
@@ -2786,7 +2811,7 @@ namespace openpeer
       if (!e.hasMatch(identityBase)) {
         zsLib::RegEx e2("^identity:[a-zA-Z0-9\\-_]{0,61}:$");
         if (!e2.hasMatch(identityBase)) {
-          ZS_LOG_WARNING(Detail, String("ServiceIdentity [] identity base URI is not valid, uri=") + identityBase)
+          ZS_LOG_WARNING(Detail, slog("identity base URI is not valid") + ZS_PARAM("uri", identityBase))
           return false;
         }
       }
@@ -2797,7 +2822,7 @@ namespace openpeer
     bool IServiceIdentity::isLegacy(const char *identityURI)
     {
       if (!identityURI) {
-        ZS_LOG_WARNING(Detail, String("identity URI is not valid as it is NULL, uri=(null)"))
+        ZS_LOG_WARNING(Detail, slog("identity URI is not valid as it is NULL, uri=(null)"))
         return false;
       }
 
@@ -2842,7 +2867,7 @@ namespace openpeer
 
       zsLib::RegEx e("^identity:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/.*$");
       if (!e.hasMatch(identityURI)) {
-        ZS_LOG_WARNING(Detail, String("ServiceIdentity [] identity URI is not valid, uri=") + identityURI)
+        ZS_LOG_WARNING(Detail, slog("identity URI is not valid") + ZS_PARAM("uri", identityURI))
         return false;
       }
 
@@ -2876,12 +2901,12 @@ namespace openpeer
         String result = "identity:" + domainOrType + ":" + identifier;
         if (identifier.hasData()) {
           if (!isValid(result)) {
-            ZS_LOG_WARNING(Detail, "IServiceIdentity [] invalid identity URI created after join, URI=" + result)
+            ZS_LOG_WARNING(Detail, slog("invalid identity URI created after join") + ZS_PARAM("uri", result))
             return String();
           }
         } else {
           if (!isValidBase(result)) {
-            ZS_LOG_WARNING(Detail, "IServiceIdentity [] invalid identity URI created after join, URI=" + result)
+            ZS_LOG_WARNING(Detail, slog("invalid identity URI created after join") + ZS_PARAM("uri", result))
             return String();
           }
         }
@@ -2893,12 +2918,12 @@ namespace openpeer
       String result = "identity://" + domainOrType + "/" + identifier;
       if (identifier.hasData()) {
         if (!isValid(result)) {
-          ZS_LOG_WARNING(Detail, "IServiceIdentity [] invalid identity URI created after join, URI=" + result)
+          ZS_LOG_WARNING(Detail, slog("invalid identity URI created after join") + ZS_PARAM("uri", result))
           return String();
         }
       } else {
         if (!isValidBase(result)) {
-          ZS_LOG_WARNING(Detail, "IServiceIdentity [] invalid identity URI created after join, URI=" + result)
+          ZS_LOG_WARNING(Detail, slog("invalid identity URI created after join") + ZS_PARAM("uri", result))
           return String();
         }
       }
@@ -2920,20 +2945,20 @@ namespace openpeer
 
       IServiceIdentityPtr serviceIdentity = createServiceIdentityFromIdentityProofBundle(identityProofBundleEl);
       if (!serviceIdentity) {
-        ZS_LOG_WARNING(Detail, "IServiceIdentity [] failed to obtain bootstrapped network from identity proof bundle")
+        ZS_LOG_WARNING(Detail, slog("failed to obtain bootstrapped network from identity proof bundle"))
         return false;
       }
 
       IBootstrappedNetworkPtr bootstrapper = serviceIdentity->getBootstrappedNetwork();
       if (!bootstrapper->isPreparationComplete()) {
-        ZS_LOG_WARNING(Detail, "IServiceIdentity [] bootstapped network isn't prepared yet")
+        ZS_LOG_WARNING(Detail, slog("bootstapped network isn't prepared yet"))
         return false;
       }
 
       WORD errorCode = 0;
       String reason;
       if (!bootstrapper->wasSuccessful(&errorCode, &reason)) {
-        ZS_LOG_WARNING(Detail, String("IServiceIdentity [] bootstapped network was not successful") + ", error=" + string(errorCode) + ", reason=" + reason)
+        ZS_LOG_WARNING(Detail, slog("bootstapped network was not successful") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
         return false;
       }
 
@@ -2954,7 +2979,7 @@ namespace openpeer
       }
 
       if (!result) {
-        ZS_LOG_WARNING(Detail, String("IServiceIdentity [] signature validation failed on identity bundle") + ", identity=" + identityURI)
+        ZS_LOG_WARNING(Detail, slog("signature validation failed on identity bundle") + ZS_PARAM("identity", identityURI))
         return false;
       }
 
@@ -2965,11 +2990,11 @@ namespace openpeer
       ZS_THROW_BAD_STATE_IF(!identityProofEl)
 
       if (!serviceCertificate->isValidSignature(identityProofEl)) {
-        ZS_LOG_WARNING(Detail, String("IServiceIdentity [] signature failed to validate on identity bundle") + "identity=" + identityURI)
+        ZS_LOG_WARNING(Detail, slog("signature failed to validate on identity bundle") + ZS_PARAM("identity", identityURI))
         return false;
       }
 
-      ZS_LOG_TRACE(String("IServiceIdentity [] signature verified for identity") + ", identity=" + identityURI)
+      ZS_LOG_TRACE(slog("signature verified for identity") + ZS_PARAM("identity", identityURI))
       return true;
     }
 
@@ -3023,9 +3048,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IServiceIdentitySession::toDebugString(IServiceIdentitySessionPtr session, bool includeCommaPrefix)
+    ElementPtr IServiceIdentitySession::toDebug(IServiceIdentitySessionPtr session)
     {
-      return internal::ServiceIdentitySession::toDebugString(session, includeCommaPrefix);
+      return internal::ServiceIdentitySession::toDebug(session);
     }
 
     //-------------------------------------------------------------------------

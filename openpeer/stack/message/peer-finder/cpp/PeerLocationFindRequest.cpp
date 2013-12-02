@@ -66,6 +66,12 @@ namespace openpeer
         using namespace stack::internal;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "PeerLocationFindRequest");
+        }
+
+        //---------------------------------------------------------------------
         PeerLocationFindRequestPtr PeerLocationFindRequest::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<PeerLocationFindRequest>(message);
@@ -87,36 +93,36 @@ namespace openpeer
 
           LocationPtr messageLocation = ILocationForMessages::convert(messageSource);
           if (!messageLocation) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] message source was not a known location")
+            ZS_LOG_ERROR(Detail, slog("message source was not a known location"))
             return PeerLocationFindRequestPtr();
           }
 
           AccountPtr account = messageLocation->forMessages().getAccount();
           if (!account) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] account object is gone")
+            ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return PeerLocationFindRequestPtr();
           }
 
           IPeerFilesPtr peerFiles = account->forMessages().getPeerFiles();
           if (!peerFiles) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer files not found in account")
+            ZS_LOG_ERROR(Detail, slog("peer files not found in account"))
             return PeerLocationFindRequestPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = peerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return PeerLocationFindRequestPtr();
           }
           IPeerFilePublicPtr peerFilePublic = peerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return PeerLocationFindRequestPtr();
           }
 
           LocationPtr localLocation = ILocationForMessages::getForLocal(account);
           if (!localLocation) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] could not obtain local location")
+            ZS_LOG_ERROR(Detail, slog("could not obtain local location"))
             return PeerLocationFindRequestPtr();
           }
 
@@ -128,7 +134,7 @@ namespace openpeer
             String peerURI = findProofEl->findFirstChildElementChecked("find")->getText();
 
             if (peerURI != localLocation->forMessages().getPeerURI()) {
-              ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] find was not intended for this peer, find peer URI=" + peerURI + ILocation::toDebugString(localLocation))
+              ZS_LOG_ERROR(Detail, slog("find was not intended for this peer") + ZS_PARAM("find peer URI", peerURI) + ILocation::toDebug(localLocation))
               return PeerLocationFindRequestPtr();
             }
 
@@ -139,12 +145,12 @@ namespace openpeer
             String calculatedFindSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(findSecret), "proof:" + clientNonce + ":" + IHelper::timeToString(expires)));
 
             if (calculatedFindSecretProof != findSecretProof) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] calculated find secret proof did not match request, calculated=" + calculatedFindSecretProof + ", request=" + findSecretProof)
+              ZS_LOG_WARNING(Detail, slog("calculated find secret proof did not match request") + ZS_PARAM("calculated", calculatedFindSecretProof) + ZS_PARAM("request", findSecretProof))
               return PeerLocationFindRequestPtr();
             }
 
             if (zsLib::now() > expires) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] request expired, expires=" + IHelper::timeToString(expires) + ", now=" + IHelper::timeToString(zsLib::now()))
+              ZS_LOG_WARNING(Detail, slog("request expired") + ZS_PARAM("expires", expires) + ZS_PARAM("now", ::zsLib::now()))
               return PeerLocationFindRequestPtr();
             }
 
@@ -155,10 +161,10 @@ namespace openpeer
               ret->mPeerSecret = IHelper::convertToString(*peerFilePrivate->decrypt(*IHelper::convertFromBase64(peerSecretEncrypted)));
             }
             if (ret->mPeerSecret.isEmpty()) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] peer secret failed to decrypt")
+              ZS_LOG_WARNING(Detail, slog("peer secret failed to decrypt"))
               return PeerLocationFindRequestPtr();
             }
-            ZS_LOG_TRACE(String("decrypted peer secret") + ", secret=" + ret->mPeerSecret)
+            ZS_LOG_TRACE(slog("decrypted peer secret") + ZS_PARAM("secret", ret->mPeerSecret))
 
             ret->mICEUsernameFrag = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceUsernameFrag"));
             String icePasswordEncrypted = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("icePasswordEncrypted"));
@@ -177,23 +183,23 @@ namespace openpeer
             LocationPtr location = Location::convert(ret->mLocationInfo.mLocation);
 
             if (!location) {
-              ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] missing location information in find request")
+              ZS_LOG_ERROR(Detail, slog("missing location information in find request"))
               return PeerLocationFindRequestPtr();
             }
 
             if (!location->forMessages().getPeer()) {
-              ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] missing location peer information in find request")
+              ZS_LOG_ERROR(Detail, slog("missing location peer information in find request"))
               return PeerLocationFindRequestPtr();
             }
 
             PeerPtr peer = IPeerForMessages::getFromSignature(account, findProofEl);
             if (!peer) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] peer object failed to create from signature")
+              ZS_LOG_WARNING(Detail, slog("peer object failed to create from signature"))
               return PeerLocationFindRequestPtr();
             }
 
             if (location->forMessages().getPeerURI() != peer->forMessages().getPeerURI()) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] location peer is not same as signature peer")
+              ZS_LOG_WARNING(Detail, slog("location peer is not same as signature peer"))
               return PeerLocationFindRequestPtr();
             }
 
@@ -207,7 +213,7 @@ namespace openpeer
             if (peer->forMessages().getPeerFilePublic()) {
               // know the peer file public so this should verify the signature
               if (!peer->forMessages().verifySignature(findProofEl)) {
-                ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] signatuer on request did not verify")
+                ZS_LOG_WARNING(Detail, slog("signatuer on request did not verify"))
                 return PeerLocationFindRequestPtr();
               }
             }
@@ -231,7 +237,7 @@ namespace openpeer
               }
             }
           } catch(CheckFailed &) {
-            ZS_LOG_WARNING(Detail, "PeerLocationFindRequest [] expected element is missing")
+            ZS_LOG_WARNING(Detail, slog("expected element is missing"))
           }
 
           return ret;
@@ -260,18 +266,18 @@ namespace openpeer
         DocumentPtr PeerLocationFindRequest::encode()
         {
           if (!mPeerFiles) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer files was null")
+            ZS_LOG_ERROR(Detail, slog("peer files was null"))
             return DocumentPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return DocumentPtr();
           }
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindRequest [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return DocumentPtr();
           }
 
@@ -307,7 +313,7 @@ namespace openpeer
 
               if (hasAttribute(AttributeType_PeerSecret)) {
 
-                ZS_LOG_TRACE(String("encrypting peer secret") + ", secret=" + mPeerSecret)
+                ZS_LOG_TRACE(slog("encrypting peer secret") + ZS_PARAM("secret", mPeerSecret))
 
                 String peerSecret = IHelper::convertToBase64(*remotePeerFilePublic->encrypt(* IHelper::convertToBuffer(mPeerSecret)));
                 findProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("peerSecretEncrypted", peerSecret));

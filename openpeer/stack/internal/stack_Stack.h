@@ -142,7 +142,7 @@ namespace openpeer
         #pragma mark Stack => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
       protected:
         //---------------------------------------------------------------------

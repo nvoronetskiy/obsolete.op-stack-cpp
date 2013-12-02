@@ -34,7 +34,10 @@
 #include <openpeer/stack/internal/stack_PeerFilePrivate.h>
 #include <openpeer/stack/internal/stack_Helper.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -46,6 +49,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -85,11 +90,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFiles::toDebugString(IPeerFilesPtr peerFiles, bool includeCommaPrefix)
+      ElementPtr PeerFiles::toDebug(IPeerFilesPtr peerFiles)
       {
-        if (!peerFiles) return includeCommaPrefix ? String(", peer files=(null)") : String("peer files=(null)");
+        if (!peerFiles) return ElementPtr();
         PeerFilesPtr pThis = PeerFiles::convert(peerFiles);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -158,17 +163,22 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFiles::log(const char *message) const
+      Log::Params PeerFiles::log(const char *message) const
       {
-        return String("PeerFiles [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PeerFiles");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PeerFiles::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PeerFiles::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer files id", string(mID), firstTime) +
-               IPeerFilePublic::toDebugString(mPublic);
+        ElementPtr resultEl = Element::create("PeerFiles");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(mPublic));
+
+        return resultEl;
       }
     }
 
@@ -181,9 +191,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IPeerFiles::toDebugString(IPeerFilesPtr peerFiles, bool includeCommaPrefix)
+    ElementPtr IPeerFiles::toDebug(IPeerFilesPtr peerFiles)
     {
-      return internal::PeerFiles::toDebugString(peerFiles, includeCommaPrefix);
+      return internal::PeerFiles::toDebug(peerFiles);
     }
 
     //-------------------------------------------------------------------------

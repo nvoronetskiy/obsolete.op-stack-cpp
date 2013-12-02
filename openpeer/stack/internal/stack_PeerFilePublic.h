@@ -54,7 +54,7 @@ namespace openpeer
         IPeerFilePublicForPeerFiles &forPeerFiles() {return *this;}
         const IPeerFilePublicForPeerFiles &forPeerFiles() const {return *this;}
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -122,7 +122,7 @@ namespace openpeer
         #pragma mark PeerFilePublic => IPeerFilePublic
         #pragma mark
 
-        static String toDebugString(IPeerFilePublicPtr peerFilePublic, bool includePrefixComma = true);
+        static ElementPtr toDebug(IPeerFilePublicPtr peerFilePublic);
 
         static PeerFilePublicPtr loadFromElement(ElementPtr publicPeerRootElement);
 
@@ -152,7 +152,7 @@ namespace openpeer
         #pragma mark PeerFilePublic => IPeerFiles
         #pragma mark
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -181,7 +181,7 @@ namespace openpeer
         #pragma mark PeerFilePublic => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
         bool load();
 

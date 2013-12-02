@@ -123,9 +123,6 @@ namespace openpeer
                             public IAccountFinderForAccount,
                             public IWakeDelegate,
                             public IFinderConnectionDelegate,
-//                            public IRUDPICESocketDelegate,
-//                            public IRUDPICESocketSessionDelegate,
-//                            public IRUDPMessagingDelegate,
                             public services::ITransportStreamWriterDelegate,
                             public services::ITransportStreamReaderDelegate,
                             public IMessageMonitorResultDelegate<SessionCreateResult>,
@@ -150,7 +147,7 @@ namespace openpeer
       public:
         ~AccountFinder();
 
-        static String toDebugString(AccountFinderPtr finder, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(AccountFinderPtr finder);
 
       protected:
 
@@ -331,8 +328,10 @@ namespace openpeer
 
         void setTimeout(Time expires);
 
-        String log(const char *message) const;
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         void cancel();
 

@@ -60,6 +60,12 @@ namespace openpeer
         using internal::MessageHelper;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "IdentityLookupUpdateRequest");
+        }
+
+        //---------------------------------------------------------------------
         IdentityLookupUpdateRequestPtr IdentityLookupUpdateRequest::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<IdentityLookupUpdateRequest>(message);
@@ -100,12 +106,12 @@ namespace openpeer
           if (mPeerFiles) {
             peerFilePrivate = mPeerFiles->getPeerFilePrivate();
             if (!peerFilePrivate) {
-              ZS_LOG_ERROR(Detail, "IdentityLookupUpdateRequest [] peer file private was null")
+              ZS_LOG_ERROR(Detail, slog("peer file private was null"))
               return DocumentPtr();
             }
             peerFilePublic = mPeerFiles->getPeerFilePublic();
             if (!peerFilePublic) {
-              ZS_LOG_ERROR(Detail, "IdentityLookupUpdateRequest [] peer file public was null")
+              ZS_LOG_ERROR(Detail, slog("peer file public was null"))
               return DocumentPtr();
             }
           }

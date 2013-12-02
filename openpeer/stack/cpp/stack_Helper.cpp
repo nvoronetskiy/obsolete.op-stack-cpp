@@ -67,18 +67,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Helper::getDebugValue(const char *name, const String &value, bool &firstTime)
-      {
-        if (value.isEmpty()) return String();
-        if (firstTime) {
-          firstTime = false;
-          return String(name) + "=" + value;
-        }
-        return String(", ") + name + "=" + value;
-      }
-
-      
-      //-----------------------------------------------------------------------
       ElementPtr Helper::getSignatureInfo(
                                           ElementPtr signedEl,
                                           ElementPtr *outSignatureEl,
@@ -98,7 +86,7 @@ namespace openpeer
         }
 
         if (!signatureEl) {
-          ZS_LOG_WARNING(Detail, "could not find signature element")
+          ZS_LOG_WARNING(Detail, log("could not find signature element"))
           return ElementPtr();
         }
 
@@ -177,7 +165,7 @@ namespace openpeer
         services::IHelper::split(hexIVAndBase64EncodedData, split, ':');
 
         if (split.size() != 2) {
-          ZS_LOG_WARNING(Detail, String("failed to decode data (does not have salt:base64 pattern") + ", value=" + hexIVAndBase64EncodedData)
+          ZS_LOG_WARNING(Detail, log("failed to decode data (does not have salt:base64 pattern") + ZS_PARAM("value", hexIVAndBase64EncodedData))
           return SecureByteBlockPtr();
         }
 
@@ -188,7 +176,7 @@ namespace openpeer
 
         SecureByteBlockPtr dataToConvert = services::IHelper::convertFromBase64(value);
         if (!dataToConvert) {
-          ZS_LOG_WARNING(Detail, String("failed to decode data from base64") + ", value=" + value)
+          ZS_LOG_WARNING(Detail, log("failed to decode data from base64") + ZS_PARAM("value", value))
           return SecureByteBlockPtr();
         }
 
@@ -199,6 +187,12 @@ namespace openpeer
       const char *Helper::getJavaScriptLogLevel()
       {
         return internal::getJavaScriptLogLevel();
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Helper::log(const char *message)
+      {
+        return Log::Params(message, "stack::Helper");
       }
     }
 

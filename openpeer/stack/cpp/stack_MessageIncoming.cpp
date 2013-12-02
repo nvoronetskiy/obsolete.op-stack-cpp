@@ -35,7 +35,10 @@
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/message/Message.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -47,6 +50,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -102,13 +107,13 @@ namespace openpeer
         ZS_LOG_DEBUG(log("destroyed"))
 
         if (mResponseSent) {
-          ZS_LOG_DEBUG(log("response already sent") + getDebugValueString())
+          ZS_LOG_DEBUG(debug("response already sent"))
           return;
         }
 
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("automatic failure response cannot be sent as account gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("automatic failure response cannot be sent as account gone"))
           return;
         }
 
@@ -131,12 +136,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String MessageIncoming::toDebugString(IMessageIncomingPtr messageIncoming, bool includeCommaPrefix)
+      ElementPtr MessageIncoming::toDebug(IMessageIncomingPtr messageIncoming)
       {
-        if (!messageIncoming) return String(includeCommaPrefix ? ", message incoming=(null)" : "message incoming=(null)");
+        if (!messageIncoming) return ElementPtr();
 
         MessageIncomingPtr pThis = MessageIncoming::convert(messageIncoming);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -160,7 +165,7 @@ namespace openpeer
 
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("failed to send incoming message response as account is gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("failed to send incoming message response as account is gone"))
           return false;
         }
         bool sent = account->forMessageIncoming().send(mLocation, message);
@@ -212,19 +217,30 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String MessageIncoming::log(const char *message) const
+      Log::Params MessageIncoming::log(const char *message) const
       {
-        return String("MessageIncoming [" + string(mID) + "] " + message);
+        ElementPtr objectEl = Element::create("MessageIncoming");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String MessageIncoming::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params MessageIncoming::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr MessageIncoming::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("message incoming id", string(mID), firstTime) +
-               ILocation::toDebugString(mLocation) +
-               Message::toDebugString(mMessage);
+        ElementPtr resultEl = Element::create("MessageIncoming");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
+        IHelper::debugAppend(resultEl, Message::toDebug(mMessage));
+
+        return resultEl;
       }
     }
 
@@ -232,9 +248,9 @@ namespace openpeer
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
-    String IMessageIncoming::toDebugString(IMessageIncomingPtr messageIncoming, bool includeCommaPrefix)
+    ElementPtr IMessageIncoming::toDebug(IMessageIncomingPtr messageIncoming)
     {
-      return internal::MessageIncoming::toDebugString(messageIncoming, includeCommaPrefix);
+      return internal::MessageIncoming::toDebug(messageIncoming);
     }
 
   }

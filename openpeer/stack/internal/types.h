@@ -55,6 +55,7 @@ namespace openpeer
       using zsLib::TimerPtr;
       using zsLib::ITimerDelegate;
       using zsLib::ITimerDelegatePtr;
+      using zsLib::Log;
       using zsLib::MessageQueueAssociator;
       using zsLib::AutoBool;
       using zsLib::AutoWORD;

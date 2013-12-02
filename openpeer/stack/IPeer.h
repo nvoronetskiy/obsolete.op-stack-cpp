@@ -70,7 +70,7 @@ namespace openpeer
                             const char *contactID
                             );
 
-      static String toDebugString(IPeerPtr peer, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPeerPtr peer);
 
       static IPeerPtr create(
                              IAccountPtr account,

@@ -66,7 +66,7 @@ namespace openpeer
       static const char *toString(LocationTypes type);
       static const char *toString(LocationConnectionStates state);
 
-      static String toDebugString(ILocationPtr location, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(ILocationPtr location);
 
       static ILocationPtr getForLocal(IAccountPtr account);
       static ILocationPtr getForFinder(IAccountPtr account);

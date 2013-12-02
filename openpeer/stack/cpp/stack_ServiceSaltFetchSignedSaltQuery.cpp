@@ -35,9 +35,11 @@
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
-
+#include <zsLib/XML.h>
 #include <zsLib/Stringize.h>
 
 #define OPENPEER_STACK_SERVICE_SALT_FETCH_SIGNED_SALT_QUERY_GET_TIMEOUT_IN_SECONDS (60*2)
@@ -50,6 +52,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //      typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       using message::peer_salt::SignedSaltGetRequest;
@@ -111,10 +115,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String ServiceSaltFetchSignedSaltQuery::toDebugString(IServiceSaltFetchSignedSaltQueryPtr query, bool includeCommaPrefix)
+      ElementPtr ServiceSaltFetchSignedSaltQuery::toDebug(IServiceSaltFetchSignedSaltQueryPtr query)
       {
-        if (!query) return includeCommaPrefix ? String(", fetch signed salt query=(null)") : String();
-        return ServiceSaltFetchSignedSaltQuery::convert(query)->getDebugValueString();
+        if (!query) return ElementPtr();
+        return ServiceSaltFetchSignedSaltQuery::convert(query)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -298,7 +302,7 @@ namespace openpeer
         mLastError = result->errorCode();
         mLastErrorReason = result->errorReason();
 
-        ZS_LOG_DEBUG(log("salt get failed") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("salt get failed"))
 
         cancel();
         return true;
@@ -319,23 +323,35 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String ServiceSaltFetchSignedSaltQuery::log(const char *message) const
+      Log::Params ServiceSaltFetchSignedSaltQuery::log(const char *message) const
       {
-        return String("ServiceSaltFetchSignedSaltQuery [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("ServiceSaltFetchSignedSaltQuery");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String ServiceSaltFetchSignedSaltQuery::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params ServiceSaltFetchSignedSaltQuery::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ServiceSaltFetchSignedSaltQuery::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("fetch signed salt id", string(mID), firstTime) +
-               IBootstrappedNetwork::toDebugString(mBootstrappedNetwork) +
-               IMessageMonitor::toDebugString(mSaltMonitor) +
-               Helper::getDebugValue("salt bundles", mSaltBundles.size() > 0 ? string(mSaltBundles.size()) : String(), firstTime) +
-               Helper::getDebugValue("total to fetch", 0 != mTotalToFetch ? string(mTotalToFetch) : String(), firstTime) +
-               Helper::getDebugValue("error code", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-               Helper::getDebugValue("error reason", mLastErrorReason, firstTime);
+
+        ElementPtr resultEl = Element::create("ServiceSaltFetchSignedSaltQuery");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mSaltMonitor));
+        IHelper::debugAppend(resultEl, "salt bundles", mSaltBundles.size());
+        IHelper::debugAppend(resultEl, "total to fetch", mTotalToFetch);
+        IHelper::debugAppend(resultEl, "error code", mLastError);
+        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -388,9 +404,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IServiceSaltFetchSignedSaltQuery::toDebugString(IServiceSaltFetchSignedSaltQueryPtr query, bool includeCommaPrefix)
+    ElementPtr IServiceSaltFetchSignedSaltQuery::toDebug(IServiceSaltFetchSignedSaltQueryPtr query)
     {
-      return internal::ServiceSaltFetchSignedSaltQuery::toDebugString(query, includeCommaPrefix);
+      return internal::ServiceSaltFetchSignedSaltQuery::toDebug(query);
     }
 
     //-------------------------------------------------------------------------

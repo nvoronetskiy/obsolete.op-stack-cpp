@@ -217,11 +217,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Account::toDebugString(IAccountPtr account, bool includeCommaPrefix)
+      ElementPtr Account::toDebug(IAccountPtr account)
       {
-        if (!account) return String(includeCommaPrefix ? ", account=(null)" : "account=(null)");
+        if (!account) return ElementPtr();
         AccountPtr pThis = Account::convert(account);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -247,7 +247,7 @@ namespace openpeer
                                                 ) const
       {
         AutoRecursiveLock lock(getLock());
-        ZS_LOG_DEBUG(log("get account state") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("get account state"))
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
@@ -363,7 +363,7 @@ namespace openpeer
       extract_failure:
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         mAvailableFinderSRVResult.reset();
-        ZS_LOG_WARNING(Detail, log("extract next IP failed") + ", reason=" + reason)
+        ZS_LOG_WARNING(Detail, log("extract next IP failed") + ZS_PARAM("reason", reason))
         return false;
       }
 
@@ -412,7 +412,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!peerLocation)
 
-        ZS_LOG_DEBUG(log("attempting to send via relay") + ", peer URI=" + peerURI + ", peer location ID=" + string(peerLocation->forAccount().getID()) + ", buffer length=" + string(bufferSizeInBytes))
+        ZS_LOG_DEBUG(log("attempting to send via relay") + ZS_PARAM("peer URI", peerURI) + ZS_PARAM("peer location ID", peerLocation->forAccount().getID()) + ZS_PARAM("buffer length", bufferSizeInBytes))
 
         PeerInfoMap::const_iterator foundPeer = mPeerInfos.find(peerURI);
         if (foundPeer == mPeerInfos.end()) {
@@ -427,7 +427,7 @@ namespace openpeer
           const RelayInfoPtr &relayInfo = (*relayIter).second;
           if (relayInfo->mAccountPeerLocation->forAccount().getID() != peerLocation->forAccount().getID()) continue;
 
-          ZS_LOG_DEBUG(log("sending via relay") + relayInfo->getDebugValueString())
+          ZS_LOG_DEBUG(log("sending via relay") + relayInfo->toDebug())
 
           if (!relayInfo->mSendStream) {
             ZS_LOG_WARNING(Detail, log("found relay info but send stream is not valid"))
@@ -467,13 +467,13 @@ namespace openpeer
         if (found != mLocations.end()) {
           LocationPtr existingLocation = (*found).second.lock();
           if (existingLocation) {
-            ZS_LOG_DEBUG(log("found existing location to use") + ILocation::toDebugString(existingLocation))
+            ZS_LOG_DEBUG(log("found existing location to use") + ILocation::toDebug(existingLocation))
             return existingLocation;
           }
-          ZS_LOG_WARNING(Detail, log("existing location in map is now gone") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("existing location in map is now gone") + ILocation::toDebug(location))
         }
 
-        ZS_LOG_DEBUG(log("using newly created location") + ILocation::toDebugString(location))
+        ZS_LOG_DEBUG(log("using newly created location") + ILocation::toDebug(location))
         mLocations[index] = location;
         return location;
       }
@@ -504,11 +504,11 @@ namespace openpeer
 
         LocationMap::iterator found = mLocations.find(index);
         if (found == mLocations.end()) {
-          ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + location.forAccount().getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + location.forAccount().toDebug())
           return;
         }
 
-        ZS_LOG_DEBUG(log("notified location is destroyed") + location.forAccount().getDebugValueString())
+        ZS_LOG_DEBUG(log("notified location is destroyed") + location.forAccount().toDebug())
         mLocations.erase(found);
       }
 
@@ -586,7 +586,7 @@ namespace openpeer
 
         PeerInfoMap::const_iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_WARNING(Detail, log("could not find location information for non-connected peer") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("could not find location information for non-connected peer") + ILocation::toDebug(location))
           return info;
         }
 
@@ -594,7 +594,7 @@ namespace openpeer
 
         PeerInfo::PeerLocationMap::const_iterator foundLocation = peerInfo->mLocations.find(location->forAccount().getLocationID());
         if (foundLocation == peerInfo->mLocations.end()) {
-          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebug(location))
           return info;
         }
 
@@ -637,7 +637,7 @@ namespace openpeer
 
         PeerInfoMap::const_iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_DEBUG(log("peer is not connected") + ILocation::toDebugString(location))
+          ZS_LOG_DEBUG(log("peer is not connected") + ILocation::toDebug(location))
           return ILocation::LocationConnectionState_Disconnected;
         }
 
@@ -645,7 +645,7 @@ namespace openpeer
 
         PeerInfo::PeerLocationMap::const_iterator foundLocation = peerInfo->mLocations.find(location->forAccount().getLocationID());
         if (foundLocation == peerInfo->mLocations.end()) {
-          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebug(location))
           return ILocation::LocationConnectionState_Disconnected;
         }
 
@@ -665,13 +665,13 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (location == mSelfLocation) {
-          ZS_LOG_ERROR(Detail, log("attempting to send message to self") + ILocation::toDebugString(location))
+          ZS_LOG_ERROR(Detail, log("attempting to send message to self") + ILocation::toDebug(location))
           return false;
         }
 
         if (location == mFinderLocation) {
           if (!mFinder) {
-            ZS_LOG_WARNING(Detail, log("attempting to send to finder") + ILocation::toDebugString(location))
+            ZS_LOG_WARNING(Detail, log("attempting to send to finder") + ILocation::toDebug(location))
             return false;
           }
 
@@ -680,7 +680,7 @@ namespace openpeer
 
         PeerInfoMap::const_iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_DEBUG(log("peer is not connected") + ILocation::toDebugString(location))
+          ZS_LOG_DEBUG(log("peer is not connected") + ILocation::toDebug(location))
           return false;
         }
 
@@ -688,7 +688,7 @@ namespace openpeer
 
         PeerInfo::PeerLocationMap::const_iterator foundLocation = peerInfo->mLocations.find(location->forAccount().getLocationID());
         if (foundLocation == peerInfo->mLocations.end()) {
-          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + ILocation::toDebug(location))
           return ILocation::LocationConnectionState_Disconnected;
         }
 
@@ -702,18 +702,18 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        ZS_LOG_DEBUG(log("received hint about peer location") + ILocation::toDebugString(location))
+        ZS_LOG_DEBUG(log("received hint about peer location") + ILocation::toDebug(location))
 
         AutoRecursiveLock lock(getLock());
         if ((isShutdown()) ||
             (isShuttingDown())) {
-          ZS_LOG_WARNING(Detail, log("hint about new location when shutting down/shutdown is ignored") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("hint about new location when shutting down/shutdown is ignored") + ILocation::toDebug(location))
           return;
         }
 
         PeerInfoMap::iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_WARNING(Detail, log("received hint about peer location that is not being subscribed") + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("received hint about peer location that is not being subscribed") + ILocation::toDebug(location))
           return;  // ignore the hint since there is no subscription to this location
         }
 
@@ -722,7 +722,7 @@ namespace openpeer
         PeerInfoPtr &peerInfo = (*found).second;
         PeerInfo::PeerLocationMap::iterator locationFound = peerInfo->mLocations.find(locationID);
         if (locationFound != peerInfo->mLocations.end()) {
-          ZS_LOG_WARNING(Detail, log("received hint about peer location that is already known") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("received hint about peer location that is already known") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
           return;  // thanks for the tip but we already know about this location...
         }
 
@@ -730,7 +730,7 @@ namespace openpeer
         {
           PeerInfo::FindingBecauseOfLocationIDMap::iterator findingBecauseOfFound = peerInfo->mPeerFindBecauseOfLocations.find(locationID);
           if (findingBecauseOfFound != peerInfo->mPeerFindBecauseOfLocations.end()) {
-            ZS_LOG_DEBUG(log("received hint about peer location for location that is already being searched because of a previous hint") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("received hint about peer location for location that is already being searched because of a previous hint") + PeerInfo::toDebug(peerInfo))
             return; // we've already received this tip...
           }
         }
@@ -739,7 +739,7 @@ namespace openpeer
         {
           PeerInfo::FindingBecauseOfLocationIDMap::iterator findingBecauseOfFound = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.find(locationID);
           if (findingBecauseOfFound != peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.end()) {
-            ZS_LOG_WARNING(Detail, log("received hint about peer location for location that has already been given a hint") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_WARNING(Detail, log("received hint about peer location for location that has already been given a hint") + PeerInfo::toDebug(peerInfo))
             return; // we've already received this tip...
           }
         }
@@ -748,7 +748,7 @@ namespace openpeer
         peerInfo->mPeerFindNeedsRedoingBecauseOfLocations[locationID] = locationID;
         peerInfo->findTimeReset();
 
-        ZS_LOG_DEBUG(log("received hint about peer location that will be added to hint search") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("received hint about peer location that will be added to hint search") + PeerInfo::toDebug(peerInfo))
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();
       }
 
@@ -770,7 +770,7 @@ namespace openpeer
 
         MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_NotFound);
         if (!result) {
-          ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created") + messageIncoming.forAccount().getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created") + messageIncoming.forAccount().toDebug())
           return;
         }
 
@@ -791,7 +791,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (!mLockboxSession) {
-          ZS_LOG_WARNING(Detail, log("peer files are not available on account as peer contact session does not exist") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("peer files are not available on account as peer contact session does not exist"))
           return IPeerFilesPtr();
         }
 
@@ -820,13 +820,13 @@ namespace openpeer
         if (found != mPeers.end()) {
           PeerPtr existingPeer = (*found).second.lock();
           if (existingPeer) {
-            ZS_LOG_DEBUG(log("found existing peer to use") + IPeer::toDebugString(existingPeer))
+            ZS_LOG_DEBUG(log("found existing peer to use") + IPeer::toDebug(existingPeer))
             return existingPeer;
           }
-          ZS_LOG_WARNING(Detail, log("existing peer in map is now gone") + ", peer URI=" + peerURI)
+          ZS_LOG_WARNING(Detail, log("existing peer in map is now gone") + ZS_PARAM("peer URI", peerURI))
         }
 
-        ZS_LOG_DEBUG(log("using newly created peer") + IPeer::toDebugString(peer))
+        ZS_LOG_DEBUG(log("using newly created peer") + IPeer::toDebug(peer))
         mPeers[peerURI] = peer;
         return peer;
       }
@@ -840,11 +840,11 @@ namespace openpeer
 
         PeerMap::iterator found = mPeers.find(peerURI);
         if (found == mPeers.end()) {
-          ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + peer.forAccount().getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + peer.forAccount().toDebug())
           return;
         }
 
-        ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.forAccount().getDebugValueString())
+        ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.forAccount().toDebug())
         mPeers.erase(found);
       }
 
@@ -860,7 +860,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         PeerInfoMap::const_iterator found = mPeerInfos.find(peerURI);
         if (found == mPeerInfos.end()) {
-          ZS_LOG_DEBUG(log("no state to get as peer URI was not found") + ", peer URI=" + peerURI)
+          ZS_LOG_DEBUG(log("no state to get as peer URI was not found") + ZS_PARAM("peer URI", peerURI))
           return IPeer::PeerFindState_Idle;
         }
 
@@ -880,7 +880,7 @@ namespace openpeer
 
         PeerInfoMap::const_iterator found = mPeerInfos.find(peerURI);
         if (found == mPeerInfos.end()) {
-          ZS_LOG_DEBUG(log("no peer locations as peer was not found") + ", peer URI=" + peerURI)
+          ZS_LOG_DEBUG(log("no peer locations as peer was not found") + ZS_PARAM("peer URI", peerURI))
           return result;
         }
 
@@ -890,7 +890,7 @@ namespace openpeer
           if ((!includeOnlyConnectedLocations) ||
               (peerLocation->forAccount().isConnected())) {
             // only push back sessions that are actually connected (unless all are desired)
-            ZS_LOG_TRACE(log("returning location") + AccountPeerLocation::toDebugString(peerLocation))
+            ZS_LOG_TRACE(log("returning location") + AccountPeerLocation::toDebug(peerLocation))
             result->push_back(peerLocation->forAccount().getLocation());
           }
         }
@@ -913,7 +913,7 @@ namespace openpeer
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
-          ZS_LOG_WARNING(Debug, log("subscription happened during shutdown") + ", subscription=" + IPeerSubscription::toDebugString(subscription))
+          ZS_LOG_WARNING(Debug, log("subscription happened during shutdown") + ZS_PARAM("subscription", IPeerSubscription::toDebug(subscription)))
           // during the graceful shutdown or post shutdown process, new subscriptions must not be created...
           subscription->forAccount().notifyShutdown();
           return;
@@ -957,11 +957,11 @@ namespace openpeer
           // need to create a new peer from scratch and do the find
           peerInfo = PeerInfo::create();
           peerInfo->mPeer = subscribingToPeer;
-          ZS_LOG_DEBUG(log("subscribing to new peer") + PeerInfo::toDebugString(peerInfo) + IPeerSubscription::toDebugString(subscription))
+          ZS_LOG_DEBUG(log("subscribing to new peer") + PeerInfo::toDebug(peerInfo) + IPeerSubscription::toDebug(subscription))
           mPeerInfos[uri] = peerInfo;
         } else {
           peerInfo = (*found).second;
-          ZS_LOG_DEBUG(log("subscribing to existing peer") + PeerInfo::toDebugString(peerInfo) + IPeerSubscription::toDebugString(subscription))
+          ZS_LOG_DEBUG(log("subscribing to existing peer") + PeerInfo::toDebug(peerInfo) + IPeerSubscription::toDebug(subscription))
         }
 
         ++(peerInfo->mTotalSubscribers);
@@ -974,11 +974,11 @@ namespace openpeer
       {
         PeerSubscriptionMap::iterator found = mPeerSubscriptions.find(subscription.forAccount().getID());
         if (found == mPeerSubscriptions.end()) {
-          ZS_LOG_WARNING(Detail, log("notification of destruction of unknown subscription (probably okay)") + subscription.forAccount().getDebugValueString())
+          ZS_LOG_WARNING(Detail, log("notification of destruction of unknown subscription (probably okay)") + subscription.forAccount().toDebug())
           return;
         }
 
-        ZS_LOG_DEBUG(log("notification of destruction of subscription") + subscription.forAccount().getDebugValueString())
+        ZS_LOG_DEBUG(log("notification of destruction of subscription") + subscription.forAccount().toDebug())
 
         PeerPtr subscribingToPeer = Peer::convert(subscription.forAccount().getSubscribedToPeer());
         if (!subscribingToPeer) {
@@ -994,7 +994,7 @@ namespace openpeer
 
         if (mPeerInfos.end() != foundPeerInfo) {
           peerInfo = (*foundPeerInfo).second;
-          ZS_LOG_DEBUG(log("unsubscribing from existing peer") + PeerInfo::toDebugString(peerInfo) + subscription.forAccount().getDebugValueString())
+          ZS_LOG_DEBUG(log("unsubscribing from existing peer") + PeerInfo::toDebug(peerInfo) + subscription.forAccount().toDebug())
 
           --(peerInfo->mTotalSubscribers);
         }
@@ -1036,7 +1036,7 @@ namespace openpeer
       {
         ZS_THROW_BAD_STATE_IF(!finder)
 
-        ZS_LOG_DETAIL(log("received notification finder state changed") + ", notified state=" + toString(state) + AccountFinder::toDebugString(finder))
+        ZS_LOG_DETAIL(log("received notification finder state changed") + ZS_PARAM("notified state", toString(state)) + AccountFinder::toDebug(finder))
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
@@ -1045,7 +1045,7 @@ namespace openpeer
         }
 
         if (finder != mFinder) {
-          ZS_LOG_WARNING(Detail, log("received state change on obsolete finder") + AccountFinder::toDebugString(finder))
+          ZS_LOG_WARNING(Detail, log("received state change on obsolete finder") + AccountFinder::toDebug(finder))
           return;
         }
 
@@ -1061,7 +1061,7 @@ namespace openpeer
           mFinder.reset();
 
           if (!isShuttingDown()) {
-            ZS_LOG_WARNING(Detail, log("did not expect finder to shutdown") + getDebugValueString())
+            ZS_LOG_WARNING(Detail, log("did not expect finder to shutdown") + toDebug())
 
             handleFinderRelatedFailure();
           }
@@ -1110,25 +1110,25 @@ namespace openpeer
 
           if ((!fromLocation) ||
               (!fromPeer)){
-            ZS_LOG_WARNING(Detail, log("invalid request received") + ILocation::toDebugString(fromLocation))
+            ZS_LOG_WARNING(Detail, log("invalid request received") + ILocation::toDebug(fromLocation))
             MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_BadRequest);
             send(mFinderLocation, result);
             return;
           }
 
-          ZS_LOG_DEBUG(log("received incoming peer find request") + ILocation::toDebugString(fromLocation))
+          ZS_LOG_DEBUG(log("received incoming peer find request") + ILocation::toDebug(fromLocation))
 
           PeerInfoPtr peerInfo;
 
           PeerInfoMap::iterator foundPeer = mPeerInfos.find(fromLocation->forAccount().getPeerURI());
           if (foundPeer != mPeerInfos.end()) {
             peerInfo = (*foundPeer).second;
-            ZS_LOG_DEBUG(log("received incoming peer find request from known peer") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("received incoming peer find request from known peer") + PeerInfo::toDebug(peerInfo))
           } else {
             peerInfo = PeerInfo::create();
             peerInfo->mPeer = fromPeer;
             mPeerInfos[fromPeer->forAccount().getPeerURI()] = peerInfo;
-            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer") + PeerInfo::toDebug(peerInfo))
           }
 
           AccountPeerLocationPtr peerLocation;
@@ -1136,10 +1136,10 @@ namespace openpeer
           if (foundLocation != peerInfo->mLocations.end()) {
             // already conducting a search for this location?
             peerLocation = (*foundLocation).second;
-            ZS_LOG_DEBUG(log("received incoming peer find request from known peer location") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("received incoming peer find request from known peer location") + PeerInfo::toDebug(peerInfo))
 
             if (peerLocation->forAccount().hasReceivedCandidateInformation()) {
-              ZS_LOG_WARNING(Detail, log("receiving candidate information for the same peer location thus shutting down current location") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation) + ILocation::toDebugString(fromLocation))
+              ZS_LOG_WARNING(Detail, log("receiving candidate information for the same peer location thus shutting down current location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(fromLocation))
               peerInfo->mLocations.erase(foundLocation);
               peerLocation->forAccount().shutdown();
 
@@ -1158,7 +1158,7 @@ namespace openpeer
                                                                   );
 
             peerInfo->mLocations[fromLocation->forAccount().getLocationID()] = peerLocation;
-            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer location") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer location") + PeerInfo::toDebug(peerInfo))
           }
 
           peerLocation->forAccount().incomingRespondWhenCandidatesReady(peerLocationFindRequest);
@@ -1167,7 +1167,7 @@ namespace openpeer
 
         ChannelMapNotifyPtr channelMapNotify = ChannelMapNotify::convert(message);
         if (channelMapNotify) {
-          ZS_LOG_DEBUG(log("channel map notification received") + ", channel number=" + string(channelMapNotify->channelNumber()))
+          ZS_LOG_DEBUG(log("channel map notification received") + ZS_PARAM("channel number", channelMapNotify->channelNumber()))
 
           // HERE
           IPAddress finderIP;
@@ -1195,7 +1195,7 @@ namespace openpeer
           String calculatedProof = IHelper::convertToHex(*IHelper::hash(finalHash));
 
           if (calculatedProof != channelMapNotify->relayAccessSecretProof()) {
-            ZS_LOG_WARNING(Detail, log("channel map notify proof failed") + ", calculated proof=" + calculatedProof + ", received=" + channelMapNotify->relayAccessSecretProof() + ", relay access secret=" + relayAccessSecret + ", inner hash str=" + innerDataToHash + ", inner hash result=" + innerHash + ", final hash str=" + finalHash)
+            ZS_LOG_WARNING(Detail, log("channel map notify proof failed") + ZS_PARAM("calculated proof", calculatedProof) + ZS_PARAM("received", channelMapNotify->relayAccessSecretProof()) + ZS_PARAM("relay access secret", relayAccessSecret) + ZS_PARAM("inner hash str", innerDataToHash) + ZS_PARAM("inner hash result", innerHash) + ZS_PARAM("final hash str", finalHash))
             return;
           }
 
@@ -1215,7 +1215,7 @@ namespace openpeer
 
               peerInfo->mRelayInfos[channel] = relayInfo;
 
-              ZS_LOG_DEBUG(log("peer relay context added") + relayInfo->getDebugValueString() + peerInfo->getDebugValueString())
+              ZS_LOG_DEBUG(log("peer relay context added") + relayInfo->toDebug() + peerInfo->toDebug())
               break;
             }
           }
@@ -1240,7 +1240,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
-        ZS_LOG_DEBUG(log("on account finder incoming relay channel") + ", finder ID=" + string(finder->forAccount().getID()) + ", relay channel ID=" + string(relayChannel->getID()))
+        ZS_LOG_DEBUG(log("on account finder incoming relay channel") + ZS_PARAM("finder ID", finder->forAccount().getID()) + ZS_PARAM("relay channel ID", relayChannel->getID()))
 
         AutoRecursiveLock lock(getLock());
 
@@ -1274,7 +1274,7 @@ namespace openpeer
           relayInfo->mReceiveStreamSubscription = relayInfo->mReceiveStream->subscribe(mThisWeak.lock());
           relayInfo->mSendStreamSubscription = relayInfo->mSendStream->subscribe(mThisWeak.lock());
 
-          ZS_LOG_DEBUG(log("incoming finder relay channel setup") + relayInfo->getDebugValueString() + peerInfo->getDebugValueString())
+          ZS_LOG_DEBUG(log("incoming finder relay channel setup") + relayInfo->toDebug() + peerInfo->toDebug())
 
           return;
         }
@@ -1299,17 +1299,17 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerLocation)
 
         if (isShutdown()) {
-          ZS_LOG_WARNING(Detail, log("notified account peer location state changed when account was shutdown") + ", notified state=" + toString(state) + AccountPeerLocation::toDebugString(peerLocation))
+          ZS_LOG_WARNING(Detail, log("notified account peer location state changed when account was shutdown") + ZS_PARAM("notified state", toString(state)) + AccountPeerLocation::toDebug(peerLocation))
           return;
         }
 
-        ZS_LOG_DETAIL(log("notified account peer location state changed") + ", notified state=" + toString(state) + AccountPeerLocation::toDebugString(peerLocation))
+        ZS_LOG_DETAIL(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + AccountPeerLocation::toDebug(peerLocation))
 
         Time tick = zsLib::now();
 
         LocationPtr location = peerLocation->forAccount().getLocation();
 
-        ZS_LOG_DEBUG(log("notified about peer location") + ILocation::toDebugString(location))
+        ZS_LOG_DEBUG(log("notified about peer location") + ILocation::toDebug(location))
 
         PeerInfoMap::iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
@@ -1320,13 +1320,13 @@ namespace openpeer
         PeerInfoPtr &peerInfo = (*found).second;
         PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(location->forAccount().getLocationID());
         if (foundLocation == peerInfo->mLocations.end()) {
-          ZS_LOG_WARNING(Debug, log("could not find peer location") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Debug, log("could not find peer location") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
           return;
         }
 
         AccountPeerLocationPtr &foundPeerLocation = (*foundLocation).second;
         if (foundPeerLocation != peerLocation) {
-          ZS_LOG_WARNING(Detail, log("notification of peer state on obsolete peer location") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("notification of peer state on obsolete peer location") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
           return;
         }
 
@@ -1344,10 +1344,10 @@ namespace openpeer
 
             // found the peer location, clear it out...
             peerInfo->mLocations.erase(foundLocation);
-            ZS_LOG_DEBUG(log("peer location is shutdown") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+            ZS_LOG_DEBUG(log("peer location is shutdown") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
 
             if (findAgain) {
-              ZS_LOG_DETAIL(log("need to refind peer at next opportunity") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+              ZS_LOG_DETAIL(log("need to refind peer at next opportunity") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
               peerInfo->mFindAtNextPossibleMoment = true;
             }
 
@@ -1389,13 +1389,13 @@ namespace openpeer
 
         PeerInfoMap::iterator found = mPeerInfos.find(location->forAccount().getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_WARNING(Detail, log("incoming message coming in from unknown peer location") + AccountPeerLocation::toDebugString(peerLocation) + ILocation::toDebugString(location))
+          ZS_LOG_WARNING(Detail, log("incoming message coming in from unknown peer location") + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(location))
           return;
         }
 
         PeerInfoPtr peerInfo = (*found).second;
 
-        ZS_LOG_DEBUG(log("handling message") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("handling message") + PeerInfo::toDebug(peerInfo))
 
         MessageIncomingPtr messageIncoming = IMessageIncomingForAccount::create(mThisWeak.lock(), location, message);
         notifySubscriptions(messageIncoming);
@@ -1499,7 +1499,7 @@ namespace openpeer
                                                         MessagePtr message
                                                         )
       {
-        ZS_LOG_DEBUG(log("message requester received response") + IMessageMonitor::toDebugString(monitor))
+        ZS_LOG_DEBUG(log("message requester received response") + IMessageMonitor::toDebug(monitor))
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
@@ -1514,7 +1514,7 @@ namespace openpeer
           FindersGetResultPtr result = FindersGetResult::convert(message);
           if (!result) {
             MessageResultPtr result = MessageResult::convert(message);
-            ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebugString(message))
+            ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebug(message))
 
             handleFinderRelatedFailure();
             IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -1542,7 +1542,7 @@ namespace openpeer
             case Message::MessageType_Result:  {
               MessageResultPtr result = MessageResult::convert(message);
               if (result->hasAttribute(MessageResult::AttributeType_ErrorCode)) {
-                ZS_LOG_ERROR(Debug, log("received requester received response error") + Message::toDebugString(result))
+                ZS_LOG_ERROR(Debug, log("received requester received response error") + Message::toDebug(result))
                 handleFindRequestComplete(monitor);
                 return true;
               }
@@ -1572,11 +1572,11 @@ namespace openpeer
                 }
                 PeerInfo::PeerLocationMap::iterator found = peerInfo->mLocations.find(location->forAccount().getLocationID());
                 if (found != peerInfo->mLocations.end()) {
-                  ZS_LOG_DEBUG(log("already knows about this location thus ignoring find result") + ILocation::toDebugString(location))
+                  ZS_LOG_DEBUG(log("already knows about this location thus ignoring find result") + ILocation::toDebug(location))
                   continue;   // already know about this location? if so just skip it
                 }
 
-                ZS_LOG_DEBUG(log("receiced find result for location") + ILocation::toDebugString(location))
+                ZS_LOG_DEBUG(log("receiced find result for location") + ILocation::toDebug(location))
 
                 // scope: see if this would cause a seach redo later (if so, stop it from happening)
                 {
@@ -1602,7 +1602,7 @@ namespace openpeer
             case Message::MessageType_Notify:   {
               PeerLocationFindNotifyPtr findReply = PeerLocationFindNotify::convert(message);
               if (!findReply) {
-                ZS_LOG_ERROR(Debug, log("receiced received a find reply but was unable to cast object to a reply object") + PeerInfo::toDebugString(peerInfo))
+                ZS_LOG_ERROR(Debug, log("receiced received a find reply but was unable to cast object to a reply object") + PeerInfo::toDebug(peerInfo))
                 return false;
               }
 
@@ -1612,7 +1612,7 @@ namespace openpeer
 
               CandidateList candidates = locationInfo.mCandidates;
               if (candidates.size() < 1) {
-                ZS_LOG_ERROR(Debug, log("receiced received a find reply but it did not contain any candidates (thus ignoring reply)") + PeerInfo::toDebugString(peerInfo))
+                ZS_LOG_ERROR(Debug, log("receiced received a find reply but it did not contain any candidates (thus ignoring reply)") + PeerInfo::toDebug(peerInfo))
                 return false;
               }
 
@@ -1621,15 +1621,15 @@ namespace openpeer
               AccountPeerLocationPtr peerLocation;
               if (found != peerInfo->mLocations.end()) {
                 peerLocation = (*found).second;
-                ZS_LOG_DEBUG(log("receiced received a find reply to an existing known peer location") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation) + ILocation::toDebugString(location))
+                ZS_LOG_DEBUG(log("receiced received a find reply to an existing known peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(location))
 
                 if (peerLocation->forAccount().hasReceivedCandidateInformation()) {
-                  ZS_LOG_WARNING(Detail, log("receiving candidate information after final location for the same peer location") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation) + ILocation::toDebugString(location))
+                  ZS_LOG_WARNING(Detail, log("receiving candidate information after final location for the same peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(location))
                 }
               }
 
               if (found == peerInfo->mLocations.end()) {
-                ZS_LOG_DEBUG(log("receiced received a find reply to a new unknown peer") + PeerInfo::toDebugString(peerInfo) + ILocation::toDebugString(location))
+                ZS_LOG_DEBUG(log("receiced received a find reply to a new unknown peer") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
 
                 peerLocation = IAccountPeerLocationForAccount::create(
                                                                       mThisWeak.lock(),
@@ -1642,7 +1642,7 @@ namespace openpeer
                 {
                   PeerInfo::FindingBecauseOfLocationIDMap::iterator redoFound = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.find(location->forAccount().getLocationID());
                   if (redoFound != peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.end()) {
-                    ZS_LOG_DEBUG(log("receiced find reply for location that would be searched later thus removing from later search") + PeerInfo::toDebugString(peerInfo))
+                    ZS_LOG_DEBUG(log("receiced find reply for location that would be searched later thus removing from later search") + PeerInfo::toDebug(peerInfo))
                     peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.erase(redoFound);
                   }
                 }
@@ -1666,7 +1666,7 @@ namespace openpeer
 
                   if (relayInfo->mRemoteContext != remoteContext) continue;
 
-                  ZS_LOG_DEBUG(log("found relay associated to remote context") + relayInfo->getDebugValueString())
+                  ZS_LOG_DEBUG(log("found relay associated to remote context") + relayInfo->toDebug())
 
                   relayInfo->mAccountPeerLocation = peerLocation;
                   if (relayInfo->mRelayChannel) {
@@ -1684,7 +1684,7 @@ namespace openpeer
                 for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
                   AccountPeerLocationPtr &peerLocation = (*iterLocation).second;
                   if (!peerLocation->forAccount().hasReceivedCandidateInformation()) {
-                    ZS_LOG_DEBUG(log("at least one peer still waiting for result") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+                    ZS_LOG_DEBUG(log("at least one peer still waiting for result") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
                     locationRemainThatHaveNotReplied = true;
                     break;
                   }
@@ -1712,7 +1712,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onMessageMonitorTimedOut(IMessageMonitorPtr monitor)
       {
-        ZS_LOG_WARNING(Detail, log("message requester timed out") + IMessageMonitor::toDebugString(monitor))
+        ZS_LOG_WARNING(Detail, log("message requester timed out") + IMessageMonitor::toDebug(monitor))
 
         handleFindRequestComplete(monitor);
       }
@@ -1759,11 +1759,11 @@ namespace openpeer
         switch (state) {
           case IFinderRelayChannel::SessionState_Pending:
           case IFinderRelayChannel::SessionState_Connected: {
-            ZS_LOG_DEBUG(log("ignoring pending / connected state on relay channel") + ", state=" + IFinderRelayChannel::toString(state) + IFinderRelayChannel::toDebugString(channel))
+            ZS_LOG_DEBUG(log("ignoring pending / connected state on relay channel") + ZS_PARAM("state", IFinderRelayChannel::toString(state)) + IFinderRelayChannel::toDebug(channel))
             return;
           }
           case IFinderRelayChannel::SessionState_Shutdown: {
-            ZS_LOG_DEBUG(log("finder relay channel shutdown") + ", state=" + IFinderRelayChannel::toString(state) + IFinderRelayChannel::toDebugString(channel))
+            ZS_LOG_DEBUG(log("finder relay channel shutdown") + ZS_PARAM("state", IFinderRelayChannel::toString(state)) + IFinderRelayChannel::toDebug(channel))
             break;
           }
         }
@@ -1775,7 +1775,7 @@ namespace openpeer
           {
             RelayInfoPtr &relayInfo = (*relayIter).second;
             if (relayInfo->mRelayChannel->getID() == channel->getID()) {
-              ZS_LOG_DEBUG(log("found shutdown relay channel") + relayInfo->getDebugValueString())
+              ZS_LOG_DEBUG(log("found shutdown relay channel") + relayInfo->toDebug())
 
               relayInfo->cancel();
               peerInfo->mRelayInfos.erase(relayIter);
@@ -1784,7 +1784,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_WARNING(Detail, log("relay channel not associated with peer") + IFinderRelayChannel::toDebugString(channel))
+        ZS_LOG_WARNING(Detail, log("relay channel not associated with peer") + IFinderRelayChannel::toDebug(channel))
       }
 
       //-----------------------------------------------------------------------
@@ -1801,7 +1801,7 @@ namespace openpeer
           {
             RelayInfoPtr &relayInfo = (*relayIter).second;
             if (relayInfo->mRelayChannel->getID() == channel->getID()) {
-              ZS_LOG_DEBUG(log("found relay channel needing context") + relayInfo->getDebugValueString() + IFinderRelayChannel::toDebugString(channel))
+              ZS_LOG_DEBUG(log("found relay channel needing context") + relayInfo->toDebug() + IFinderRelayChannel::toDebug(channel))
 
               channel->setIncomingContext(relayInfo->mLocalContext, getLocalPassword(peerURI), peerInfo->mPeer);
               return;
@@ -1848,7 +1848,7 @@ namespace openpeer
           {
             RelayInfoPtr &relayInfo = (*relayIter).second;
             if (relayInfo->mReceiveStream->getID() == reader->getID()) {
-              ZS_LOG_DEBUG(log("reading relay stream") + relayInfo->getDebugValueString() + ITransportStream::toDebugString(reader->getStream()))
+              ZS_LOG_DEBUG(log("reading relay stream") + relayInfo->toDebug() + ITransportStream::toDebug(reader->getStream()))
 
               while (true) {
                 SecureByteBlockPtr buffer = reader->read();
@@ -1860,7 +1860,7 @@ namespace openpeer
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
                 ZS_LOG_DETAIL(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("RELAY RECEIVED MESSAGE=") + "\n" + ((CSTR)buffer->BytePtr()) + "\n")
+                ZS_LOG_DETAIL(log("RELAY RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)buffer->BytePtr())))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
                 ZS_LOG_DETAIL(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
@@ -1923,7 +1923,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (timer != mTimer) {
-          ZS_LOG_WARNING(Detail, log("received timer notification on obsolete timer (probably okay)") + ", timer ID=" + string(timer->getID()))
+          ZS_LOG_WARNING(Detail, log("received timer notification on obsolete timer (probably okay)") + ZS_PARAM("timer ID", timer->getID()))
           return;
         }
 
@@ -1948,39 +1948,50 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Account::log(const char *message) const
+      Log::Params Account::log(const char *message) const
       {
-        return String("stack::Account [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("stack::Account");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String Account::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params Account::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr Account::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
 
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("stack account id", string(mID), firstTime) +
-        Helper::getDebugValue("state", IAccount::toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("location ID", mLocationID, firstTime) +
-        Helper::getDebugValue("error code", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-        Helper::getDebugValue("error reason", mLastErrorReason, firstTime) +
-        Helper::getDebugValue("timer last fired", Time() != mLastTimerFired ? IHelper::timeToString(mLastTimerFired) : String(), firstTime) +
-        Helper::getDebugValue("block until", Time() != mBlockLocationShutdownsUntil ? IHelper::timeToString(mBlockLocationShutdownsUntil) : String(), firstTime) +
-        //mSelfLocation->forAccount().getDebugValueString() +
-        Helper::getDebugValue("master peer secret", mMasterPeerSecret, firstTime) +
-        Helper::getDebugValue("finder", mFinder ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("finder retry after", Time() != mFinderRetryAfter ? IHelper::timeToString(mFinderRetryAfter) : String(), firstTime) +
-        Helper::getDebugValue("peer infos", mPeers.size() > 0 ? string(mPeers.size()) : String(), firstTime) +
-        Helper::getDebugValue("peer infos", mPeerInfos.size() > 0 ? string(mPeerInfos.size()) : String(), firstTime) +
-        Helper::getDebugValue("subscribers", mPeerSubscriptions.size() > 0 ? string(mPeerSubscriptions.size()) : String(), firstTime) +
-        Helper::getDebugValue("locations", mLocations.size() > 0 ? string(mLocations.size()) : String(), firstTime);
+        ElementPtr resultEl = Element::create("stack::Account");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+
+        IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "location ID", mLocationID);
+        IHelper::debugAppend(resultEl, "error code", mLastError);
+        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "timer last fired", mLastTimerFired);
+        IHelper::debugAppend(resultEl, "block until", mBlockLocationShutdownsUntil);
+        //mSelfLocation->forAccount().toDebug()
+        IHelper::debugAppend(resultEl, "master peer secret", mMasterPeerSecret);
+        IHelper::debugAppend(resultEl, "finder", (bool)mFinder);
+        IHelper::debugAppend(resultEl, "finder retry after", mFinderRetryAfter);
+        IHelper::debugAppend(resultEl, "peer infos", mPeers.size());
+        IHelper::debugAppend(resultEl, "peer infos", mPeerInfos.size());
+        IHelper::debugAppend(resultEl, "subscribers", mPeerSubscriptions.size());
+        IHelper::debugAppend(resultEl, "locations", mLocations.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
       void Account::cancel()
       {
-        ZS_LOG_DEBUG(log("cancel called") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("cancel called"))
 
         AutoRecursiveLock lock(getLock());  // just in case
 
@@ -2031,7 +2042,7 @@ namespace openpeer
             peerInfo->mTotalSubscribers = 0;
 
             if (peerInfo->mPeerFindMonitor) {
-              ZS_LOG_DEBUG(log("cancelling / stopping find request for peer") + PeerInfo::toDebugString(peerInfo))
+              ZS_LOG_DEBUG(log("cancelling / stopping find request for peer") + PeerInfo::toDebug(peerInfo))
 
               // we have to kill all requests to find more peer locations (simply ignore the results from the requests)
               peerInfo->mPeerFindMonitor->cancel();
@@ -2054,19 +2065,19 @@ namespace openpeer
                   // send a shutdown request to each outstanding location
                   AccountPeerLocationPtr peerLocation = (*iterLocation).second;
 
-                  ZS_LOG_DEBUG(log("cancel shutting down peer location") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+                  ZS_LOG_DEBUG(log("cancel shutting down peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
                   peerLocation->forAccount().shutdown();
                 }
               } else {
                 // we don't need to remember this connection anymore since no locations were found or established
-                ZS_LOG_DEBUG(log("cancel closing down peer") + PeerInfo::toDebugString(peerInfo))
+                ZS_LOG_DEBUG(log("cancel closing down peer") + PeerInfo::toDebug(peerInfo))
                 mPeerInfos.erase(current);
               }
             }
           }
 
           if (mFinder) {
-            ZS_LOG_DEBUG(log("shutting down peer finder") + AccountFinder::toDebugString(mFinder))
+            ZS_LOG_DEBUG(log("shutting down peer finder") + AccountFinder::toDebug(mFinder))
             mFinder->forAccount().shutdown();
           }
 
@@ -2105,7 +2116,7 @@ namespace openpeer
 
             for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
               AccountPeerLocationPtr peerLocation = (*iterLocation).second;
-              ZS_LOG_DEBUG(log("hard shutdown of peer location") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+              ZS_LOG_DEBUG(log("hard shutdown of peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
               peerLocation->forAccount().shutdown();
             }
             peerInfo->mLocations.clear();
@@ -2147,7 +2158,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!stepTimer()) return;
         if (!stepRepository()) return;
@@ -2161,7 +2172,7 @@ namespace openpeer
 
         if (!stepPeers()) return;
 
-        ZS_LOG_DEBUG(log("step complete") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -2174,7 +2185,7 @@ namespace openpeer
 
         mLastTimerFired = zsLib::now();
         mTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_TIMER_FIRES_IN_SECONDS));
-        ZS_LOG_TRACE(log("created timer") + ", timer ID=" + string(mTimer->getID()))
+        ZS_LOG_TRACE(log("created timer") + ZS_PARAM("timer ID", mTimer->getID()))
         return true;
       }
 
@@ -2187,7 +2198,7 @@ namespace openpeer
         }
 
         mRepository = IPublicationRepositoryForAccount::create(mThisWeak.lock());
-        ZS_LOG_TRACE(log("repository created") + ", respository ID=" + string(mRepository->forAccount().getID()))
+        ZS_LOG_TRACE(log("repository created") + ZS_PARAM("respository ID", mRepository->forAccount().getID()))
         return true;
       }
 
@@ -2295,7 +2306,7 @@ namespace openpeer
         IICESocket::STUNServerInfoList stunServers;
         getNATServers(turnServers, stunServers);
 
-        ZS_LOG_DEBUG(log("creating ICE socket") + ", turn servers=" + string(turnServers.size()) + ", stun servers=" + string(stunServers.size()))
+        ZS_LOG_DEBUG(log("creating ICE socket") + ZS_PARAM("turn servers", turnServers.size()) + ZS_PARAM("stun servers", stunServers.size()))
 
         mSocket = IICESocket::create(
                                      IStackForInternal::queueServices(),
@@ -2420,12 +2431,12 @@ namespace openpeer
             shutdownPeerLocationsNotNeeded(peerURI, peerInfo);
 
             if (peerInfo->mLocations.size() > 0) {
-              ZS_LOG_DEBUG(log("some location are still connected thus do not shutdown the peer yet") + PeerInfo::toDebugString(peerInfo))
+              ZS_LOG_DEBUG(log("some location are still connected thus do not shutdown the peer yet") + PeerInfo::toDebug(peerInfo))
               continue;
             }
 
             // erase the peer now...
-            ZS_LOG_DEBUG(log("no locations at this peer thus shutting down now") + PeerInfo::toDebugString(peerInfo))
+            ZS_LOG_DEBUG(log("no locations at this peer thus shutting down now") + PeerInfo::toDebug(peerInfo))
             mPeerInfos.erase(current);
             continue;
           }
@@ -2444,7 +2455,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_BASIC(log("state changed") + ", old state=" + toString(mCurrentState) + ", new state=" + toString(state) + getDebugValueString())
+        ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("old state", toString(mCurrentState)) + ZS_PARAM("new state", toString(state)))
 
         mCurrentState = state;
 
@@ -2472,14 +2483,14 @@ namespace openpeer
         }
 
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("error already set") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("error already set") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         mLastError = errorCode;
         mLastErrorReason = reason;
 
-        ZS_LOG_ERROR(Basic, log("account error") + getDebugValueString())
+        ZS_LOG_ERROR(Basic, debug("account error"))
       }
 
       //-----------------------------------------------------------------------
@@ -2505,11 +2516,10 @@ namespace openpeer
         candidate->mIPAddress = finderIP;
 
         // hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map")
-        String hashString ="finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";
+        String hashString = "finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";
         String proofHash = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(relayAccessSecret), hashString));
 
-        ZS_LOG_TRACE(log("get relay candidate hash calculation") + ", relay acceess secret=" + relayAccessSecret + ", hmac input=" + hashString + ", relay access secret proof=" + proofHash)
-
+        ZS_LOG_TRACE(log("get relay candidate hash calculation") + ZS_PARAM("relay acceess secret", relayAccessSecret) + ZS_PARAM("hmac input", hashString) + ZS_PARAM("relay access secret proof", proofHash))
 
         candidate->mAccessSecretProof = proofHash;
         return candidate;
@@ -2523,7 +2533,7 @@ namespace openpeer
       {
         if (peerInfo.mCurrentFindState == state) return;
 
-        ZS_LOG_DEBUG(log("find state changed") + ", old state=" + IPeer::toString(peerInfo.mCurrentFindState) + ", new state=" + IPeer::toString(state) + peerInfo.getDebugValueString())
+        ZS_LOG_DEBUG(log("find state changed") + ZS_PARAM("old state", IPeer::toString(peerInfo.mCurrentFindState)) + ZS_PARAM("new state", IPeer::toString(state)) + peerInfo.toDebug())
 
         peerInfo.mCurrentFindState = state;
 
@@ -2541,7 +2551,7 @@ namespace openpeer
         Time tick = zsLib::now();
 
         if (peerInfo->mPeerFindMonitor) {
-          ZS_LOG_DEBUG(log("peer has peer find in progress thus no need to conduct new search") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("peer has peer find in progress thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -2556,18 +2566,18 @@ namespace openpeer
         }
 
         if (peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("peer has hints of new locations thus search needs redoing") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("peer has hints of new locations thus search needs redoing") + PeerInfo::toDebug(peerInfo))
           return true;
         }
 
         if (peerInfo->mLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("peer has locations and no hints to suggest new locations thus no need to conduct new search") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("peer has locations and no hints to suggest new locations thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
         // we have subscriptions but no locations, see if it is okay to find again "now"...
         if (tick < peerInfo->mNextScheduledFind) {
-          ZS_LOG_DEBUG(log("not time yet to conduct a new search") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("not time yet to conduct a new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -2576,7 +2586,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("peer search should be conducted") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("peer search should be conducted") + PeerInfo::toDebug(peerInfo))
         return true;
       }
 
@@ -2587,21 +2597,21 @@ namespace openpeer
                                                     ) const
       {
         if (peerInfo->mPeerFindMonitor) {
-          ZS_LOG_DEBUG(log("peer has peer active find in progress thus its location should not be shutdown") + ", peer=" + string(peerInfo->mID) + ", peer URI=" + peerURI)
+          ZS_LOG_DEBUG(log("peer has peer active find in progress thus its location should not be shutdown") + ZS_PARAM("peer", peerInfo->mID) + ZS_PARAM("peer URI", peerURI))
           return false;
         }
 
         if (peerInfo->mTotalSubscribers > 0) {
-          ZS_LOG_DEBUG(log("peer has subscriptions thus no need to shutdown") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("peer has subscriptions thus no need to shutdown") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
         if (peerInfo->mFindAtNextPossibleMoment) {
-          ZS_LOG_DEBUG(log("do not shutdown inactive as there is a desire to find at next possible moment") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("do not shutdown inactive as there is a desire to find at next possible moment") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
-        ZS_LOG_DEBUG(log("should shutdown this peer's location that are non-active") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("should shutdown this peer's location that are non-active") + PeerInfo::toDebug(peerInfo))
         return true;
       }
 
@@ -2621,7 +2631,7 @@ namespace openpeer
 
         // scope: the peer is not incoming and all subscriptions are gone therefor it is safe to shutdown the peer locations entirely
         if (peerInfo->mLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("checking to see which locations for this peer should be shutdown due to inactivity") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("checking to see which locations for this peer should be shutdown due to inactivity") + PeerInfo::toDebug(peerInfo))
 
           for (PeerInfo::PeerLocationMap::iterator locationIter = peerInfo->mLocations.begin(); locationIter != peerInfo->mLocations.end(); ) {
             PeerInfo::PeerLocationMap::iterator locationCurrentIter = locationIter;
@@ -2633,11 +2643,11 @@ namespace openpeer
             Time lastActivityTime = peerLocation->forAccount().getTimeOfLastActivity();
 
             if (lastActivityTime + Seconds(OPENPEER_STACK_PEER_LOCATION_INACTIVITY_TIMEOUT_IN_SECONDS) > tick) {
-              ZS_LOG_DEBUG(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+              ZS_LOG_DEBUG(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
               continue;
             }
 
-            ZS_LOG_DEBUG(log("shutting down non incoming peer location that does not have a subscription") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+            ZS_LOG_DEBUG(log("shutting down non incoming peer location that does not have a subscription") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
 
             // signal the shutdown now...
             peerLocation->forAccount().shutdown();
@@ -2655,7 +2665,7 @@ namespace openpeer
 
         Time tick = zsLib::now();
 
-        ZS_LOG_DEBUG(log("checking to see which locations should fire a keep alive timer") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("checking to see which locations should fire a keep alive timer") + PeerInfo::toDebug(peerInfo))
 
         for (PeerInfo::PeerLocationMap::iterator locationIter = peerInfo->mLocations.begin(); locationIter != peerInfo->mLocations.end(); ) {
           PeerInfo::PeerLocationMap::iterator locationCurrentIter = locationIter;
@@ -2667,11 +2677,11 @@ namespace openpeer
           Time lastActivityTime = peerLocation->forAccount().getTimeOfLastActivity();
 
           if (lastActivityTime + Seconds(OPENPEER_STACK_PEER_LOCATION_KEEP_ALIVE_TIME_IN_SECONDS) > tick) {
-            ZS_LOG_TRACE(log("peer location is not requiring a keep alive yet") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+            ZS_LOG_TRACE(log("peer location is not requiring a keep alive yet") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
             continue;
           }
 
-          ZS_LOG_DEBUG(log("peer location is still needed thus sending keep alive now (if possible)...") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+          ZS_LOG_DEBUG(log("peer location is still needed thus sending keep alive now (if possible)...") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
           peerLocation->forAccount().sendKeepAlive();
         }
       }
@@ -2686,17 +2696,17 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerFiles)
 
         if (!shouldFind(peerURI, peerInfo)) {
-          ZS_LOG_DEBUG(log("peer find should not be conducted at this time") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("peer find should not be conducted at this time") + PeerInfo::toDebug(peerInfo))
           return;
         }
 
         mSocket->wakeup();
         if (IICESocket::ICESocketState_Ready != mSocket->getState()) {
-          ZS_LOG_DEBUG(log("should issue find request but must wait until ICE candidates are fully ready") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("should issue find request but must wait until ICE candidates are fully ready") + PeerInfo::toDebug(peerInfo))
           return;
         }
 
-        ZS_LOG_DEBUG(log("peer is conducting a peer find search for locations") + PeerInfo::toDebugString(peerInfo))
+        ZS_LOG_DEBUG(log("peer is conducting a peer find search for locations") + PeerInfo::toDebug(peerInfo))
 
         // remember which hints caused this search to happen
         peerInfo->mPeerFindBecauseOfLocations = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations;
@@ -2712,7 +2722,7 @@ namespace openpeer
 
           if (peerLocation->forAccount().hasReceivedCandidateInformation())
             // do not conduct a search for locations that already are connected or in the process of connecting...
-            ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+            ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
             exclude.push_back((*iter).first);
         }
 
@@ -2747,7 +2757,7 @@ namespace openpeer
 
           if (monitor != peerInfo->mPeerFindMonitor) continue;
 
-          ZS_LOG_DEBUG(log("find request is now complete") + PeerInfo::toDebugString(peerInfo))
+          ZS_LOG_DEBUG(log("find request is now complete") + PeerInfo::toDebug(peerInfo))
 
           // the search is now complete, stop looking for new searches
           peerInfo->mPeerFindMonitor.reset();
@@ -2763,10 +2773,10 @@ namespace openpeer
             for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
               AccountPeerLocationPtr &peerLocation = (*iterLocation).second;
               if (!peerLocation->forAccount().hasReceivedCandidateInformation()) {
-                ZS_LOG_DEBUG(log("shutting down peer location as did not receive ICE candidates") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+                ZS_LOG_DEBUG(log("shutting down peer location as did not receive ICE candidates") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
                 peerLocation->forAccount().shutdown();
               } else {
-                ZS_LOG_DEBUG(log("find location is valid") + PeerInfo::toDebugString(peerInfo) + AccountPeerLocation::toDebugString(peerLocation))
+                ZS_LOG_DEBUG(log("find location is valid") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
                 foundValid = true;
                 peerInfo->findTimeReset();
               }
@@ -2801,7 +2811,7 @@ namespace openpeer
           {
             RelayInfoPtr &relayInfo = (*relayIter).second;
 
-            ZS_LOG_DEBUG(log("shutting down peer's relay") + relayInfo->getDebugValueString())
+            ZS_LOG_DEBUG(log("shutting down peer's relay") + relayInfo->toDebug())
 
             relayInfo->cancel();
           }
@@ -2824,12 +2834,12 @@ namespace openpeer
           PUID subscriptionID = (*current).first;
           PeerSubscriptionPtr subscription = (*current).second.lock();
           if (!subscription) {
-            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ", subscription ID=" = string(subscriptionID))
+            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ZS_PARAM("subscription ID", subscriptionID))
             mPeerSubscriptions.erase(current);
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription peer locations changed") + IPeerSubscription::toDebugString(subscription) + ", state=" + ILocation::toString(state) + ILocation::toDebugString(location))
+          ZS_LOG_DEBUG(log("notifying subscription peer locations changed") + IPeerSubscription::toDebug(subscription) + ZS_PARAM("state", ILocation::toString(state)) + ILocation::toDebug(location))
           subscription->forAccount().notifyLocationConnectionStateChanged(location, state);
         }
       }
@@ -2848,12 +2858,12 @@ namespace openpeer
           PUID subscriptionID = (*current).first;
           PeerSubscriptionPtr subscription = (*current).second.lock();
           if (!subscription) {
-            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ", subscription ID=" = string(subscriptionID))
+            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ZS_PARAM("subscription ID", subscriptionID))
             mPeerSubscriptions.erase(current);
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription peer find state changed") + IPeerSubscription::toDebugString(subscription) + ", state=" + IPeer::toString(state) + IPeer::toDebugString(peer))
+          ZS_LOG_DEBUG(log("notifying subscription peer find state changed") + IPeerSubscription::toDebug(subscription) + ZS_PARAM("state", IPeer::toString(state)) + IPeer::toDebug(peer))
           subscription->forAccount().notifyFindStateChanged(peer, state);
         }
       }
@@ -2869,12 +2879,12 @@ namespace openpeer
           PUID subscriptionID = (*current).first;
           PeerSubscriptionPtr subscription = (*current).second.lock();
           if (!subscription) {
-            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ", subscription ID=" = string(subscriptionID))
+            ZS_LOG_WARNING(Detail, log("peer subscription is gone") + ZS_PARAM("subscription ID", subscriptionID))
             mPeerSubscriptions.erase(current);
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + IPeerSubscription::toDebugString(subscription) + IMessageIncoming::toDebugString(messageIncoming))
+          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + IPeerSubscription::toDebug(subscription) + IMessageIncoming::toDebug(messageIncoming))
           subscription->forAccount().notifyMessageIncoming(messageIncoming);
         }
       }
@@ -2902,24 +2912,34 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Account::RelayInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Account::RelayInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("relay info id", string(mID), firstTime) +
-        Helper::getDebugValue("channel", 0 != mChannel ? string(mChannel) : String(), firstTime) +
-        Helper::getDebugValue("local context", mLocalContext, firstTime) +
-        Helper::getDebugValue("remote context", mRemoteContext, firstTime) +
-        Helper::getDebugValue("relay channel id", mRelayChannel ? string(mRelayChannel->getID()) : String(), firstTime) +
-        Helper::getDebugValue("send stream id", mSendStream ? string(mSendStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("receive stream id", mReceiveStream ? string(mReceiveStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("peer location", mAccountPeerLocation ? string(mAccountPeerLocation->forAccount().getID()) : String(), firstTime);
+        ElementPtr resultEl = Element::create("stack::Account::RelayInfo");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "channel", mChannel);
+        IHelper::debugAppend(resultEl, "local context", mLocalContext);
+        IHelper::debugAppend(resultEl, "remote context", mRemoteContext);
+        IHelper::debugAppend(resultEl, "relay channel id", mRelayChannel ? mRelayChannel->getID() : 0);
+        IHelper::debugAppend(resultEl, "send stream id", mSendStream ? mSendStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "receive stream id", mReceiveStream ? mReceiveStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "peer location", mAccountPeerLocation ? mAccountPeerLocation->forAccount().getID() : 0);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Account::RelayInfo::log(const char *message) const
+      {
+        ElementPtr objectEl = Element::create("stack::Account::RelayInfo");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
       void Account::RelayInfo::cancel()
       {
-        ZS_LOG_TRACE("Account::RelayInfo [" + string(mID) + "] cancel called")
+        ZS_LOG_TRACE(log("cancel called"))
 
         if (mRelayChannelSubscription) {
           mRelayChannelSubscription->cancel();
@@ -2958,10 +2978,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Account::PeerInfo::toDebugString(PeerInfoPtr peerInfo, bool includeCommaPrefix)
+      ElementPtr Account::PeerInfo::toDebug(PeerInfoPtr peerInfo)
       {
-        if (!peerInfo) return includeCommaPrefix ? String(", peer info=(null)") : String("peer info=(null");
-        return peerInfo->getDebugValueString(includeCommaPrefix);
+        if (!peerInfo) return ElementPtr();
+        return peerInfo->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -2985,7 +3005,7 @@ namespace openpeer
 
           ZS_THROW_BAD_STATE_IF(!relayInfo)
 
-          ZS_LOG_DEBUG(log("cancelling incoming relay channel") + relayInfo->getDebugValueString())
+          ZS_LOG_DEBUG(log("cancelling incoming relay channel") + relayInfo->toDebug())
 
           relayInfo->cancel();
         }
@@ -3009,28 +3029,32 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Account::PeerInfo::log(const char *message) const
+      Log::Params Account::PeerInfo::log(const char *message) const
       {
-        return String("Account::PeerInfo [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("stack::Account::PeerInfo");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String Account::PeerInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Account::PeerInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("peer info id", string(mID), firstTime) +
-        Helper::getDebugValue("find next moment", mFindAtNextPossibleMoment ? String("true") : String(), firstTime) +
-        IPeer::toDebugString(mPeer) +
-        Helper::getDebugValue("locations", mLocations.size() > 0 ? string(mLocations.size()) : String(), firstTime) +
-        Helper::getDebugValue("find monitor", mPeerFindMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("find because", mPeerFindBecauseOfLocations.size() > 0 ? string(mPeerFindBecauseOfLocations.size()) : String(), firstTime) +
-        Helper::getDebugValue("find redo because", mPeerFindNeedsRedoingBecauseOfLocations.size() > 0 ? string(mPeerFindNeedsRedoingBecauseOfLocations.size()) : String(), firstTime) +
-        Helper::getDebugValue("find state", IPeer::toString(mCurrentFindState), firstTime) +
-        Helper::getDebugValue("subscribers", 0 != mTotalSubscribers ? string(mTotalSubscribers) : String(), firstTime) +
-        Helper::getDebugValue("next find", Time() != mNextScheduledFind ? IHelper::timeToString(mNextScheduledFind) : String(), firstTime) +
-        Helper::getDebugValue("last duration", 0 != mLastScheduleFindDuration.total_milliseconds() ? string(mLastScheduleFindDuration.total_milliseconds()) : String(), firstTime) +
-        Helper::getDebugValue("prevent crazy refind", mPreventCrazyRefindNextTime ? String("true") : String(), firstTime);
+        ElementPtr resultEl = Element::create("stack::Account::PeerInfo");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "find next moment", mFindAtNextPossibleMoment);
+        IHelper::debugAppend(resultEl, IPeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, "locations", mLocations.size());
+        IHelper::debugAppend(resultEl, "find monitor", (bool)mPeerFindMonitor);
+        IHelper::debugAppend(resultEl, "find because", mPeerFindBecauseOfLocations.size());
+        IHelper::debugAppend(resultEl, "find redo because", mPeerFindNeedsRedoingBecauseOfLocations.size());
+        IHelper::debugAppend(resultEl, "find state", IPeer::toString(mCurrentFindState));
+        IHelper::debugAppend(resultEl, "subscribers", mTotalSubscribers);
+        IHelper::debugAppend(resultEl, "next find", mNextScheduledFind);
+        IHelper::debugAppend(resultEl, "last duration", mLastScheduleFindDuration.total_milliseconds());
+        IHelper::debugAppend(resultEl, "prevent crazy refind", mPreventCrazyRefindNextTime);
+
+        return resultEl;
       }
     }
 
@@ -3055,9 +3079,9 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IAccount::toDebugString(IAccountPtr account, bool includeCommaPrefix)
+    ElementPtr IAccount::toDebug(IAccountPtr account)
     {
-      return internal::Account::toDebugString(account, includeCommaPrefix);
+      return internal::Account::toDebug(account);
     }
 
     //-------------------------------------------------------------------------

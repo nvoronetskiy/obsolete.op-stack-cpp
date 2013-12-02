@@ -94,9 +94,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Message::toDebugString(MessagePtr message, bool includeCommaPrefix)
+      ElementPtr Message::toDebug(MessagePtr message)
       {
-        if (!message) return String(includeCommaPrefix ? ", message=(null)" : "message=(null)");
+        if (!message) return ElementPtr();
 
         const char *messageTypeStr = Message::toString(message->messageType());
         const char *methodStr = message->methodAsString();
@@ -115,27 +115,28 @@ namespace openpeer
         String messageType(messageTypeStr ? String(messageTypeStr) : String());
         String method(methodStr ? String(methodStr) : String());
 
-        String timestamp(Time() != time ? IHelper::timeToString(time) : String());
-
-        String errorCode;
+        MessageResult::ErrorCodeType errorCode = 0;
         String errorReason;
 
         if (message->isResult()) {
           MessageResultPtr result = MessageResult::convert(message);
-          errorCode = 0 != result->errorCode() ? string(result->errorCode()) : String();
+          errorCode = result->errorCode();
           errorReason = result->errorReason();
         }
 
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("message type", messageType, firstTime) +
-               Helper::getDebugValue("handler", handler, firstTime) +
-               Helper::getDebugValue("method", method, firstTime) +
-               Helper::getDebugValue("domain", domain, firstTime) +
-               Helper::getDebugValue("appid", appID, firstTime) +
-               Helper::getDebugValue("id", messageID, firstTime) +
-               Helper::getDebugValue("time", timestamp, firstTime) +
-               Helper::getDebugValue("error code", errorCode, firstTime) +
-               Helper::getDebugValue("error reason", errorReason, firstTime);
+        ElementPtr resultEl = Element::create("message::Message");
+
+        IHelper::debugAppend(resultEl, "message type", messageType);
+        IHelper::debugAppend(resultEl, "handler", handler);
+        IHelper::debugAppend(resultEl, "method", method);
+        IHelper::debugAppend(resultEl, "domain", domain);
+        IHelper::debugAppend(resultEl, "appid", appID);
+        IHelper::debugAppend(resultEl, "id", messageID);
+        IHelper::debugAppend(resultEl, "time", time);
+        IHelper::debugAppend(resultEl, "error code", errorCode);
+        IHelper::debugAppend(resultEl, "error reason", errorReason);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------

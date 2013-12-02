@@ -36,7 +36,10 @@
 #include <openpeer/stack/IPeer.h>
 #include <openpeer/stack/internal/stack_Location.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 
 
@@ -50,6 +53,7 @@ namespace openpeer
     namespace internal
     {
       using zsLib::Stringize;
+      using services::IHelper;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -58,22 +62,6 @@ namespace openpeer
       #pragma mark
       #pragma mark (helpers)
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      static String debugNameValue(
-                                   bool &ioFirst,
-                                   const String &name,
-                                   const String &value,
-                                   bool addEquals = true
-                                   )
-      {
-        if (value.isEmpty()) return String();
-        if (ioFirst) {
-          ioFirst = false;
-          return name + "=" + value;
-        }
-        return String(", ") + name + (addEquals ? "=" : "") + value;
-      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -215,7 +203,7 @@ namespace openpeer
         mPublishedLocation(publishedLocation),
         mExpires(expires)
       {
-        ZS_LOG_DEBUG(log("created") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -228,7 +216,7 @@ namespace openpeer
       {
         if (isNoop()) return;
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("destroyed"))
       }
 
       //-----------------------------------------------------------------------
@@ -382,10 +370,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationMetaData::toDebugString(IPublicationMetaDataPtr metaData, bool includeCommaPrefix)
+      ElementPtr PublicationMetaData::toDebug(IPublicationMetaDataPtr metaData)
       {
-        if (!metaData) return includeCommaPrefix ? String(", publication meta data=(null)") : String("publication meta data=(null)");
-        return PublicationMetaData::convert(metaData)->getDebugValuesString(includeCommaPrefix);
+        if (!metaData) return ElementPtr();
+        return PublicationMetaData::convert(metaData)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -463,17 +451,17 @@ namespace openpeer
       result_true:
         {
           IPublicationPtr publication = metaData->toPublication();
-          ZS_LOG_INSANE(log("less than is TRUE") + ", reason=" + reason)
-          ZS_LOG_INSANE(log("less than X (TRUE):") + getDebugValuesString())
-          ZS_LOG_INSANE(log("less than Y (TRUE):") + (publication ? Publication::convert(publication)->forPublicationMetaData().getDebugValuesString() : PublicationMetaData::convert(metaData)->getDebugValuesString()))
+          ZS_LOG_INSANE(log("less than is TRUE") + ZS_PARAM("reason", reason))
+          ZS_LOG_INSANE(log("less than X (TRUE)") + toDebug())
+          ZS_LOG_INSANE(log("less than Y (TRUE)") + (publication ? Publication::convert(publication)->forPublicationMetaData().toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
           return true;
         }
       result_false:
         {
           IPublicationPtr publication = metaData->toPublication();
-          ZS_LOG_INSANE(log("less than is FALSE") + ", reason=" + reason)
-          ZS_LOG_INSANE(log("less than X (FALSE):") + getDebugValuesString())
-          ZS_LOG_INSANE(log("less than Y (FALSE):") + (publication ? Publication::convert(publication)->forPublicationMetaData().getDebugValuesString() : PublicationMetaData::convert(metaData)->getDebugValuesString()))
+          ZS_LOG_INSANE(log("less than is FALSE") + ZS_PARAM("reason", reason))
+          ZS_LOG_INSANE(log("less than X (FALSE):") + toDebug())
+          ZS_LOG_INSANE(log("less than Y (FALSE):") + (publication ? Publication::convert(publication)->forPublicationMetaData().toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
         }
         return false;
       }
@@ -514,27 +502,29 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PublicationMetaData::getDebugValuesString(bool includeCommaPrefix) const
+      ElementPtr PublicationMetaData::toDebug() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getDebugValuesString();
+        if (mPublication) return mPublication->forPublicationMetaData().toDebug();
 
         LocationPtr creatorLocation = Location::convert(getCreatorLocation());
         LocationPtr publishedLocation = Location::convert(getPublishedLocation());
 
-        bool first = !includeCommaPrefix;
+        ElementPtr resultEl = Element::create("PublicationMetaData");
 
-        return debugNameValue(first, "id", string(mID))
-             + debugNameValue(first, "mapped to publication", (mPublication ? "true" : "false"))
-             + debugNameValue(first, "name", getName())
-             + debugNameValue(first, "version", (0 == mVersion ? String() : string(getVersion())))
-             + debugNameValue(first, "base version", (0 == mBaseVersion ? String() : string(getBaseVersion())))
-             + debugNameValue(first, "lineage", (0 == mLineage ? String() : string(getLineage())))
-             + debugNameValue(first, "creator: ", creatorLocation ? creatorLocation->forPublication().getDebugValueString(false) : String(), false)
-             + debugNameValue(first, "published: ", publishedLocation ? publishedLocation->forPublication().getDebugValueString(false) : String(), false)
-             + debugNameValue(first, "mime type", getMimeType())
-             + debugNameValue(first, "expires", (Time() == mExpires ? String() : string(getExpires())))
-             + debugNameValue(first, "total relationships", (mPublishedRelationships.size() < 1 ? String() : string(mPublishedRelationships.size())));
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "mapped to publication", (bool)mPublication);
+        IHelper::debugAppend(resultEl, "name", getName());
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "base version", mBaseVersion);
+        IHelper::debugAppend(resultEl, "lineage", mLineage);
+        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "mime type", getMimeType());
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+        IHelper::debugAppend(resultEl, "total relationships", mPublishedRelationships.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -546,9 +536,17 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PublicationMetaData::log(const char *message) const
+      Log::Params PublicationMetaData::log(const char *message) const
       {
-        return String("PublicationMetaData [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PublicationMetaData");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params PublicationMetaData::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
       }
     }
 
@@ -561,9 +559,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IPublicationMetaData::toDebugString(IPublicationMetaDataPtr metaData, bool includeCommaPrefix)
+    ElementPtr IPublicationMetaData::toDebug(IPublicationMetaDataPtr metaData)
     {
-      return internal::PublicationMetaData::toDebugString(metaData, includeCommaPrefix);
+      return internal::PublicationMetaData::toDebug(metaData);
     }
 
     //-------------------------------------------------------------------------

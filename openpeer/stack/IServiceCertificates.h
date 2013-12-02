@@ -67,7 +67,7 @@ namespace openpeer
 
     interaction IServiceCertificatesValidateQuery
     {
-      static String toDebugString(IServiceCertificatesValidateQueryPtr query, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IServiceCertificatesValidateQueryPtr query);
 
       static IServiceCertificatesValidateQueryPtr queryIfValidSignature(
                                                                        IServiceCertificatesValidateQueryDelegatePtr delegate,

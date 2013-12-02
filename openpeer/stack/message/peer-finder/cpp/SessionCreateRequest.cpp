@@ -62,6 +62,12 @@ namespace openpeer
         using internal::MessageHelper;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "SessionCreateRequest");
+        }
+
+        //---------------------------------------------------------------------
         SessionCreateRequestPtr SessionCreateRequest::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<SessionCreateRequest>(message);
@@ -96,18 +102,18 @@ namespace openpeer
         DocumentPtr SessionCreateRequest::encode()
         {
           if (!mPeerFiles) {
-            ZS_LOG_ERROR(Detail, "SessionCreateRequest [] peer files was null")
+            ZS_LOG_ERROR(Detail, slog("peer files was null"))
             return DocumentPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "SessionCreateRequest [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return DocumentPtr();
           }
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "SessionCreateRequest [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return DocumentPtr();
           }
 

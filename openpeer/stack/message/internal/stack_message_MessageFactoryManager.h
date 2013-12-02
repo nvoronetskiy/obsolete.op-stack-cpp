@@ -121,7 +121,7 @@ namespace openpeer
           #pragma mark MessageFactoryManager => (internal)
           #pragma mark
 
-          String log(const char *message);
+          Log::Params log(const char *message);
 
           void internalRegisterFactory(IMessageFactoryPtr factory);
           MessagePtr internalCreate(

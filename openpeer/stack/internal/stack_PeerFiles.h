@@ -71,7 +71,7 @@ namespace openpeer
         #pragma mark PeerFiles => IPeerFiles
         #pragma mark
 
-        static String toDebugString(IPeerFilesPtr peerFiles, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPeerFilesPtr peerFiles);
 
         static PeerFilesPtr generate(
                                      const char *password,
@@ -96,9 +96,9 @@ namespace openpeer
         #pragma mark PeerFiles => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------

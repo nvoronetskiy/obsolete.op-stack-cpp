@@ -44,6 +44,7 @@
 #include <openpeer/services/IHTTP.h>
 
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 
 #include <zsLib/Stringize.h>
@@ -167,12 +168,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String FinderRelayChannel::toDebugString(IFinderRelayChannelPtr channel, bool includeCommaPrefix)
+      ElementPtr FinderRelayChannel::toDebug(IFinderRelayChannelPtr channel)
       {
-        if (!channel) return String(includeCommaPrefix ? ", finder relay channel=(null)" : "finder relay channel=(null)");
+        if (!channel) return ElementPtr();
 
         FinderRelayChannelPtr pThis = FinderRelayChannel::convert(channel);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -304,7 +305,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!decryptUsingEncodingPassphrase)
         ZS_THROW_INVALID_ARGUMENT_IF(!remotePeer)
 
-        ZS_LOG_DEBUG(log("set incoming context") + ", context id=" + contextID + ", decrypt passphrase=" + decryptUsingEncodingPassphrase + ", remote peer=" + IPeer::toDebugString(remotePeer))
+        ZS_LOG_DEBUG(log("set incoming context") + ZS_PARAM("context id", contextID) + ZS_PARAM("decrypt passphrase", decryptUsingEncodingPassphrase) + ZS_PARAM("remote peer", IPeer::toDebug(remotePeer)))
 
         AutoRecursiveLock lock(getLock());
 
@@ -414,7 +415,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        ZS_LOG_DEBUG(log("on finder connection relay channel state changed") + ", channel id=" + string(channel->getID()) + ", state=" + IFinderConnectionRelayChannel::toString(state))
+        ZS_LOG_DEBUG(log("on finder connection relay channel state changed") + ZS_PARAM("channel id", channel->getID()) + ZS_PARAM("state", IFinderConnectionRelayChannel::toString(state)))
         step();
       }
 
@@ -432,7 +433,7 @@ namespace openpeer
                                                                          IMessageLayerSecurityChannel::SessionStates state
                                                                          )
       {
-        ZS_LOG_DEBUG(log("on message layer security channel state changed") + ", mls channel ID=" + string(channel->getID()) + ", state=" + IMessageLayerSecurityChannel::toString(state))
+        ZS_LOG_DEBUG(log("on message layer security channel state changed") + ZS_PARAM("mls channel ID", channel->getID()) + ZS_PARAM("state", IMessageLayerSecurityChannel::toString(state)))
 
         AutoRecursiveLock lock(getLock());
 
@@ -468,7 +469,7 @@ namespace openpeer
                 (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey())) {
 
               // have remote context ID, but have we set local context ID?
-              ZS_LOG_DEBUG(log("have remote context or receive keying material needs to be signed") + ", remote context=" + mMLSChannel->getRemoteContextID())
+              ZS_LOG_DEBUG(log("have remote context or receive keying material needs to be signed") + ZS_PARAM("remote context", mMLSChannel->getRemoteContextID()))
 
               if (mMLSChannel->getLocalContextID().isEmpty()) {
                 ZS_LOG_DEBUG(log("missing local context"))
@@ -480,13 +481,13 @@ namespace openpeer
           }
 
           if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
-            ZS_LOG_DEBUG(log("needs receive keying decoding private key") + IPeerFiles::toDebugString(peerFiles))
+            ZS_LOG_DEBUG(log("needs receive keying decoding private key") + IPeerFiles::toDebug(peerFiles))
 
             mMLSChannel->setReceiveKeyingDecoding(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
           }
 
           if (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) {
-            ZS_LOG_DEBUG(log("needs receive keying signing public key") + IPeerFiles::toDebugString(peerFiles))
+            ZS_LOG_DEBUG(log("needs receive keying signing public key") + IPeerFiles::toDebug(peerFiles))
 
             ElementPtr receiveSignedEl = mMLSChannel->getSignedReceivingKeyingMaterial();
             String peerURI;
@@ -504,7 +505,7 @@ namespace openpeer
             }
 
             if (fullPublicKey.hasData()) {
-              ZS_LOG_DEBUG(log("found full public key") + ", full public key=" + fullPublicKey)
+              ZS_LOG_DEBUG(log("found full public key") + ZS_PARAM("full public key", fullPublicKey))
               mRemotePublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(fullPublicKey));
             }
 
@@ -545,34 +546,45 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String FinderRelayChannel::log(const char *message) const
+      Log::Params FinderRelayChannel::log(const char *message) const
       {
-        return String("FinderRelayChannel [" + string(mID) + "] " + message);
+        ElementPtr objectEl = Element::create("FinderRelayChannel");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String FinderRelayChannel::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params FinderRelayChannel::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr FinderRelayChannel::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
 
-        return Helper::getDebugValue("relay channel id", string(mID), firstTime) +
-               Helper::getDebugValue("subscriptions", mSubscriptions.size() > 0 ? string(mSubscriptions.size()) : String(), firstTime) +
-               Helper::getDebugValue("default subscription", mDefaultSubscription ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("state", toString(mCurrentState), firstTime) +
-               Helper::getDebugValue("last error", 0 != get(mLastError) ? string(mLastError) : String(), firstTime) +
-               Helper::getDebugValue("last reason", mLastErrorReason, firstTime) +
-               Helper::getDebugValue("account", mAccount.lock() ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("incoming", mIncoming ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("connection relay channel", mConnectionRelayChannel ? string(mConnectionRelayChannel->getID()) : String(), firstTime) +
-               IMessageLayerSecurityChannel::toDebugString(mMLSChannel) +
-               Helper::getDebugValue("notified needs context", mNotifiedNeedsContext ? String("true") : String(), firstTime) +
-               IPeer::toDebugString(mRemotePeer) +
-               Helper::getDebugValue("remote public key", mRemotePublicKey ? String("true") : String(), firstTime) +
-               ", outer recv stream: " + ITransportStream::toDebugString(mOuterReceiveStream, false) +
-               ", outer send stream: " + ITransportStream::toDebugString(mOuterSendStream, false) +
-               ", tcp recv stream: " + ITransportStream::toDebugString(mWireReceiveStream, false) +
-               ", tcp send stream: " + ITransportStream::toDebugString(mWireSendStream, false);
+        ElementPtr resultEl = Element::create("FinderRelayChannel");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
+        IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "last error", get(mLastError));
+        IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "account", (bool)mAccount.lock());
+        IHelper::debugAppend(resultEl, "incoming", mIncoming);
+        IHelper::debugAppend(resultEl, "connection relay channel", mConnectionRelayChannel ? mConnectionRelayChannel->getID() : 0);
+        IHelper::debugAppend(resultEl, IMessageLayerSecurityChannel::toDebug(mMLSChannel));
+        IHelper::debugAppend(resultEl, "notified needs context", mNotifiedNeedsContext);
+        IHelper::debugAppend(resultEl, IPeer::toDebug(mRemotePeer));
+        IHelper::debugAppend(resultEl, "remote public key", (bool)mRemotePublicKey);
+        IHelper::debugAppend(resultEl, "outer recv stream", ITransportStream::toDebug(mOuterReceiveStream));
+        IHelper::debugAppend(resultEl, "outer send stream", ITransportStream::toDebug(mOuterSendStream));
+        IHelper::debugAppend(resultEl, "tcp recv stream", ITransportStream::toDebug(mWireReceiveStream));
+        IHelper::debugAppend(resultEl, "tcp send stream", ITransportStream::toDebug(mWireSendStream));
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -580,7 +592,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ", state=" + toString(state) + ", old state=" + toString(mCurrentState))
+        ZS_LOG_DEBUG(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
         FinderRelayChannelPtr pThis = mThisWeak.lock();
 
@@ -598,14 +610,14 @@ namespace openpeer
         }
 
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("error already set thus ignoring new error") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("error already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         get(mLastError) = errorCode;
         mLastErrorReason = reason;
 
-        ZS_LOG_WARNING(Detail, log("error set") + ", code=" + string(mLastError) + ", reason=" + mLastErrorReason + getDebugValueString())
+        ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
       }
       
       //-----------------------------------------------------------------------
@@ -617,7 +629,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!stepMLS()) return;
         if (!stepConnectionRelayChannel()) return;
@@ -639,7 +651,7 @@ namespace openpeer
           }
           case IMessageLayerSecurityChannel::SessionState_Connected:   break;
           case IMessageLayerSecurityChannel::SessionState_Shutdown:  {
-            ZS_LOG_WARNING(Detail, log("MLS channel shutdown") + ", error=" + string(error) + ", reason=" + reason)
+            ZS_LOG_WARNING(Detail, log("MLS channel shutdown") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
             setError(error, reason);
             cancel();
             return false;
@@ -669,7 +681,7 @@ namespace openpeer
           }
           case IFinderConnectionRelayChannel::SessionState_Connected:   break;
           case IFinderConnectionRelayChannel::SessionState_Shutdown:  {
-            ZS_LOG_WARNING(Detail, log("finder connection relay channel shutdown") + ", error=" + string(error) + ", reason=" + reason)
+            ZS_LOG_WARNING(Detail, log("finder connection relay channel shutdown") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
             setError(error, reason);
             cancel();
             return false;
@@ -701,9 +713,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String IFinderRelayChannel::toDebugString(IFinderRelayChannelPtr channel, bool includeCommaPrefix)
+      ElementPtr IFinderRelayChannel::toDebug(IFinderRelayChannelPtr channel)
       {
-        return internal::FinderRelayChannel::toDebugString(channel, includeCommaPrefix);
+        return internal::FinderRelayChannel::toDebug(channel);
       }
 
       //-----------------------------------------------------------------------

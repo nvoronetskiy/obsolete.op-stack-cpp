@@ -55,7 +55,7 @@ namespace openpeer
         IPublicationMetaDataForPublication &forPublication() {return *this;}
         const IPublicationMetaDataForPublication &forPublication() const {return *this;}
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -126,7 +126,7 @@ namespace openpeer
 
         virtual void setExpires(Time expires) = 0;
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -208,7 +208,7 @@ namespace openpeer
         #pragma mark PublicationMetaData => IPublicationMetaData
         #pragma mark
 
-        static String toDebugString(IPublicationMetaDataPtr metaData, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPublicationMetaDataPtr metaData);
 
         virtual PUID getID() const {return mID;}
 
@@ -236,7 +236,7 @@ namespace openpeer
         #pragma mark PublicationMetaData => IPublicationMetaDataForPublication
         #pragma mark
 
-        // (duplicate) virtual String getDebugValuesString(bool includeCommaPrefix = true) const;
+        // (duplicate) virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -291,7 +291,7 @@ namespace openpeer
 
         virtual void setExpires(Time expires);
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -304,7 +304,8 @@ namespace openpeer
         #pragma mark PublicationMetaData => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
       protected:
         //---------------------------------------------------------------------

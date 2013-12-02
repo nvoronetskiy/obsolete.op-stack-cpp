@@ -159,10 +159,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String AccountFinder::toDebugString(AccountFinderPtr finder, bool includeCommaPrefix)
+      ElementPtr AccountFinder::toDebug(AccountFinderPtr finder)
       {
-        if (!finder) return includeCommaPrefix ? String(", finder=(null)") : String("finder=(null)");
-        return finder->getDebugValueString(includeCommaPrefix);
+        if (!finder) return ElementPtr();
+        return finder->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -245,7 +245,7 @@ namespace openpeer
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
         ZS_LOG_DETAIL(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("FINDER SEND MESSAGE") + "=" + "\n" + ((CSTR)(output.get())) + "\n")
+        ZS_LOG_DETAIL(log("FINDER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
         ZS_LOG_DETAIL(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
         ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
@@ -338,7 +338,7 @@ namespace openpeer
                                                          IFinderConnection::SessionStates state
                                                          )
       {
-        ZS_LOG_DEBUG(log("finder connection state changed") + ", finder connection ID=" + string(connection->getID()) + ", state=" + IFinderConnection::toString(state))
+        ZS_LOG_DEBUG(log("finder connection state changed") + ZS_PARAM("finder connection ID", connection->getID()) + ZS_PARAM("state", IFinderConnection::toString(state)))
 
         AutoRecursiveLock lock(getLock());
         step();
@@ -358,7 +358,7 @@ namespace openpeer
         }
 
         if (mFinderConnection != connection) {
-          ZS_LOG_WARNING(Detail, log("notified about obsolete finder connection") + ", connection=" + string(connection->getID()))
+          ZS_LOG_WARNING(Detail, log("notified about obsolete finder connection") + ZS_PARAM("connection", connection->getID()))
           return;
         }
 
@@ -376,7 +376,7 @@ namespace openpeer
         IFinderRelayChannelPtr relayChannel = connection->accept(IFinderRelayChannelDelegatePtr(), outer, receiveStream, sendStream, &channel);
 
         if (relayChannel) {
-          ZS_LOG_DEBUG(log("relay channel accepted") + IFinderRelayChannel::toDebugString(relayChannel))
+          ZS_LOG_DEBUG(log("relay channel accepted") + IFinderRelayChannel::toDebug(relayChannel))
           mDelegate->onAccountFinderIncomingRelayChannel(mThisWeak.lock(), relayChannel, receiveStream, sendStream, channel);
         }
 
@@ -438,7 +438,7 @@ namespace openpeer
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("FINDER RECEIVED MESSAGE=") + "\n" + ((CSTR)(buffer->BytePtr())) + "\n")
+          ZS_LOG_DETAIL(log("FINDER RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
@@ -452,7 +452,7 @@ namespace openpeer
           }
 
           ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebugString(message))
+          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
           ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
           if (IMessageMonitor::handleMessageReceived(message)) {
@@ -515,7 +515,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("requester message session create received error reply") + Message::toDebugString(result))
+        ZS_LOG_DEBUG(log("requester message session create received error reply") + Message::toDebug(result))
 
         cancel();
         return true;
@@ -563,7 +563,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("requester message session keep alive received error reply") + Message::toDebugString(result))
+        ZS_LOG_DEBUG(log("requester message session keep alive received error reply") + Message::toDebug(result))
         cancel();
         return true;
       }
@@ -686,32 +686,40 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String AccountFinder::log(const char *message) const
+      Log::Params AccountFinder::log(const char *message) const
       {
-        return String("AccountFinder [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("AccountFinder");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String AccountFinder::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params AccountFinder::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr AccountFinder::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return
-        Helper::getDebugValue("finder id", string(mID), firstTime) +
-        Helper::getDebugValue("state", IAccount::toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("finder connection id", mFinderConnection ? string(mFinderConnection->getID()) : String(), firstTime) +
-//               Helper::getDebugValue("rudp ice socket subscription id", mSocketSubscription ? string(mSocketSubscription->getID()) : String(), firstTime) +
-//               Helper::getDebugValue("rudp ice socket session id", mSocketSession ? string(mSocketSession->getID()) : String(), firstTime) +
-//               Helper::getDebugValue("rudp messaging id", mMessaging ? string(mMessaging->getID()) : String(), firstTime) +
-        Helper::getDebugValue("receive stream id", mReceiveStream ? string(mReceiveStream->getID()) : String(), firstTime) +
-        Helper::getDebugValue("send stream id", mSendStream ? string(mSendStream->getID()) : String(), firstTime) +
-        mFinder.getDebugValueString() +
-        Helper::getDebugValue("finder IP", !mFinderIP.isAddressEmpty() ? mFinderIP.string() : String(), firstTime) +
-        Helper::getDebugValue("server agent", mServerAgent, firstTime) +
-        Helper::getDebugValue("created time", Time() != mSessionCreatedTime ? IHelper::timeToString(mSessionCreatedTime) : String(), firstTime) +
-        Helper::getDebugValue("session create monitor", mSessionCreateMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("session keep alive monitor", mSessionKeepAliveMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("session delete monitor", mSessionDeleteMonitor ? String("true") : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("AccountFinder");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "finder connection id", mFinderConnection ? mFinderConnection->getID() : 0);
+        IHelper::debugAppend(resultEl, "receive stream id", mReceiveStream ? mReceiveStream->getID() : 0);
+        IHelper::debugAppend(resultEl, "send stream id", mSendStream ? mSendStream->getID() : 0);
+        IHelper::debugAppend(resultEl, mFinder.toDebug());
+        IHelper::debugAppend(resultEl, "finder IP", !mFinderIP.isAddressEmpty() ? mFinderIP.string() : String());
+        IHelper::debugAppend(resultEl, "server agent", mServerAgent);
+        IHelper::debugAppend(resultEl, "created time", mSessionCreatedTime);
+        IHelper::debugAppend(resultEl, "session create monitor", (bool)mSessionCreateMonitor);
+        IHelper::debugAppend(resultEl, "session keep alive monitor", (bool)mSessionKeepAliveMonitor);
+        IHelper::debugAppend(resultEl, "session delete monitor", (bool)mSessionDeleteMonitor);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -806,7 +814,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         AccountPtr outer = mOuter.lock();
         if (!outer) {
@@ -820,7 +828,7 @@ namespace openpeer
 
         setState(IAccount::AccountState_Ready);
 
-        ZS_LOG_TRACE(log("step complete") + getDebugValueString())
+        ZS_LOG_TRACE(debug("step complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -841,7 +849,7 @@ namespace openpeer
               return true;
             }
             case IFinderConnection::SessionState_Shutdown: {
-              ZS_LOG_WARNING(Detail, log("finder connection faield") + ", error=" + string(error) + ", reason=" + reason)
+              ZS_LOG_WARNING(Detail, debug("finder connection failed") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               cancel();
               return false;
             }
@@ -919,7 +927,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_BASIC(log("current state changed") + ", old=" + IAccount::toString(mCurrentState) + ", new=" + IAccount::toString(state) + getDebugValueString())
+        ZS_LOG_BASIC(debug("current state changed") + ZS_PARAM("old state", IAccount::toString(mCurrentState)) + ZS_PARAM("new state", IAccount::toString(state)))
         mCurrentState = state;
 
         if (!mDelegate) return;

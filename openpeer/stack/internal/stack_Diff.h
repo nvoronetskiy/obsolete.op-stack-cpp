@@ -81,6 +81,9 @@ namespace openpeer
                                              ElementPtr setAttributesFromThisElement = ElementPtr(),
                                              ElementPtr removeAttributesFromThisElement = ElementPtr()
                                              );
+
+      protected:
+        static Log::Params log(const char *message);
       };
     }
   }

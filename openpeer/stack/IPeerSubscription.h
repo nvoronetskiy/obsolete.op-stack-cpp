@@ -50,7 +50,7 @@ namespace openpeer
 
     interaction IPeerSubscription
     {
-      static String toDebugString(IPeerSubscriptionPtr subscription, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPeerSubscriptionPtr subscription);
 
       static IPeerSubscriptionPtr subscribeAll(
                                                IAccountPtr account,

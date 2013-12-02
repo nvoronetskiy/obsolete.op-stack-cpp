@@ -34,10 +34,13 @@
 #include <openpeer/stack/message/Message.h>
 #include <openpeer/stack/IMessageMonitor.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
+#include <zsLib/Log.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -48,6 +51,7 @@ namespace openpeer
     namespace internal
     {
       using namespace zsLib::XML;
+      using services::IHelper;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -230,9 +234,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Cache::log(const char *message) const
+      Log::Params Cache::log(const char *message) const
       {
-        return String("stack::Cache [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("stack::Cache");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
@@ -241,7 +247,7 @@ namespace openpeer
         AutoRecursiveLock lock(mLock);
         mDelegate = delegate;
 
-        ZS_LOG_DEBUG(log("setup called") + ", has delegate=" + (delegate ? "true":"false"))
+        ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
       }
 
     }

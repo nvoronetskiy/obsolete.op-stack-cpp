@@ -51,7 +51,7 @@ namespace openpeer
 
     interaction IMessageMonitor
     {
-      static String toDebugString(IMessageMonitorPtr monitor, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IMessageMonitorPtr monitor);
 
       static IMessageMonitorPtr monitor(
                                         IMessageMonitorDelegatePtr delegate,

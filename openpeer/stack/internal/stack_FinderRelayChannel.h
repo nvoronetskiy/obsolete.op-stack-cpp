@@ -131,7 +131,7 @@ namespace openpeer
         #pragma mark FinderRelayChannel => IFinderRelayChannel
         #pragma mark
 
-        static String toDebugString(IFinderRelayChannelPtr channel, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IFinderRelayChannelPtr channel);
 
         static FinderRelayChannelPtr connect(
                                              IFinderRelayChannelDelegatePtr delegate,        // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
@@ -218,9 +218,10 @@ namespace openpeer
         bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
 
         RecursiveLock &getLock() const;
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         void setState(SessionStates state);
         void setError(WORD errorCode, const char *inReason = NULL);

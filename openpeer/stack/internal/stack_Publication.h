@@ -78,7 +78,7 @@ namespace openpeer
 
         virtual const PublishToRelationshipsMap &getRelationships() const = 0;
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -162,7 +162,7 @@ namespace openpeer
                                                     bool rawSizeOkay = true
                                                     ) const = 0;
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -258,7 +258,7 @@ namespace openpeer
         #pragma mark Publication => IPublicationMetaData
         #pragma mark
 
-        static String toDebugString(IPublicationPtr publication, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPublicationPtr publication);
 
         virtual PUID getID() const {return mID;}
 
@@ -422,7 +422,7 @@ namespace openpeer
                                                     bool rawSizeOkay = true
                                                     ) const;
 
-        virtual String getDebugValuesString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -464,7 +464,9 @@ namespace openpeer
         #pragma mark Publication => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
         void logDocument() const;
 
       protected:

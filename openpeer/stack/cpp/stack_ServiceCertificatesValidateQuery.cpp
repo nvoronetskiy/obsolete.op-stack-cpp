@@ -88,7 +88,7 @@ namespace openpeer
         }
 
         if (!IHelper::isValidDomain(domain)) {
-          ZS_LOG_WARNING(Detail, log("signature domain is not valid") + ", domain=" + domain)
+          ZS_LOG_WARNING(Detail, log("signature domain is not valid") + ZS_PARAM("domain", domain))
           return;
         }
 
@@ -96,7 +96,7 @@ namespace openpeer
         try {
           String algorithm = signatureEl->findFirstChildElementChecked("algorithm")->getTextDecoded();
           if (algorithm != OPENPEER_STACK_PEER_FILE_SIGNATURE_ALGORITHM) {
-            ZS_LOG_WARNING(Detail, log("signature validation algorithm is not understood, algorithm=") + algorithm)
+            ZS_LOG_WARNING(Detail, log("signature validation algorithm is not understood") + ZS_PARAM("algorithm", algorithm))
             return;
           }
 
@@ -108,7 +108,7 @@ namespace openpeer
           SecureByteBlockPtr actualDigest = IHelper::hash((const char *)(signedElAsJSON.get()), IHelper::HashAlgorthm_SHA1);
 
           if (0 != IHelper::compare(*actualDigest, *IHelper::convertFromBase64(signatureDigestAsString))) {
-            ZS_LOG_WARNING(Detail, log("digest values did not match, signature digest=") + signatureDigestAsString + ", actual digest=" + IHelper::convertToBase64(*actualDigest))
+            ZS_LOG_WARNING(Detail, log("digest values did not match") + ZS_PARAM("signature digest", signatureDigestAsString) + ZS_PARAM("actual digest", IHelper::convertToBase64(*actualDigest)))
             return;
           }
 
@@ -118,7 +118,7 @@ namespace openpeer
           mDigest = actualDigest;
           mDigestSigned = IHelper::convertFromBase64(signatureEl->findFirstChildElementChecked("digestSigned")->getTextDecoded());
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("signature failed to validate due to missing signature element") + ", signature id=" + id + ", signature domain=" + domain + ", signature service=" + service)
+          ZS_LOG_WARNING(Detail, log("signature failed to validate due to missing signature element") + ZS_PARAM("signature id", id) + ZS_PARAM("signature domain", domain) + ZS_PARAM("signature service", service))
         }
       }
 
@@ -158,10 +158,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String ServiceCertificatesValidateQuery::toDebugString(IServiceCertificatesValidateQueryPtr query, bool includeCommaPrefix)
+      ElementPtr ServiceCertificatesValidateQuery::toDebug(IServiceCertificatesValidateQueryPtr query)
       {
-        if (!query) return includeCommaPrefix ? String(", certificate validate query=(null)") : String("certificate validate query=(null)");
-        return ServiceCertificatesValidateQuery::convert(query)->getDebugStringValue(includeCommaPrefix);
+        if (!query) return ElementPtr();
+        return ServiceCertificatesValidateQuery::convert(query)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -283,23 +283,29 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String ServiceCertificatesValidateQuery::log(const char *message) const
+      Log::Params ServiceCertificatesValidateQuery::log(const char *message) const
       {
-        return String("ServiceCertificatesValidateQuery [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("ServiceCertificatesValidateQuery");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String ServiceCertificatesValidateQuery::getDebugStringValue(bool includeCommaPrefix) const
+      ElementPtr ServiceCertificatesValidateQuery::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("certificate ID", mCertificateID, firstTime) +
-               Helper::getDebugValue("domain", mDomain, firstTime) +
-               Helper::getDebugValue("domain", mService, firstTime) +
-               Helper::getDebugValue("delegate", mDelegate ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("digest", mDigest ? IHelper::convertToBase64(*mDigest) : String(), firstTime) +
-               Helper::getDebugValue("digest signed", mDigestSigned ? IHelper::convertToBase64(*mDigestSigned) : String(), firstTime) +
-               IBootstrappedNetwork::toDebugString(mBootstrappedNetwork);
+
+        ElementPtr resultEl = Element::create("ServiceCertificatesValidateQuery");
+
+        IHelper::debugAppend(resultEl, "certificate ID", mCertificateID);
+        IHelper::debugAppend(resultEl, "domain", mDomain);
+        IHelper::debugAppend(resultEl, "domain", mService);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "digest", mDigest ? IHelper::convertToBase64(*mDigest) : String());
+        IHelper::debugAppend(resultEl, "digest signed", mDigestSigned ? IHelper::convertToBase64(*mDigestSigned) : String());
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -317,9 +323,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IServiceCertificatesValidateQuery::toDebugString(IServiceCertificatesValidateQueryPtr query, bool includeCommaPrefix)
+    ElementPtr IServiceCertificatesValidateQuery::toDebug(IServiceCertificatesValidateQueryPtr query)
     {
-      return internal::ServiceCertificatesValidateQuery::toDebugString(query, includeCommaPrefix);
+      return internal::ServiceCertificatesValidateQuery::toDebug(query);
     }
 
     //-------------------------------------------------------------------------

@@ -37,7 +37,10 @@
 #include <openpeer/stack/IBootstrappedNetwork.h>
 #include <openpeer/stack/message/Message.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -50,6 +53,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -125,10 +130,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String MessageMonitor::toDebugString(IMessageMonitorPtr monitor, bool includeCommaPrefix)
+      ElementPtr MessageMonitor::toDebug(IMessageMonitorPtr monitor)
       {
-        if (!monitor) return includeCommaPrefix ? String(", monitor=(null)") : String("monitor=(null)");
-        return MessageMonitor::convert(monitor)->getDebugValueString(includeCommaPrefix);
+        if (!monitor) return ElementPtr();
+        return MessageMonitor::convert(monitor)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -283,7 +288,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void MessageMonitor::onAutoHandleFailureResult(MessageResultPtr result)
       {
-        ZS_LOG_DEBUG(log("auto handle error") + Message::toDebugString(result))
+        ZS_LOG_DEBUG(log("auto handle error") + Message::toDebug(result))
 
         handleMessageReceived(result);
       }
@@ -376,22 +381,32 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
-      String MessageMonitor::log(const char *message) const
+      #pragma mark
+      #pragma mark MessageMonitor => (internal)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Log::Params MessageMonitor::log(const char *message) const
       {
-        return String("MessageMonitor [" + string(mID) + "] " + message);
+        ElementPtr objectEl = Element::create("MessageMonitor");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String MessageMonitor::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr MessageMonitor::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("monitor id", string(mID), firstTime) +
-               Helper::getDebugValue("message id", mMessageID, firstTime) +
-               Helper::getDebugValue("handled", mWasHandled ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("timeout", mTimeoutFired ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("pending", 0 != mPendingHandled ? string(mPendingHandled) : String(), firstTime) +
-               Helper::getDebugValue("timer", mTimer ? String("true") : String(), firstTime);
+        ElementPtr resultEl = Element::create("MessageMonitor");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "message id", mMessageID);
+        IHelper::debugAppend(resultEl, "handled", mWasHandled);
+        IHelper::debugAppend(resultEl, "timeout", mTimeoutFired);
+        IHelper::debugAppend(resultEl, "pending", mPendingHandled);
+        IHelper::debugAppend(resultEl, "timer", (bool)mTimer);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -411,9 +426,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IMessageMonitor::toDebugString(IMessageMonitorPtr monitor, bool includeCommaPrefix)
+    ElementPtr IMessageMonitor::toDebug(IMessageMonitorPtr monitor)
     {
-      return internal::MessageMonitor::toDebugString(monitor, includeCommaPrefix);
+      return internal::MessageMonitor::toDebug(monitor);
     }
 
     //-------------------------------------------------------------------------

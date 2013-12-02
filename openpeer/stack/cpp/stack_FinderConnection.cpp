@@ -291,12 +291,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String FinderConnection::toDebugString(IFinderConnectionPtr connection, bool includeCommaPrefix)
+      ElementPtr FinderConnection::toDebug(IFinderConnectionPtr connection)
       {
-        if (!connection) return String(includeCommaPrefix ? ", finder connection=(null)" : "finder connection=(null)");
+        if (!connection) return ElementPtr();
 
         FinderConnectionPtr pThis = FinderConnection::convert(connection);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -469,7 +469,7 @@ namespace openpeer
         ChannelNumber channelNumber = (*found).first;
         ChannelPtr channel = (*found).second;
 
-        ZS_LOG_DEBUG(log("accepting channel") + ", channel number=" + string(channelNumber))
+        ZS_LOG_DEBUG(log("accepting channel") + ZS_PARAM("channel number", channelNumber))
 
         ITransportStreamPtr wireReceiveStream;
         ITransportStreamPtr wireSendStream;
@@ -507,7 +507,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (timer != mInactivityTimer) {
-          ZS_LOG_WARNING(Detail, log("notified about an obsolete timer") + ", timer ID=" + string(timer->getID()))
+          ZS_LOG_WARNING(Detail, log("notified about an obsolete timer") + ZS_PARAM("timer ID", timer->getID()))
           return;
         }
 
@@ -591,7 +591,7 @@ namespace openpeer
 
             ChannelMap::iterator found = mPendingMapRequest.find(channelNumber);
             if (found != mPendingMapRequest.end()) {
-              ZS_LOG_DEBUG(log("cannot notify about write ready because channel map request has not completed yet") + ", channel number=" + string(channelNumber))
+              ZS_LOG_DEBUG(log("cannot notify about write ready because channel map request has not completed yet") + ZS_PARAM("channel number", channelNumber))
               continue;
             }
             channel->notifyReceivedWireWriteReady();
@@ -656,7 +656,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("channel map request completed successfully") + ", channel number=" + string(mMapRequestChannelNumber))
+        ZS_LOG_DEBUG(log("channel map request completed successfully") + ZS_PARAM("channel number", mMapRequestChannelNumber))
 
         mMapRequestChannelMonitor.reset();
 
@@ -696,7 +696,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_WARNING(Detail, log("channel map request failed") + ", channel number=" + string(mMapRequestChannelNumber))
+        ZS_LOG_WARNING(Detail, log("channel map request failed") + ZS_PARAM("channel number", mMapRequestChannelNumber))
 
         mMapRequestChannelMonitor.reset();
 
@@ -763,7 +763,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("send buffer called") + ", channel number=" + string(channelNumber) + ", buffer size=" + string(buffer->SizeInBytes()))
+        ZS_LOG_DEBUG(log("send buffer called") + ZS_PARAM("channel number", channelNumber) + ZS_PARAM("buffer size", buffer->SizeInBytes()))
 
         ChannelHeaderPtr header(new ChannelHeader);
         header->mChannelID = static_cast<decltype(header->mChannelID)>(channelNumber);
@@ -776,7 +776,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        ZS_LOG_DEBUG(log("channel is destroyed") + ", channel number=" + string(channelNumber))
+        ZS_LOG_DEBUG(log("channel is destroyed") + ZS_PARAM("channel number", channelNumber))
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Trace, log("finder connection already destroyed (probably okay)"))
@@ -819,39 +819,49 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String FinderConnection::log(const char *message) const
+      Log::Params FinderConnection::log(const char *message) const
       {
-        return String("FinderConnection [" + string(mID) + "] " + message);
+        ElementPtr objectEl = Element::create("FinderConnection");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String FinderConnection::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params FinderConnection::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr FinderConnection::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
 
-        return
-        Helper::getDebugValue("finder connection id", string(mID), firstTime) +
-        Helper::getDebugValue("outer", mOuter.lock() ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("subscriptions", mSubscriptions.size() > 0 ? string(mSubscriptions.size()) : String(), firstTime) +
-        Helper::getDebugValue("default subscription", mDefaultSubscription ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("state", toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("last error", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-        Helper::getDebugValue("last reason", mLastErrorReason, firstTime) +
-        Helper::getDebugValue("remote ip", mRemoteIP.string(), firstTime) +
-        ", tcp messaging: " + ITCPMessaging::toDebugString(mTCPMessaging, false) +
-        ", wire recv stream: " + ITransportStream::toDebugString(mWireReceiveStream->getStream(), false) +
-        ", wire send stream: " + ITransportStream::toDebugString(mWireSendStream->getStream(), false) +
-        Helper::getDebugValue("send stream notified ready", mSendStreamNotifiedReady ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("last tick", Time() != mLastTick ? IHelper::timeToString(mLastTick) : String(), firstTime) +
-        Helper::getDebugValue("last received data", Time() != mLastReceivedData ? IHelper::timeToString(mLastReceivedData) : String(), firstTime) +
-        Helper::getDebugValue("inactivity timer", mInactivityTimer ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("channels", mChannels.size() > 0 ? string(mChannels.size()) : String(), firstTime) +
-        Helper::getDebugValue("pending map request channels", mPendingMapRequest.size() > 0 ? string(mPendingMapRequest.size()) : String(), firstTime) +
-        Helper::getDebugValue("incoming channels", mIncomingChannels.size() > 0 ? string(mIncomingChannels.size()) : String(), firstTime) +
-        Helper::getDebugValue("remove channels", mRemoveChannels.size() > 0 ? string(mRemoveChannels.size()) : String(), firstTime) +
-        Helper::getDebugValue("map request monitor", mMapRequestChannelMonitor ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("map request channel number", mMapRequestChannelNumber != 0 ? string(mMapRequestChannelNumber) : String(), firstTime);
+        ElementPtr resultEl = Element::create("FinderConnection");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "outer", (bool)mOuter.lock());
+        IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
+        IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "last error", mLastError);
+        IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "remote ip", mRemoteIP.string());
+        IHelper::debugAppend(resultEl, "tcp messaging", ITCPMessaging::toDebug(mTCPMessaging));
+        IHelper::debugAppend(resultEl, "wire recv stream", ITransportStream::toDebug(mWireReceiveStream->getStream()));
+        IHelper::debugAppend(resultEl, "wire send stream", ITransportStream::toDebug(mWireSendStream->getStream()));
+        IHelper::debugAppend(resultEl, "send stream notified ready", mSendStreamNotifiedReady);
+        IHelper::debugAppend(resultEl, "last tick", mLastTick);
+        IHelper::debugAppend(resultEl, "last received data", mLastReceivedData);
+        IHelper::debugAppend(resultEl, "inactivity timer", (bool)mInactivityTimer);
+        IHelper::debugAppend(resultEl, "channels", mChannels.size());
+        IHelper::debugAppend(resultEl, "pending map request channels", mPendingMapRequest.size());
+        IHelper::debugAppend(resultEl, "incoming channels", mIncomingChannels.size());
+        IHelper::debugAppend(resultEl, "remove channels", mRemoveChannels.size());
+        IHelper::debugAppend(resultEl, "map request monitor", (bool)mMapRequestChannelMonitor);
+        IHelper::debugAppend(resultEl, "map request channel number", mMapRequestChannelNumber);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -859,7 +869,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ", state=" + toString(state) + ", old state=" + toString(mCurrentState) + getDebugValueString())
+        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
 
         mCurrentState = state;
         FinderConnectionPtr pThis = mThisWeak.lock();
@@ -878,14 +888,14 @@ namespace openpeer
         }
 
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("error already set thus ignoring new error") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("error already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         get(mLastError) = errorCode;
         mLastErrorReason = reason;
 
-        ZS_LOG_WARNING(Detail, log("error set") + ", code=" + string(mLastError) + ", reason=" + mLastErrorReason + getDebugValueString())
+        ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
       }
 
       //-----------------------------------------------------------------------
@@ -897,7 +907,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!stepCleanRemoval()) return;
         if (!stepConnectWire()) return;
@@ -919,7 +929,7 @@ namespace openpeer
         for (ChannelMap::iterator iter = mRemoveChannels.begin(); iter != mRemoveChannels.end(); ++iter) {
           ChannelNumber channelNumber = (*iter).first;
 
-          ZS_LOG_DEBUG(log("removing channel") + ", channel number=" + string(channelNumber))
+          ZS_LOG_DEBUG(log("removing channel") + ZS_PARAM("channel number", channelNumber))
 
           bool foundInPendingMapRequest = false;
 
@@ -967,7 +977,7 @@ namespace openpeer
                 String errorReason;
                 channel->getState(&errorCode, &errorReason);
 
-                ZS_LOG_DEBUG(log("master relay channel is shutdown (so must now self destruct)") + ", error code=" + string(errorCode) + ", reason=" + errorReason)
+                ZS_LOG_DEBUG(log("master relay channel is shutdown (so must now self destruct)") + ZS_PARAM("error code", errorCode) + ZS_PARAM("reason", errorReason))
 
                 setError(errorCode, errorReason);
                 cancel();
@@ -979,7 +989,7 @@ namespace openpeer
           }
 
           if (!foundInPendingMapRequest) {
-            ZS_LOG_DEBUG(log("will notify channel is closed") + ", channel=" + string(channelNumber))
+            ZS_LOG_DEBUG(log("will notify channel is closed") + ZS_PARAM("channel", channelNumber))
 
             // notify remote party of channel closure
             ChannelHeaderPtr header(new ChannelHeader);
@@ -1027,7 +1037,7 @@ namespace openpeer
           }
           case ITCPMessaging::SessionState_ShuttingDown:
           case ITCPMessaging::SessionState_Shutdown:      {
-            ZS_LOG_WARNING(Detail, log("TCP messaging is shutting down") + ", error=" + string(error) + ", reason=" + reason)
+            ZS_LOG_WARNING(Detail, log("TCP messaging is shutting down") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
             if (0 != error) {
               setError(error, reason);
             }
@@ -1100,7 +1110,7 @@ namespace openpeer
         ChannelNumber channelNumber = (*found).first;
         ChannelPtr channel = (*found).second;
 
-        ZS_LOG_DEBUG(log("sending channel map request") + ", channel=" + string(channelNumber))
+        ZS_LOG_DEBUG(log("sending channel map request") + ZS_PARAM("channel", channelNumber))
 
         const Channel::ConnectionInfo &info = channel->getConnectionInfo();
 
@@ -1130,13 +1140,13 @@ namespace openpeer
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log(") ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + "=" + "\n" + ((CSTR)(output.get())) + "\n")
+          ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log(") ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
 
           ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebugString(request))
+          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(request))
           ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
         }
 
@@ -1167,7 +1177,7 @@ namespace openpeer
             return false;
           }
 
-          ZS_LOG_TRACE(log("received data") + ", channel number=" + string(channelHeader->mChannelID) + ", size=" + string(buffer->SizeInBytes()))
+          ZS_LOG_TRACE(log("received data") + ZS_PARAM("channel number", channelHeader->mChannelID) + ZS_PARAM("size", buffer->SizeInBytes()))
 
           ChannelMap::iterator found = mChannels.find(channelHeader->mChannelID);
           ChannelPtr channel;
@@ -1193,7 +1203,7 @@ namespace openpeer
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
                 ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + "\n" + ((CSTR)(buffer->BytePtr())) + "\n")
+                ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
                 ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
                 ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
@@ -1207,7 +1217,7 @@ namespace openpeer
                 }
 
                 ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-                ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebugString(message))
+                ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
                 ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
                 if (IMessageMonitor::handleMessageReceived(message)) {
@@ -1219,7 +1229,7 @@ namespace openpeer
                 continue;
               }
 
-              ZS_LOG_WARNING(Detail, log("received data on an non-mapped relay channel (thus ignoring)") + ", channel=" + string(channelHeader->mChannelID))
+              ZS_LOG_WARNING(Detail, log("received data on an non-mapped relay channel (thus ignoring)") + ZS_PARAM("channel", channelHeader->mChannelID))
               continue;
             }
 
@@ -1327,12 +1337,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String FinderConnection::Channel::toDebugString(IFinderConnectionRelayChannelPtr channel, bool includeCommaPrefix)
+      ElementPtr FinderConnection::Channel::toDebug(IFinderConnectionRelayChannelPtr channel)
       {
-        if (!channel) return String(includeCommaPrefix ? ", finder connection channel=(null)" : "finder connection channel=(null)");
+        if (!channel) return ElementPtr();
 
         ChannelPtr pThis = Channel::convert(channel);
-        return pThis->getDebugValueString(includeCommaPrefix);
+        return pThis->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -1455,7 +1465,7 @@ namespace openpeer
                                                                        IFinderRelayChannel::SessionStates state
                                                                        )
       {
-        ZS_LOG_TRACE(log("finder relay channel state changed") + ", channel ID=" + string(channel->getID()) + ", state=" + IFinderRelayChannel::toString(state))
+        ZS_LOG_TRACE(log("finder relay channel state changed") + ZS_PARAM("channel ID", channel->getID()) + ZS_PARAM("state", IFinderRelayChannel::toString(state)))
 
         switch (state) {
           case IFinderRelayChannel::SessionState_Pending:
@@ -1519,7 +1529,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("monitoring incoming finder relay channel for shutdown (to ensure related channel gets shutdown too)") + ", finder relay channel=" + string(relayChannel->forConnection().getID()))
+        ZS_LOG_DEBUG(log("monitoring incoming finder relay channel for shutdown (to ensure related channel gets shutdown too)") + ZS_PARAM("finder relay channel", relayChannel->forConnection().getID()))
 
         AutoRecursiveLock lock(getLock());
         mRelayChannelSubscription = relayChannel->forConnection().subscribe(mThisWeak.lock());
@@ -1573,35 +1583,45 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
-      String FinderConnection::Channel::log(const char *message) const
+      Log::Params FinderConnection::Channel::log(const char *message) const
       {
-        return String("FinderConnection::Channel [" + string(mID) + "] " + message);
+        ElementPtr objectEl = Element::create("FinderConnection::Channel");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String FinderConnection::Channel::getDebugValueString(bool includeCommaPrefix) const
+      Log::Params FinderConnection::Channel::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr FinderConnection::Channel::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
 
-        return
-        Helper::getDebugValue("finder connection channel id", string(mID), firstTime) +
-        Helper::getDebugValue("delegate", mDelegate ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("state", IFinderConnectionRelayChannel::toString(mCurrentState), firstTime) +
-        Helper::getDebugValue("last error", 0 != mLastError ? string(mLastError) : String(), firstTime) +
-        Helper::getDebugValue("last reason", mLastErrorReason, firstTime) +
-        Helper::getDebugValue("channel number", string(mChannelNumber), firstTime) +
-        ", outer recv stream: " + ITransportStream::toDebugString(mOuterReceiveStream->getStream(), false) +
-        ", outer send stream: " + ITransportStream::toDebugString(mOuterSendStream->getStream(), false) +
-        Helper::getDebugValue("outer receive stream subscription", mOuterReceiveStreamSubscription ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("outer send stream subscription", mOuterSendStreamSubscription ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("wire stream notified ready", mWireStreamNotifiedReady ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("outer stream notified ready", mOuterStreamNotifiedReady ? String("true") : String(), firstTime) +
-        Helper::getDebugValue("local context", mConnectionInfo.mLocalContextID, firstTime) +
-        Helper::getDebugValue("remote context", mConnectionInfo.mRemoteContextID, firstTime) +
-        Helper::getDebugValue("relay domain", mConnectionInfo.mRelayAccessToken, firstTime) +
-        Helper::getDebugValue("relay access token", mConnectionInfo.mRelayAccessToken, firstTime) +
-        Helper::getDebugValue("relay access proof", mConnectionInfo.mRelayAccessSecretProof, firstTime);
+        ElementPtr resultEl = Element::create("FinderConnection::Channel");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "state", IFinderConnectionRelayChannel::toString(mCurrentState));
+        IHelper::debugAppend(resultEl, "last error", mLastError);
+        IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
+        IHelper::debugAppend(resultEl, "channel number", mChannelNumber, false);
+        IHelper::debugAppend(resultEl, "outer recv stream", ITransportStream::toDebug(mOuterReceiveStream->getStream()));
+        IHelper::debugAppend(resultEl, "outer send stream", ITransportStream::toDebug(mOuterSendStream->getStream()));
+        IHelper::debugAppend(resultEl, "outer receive stream subscription", (bool)mOuterReceiveStreamSubscription);
+        IHelper::debugAppend(resultEl, "outer send stream subscription", (bool)mOuterSendStreamSubscription);
+        IHelper::debugAppend(resultEl, "wire stream notified ready", mWireStreamNotifiedReady);
+        IHelper::debugAppend(resultEl, "outer stream notified ready", mOuterStreamNotifiedReady);
+        IHelper::debugAppend(resultEl, "local context", mConnectionInfo.mLocalContextID);
+        IHelper::debugAppend(resultEl, "remote context", mConnectionInfo.mRemoteContextID);
+        IHelper::debugAppend(resultEl, "relay domain", mConnectionInfo.mRelayAccessToken);
+        IHelper::debugAppend(resultEl, "relay access token", mConnectionInfo.mRelayAccessToken);
+        IHelper::debugAppend(resultEl, "relay access proof", mConnectionInfo.mRelayAccessSecretProof);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1609,7 +1629,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ", state=" + toString(state) + ", old state=" + toString(mCurrentState) + getDebugValueString())
+        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
 
         mCurrentState = state;
         ChannelPtr pThis = mThisWeak.lock();
@@ -1633,14 +1653,14 @@ namespace openpeer
         }
 
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, log("error already set thus ignoring new error") + ", new error=" + string(errorCode) + ", new reason=" + reason + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("error already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 
         get(mLastError) = errorCode;
         mLastErrorReason = reason;
 
-        ZS_LOG_WARNING(Detail, log("error set") + ", code=" + string(mLastError) + ", reason=" + mLastErrorReason + getDebugValueString())
+        ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
       }
 
       //-----------------------------------------------------------------------
@@ -1652,7 +1672,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DEBUG(log("step") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("step"))
 
         if (!stepSendData()) return;
 
@@ -1687,7 +1707,7 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_TRACE(log("buffer to send read") + ", size=" + string(buffer->SizeInBytes()))
+          ZS_LOG_TRACE(log("buffer to send read") + ZS_PARAM("size", buffer->SizeInBytes()))
           connection->sendBuffer(mChannelNumber, buffer);
         }
 

@@ -75,7 +75,7 @@ namespace openpeer
 
         virtual void notifyShutdown() = 0;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -115,7 +115,7 @@ namespace openpeer
         #pragma mark PeerSubscription => IPeerSubscription
         #pragma mark
 
-        static String toDebugString(IPeerSubscriptionPtr subscription, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPeerSubscriptionPtr subscription);
 
         static PeerSubscriptionPtr subscribeAll(
                                                 IAccountPtr account,
@@ -158,7 +158,7 @@ namespace openpeer
 
         virtual void notifyShutdown();
 
-        // (duplicate) virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        // (duplicate) virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------
@@ -167,9 +167,10 @@ namespace openpeer
         #pragma mark
 
         RecursiveLock &getLock() const;
-        String log(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------

@@ -180,7 +180,7 @@ namespace openpeer
         #pragma mark ServiceIdentitySession => IServiceIdentitySession
         #pragma mark
 
-        static String toDebugString(IServiceIdentitySessionPtr session, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IServiceIdentitySessionPtr session);
 
         static ServiceIdentitySessionPtr loginWithIdentity(
                                                            IServiceIdentitySessionDelegatePtr delegate,
@@ -442,9 +442,10 @@ namespace openpeer
 
         RecursiveLock &getLock() const;
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         void step();
 

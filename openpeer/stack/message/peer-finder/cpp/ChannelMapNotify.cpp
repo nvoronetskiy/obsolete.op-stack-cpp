@@ -56,6 +56,12 @@ namespace openpeer
         using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "ChannelMapNotify");
+        }
+
+        //---------------------------------------------------------------------
         ChannelMapNotifyPtr ChannelMapNotify::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<ChannelMapNotify>(message);
@@ -81,7 +87,7 @@ namespace openpeer
               String channelNumber = IMessageHelper::getElementTextAndDecode(root->findFirstChildElementChecked("channel"));
               ret->mChannelNumber = Numeric<ChannelNumber>(channelNumber);
             } catch(Numeric<ChannelNumber>::ValueOutOfRange &) {
-              ZS_LOG_WARNING(Detail, "ChannelMapNotify [] missing channel number")
+              ZS_LOG_WARNING(Detail, slog("missing channel number"))
               return ChannelMapNotifyPtr();
             }
 
@@ -96,7 +102,7 @@ namespace openpeer
             ret->mRelayAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(relayEl->findFirstChildElementChecked("accessSecretProofExpires")));
 
           } catch(CheckFailed &) {
-            ZS_LOG_WARNING(Detail, "ChannelMapNotify [] expected element is missing")
+            ZS_LOG_WARNING(Detail, slog("expected element is missing"))
             return ChannelMapNotifyPtr();
           }
 

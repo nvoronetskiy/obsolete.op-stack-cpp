@@ -131,7 +131,7 @@ namespace openpeer
 
         RecursiveLock &getLock() const {return mLock;}
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
       protected:
         //---------------------------------------------------------------------
@@ -139,7 +139,7 @@ namespace openpeer
         #pragma mark BootstrappedNetworkManager => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
         mutable RecursiveLock mLock;
         BootstrappedNetworkManagerWeakPtr mThisWeak;
 

@@ -51,7 +51,7 @@ namespace openpeer
     {
       typedef IPublicationMetaData::SubscribeToRelationshipsMap SubscribeToRelationshipsMap;
 
-      static String toDebugString(IPublicationRepositoryPtr repository, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationRepositoryPtr repository);
 
       static IPublicationRepositoryPtr getFromAccount(IAccountPtr account);
 
@@ -91,7 +91,7 @@ namespace openpeer
 
     interaction IPublicationPublisher
     {
-      static String toDebugString(IPublicationPublisherPtr publisher, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationPublisherPtr publisher);
 
       virtual void cancel() = 0;
       virtual bool isComplete() const = 0;
@@ -127,7 +127,7 @@ namespace openpeer
 
     interaction IPublicationFetcher
     {
-      static String toDebugString(IPublicationFetcherPtr fetcher, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationFetcherPtr fetcher);
 
       virtual void cancel() = 0;
       virtual bool isComplete() const = 0;
@@ -165,7 +165,7 @@ namespace openpeer
 
     interaction IPublicationRemover
     {
-      static String toDebugString(IPublicationRemoverPtr remover, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationRemoverPtr remover);
 
       virtual void cancel() = 0;
       virtual bool isComplete() const = 0;
@@ -211,7 +211,7 @@ namespace openpeer
 
       static const char *toString(PublicationSubscriptionStates state);
 
-      static String toDebugString(IPublicationSubscriptionPtr subscription, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationSubscriptionPtr subscription);
 
       virtual void cancel() = 0;
 
@@ -257,7 +257,7 @@ namespace openpeer
 
     interaction IPublicationRepositoryPeerCache
     {
-      static String toDebugString(IPublicationRepositoryPeerCachePtr cache, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationRepositoryPeerCachePtr cache);
 
       virtual bool getNextVersionToNotifyAboutAndMarkNotified(
                                                               IPublicationPtr publication,

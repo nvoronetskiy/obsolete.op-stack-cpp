@@ -142,10 +142,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFilePublic::toDebugString(IPeerFilePublicPtr peerFilePublic, bool includePrefixComma)
+      ElementPtr PeerFilePublic::toDebug(IPeerFilePublicPtr peerFilePublic)
       {
-        if (!peerFilePublic) return includePrefixComma ? String(", peer file public=(null)") : String("peer file public=(null)");
-        return PeerFilePublic::convert(peerFilePublic)->getDebugValueString(includePrefixComma);
+        if (!peerFilePublic) return ElementPtr();
+        return PeerFilePublic::convert(peerFilePublic)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -187,13 +187,13 @@ namespace openpeer
       {
         ElementPtr sectionAEl = findSection("A");
         if (!sectionAEl) {
-          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file") + ZS_PARAM("peer URI", mPeerURI))
           return Time();
         }
         try {
           return IHelper::stringToTime(sectionAEl->findFirstChildElementChecked("created")->getTextDecoded());
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("failed to find created, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find created") + ZS_PARAM("peer URI", mPeerURI))
         }
         return Time();
       }
@@ -203,13 +203,13 @@ namespace openpeer
       {
         ElementPtr sectionAEl = findSection("A");
         if (!sectionAEl) {
-          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file") + ZS_PARAM("peer URI", mPeerURI))
           return Time();
         }
         try {
           return IHelper::stringToTime(sectionAEl->findFirstChildElementChecked("expires")->getTextDecoded());
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("failed to find expires, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find expires") + ZS_PARAM("peer URI", mPeerURI))
         }
         return Time();
       }
@@ -219,14 +219,14 @@ namespace openpeer
       {
         ElementPtr sectionBEl = findSection("B");
         if (!sectionBEl) {
-          ZS_LOG_WARNING(Detail, log("failed to find section B in public peer file, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find section B in public peer file") + ZS_PARAM("peer URI", mPeerURI))
           return String();
         }
 
         try {
           return sectionBEl->findFirstChildElementChecked("findSecret")->getTextDecoded();
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("failed to obtain find secret, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to obtain find secret") + ZS_PARAM("peer URI", mPeerURI))
         }
         return String();
       }
@@ -236,14 +236,14 @@ namespace openpeer
       {
         ElementPtr sectionAEl = findSection("A");
         if (!sectionAEl) {
-          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find section A in public peer file") + ZS_PARAM("peer URI", mPeerURI))
           return ElementPtr();
         }
 
         try {
           return sectionAEl->findFirstChildElementChecked("saltBundle")->clone()->toElement();
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("failed to obtain salt bundle, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to obtain salt bundle") + ZS_PARAM("peer URI", mPeerURI))
         }
         return ElementPtr();
       }
@@ -255,7 +255,7 @@ namespace openpeer
 
         ElementPtr sectionCEl = findSection("C");
         if (!sectionCEl) {
-          ZS_LOG_WARNING(Detail, log("failed to find section C in public peer file, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to find section C in public peer file") + ZS_PARAM("peer URI", mPeerURI))
           return result;
         }
 
@@ -269,7 +269,7 @@ namespace openpeer
             identityBundleEl = identityBundleEl->findNextSiblingElement("identityBundle");
           }
         } catch(CheckFailed &) {
-          ZS_LOG_WARNING(Detail, log("failed to obtain salt bundle, peer URI=") + mPeerURI)
+          ZS_LOG_WARNING(Detail, log("failed to obtain salt bundle") + ZS_PARAM("peer URI", mPeerURI))
         }
         return result;
       }
@@ -314,20 +314,20 @@ namespace openpeer
 
         if (peerURI.hasData()) {
           if (peerURI != mPeerURI) {
-            ZS_LOG_WARNING(Detail, log("signature validation failed since was not signed by this peer file") + ", signature's URI=" + peerURI + ", peer file URI=" + mPeerURI)
+            ZS_LOG_WARNING(Detail, log("signature validation failed since was not signed by this peer file") + ZS_PARAM("signature's URI", peerURI) + ZS_PARAM("peer file URI", mPeerURI))
             return false;
           }
         }
 
         if (fingerprint.hasData()) {
           if (fingerprint != mPublicKey->getFingerprint()) {
-            ZS_LOG_WARNING(Detail, log("signature validation failed since was not signed by this peer file") + ", signature's fingerprint=" + fingerprint + ", peer fingerprint=" + mPublicKey->getFingerprint() + ", peer file URI=" + mPeerURI)
+            ZS_LOG_WARNING(Detail, log("signature validation failed since was not signed by this peer file") + ZS_PARAM("signature's fingerprint", fingerprint) + ZS_PARAM("peer fingerprint", mPublicKey->getFingerprint()) + ZS_PARAM("peer file URI", mPeerURI))
             return false;
           }
         }
 
         if (!mPublicKey->verifySignature(signedEl)) {
-          ZS_LOG_WARNING(Detail, log("signature failed to validate") + ", peer URI=" + peerURI + ", fingerprint=" + fingerprint + ", full public key=" + fullPublicKey)
+          ZS_LOG_WARNING(Detail, log("signature failed to validate") + ZS_PARAM("peer URI", peerURI) + ZS_PARAM("fingerprint", fingerprint) + ZS_PARAM("full public key", fullPublicKey))
           return false;
         }
 
@@ -349,14 +349,17 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFilePublic::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PeerFilePublic::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer file public id", string(mID), firstTime) +
-               Helper::getDebugValue("peer uri", mPeerURI, firstTime) +
-               Helper::getDebugValue("created", IHelper::timeToString(getCreated()), firstTime) +
-               Helper::getDebugValue("expires", IHelper::timeToString(getExpires()), firstTime) +
-               Helper::getDebugValue("find secret", getFindSecret(), firstTime);
+        ElementPtr resultEl = Element::create("PeerFilePublic");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "peer uri", mPeerURI);
+        IHelper::debugAppend(resultEl, "created", getCreated());
+        IHelper::debugAppend(resultEl, "expires", getExpires());
+        IHelper::debugAppend(resultEl, "find secret", getFindSecret());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -414,9 +417,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerFilePublic::log(const char *message) const
+      Log::Params PeerFilePublic::log(const char *message) const
       {
-        return String("PeerFilePublic [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PeerFilePublic");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
@@ -431,7 +436,7 @@ namespace openpeer
         try {
           String cipher = sectionAEl->findFirstChildElementChecked("algorithm")->getTextDecoded();
           if (OPENPEER_STACK_PEER_FILE_CIPHER != cipher) {
-            ZS_LOG_WARNING(Detail, log("cipher suite is not understood, cipher suite=") + cipher + ", expecting=" + OPENPEER_STACK_PEER_FILE_CIPHER)
+            ZS_LOG_WARNING(Detail, log("cipher suite is not understood") + ZS_PARAM("cipher suite", + cipher) + ZS_PARAM("expecting", OPENPEER_STACK_PEER_FILE_CIPHER))
             return false;
           }
 
@@ -487,7 +492,7 @@ namespace openpeer
 
           mPublicKey = IRSAPublicKey::load(*x509Certificate);
           if (!mPublicKey) {
-            ZS_LOG_ERROR(Detail, log("failed to load public key, peer URI=") + mPeerURI)
+            ZS_LOG_ERROR(Detail, log("failed to load public key") + ZS_PARAM("peer URI", mPeerURI))
             return false;
           }
 
@@ -499,20 +504,20 @@ namespace openpeer
             SecureByteBlockPtr sectionHash = services::IHelper::hash((const char *)(sectionAAsString.get()), services::IHelper::HashAlgorthm_SHA1);
             String algorithm = signatureEl->findFirstChildElementChecked("algorithm")->getTextDecoded();
             if (OPENPEER_STACK_PEER_FILE_SIGNATURE_ALGORITHM != algorithm) {
-              ZS_LOG_WARNING(Detail, log("signature algorithm was not understood, peer URI=") + mPeerURI + ", algorithm=" + algorithm + ", expecting=" + OPENPEER_STACK_PEER_FILE_SIGNATURE_ALGORITHM)
+              ZS_LOG_WARNING(Detail, log("signature algorithm was not understood") + ZS_PARAM("peer URI", mPeerURI) + ZS_PARAM("algorithm", algorithm) + ZS_PARAM("expecting", OPENPEER_STACK_PEER_FILE_SIGNATURE_ALGORITHM))
               return false;
             }
 
             SecureByteBlockPtr digestValue = services::IHelper::convertFromBase64(signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded());
 
             if (0 != services::IHelper::compare(*sectionHash, *digestValue)) {
-              ZS_LOG_ERROR(Detail, log("digest value does not match on section A signature on public peer file, peer URI=") + mPeerURI +  ", calculated digest=" + services::IHelper::convertToBase64(*sectionHash) + ", signature digest=" + services::IHelper::convertToBase64(*digestValue))
+              ZS_LOG_ERROR(Detail, log("digest value does not match on section A signature on public peer file") + ZS_PARAM("peer URI", mPeerURI) +  ZS_PARAM("calculated digest", IHelper::convertToBase64(*sectionHash)) + ZS_PARAM("signature digest", + IHelper::convertToBase64(*digestValue)))
               return false;
             }
 
             SecureByteBlockPtr digestSigned =  services::IHelper::convertFromBase64(signatureEl->findFirstChildElementChecked("digestSigned")->getTextDecoded());
             if (!mPublicKey->verify(*sectionHash, *digestSigned)) {
-              ZS_LOG_ERROR(Detail, log("signature on section A of public peer file failed to validate, peer URI=") + mPeerURI)
+              ZS_LOG_ERROR(Detail, log("signature on section A of public peer file failed to validate") + ZS_PARAM("peer URI", mPeerURI))
               return false;
             }
           }
@@ -553,9 +558,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IPeerFilePublic::toDebugString(IPeerFilePublicPtr peerFilePublic, bool includeCommaPrefix)
+    ElementPtr IPeerFilePublic::toDebug(IPeerFilePublicPtr peerFilePublic)
     {
-      return internal::PeerFilePublic::toDebugString(peerFilePublic, includeCommaPrefix);
+      return internal::PeerFilePublic::toDebug(peerFilePublic);
     }
 
     //-------------------------------------------------------------------------

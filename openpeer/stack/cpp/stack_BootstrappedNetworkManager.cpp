@@ -33,7 +33,10 @@
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/helpers.h>
+#include <zsLib/XML.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -43,7 +46,8 @@ namespace openpeer
   {
     namespace internal
     {
-      typedef zsLib::String String;
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -67,8 +71,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkManager::BootstrappedNetworkManager() :
-        mID(zsLib::createPUID())
+      BootstrappedNetworkManager::BootstrappedNetworkManager()
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -119,12 +122,12 @@ namespace openpeer
 
         BootstrappedNetworkMap::iterator found = mBootstrappedNetworks.find(domain);
         if (found != mBootstrappedNetworks.end()) {
-          ZS_LOG_DEBUG(log("using existing bootstrapped network object") + ", domain=" + domain)
+          ZS_LOG_DEBUG(log("using existing bootstrapped network object") + ZS_PARAM("domain", domain))
           BootstrappedNetworkPtr &result = (*found).second;
           return result;
         }
 
-        ZS_LOG_DEBUG(log("using new bootstrapped network obejct") + ", domain=" + domain)
+        ZS_LOG_DEBUG(log("using new bootstrapped network obejct") + ZS_PARAM("domain", domain))
 
         mBootstrappedNetworks[domain] = network;
         return network;
@@ -189,9 +192,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String BootstrappedNetworkManager::log(const char *message) const
+      Log::Params BootstrappedNetworkManager::log(const char *message) const
       {
-        return String("BootstrappedNetworkManager [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("BootstrappedNetworkManager");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
     }
   }

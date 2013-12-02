@@ -34,7 +34,10 @@
 
 #include <openpeer/stack/message/Message.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -46,6 +49,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -69,8 +74,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageMonitorManager::MessageMonitorManager() :
-        mID(zsLib::createPUID())
+      MessageMonitorManager::MessageMonitorManager()
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -138,9 +142,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String MessageMonitorManager::log(const char *message) const
+      Log::Params MessageMonitorManager::log(const char *message) const
       {
-        return String("MessageMonitorManager [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("MessageMonitorManager");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------

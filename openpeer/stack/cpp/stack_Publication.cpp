@@ -55,6 +55,8 @@ namespace openpeer
 
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -97,22 +99,6 @@ namespace openpeer
         output = generator->write(node, &length);
 
         return (CSTR)output.get();
-      }
-
-      //-----------------------------------------------------------------------
-      static String debugNameValue(
-                                   bool &ioFirst,
-                                   const String &name,
-                                   const String &value,
-                                   bool addEquals = true
-                                   )
-      {
-        if (value.isEmpty()) return String();
-        if (ioFirst) {
-          ioFirst = false;
-          return name + "=" + value;
-        }
-        return String(", ") + name + (addEquals ? "=" : "") + value;
       }
 
       //-----------------------------------------------------------------------
@@ -240,7 +226,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Publication::init()
       {
-        ZS_LOG_DEBUG(log("created") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("created"))
         logDocument();
       }
 
@@ -255,7 +241,7 @@ namespace openpeer
       {
         if (isNoop()) return;
         mThisWeakPublication.reset();
-        ZS_LOG_DEBUG(log("destroyed") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("destroyed"))
       }
 
       //-----------------------------------------------------------------------
@@ -355,10 +341,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Publication::toDebugString(IPublicationPtr publication, bool includeCommaPrefix)
+      ElementPtr Publication::toDebug(IPublicationPtr publication)
       {
-        if (!publication) return includeCommaPrefix ? String(", publication=(null)") : String("publication=(null)");
-        return Publication::convert(publication)->getDebugValuesString(includeCommaPrefix);
+        if (!publication) return ElementPtr();
+        return Publication::convert(publication)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -439,12 +425,12 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!updatedDocumentToBeAdopted)
 
         AutoRecursiveLock lock(mLock);
-        ZS_LOG_DETAIL(log("updating document") + getDebugValuesString())
+        ZS_LOG_DETAIL(debug("updating document"))
         if (ZS_IS_LOGGING(Trace)) {
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
-          ZS_LOG_BASIC(log("Updating from JSON:") + "\n" + internal::toString(updatedDocumentToBeAdopted) + "\n")
+          ZS_LOG_BASIC(log("Updating from JSON") + ZS_PARAM("json", internal::toString(updatedDocumentToBeAdopted)))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
@@ -475,13 +461,13 @@ namespace openpeer
 
         mDiffDocuments[mVersion] = updatedDocumentToBeAdopted;
 
-        ZS_LOG_DEBUG(log("updating document complete") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("updating document complete"))
 
         if (ZS_IS_LOGGING(Trace)) {
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"))
-          ZS_LOG_BASIC(log("FINAL JSON:") + "\n" + internal::toString(mDocument) + "\n")
+          ZS_LOG_BASIC(log("FINAL JSON") + ZS_PARAM("json", internal::toString(mDocument)))
           ZS_LOG_DEBUG(log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
@@ -514,20 +500,20 @@ namespace openpeer
       {
         AutoRecursiveLock lock(mLock);
 
-        ZS_LOG_TRACE(log("getting publication as contact list") + getDebugValuesString())
+        ZS_LOG_TRACE(debug("getting publication as contact list"))
 
         RelationshipListPtr result = RelationshipListPtr(new RelationshipList);
 
         RelationshipList &outList = (*result);
 
         if (!mDocument) {
-          ZS_LOG_WARNING(Detail, log("publication document is empty") + getDebugValuesString())
+          ZS_LOG_WARNING(Detail, debug("publication document is empty"))
           return result;
         }
 
         ElementPtr contactsEl = mDocument->findFirstChildElement("contacts");
         if (!contactsEl) {
-          ZS_LOG_WARNING(Debug, log("unable to find contact root element") + getDebugValuesString())
+          ZS_LOG_WARNING(Debug, debug("unable to find contact root element"))
           return result;
         }
 
@@ -535,13 +521,13 @@ namespace openpeer
         while (contactEl) {
           String contact = contactEl->getTextDecoded();
           if (!contact.isEmpty()) {
-            ZS_LOG_TRACE(log("found contact") + ", contact URI=" + contact)
+            ZS_LOG_TRACE(log("found contact") + ZS_PARAM("contact URI", contact))
             outList.push_back(contact);
           }
           contactEl = contactEl->findNextSiblingElement("contact");
         }
 
-        ZS_LOG_TRACE(log("end of getting as contact list") + ", total=" + string(outList.size()))
+        ZS_LOG_TRACE(log("end of getting as contact list") + ZS_PARAM("total", outList.size()))
         return result;
       }
 
@@ -613,7 +599,7 @@ namespace openpeer
         AutoRecursiveLock lock(mLock);
         mCreatorLocation = location;
 
-        ZS_LOG_TRACE(log("updated internal publication creator information") + getDebugValuesString())
+        ZS_LOG_TRACE(debug("updated internal publication creator information"))
       }
 
       //-----------------------------------------------------------------------
@@ -622,14 +608,14 @@ namespace openpeer
         AutoRecursiveLock lock(mLock);
         mPublishedLocation = location;
 
-        ZS_LOG_TRACE(log("updated internal publication published to contact information") + getDebugValuesString())
+        ZS_LOG_TRACE(debug("updated internal publication published to contact information"))
       }
 
       //-----------------------------------------------------------------------
       void Publication::setExpires(Time expires)
       {
         AutoRecursiveLock lock(mLock);
-        ZS_LOG_TRACE(log("updating expires time") + ", was=" + string(mExpires) + ", now=" + string(expires))
+        ZS_LOG_TRACE(log("updating expires time") + ZS_PARAM("was", mExpires) + ZS_PARAM("now", expires))
 
         mExpires = expires;
       }
@@ -659,7 +645,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(mLock);
 
-        ZS_LOG_DETAIL(log("updating from fetched publication") + getDebugValuesString())
+        ZS_LOG_DETAIL(debug("updating from fetched publication"))
 
         PublicationPtr publication = convert(fetchedPublication);
 
@@ -674,7 +660,7 @@ namespace openpeer
                 *noThrowVersionMismatched = true;
                 return;
               }
-              ZS_THROW_CUSTOM(Exceptions::VersionMismatch, "remote party sent diff based on wrong document" + getDebugValuesString())
+              ZS_THROW_CUSTOM(Exceptions::VersionMismatch, debug("remote party sent diff based on wrong document"))
               return;
             }
             IDiff::process(mDocument, publication->mDocument);
@@ -700,7 +686,7 @@ namespace openpeer
 
         logDocument();
 
-        ZS_LOG_DEBUG(log("updating from fetched publication complete") + getDebugValuesString())
+        ZS_LOG_DEBUG(debug("updating from fetched publication complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -718,17 +704,17 @@ namespace openpeer
 
         if (!mDocument) {
           if (!mData) {
-            ZS_LOG_WARNING(Detail, log("no data available to return") + getDebugValuesString())
+            ZS_LOG_WARNING(Detail, debug("no data available to return"))
             return;
           }
 
           if (rawSizeOkay) {
-            ZS_LOG_TRACE(log("document is binary data thus returning non-encoded raw size (no base64 calculating required)") +  + getDebugValuesString())
+            ZS_LOG_TRACE(debug("document is binary data thus returning non-encoded raw size (no base64 calculating required)"))
             outOutputSizeInBytes = mData->SizeInBytes();
             return;
           }
 
-          ZS_LOG_TRACE(log("document is binary data thus returning base64 bit encoded size (which required calculating)") +  + getDebugValuesString())
+          ZS_LOG_TRACE(debug("document is binary data thus returning base64 bit encoded size (which required calculating)"))
 
           ULONG fromVersion = 0;
           NodePtr node = getDiffs(fromVersion, mVersion);
@@ -741,12 +727,12 @@ namespace openpeer
         for (ULONG from = fromVersionNumber; from <= toVersionNumber; ++from) {
           DiffDocumentMap::const_iterator found = mDiffDocuments.find(from);
           if (found == mDiffDocuments.end()) {
-            ZS_LOG_TRACE(log("diff is not available (thus returning entire document size)") + ", from=" + string(fromVersionNumber) + ", current=" + string(from) + getDebugValuesString())
+            ZS_LOG_TRACE(debug("diff is not available (thus returning entire document size)") + ZS_PARAM("from", fromVersionNumber) + ZS_PARAM("current", from))
             getEntirePublicationOutputSize(outOutputSizeInBytes);
             return;
           }
 
-          ZS_LOG_TRACE(log("returning size of latest version diff's document") + ", from=" + string(fromVersionNumber) + ", current=" + string(from) +  + getDebugValuesString())
+          ZS_LOG_TRACE(debug("returning size of latest version diff's document") + ZS_PARAM("from", fromVersionNumber) + ZS_PARAM("current", from))
           const DocumentPtr &doc = (*found).second;
           GeneratorPtr generator = Generator::createJSONGenerator();
           outOutputSizeInBytes += generator->getOutputSize(doc);
@@ -772,27 +758,29 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Publication::getDebugValuesString(bool includeCommaPrefix) const
+      ElementPtr Publication::toDebug() const
       {
         AutoRecursiveLock lock(mLock);
+
+        ElementPtr resultEl = Element::create("Publication");
 
         LocationPtr creatorLocation = Location::convert(getCreatorLocation());
         LocationPtr publishedLocation = Location::convert(getPublishedLocation());
 
-        bool first = !includeCommaPrefix;
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "base version", mBaseVersion);
+        IHelper::debugAppend(resultEl, "lineage", mLineage);
+        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "mime type", mMimeType);
+        IHelper::debugAppend(resultEl, "expires",  mExpires);
+        IHelper::debugAppend(resultEl, "data length", mData ? mData->SizeInBytes() : 0);
+        IHelper::debugAppend(resultEl, "diffs total", mDiffDocuments.size());
+        IHelper::debugAppend(resultEl, "total relationships", mPublishedRelationships.size());
 
-        return debugNameValue(first, "id", string(mID))
-             + debugNameValue(first, "name", mName)
-             + debugNameValue(first, "version", (0 == mVersion ? String() : string(mVersion)))
-             + debugNameValue(first, "base version", (0 == mBaseVersion ? String() : string(mBaseVersion)))
-             + debugNameValue(first, "lineage", (0 == mLineage ? String() : string(mLineage)))
-             + debugNameValue(first, "creator: ", creatorLocation ? creatorLocation->forPublication().getDebugValueString() : String(), false)
-             + debugNameValue(first, "published: ", publishedLocation ? publishedLocation->forPublication().getDebugValueString() : String(), false)
-             + debugNameValue(first, "mime type", mMimeType)
-             + debugNameValue(first, "expires", (Time() == mExpires ? String() : string(mExpires)))
-             + debugNameValue(first, "data length", mData ? (0 == mData->SizeInBytes() ? String() : string(mData->SizeInBytes())) : String())
-             + debugNameValue(first, "diffs total", (mDiffDocuments.size() < 1 ? String() : string(mDiffDocuments.size())))
-             + debugNameValue(first, "total relationships", (mPublishedRelationships.size() < 1 ? String() : string(mPublishedRelationships.size())));
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -858,7 +846,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(mLock);
 
-        ZS_LOG_DEBUG(log("requested JSON diffs") + ", from version=" +string(ioFromVersion) + ", to version=" + string(toVersion))
+        ZS_LOG_DEBUG(log("requested JSON diffs") + ZS_PARAM("from version", ioFromVersion) + ZS_PARAM("to version", toVersion))
 
         if ((0 == toVersion) ||
             (toVersion >= mVersion)) {
@@ -867,11 +855,11 @@ namespace openpeer
 
         if (!mDocument) {
           if (!mData) {
-            ZS_LOG_WARNING(Detail, log("JSON for publishing has no data available to return") + getDebugValuesString())
+            ZS_LOG_WARNING(Detail, debug("JSON for publishing has no data available to return"))
             return NodePtr();
           }
 
-          ZS_LOG_WARNING(Detail, log("returning data as base 64 encoded") + getDebugValuesString())
+          ZS_LOG_WARNING(Detail, debug("returning data as base 64 encoded"))
 
           String data = services::IHelper::convertToBase64(*mData);
           TextPtr text = Text::create();
@@ -880,14 +868,14 @@ namespace openpeer
         }
 
         if (0 == ioFromVersion) {
-          ZS_LOG_DEBUG(log("first time publishing or fetching document thus returning entire document") + getDebugValuesString())
+          ZS_LOG_DEBUG(debug("first time publishing or fetching document thus returning entire document"))
 
           ElementPtr firstEl = mDocument->getFirstChildElement();
           if (!firstEl) return firstEl;
           return firstEl->clone();
         }
 
-        ZS_LOG_DEBUG(log("publishing or fetching differences from last version published") + ", from base version=" + string(toVersion) + getDebugValuesString() + ", to version=" + string(toVersion))
+        ZS_LOG_DEBUG(debug("publishing or fetching differences from last version published") + ZS_PARAM("from base version", toVersion) + ZS_PARAM("to version", toVersion))
 
         // see if we have diffs from the last published point
         DiffDocumentMap::const_iterator foundFrom = mDiffDocuments.find(ioFromVersion);
@@ -913,10 +901,10 @@ namespace openpeer
         for (DiffDocumentMap::const_iterator iter = foundFrom; iter != foundTo; ++iter, ++currentVersion) {
           const VersionNumber &versionNumber = (*iter).first;
 
-          ZS_LOG_TRACE(log("processing diff") + ", version=" + string(versionNumber))
+          ZS_LOG_TRACE(log("processing diff") + ZS_PARAM("version", versionNumber))
 
           if (currentVersion != versionNumber) {
-            ZS_LOG_ERROR(Detail, log("JSON differences has a version number hole") + ", expecting=" + string(currentVersion) + ", found=" + string(versionNumber))
+            ZS_LOG_ERROR(Detail, log("JSON differences has a version number hole") + ZS_PARAM("expecting", currentVersion) + ZS_PARAM("found", versionNumber))
             ioFromVersion = 0;
             return getDiffs(ioFromVersion, toVersion);
           }
@@ -940,7 +928,7 @@ namespace openpeer
               }
             }
           } catch (CheckFailed &) {
-            ZS_LOG_ERROR(Detail, log("JSON diff document is corrupted (recovering by returning entire document)") + ", version=" + string(versionNumber))
+            ZS_LOG_ERROR(Detail, log("JSON diff document is corrupted (recovering by returning entire document)") + ZS_PARAM("version", versionNumber))
             ioFromVersion = 0;
             return getDiffs(ioFromVersion, toVersion);
           }
@@ -963,9 +951,17 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Publication::log(const char *message) const
+      Log::Params Publication::log(const char *message) const
       {
-        return String("Publication [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("Publication");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Publication::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
       }
 
       //-----------------------------------------------------------------------
@@ -976,9 +972,9 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           if (mDocument) {
-            ZS_LOG_BASIC(log("publication contains JSON:") + "\n" + internal::toString(mDocument) + "\n")
+            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("jsosn", internal::toString(mDocument)))
           } else if (mData) {
-            ZS_LOG_BASIC(log("publication contains binary data") + ", length=" + string(mData ? mData->SizeInBytes() : 0))
+            ZS_LOG_BASIC(log("publication contains binary data") + ZS_PARAM("length", mData ? mData->SizeInBytes() : 0))
           } else {
             ZS_LOG_BASIC(log("publication is NULL"))
           }
@@ -998,9 +994,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IPublication::toDebugString(IPublicationPtr publication, bool includeCommaPrefix)
+    ElementPtr IPublication::toDebug(IPublicationPtr publication)
     {
-      return internal::Publication::toDebugString(publication, includeCommaPrefix);
+      return internal::Publication::toDebug(publication);
     }
 
     //-------------------------------------------------------------------------

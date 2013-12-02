@@ -44,7 +44,10 @@
 #include <openpeer/stack/message/peer-salt/MessageFactoryPeerSalt.h>
 #include <openpeer/stack/message/peer-to-peer/MessageFactoryPeerToPeer.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -56,6 +59,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       using message::bootstrapped_finder::MessageFactoryBootstrappedFinder;
       using message::bootstrapper::MessageFactoryBootstrapper;
       using message::certificates::MessageFactoryCertificates;
@@ -327,9 +332,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Stack::log(const char *message) const
+      Log::Params Stack::log(const char *message) const
       {
-        return String("Stack [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("stack::Stack");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
     }
 

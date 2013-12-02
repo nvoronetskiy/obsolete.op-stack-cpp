@@ -364,7 +364,7 @@ namespace openpeer
         #pragma mark Account => IAccount
         #pragma mark
 
-        static String toDebugString(IAccountPtr account, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IAccountPtr account);
 
         static AccountPtr create(
                                  IAccountDelegatePtr delegate,
@@ -641,9 +641,10 @@ namespace openpeer
         bool isShuttingDown() const {return AccountState_ShuttingDown ==  mCurrentState;}
         bool isShutdown() const     {return AccountState_Shutdown ==  mCurrentState;}
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         void cancel();
         void step();
@@ -738,7 +739,8 @@ namespace openpeer
           RelayInfo() : mChannel(0) {}
           ~RelayInfo();
 
-          String getDebugValueString(bool includeCommaPrefix = true) const;
+          ElementPtr toDebug() const;
+          Log::Params log(const char *message) const;
           void cancel();
         };
 
@@ -755,14 +757,14 @@ namespace openpeer
           typedef std::map<LocationID, AccountPeerLocationPtr> PeerLocationMap;     // every location needs a session
           typedef std::map<LocationID, LocationID> FindingBecauseOfLocationIDMap;   // using this to track the reason why the find needs to be initated or reinitated
 
-          static String toDebugString(PeerInfoPtr peerInfo, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(PeerInfoPtr peerInfo);
 
           static PeerInfoPtr create();
           ~PeerInfo();
           void findTimeReset();
           void findTimeScheduleNext();
-          String log(const char *message) const;
-          String getDebugValueString(bool includeCommaPrefix = true) const;
+          Log::Params log(const char *message) const;
+          ElementPtr toDebug() const;
 
           AutoPUID mID;
           bool mFindAtNextPossibleMoment;

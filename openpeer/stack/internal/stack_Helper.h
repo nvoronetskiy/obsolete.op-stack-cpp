@@ -56,8 +56,6 @@ namespace openpeer
         #pragma mark Helper => IHelper
         #pragma mark
 
-        static String getDebugValue(const char *name, const String &value, bool &firstTime);
-
         static ElementPtr getSignatureInfo(
                                            ElementPtr signedEl,
                                            ElementPtr *outSignatureEl = NULL,
@@ -89,6 +87,9 @@ namespace openpeer
                                                );
 
         static const char *getJavaScriptLogLevel();
+
+      protected:
+        static Log::Params log(const char *message);
       };
     }
   }

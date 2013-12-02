@@ -129,7 +129,7 @@ namespace openpeer
 
       static const char *toString(SessionStates state);
 
-      static String toDebugString(IServiceIdentitySessionPtr session, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IServiceIdentitySessionPtr session);
 
       static IServiceIdentitySessionPtr loginWithIdentity(
                                                           IServiceIdentitySessionDelegatePtr delegate,

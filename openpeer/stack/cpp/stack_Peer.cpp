@@ -35,6 +35,8 @@
 
 #include <openpeer/stack/IPeerFilePublic.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
@@ -51,6 +53,8 @@ namespace openpeer
     namespace internal
     {
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+      using services::IHelper;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -178,13 +182,13 @@ namespace openpeer
       bool Peer::isValid(const char *peerURI)
       {
         if (!peerURI) {
-          ZS_LOG_WARNING(Detail, "Peer [] peer URI is not valid as it is NULL, uri=(null)")
+          ZS_LOG_WARNING(Detail, slog("peer URI is not valid as it is NULL") + ZS_PARAM("uri", "(null)"))
           return false;
         }
 
         zsLib::RegEx e("^peer:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/([a-f0-9][a-f0-9])+$");
         if (!e.hasMatch(peerURI)) {
-          ZS_LOG_WARNING(Detail, String("Peer [] peer URI is not valid, uri=") + peerURI);
+          ZS_LOG_WARNING(Detail, slog("peer URI is not valid") + ZS_PARAM("peer uri", peerURI));
           return false;
         }
         return true;
@@ -203,7 +207,7 @@ namespace openpeer
         peerURI.toLower();
 
         if (!isValid(peerURI)) {
-          ZS_LOG_WARNING(Detail, "Peer [] peer URI was not valid to be able to split, peer URI=" + peerURI)
+          ZS_LOG_WARNING(Detail, slog("peer URI was not valid to be able to split") + ZS_PARAM("peer URI", peerURI))
           return false;
         }
 
@@ -234,17 +238,17 @@ namespace openpeer
 
         String result = "peer://" + domain + "/" + contactID;
         if (!IPeer::isValid(result)) {
-          ZS_LOG_WARNING(Detail, "Peer [] invalid peer URI createtd after join, peer URI=" + result)
+          ZS_LOG_WARNING(Detail, slog("invalid peer URI createtd after join") + ZS_PARAM("peer URI", result))
           return String();
         }
         return result;
       }
 
       //-----------------------------------------------------------------------
-      String Peer::toDebugString(IPeerPtr peer, bool includeCommaPrefix)
+      ElementPtr Peer::toDebug(IPeerPtr peer)
       {
-        if (!peer) return String(includeCommaPrefix ? ", peer=(null)" : "peer=(null)");
-        return Peer::convert(peer)->getDebugValueString(includeCommaPrefix);
+        if (!peer) return ElementPtr();
+        return Peer::convert(peer)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -291,31 +295,31 @@ namespace openpeer
         ElementPtr signedElement = IHelper::getSignatureInfo(inSignedElement, &signature);
 
         if (!signedElement) {
-          ZS_LOG_WARNING(Detail, "Peer [] could not find signature information")
+          ZS_LOG_WARNING(Detail, slog("could not find signature information"))
           return PeerPtr();
         }
 
         ElementPtr keyEl = signature->findFirstChildElement("key");
         if (!keyEl) {
-          ZS_LOG_WARNING(Detail, "Peer [] could not find key in signature")
+          ZS_LOG_WARNING(Detail, slog("could not find key in signature"))
           return PeerPtr();
         }
 
         ElementPtr uriEl = keyEl->findFirstChildElement("uri");
         if (!uriEl) {
-          ZS_LOG_WARNING(Detail, "Peer [] could not find key in signature")
+          ZS_LOG_WARNING(Detail, slog("could not find key in signature"))
           return PeerPtr();
         }
 
         String peerURI = uriEl->getTextDecoded();
         if (!isValid(peerURI)) {
-          ZS_LOG_WARNING(Detail, "Peer [] URI in key is not valid peer URI, uri=" + peerURI)
+          ZS_LOG_WARNING(Detail, slog("URI in key is not valid peer URI") + ZS_PARAM("peer uri", peerURI))
           return PeerPtr();
         }
 
         PeerPtr peer = create(Account::convert(account), peerURI);
         if (!peer) {
-          ZS_LOG_ERROR(Detail, "Peer [] could not create peer for given peer, uri=" + peerURI)
+          ZS_LOG_ERROR(Detail, slog("could not create peer for given peer") + ZS_PARAM("peer uri", peerURI))
           return PeerPtr();
         }
         return peer;
@@ -343,22 +347,22 @@ namespace openpeer
 
         String peerURI = peer->getPeerURI();
         if (peerURI != getPeerURI()) {
-          ZS_LOG_WARNING(Detail, log("peer URI in signature does not match peer") + ", signature: " + IPeer::toDebugString(peer, false) + ", self: " + getDebugValueString(false))
+          ZS_LOG_WARNING(Detail, debug("peer URI in signature does not match peer") + ZS_PARAM("signature", IPeer::toDebug(peer)))
           return false;
         }
 
         IPeerFilePublicPtr peerFilePublic = peer->getPeerFilePublic();
         if (!peerFilePublic) {
-          ZS_LOG_WARNING(Detail, log("public peer file is not known yet for peer") + IPeer::toDebugString(peer))
+          ZS_LOG_WARNING(Detail, log("public peer file is not known yet for peer") + IPeer::toDebug(peer))
           return false;
         }
 
         if (!peerFilePublic->verifySignature(signedElement)) {
-          ZS_LOG_WARNING(Detail, peer->log("signature failed to validate") + IPeer::toDebugString(peer))
+          ZS_LOG_WARNING(Detail, peer->log("signature failed to validate") + IPeer::toDebug(peer))
           return false;
         }
 
-        ZS_LOG_DEBUG(log("signature passed for peer") + IPeer::toDebugString(peer))
+        ZS_LOG_DEBUG(log("signature passed for peer") + IPeer::toDebug(peer))
         return true;
       }
 
@@ -385,7 +389,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("get fine state account gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("get find state account gone"))
           return PeerFindState_Completed;
         }
         return account->forPeer().getPeerState(getPeerURI());
@@ -397,7 +401,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("locations are not available as account is gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("locations are not available as account is gone"))
           LocationListPtr locations(new LocationList);
           return locations;
         }
@@ -440,7 +444,7 @@ namespace openpeer
         if (!peerURI) return PeerPtr();
 
         if (!isValid(peerURI)) {
-          ZS_LOG_DEBUG(String("Peer [] cannot create peer as URI is not valid, peer URI=") + peerURI)
+          ZS_LOG_DEBUG(slog("cannot create peer as URI is not valid") + ZS_PARAM("peer uri", peerURI))
           return PeerPtr();
         }
 
@@ -465,13 +469,17 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Peer::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Peer::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer id", string(mID), firstTime) +
-               Helper::getDebugValue("peer uri", getPeerURI(), firstTime) +
-               Helper::getDebugValue("peer file public", mPeerFilePublic ? String("true") : String(), firstTime);
+
+        ElementPtr resultEl = Element::create("Peer");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "peer uri", getPeerURI());
+        IHelper::debugAppend(resultEl, "peer file public", (bool)mPeerFilePublic);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -491,9 +499,23 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Peer::log(const char *message) const
+      Log::Params Peer::slog(const char *message)
       {
-        return String("Peer [" + string(mID) + "] " + message);
+        return Log::Params(message, "Peer");
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Peer::log(const char *message) const
+      {
+        ElementPtr objectEl = Element::create("Peer");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Peer::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
       }
     }
 
@@ -543,9 +565,9 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String IPeer::toDebugString(IPeerPtr peer, bool includeCommaPrefix)
+    ElementPtr IPeer::toDebug(IPeerPtr peer)
     {
-      return internal::Peer::toDebugString(peer, includeCommaPrefix);
+      return internal::Peer::toDebug(peer);
     }
 
     //-------------------------------------------------------------------------

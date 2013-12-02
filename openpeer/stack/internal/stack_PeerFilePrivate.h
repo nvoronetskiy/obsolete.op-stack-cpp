@@ -109,7 +109,7 @@ namespace openpeer
         #pragma mark PeerFilePrivate => IPeerFilePrivate
         #pragma mark
 
-        static String toDebugString(IPeerFilePrivatePtr peerFilePrivate, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPeerFilePrivatePtr peerFilePrivate);
 
         virtual PUID getID() const {return mID;}
 
@@ -164,7 +164,7 @@ namespace openpeer
         #pragma mark PeerFilePrivate => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
         SecureByteBlockPtr getKey(
                                   const char *phrase,

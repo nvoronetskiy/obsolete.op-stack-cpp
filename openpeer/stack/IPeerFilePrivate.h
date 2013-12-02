@@ -58,7 +58,7 @@ namespace openpeer
 
       static const char *toString(SignatureTypes signatureType);
 
-      static String toDebugString(IPeerFilePrivatePtr peerFilePrivate, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPeerFilePrivatePtr peerFilePrivate);
 
       virtual PUID getID() const = 0;
 

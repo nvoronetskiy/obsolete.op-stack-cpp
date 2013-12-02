@@ -34,7 +34,11 @@
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Peer.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 
@@ -46,7 +50,7 @@ namespace openpeer
   {
     namespace internal
     {
-      typedef zsLib::String String;
+      using services::IHelper;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -238,7 +242,7 @@ namespace openpeer
         mPeer(peer),
         mLocationID(locationID ? String(locationID) : String())
       {
-        ZS_LOG_DEBUG(log("created") + getDebugValueString())
+        ZS_LOG_DEBUG(debug("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -276,10 +280,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Location::toDebugString(ILocationPtr location, bool includeCommaPrefix)
+      ElementPtr Location::toDebug(ILocationPtr location)
       {
-        if (!location) return String(includeCommaPrefix ? ", location=(null)" : "location=(null)");
-        return Location::convert(location)->getDebugValueString(includeCommaPrefix);
+        if (!location) return ElementPtr();
+        return Location::convert(location)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -399,7 +403,7 @@ namespace openpeer
       {
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("location is disconnected as account is gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("location is disconnected as account is gone"))
           return LocationConnectionState_Disconnected;
         }
         return account->forLocation().getConnectionState(mThisWeak.lock());
@@ -410,7 +414,7 @@ namespace openpeer
       {
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("send message failed as account is gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
           return false;
         }
         return account->forLocation().send(mThisWeak.lock(), message);
@@ -421,7 +425,7 @@ namespace openpeer
       {
         AccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("send message failed as account is gone") + getDebugValueString())
+          ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
           return;
         }
         return account->forLocation().hintNowAvailable(mThisWeak.lock());
@@ -465,7 +469,7 @@ namespace openpeer
 
         if ((peerURI.isEmpty()) ||
             (locationID.isEmpty())) {
-          ZS_LOG_DEBUG(String("Location [] cannot create location as missing peer URI or location ID, peer URI=") + peerURI + ", location ID=" + locationID)
+          ZS_LOG_DEBUG(slog("cannot create location as missing peer URI or location ID") + ZS_PARAM("peer URI", + peerURI) + ZS_PARAM("location ID", locationID))
           return LocationPtr();
         }
 
@@ -480,7 +484,7 @@ namespace openpeer
 
         PeerPtr peer = IPeerForLocation::create(account, peerURI);
         if (!peer) {
-          ZS_LOG_DEBUG("Location [] cannot create location as peer failed to create")
+          ZS_LOG_DEBUG(slog("cannot create location as peer failed to create"))
           return LocationPtr();
         }
 
@@ -508,13 +512,16 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Location::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Location::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("location id", string(mID), firstTime) +
-               Helper::getDebugValue("type", toString(mType), firstTime) +
-               IPeer::toDebugString(mPeer) +
-               Helper::getDebugValue("location id(s)", mLocationID, firstTime);
+        ElementPtr resultEl = Element::create("Location");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "type", toString(mType));
+        IHelper::debugAppend(resultEl, IPeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, "location id(s)", mLocationID);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -526,9 +533,23 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String Location::log(const char *message) const
+      Log::Params Location::slog(const char *message)
       {
-        return String("Location [" + string(mID) + "] " + message);
+        return Log::Params(message, "Location");
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Location::log(const char *message) const
+      {
+        ElementPtr objectEl = Element::create("Location");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Location::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
       }
     }
 
@@ -566,9 +587,9 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String ILocation::toDebugString(ILocationPtr location, bool includeCommaPrefix)
+    ElementPtr ILocation::toDebug(ILocationPtr location)
     {
-      return internal::Location::toDebugString(location, includeCommaPrefix);
+      return internal::Location::toDebug(location);
     }
 
     //-------------------------------------------------------------------------

@@ -60,7 +60,7 @@ namespace openpeer
 
         static const char *toString(SessionStates state);
 
-        static String toDebugString(IFinderConnectionPtr connection, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IFinderConnectionPtr connection);
 
         //---------------------------------------------------------------------
         // PURPOSE: create a TCP connection to a remote finder

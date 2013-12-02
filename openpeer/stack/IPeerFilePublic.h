@@ -49,7 +49,7 @@ namespace openpeer
 
     interaction IPeerFilePublic
     {
-      static String toDebugString(IPeerFilePublicPtr peerFilePublic, bool includePrefixComma = true);
+      static ElementPtr toDebug(IPeerFilePublicPtr peerFilePublic);
 
       static IPeerFilePublicPtr loadFromElement(ElementPtr publicPeerRootElement);
 

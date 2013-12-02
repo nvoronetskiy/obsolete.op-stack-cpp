@@ -65,7 +65,7 @@ namespace openpeer
 
     interaction IServiceSaltFetchSignedSaltQuery
     {
-      static String toDebugString(IServiceSaltFetchSignedSaltQueryPtr query, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IServiceSaltFetchSignedSaltQueryPtr query);
 
       static IServiceSaltFetchSignedSaltQueryPtr fetchSignedSalt(
                                                                  IServiceSaltFetchSignedSaltQueryDelegatePtr delegate,

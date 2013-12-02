@@ -82,7 +82,7 @@ namespace openpeer
         #pragma mark ServiceCertificatesValidateQuery => IServiceCertificatesValidateQuery
         #pragma mark
 
-        static String toDebugString(IServiceCertificatesValidateQueryPtr query, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IServiceCertificatesValidateQueryPtr query);
 
         static ServiceCertificatesValidateQueryPtr queryIfValidSignature(
                                                                         IServiceCertificatesValidateQueryDelegatePtr delegate,
@@ -118,9 +118,9 @@ namespace openpeer
         #pragma mark
 
         RecursiveLock &getLock() const;
-        virtual String getDebugStringValue(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
 
       protected:

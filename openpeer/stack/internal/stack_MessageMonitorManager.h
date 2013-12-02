@@ -118,7 +118,7 @@ namespace openpeer
         #pragma mark MessageMonitorManager => (internal)
         #pragma mark
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
         virtual RecursiveLock &getLock() const {return mLock;}
 
@@ -128,7 +128,7 @@ namespace openpeer
         #pragma mark MessageMonitorManager => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
         mutable RecursiveLock mLock;
         MessageMonitorManagerWeakPtr mThisWeak;
 

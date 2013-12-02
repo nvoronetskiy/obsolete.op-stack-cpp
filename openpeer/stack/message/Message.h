@@ -67,7 +67,7 @@ namespace openpeer
         };
 
       public:
-        static String toDebugString(MessagePtr message, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(MessagePtr message);
 
         static MessagePtr create(
                                  DocumentPtr document,

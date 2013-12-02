@@ -211,7 +211,7 @@ namespace openpeer
         #pragma mark ServiceNamespaceGrantSession => IServiceNamespaceGrantSession
         #pragma mark
 
-        static String toDebugString(IServiceNamespaceGrantSessionPtr session, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IServiceNamespaceGrantSessionPtr session);
 
         static ServiceNamespaceGrantSessionPtr create(
                                                       IServiceNamespaceGrantSessionDelegatePtr delegate,
@@ -306,8 +306,10 @@ namespace openpeer
 
         RecursiveLock &getLock() const;
 
-        String log(const char *message) const;
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
 
@@ -435,6 +437,8 @@ namespace openpeer
           #pragma mark
 
           RecursiveLock &getLock() const;
+
+          Log::Params log(const char *message) const;
 
         public:
           mutable RecursiveLock mBogusLock;

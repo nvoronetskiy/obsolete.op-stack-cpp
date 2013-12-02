@@ -62,7 +62,7 @@ namespace openpeer
         virtual LocationPtr getLocation(bool internal = true) const = 0;
         virtual message::MessagePtr getMessage() const = 0;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const = 0;
+        virtual ElementPtr toDebug() const = 0;
       };
 
 
@@ -104,7 +104,7 @@ namespace openpeer
         #pragma mark MessageIncoming => IMessageIncoming
         #pragma mark
 
-        static String toDebugString(IMessageIncomingPtr messageIncoming, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IMessageIncomingPtr messageIncoming);
 
         virtual PUID getID() const {return mID;}
 
@@ -131,7 +131,7 @@ namespace openpeer
 
         // (duplicate) virtual message::MessagePtr getMessage() const;
 
-        // (duplicate) virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        // (duplicate) virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------
@@ -140,9 +140,10 @@ namespace openpeer
         #pragma mark
 
         RecursiveLock &getLock() const;
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------

@@ -49,7 +49,7 @@ namespace openpeer
 
     interaction IBootstrappedNetwork
     {
-      static String toDebugString(IBootstrappedNetworkPtr network, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IBootstrappedNetworkPtr network);
 
       static IBootstrappedNetworkPtr prepare(
                                              const char *domain,

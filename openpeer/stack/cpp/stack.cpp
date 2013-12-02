@@ -32,7 +32,10 @@
 #include <openpeer/stack/internal/stack.h>
 #include <openpeer/stack/stack.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/Stringize.h>
 
 namespace openpeer { namespace stack { ZS_IMPLEMENT_SUBSYSTEM(openpeer_stack) } }
@@ -42,7 +45,9 @@ namespace openpeer
   namespace stack
   {
     using internal::Helper;
+    typedef services::IHelper OPIHelper;
     using zsLib::string;
+    using namespace zsLib::XML;
 
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
@@ -88,17 +93,18 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String Candidate::getDebugValueString(bool includeCommaPrefix) const
+    ElementPtr Candidate::toDebug() const
     {
-      bool firstTime = false;
-      String result = IICESocket::Candidate::toDebugString(includeCommaPrefix);
+      ElementPtr resultEl = Element::create("stack::Candidate");
 
-      return
-      result +
-      Helper::getDebugValue("class", mNamespace, firstTime) +
-      Helper::getDebugValue("transport", mTransport, firstTime) +
-      Helper::getDebugValue("access token", mAccessToken, firstTime) +
-      Helper::getDebugValue("access secret proof", mAccessSecretProof, firstTime);
+      OPIHelper::debugAppend(resultEl, IICESocket::Candidate::toDebug());
+      OPIHelper::debugAppend(resultEl, "class", mNamespace);
+
+      OPIHelper::debugAppend(resultEl, "transport", mTransport);
+      OPIHelper::debugAppend(resultEl, "access token", mAccessToken);
+      OPIHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
+
+      return resultEl;
     }
 
     //-------------------------------------------------------------------------
@@ -123,17 +129,20 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    String LocationInfo::getDebugValueString(bool includeCommaPrefix) const
+    ElementPtr LocationInfo::toDebug() const
     {
-      bool firstTime = false;
-      return ILocation::toDebugString(mLocation, includeCommaPrefix) +
-             Helper::getDebugValue("IP addres", !mIPAddress.isEmpty() ? mIPAddress.string() : String(), firstTime) +
-             Helper::getDebugValue("device ID", mDeviceID, firstTime) +
-             Helper::getDebugValue("user agent", mUserAgent, firstTime) +
-             Helper::getDebugValue("os", mOS, firstTime) +
-             Helper::getDebugValue("system", mSystem, firstTime) +
-             Helper::getDebugValue("host", mHost, firstTime) +
-             Helper::getDebugValue("candidates", mCandidates.size() > 0 ? string(mCandidates.size()) : String(), firstTime);
+      ElementPtr resultEl = Element::create("LocationInfo");
+
+      OPIHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
+      OPIHelper::debugAppend(resultEl, "IP addres", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
+      OPIHelper::debugAppend(resultEl, "device ID", mDeviceID);
+      OPIHelper::debugAppend(resultEl, "user agent", mUserAgent);
+      OPIHelper::debugAppend(resultEl, "os", mOS);
+      OPIHelper::debugAppend(resultEl, "system", mSystem);
+      OPIHelper::debugAppend(resultEl, "host", mHost);
+      OPIHelper::debugAppend(resultEl, "candidates", mCandidates.size());
+
+      return resultEl;
     }
   }
 }

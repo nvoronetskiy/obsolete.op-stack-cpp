@@ -67,8 +67,9 @@ namespace openpeer
     using zsLib::XML::ElementPtr;
     using zsLib::XML::DocumentPtr;
     using zsLib::XML::NodePtr;
-    using services::IHTTP;
+    using zsLib::Log;
 
+    using services::IHTTP;
     using services::IICESocket;
     using services::IRSAPrivateKey;
     using services::IRSAPrivateKeyPtr;
@@ -103,7 +104,7 @@ namespace openpeer
       Candidate(const Candidate &candidate);
       Candidate(const IICESocket::Candidate &candidate);
       bool hasData() const;
-      String getDebugValueString(bool includeCommaPrefix = true) const;
+      ElementPtr toDebug() const;
     };
     typedef boost::shared_ptr<Candidate> CandidatePtr;
     typedef boost::weak_ptr<Candidate> CandidateWeakPtr;
@@ -133,7 +134,7 @@ namespace openpeer
       CandidateList mCandidates;
 
       bool hasData() const;
-      String getDebugValueString(bool includeCommaPrefix = true) const;
+      ElementPtr toDebug() const;
     };
 
     typedef boost::shared_ptr<LocationInfo> LocationInfoPtr;

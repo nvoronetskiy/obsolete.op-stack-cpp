@@ -61,6 +61,12 @@ namespace openpeer
       namespace peer_finder
       {
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "SessionCreateResult");
+        }
+
+        //---------------------------------------------------------------------
         SessionCreateResultPtr SessionCreateResult::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<SessionCreateResult>(message);
@@ -88,37 +94,37 @@ namespace openpeer
 
             relayEl = serverProofEl->findFirstChildElementChecked("relay");
           } catch(CheckFailed &) {
-            ZS_LOG_WARNING(Detail, "SessionCreateResult[] session create relay token missing")
+            ZS_LOG_WARNING(Detail, slog("session create relay token missing"))
             return SessionCreateResultPtr();
           }
 
           LocationPtr messageLocation = ILocationForMessages::convert(messageSource);
           if (!messageLocation) {
-            ZS_LOG_ERROR(Detail, "SessionCreateResult [] message source was not a known location")
+            ZS_LOG_ERROR(Detail, slog("message source was not a known location"))
             return SessionCreateResultPtr();
           }
 
           AccountPtr account = messageLocation->forMessages().getAccount();
           if (!account) {
-            ZS_LOG_ERROR(Detail, "SessionCreateResult [] account object is gone")
+            ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return SessionCreateResultPtr();
           }
 
           IPeerFilesPtr peerFiles = account->forMessages().getPeerFiles();
           if (!peerFiles) {
-            ZS_LOG_ERROR(Detail, "SessionCreateResult [] peer files not found in account")
+            ZS_LOG_ERROR(Detail, slog("peer files not found in account"))
             return SessionCreateResultPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = peerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "SessionCreateResult [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return SessionCreateResultPtr();
           }
 
           IPeerFilePublicPtr peerFilePublic = peerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "SessionCreateResult [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return SessionCreateResultPtr();
           }
 

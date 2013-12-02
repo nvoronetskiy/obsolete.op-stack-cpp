@@ -57,6 +57,12 @@ namespace openpeer
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "ChannelMapRequest");
+        }
+
+        //---------------------------------------------------------------------
         ChannelMapRequestPtr ChannelMapRequest::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<ChannelMapRequest>(message);
@@ -116,7 +122,7 @@ namespace openpeer
             String hashInput = String("proof:") + clientNonce + ":" + mLocalContextID + ":" + string(mChannelNumber) + ":" + IHelper::timeToString(expires) + ":" + mRelayAccessSecretProof;
             String proof = IHelper::convertToHex(*IHelper::hash(hashInput));
 
-            ZS_LOG_TRACE("ChannelMapRequest [" + mID + "] relay access secret hash input=" + hashInput + ", result=" + proof)
+            ZS_LOG_TRACE(slog("relay access secret hash") + ZS_PARAM("id", mID) + ZS_PARAM("input", hashInput) + ZS_PARAM("result", proof))
 
             relayEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProof", proof));
             relayEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(expires)));

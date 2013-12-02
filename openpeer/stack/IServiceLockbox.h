@@ -74,7 +74,7 @@ namespace openpeer
       };
       static const char *toString(SessionStates state);
 
-      static String toDebugString(IServiceLockboxSessionPtr session, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IServiceLockboxSessionPtr session);
 
       static IServiceLockboxSessionPtr login(
                                              IServiceLockboxSessionDelegatePtr delegate,

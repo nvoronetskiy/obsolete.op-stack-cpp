@@ -202,7 +202,7 @@ namespace openpeer
         #pragma mark PublicationRepository => IPublicationRepository
         #pragma mark
 
-        static String toDebugString(IPublicationRepositoryPtr repository, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IPublicationRepositoryPtr repository);
 
         static PublicationRepositoryPtr getFromAccount(IAccountPtr account);
 
@@ -362,9 +362,9 @@ namespace openpeer
         RecursiveLock &getLock() const {return mLock;}
         AccountPtr getAccount() const {return mAccount.lock();}
 
-        String log(const char *message) const;
+        Log::Params log(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        virtual ElementPtr toDebug() const;
 
         void activateFetcher(PublicationMetaDataPtr metaData);
         void activatePublisher(PublicationPtr publication);
@@ -436,7 +436,7 @@ namespace openpeer
           #pragma mark PublicationRepository::PeerCache => IPublicationRepositoryPeerCache
           #pragma mark
 
-          static String toDebugString(IPublicationRepositoryPeerCachePtr cache, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(IPublicationRepositoryPeerCachePtr cache);
 
           virtual bool getNextVersionToNotifyAboutAndMarkNotified(
                                                                   IPublicationPtr publication,
@@ -467,8 +467,8 @@ namespace openpeer
           #pragma mark PublicationRepository::PeerCache => (internal)
           #pragma mark
 
-          String log(const char *message) const;
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          Log::Params log(const char *message) const;
+          virtual ElementPtr toDebug() const;
 
           RecursiveLock &getLock() const;
 
@@ -525,7 +525,7 @@ namespace openpeer
           #pragma mark PublicationRepository::Publisher => friend PublicationRepository
           #pragma mark
 
-          static String toDebugString(IPublicationPublisherPtr publisher, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(IPublicationPublisherPtr publisher);
 
           static PublisherPtr create(
                                      IMessageQueuePtr queue,
@@ -577,9 +577,9 @@ namespace openpeer
           #pragma mark
 
           PUID getID() const {return mID;}
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
           IMessageMonitorPtr getMonitor() const;
 
@@ -643,7 +643,7 @@ namespace openpeer
           #pragma mark PublicationRepository::Fetcher => friend PublicationRepository
           #pragma mark
 
-          static String toDebugString(IPublicationFetcherPtr fetcher, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(IPublicationFetcherPtr fetcher);
 
           static FetcherPtr create(
                                    IMessageQueuePtr queue,
@@ -696,9 +696,9 @@ namespace openpeer
           #pragma mark
 
           PUID getID() const {return mID;}
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
           IMessageMonitorPtr getMonitor() const;
 
@@ -764,7 +764,7 @@ namespace openpeer
           #pragma mark PublicationRepository::Remover => friend PublicationRepository
           #pragma mark
 
-          static String toDebugString(IPublicationRemoverPtr remover, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(IPublicationRemoverPtr remover);
 
           static RemoverPtr create(
                                    IMessageQueuePtr queue,
@@ -814,9 +814,9 @@ namespace openpeer
           #pragma mark
 
           RecursiveLock &getLock() const;
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
         private:
           //-------------------------------------------------------------------
@@ -877,7 +877,7 @@ namespace openpeer
           #pragma mark PublicationRepository::SubscriptionLocal => friend SubscriptionLocal
           #pragma mark
 
-          static String toDebugString(SubscriptionLocalPtr subscription, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(SubscriptionLocalPtr subscription);
 
           static SubscriptionLocalPtr create(
                                              IMessageQueuePtr queue,
@@ -911,9 +911,9 @@ namespace openpeer
 
           PUID getID() const {return mID;}
           RecursiveLock &getLock() const;
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
           void setState(PublicationSubscriptionStates state);
 
@@ -964,7 +964,7 @@ namespace openpeer
         public:
           ~PeerSubscriptionIncoming();
 
-          static String toDebugString(PeerSubscriptionIncomingPtr subscription, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(PeerSubscriptionIncomingPtr subscription);
 
           //-------------------------------------------------------------------
           #pragma mark
@@ -1011,9 +1011,9 @@ namespace openpeer
 
           PUID getID() const {return mID;}
           RecursiveLock &getLock() const;
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
         private:
           //-------------------------------------------------------------------
@@ -1071,7 +1071,7 @@ namespace openpeer
           #pragma mark PublicationRepository::PeerSubscriptionOutgoing => friend PublicationRepository
           #pragma mark
 
-          static String toDebugString(PeerSubscriptionOutgoingPtr subscription, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(PeerSubscriptionOutgoingPtr subscription);
 
           static PeerSubscriptionOutgoingPtr create(
                                                     IMessageQueuePtr queue,
@@ -1119,9 +1119,9 @@ namespace openpeer
 
           PUID getID() const {return mID;}
           RecursiveLock &getLock() const;
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
           bool isPending() const {return PublicationSubscriptionState_Pending == mCurrentState;}
           bool isEstablished() const {return PublicationSubscriptionState_Established == mCurrentState;}

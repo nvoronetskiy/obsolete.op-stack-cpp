@@ -60,6 +60,12 @@ namespace openpeer
         using namespace stack::internal;
 
         //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "PeerLocationFindNotify");
+        }
+
+        //---------------------------------------------------------------------
         PeerLocationFindNotifyPtr PeerLocationFindNotify::convert(MessagePtr message)
         {
           return boost::dynamic_pointer_cast<PeerLocationFindNotify>(message);
@@ -95,7 +101,7 @@ namespace openpeer
             try {
               ret->mFinal = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("final"));
             } catch (Numeric<bool>::ValueOutOfRange &) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindNotify [] final value missing")
+              ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
 
             ElementPtr locationEl = findProofEl->findFirstChildElement("location");
@@ -104,24 +110,24 @@ namespace openpeer
             }
 
             if (!ret->mLocationInfo.mLocation) {
-              ZS_LOG_ERROR(Detail, "PeerLocationFindNotify [] missing location information in find request")
+              ZS_LOG_ERROR(Detail, slog("missing location information in find request"))
               return PeerLocationFindNotifyPtr();
             }
 
             PeerPtr peer = Location::convert(ret->mLocationInfo.mLocation)->forMessages().getPeer();
 
             if (!peer) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindNotify [] expected element is missing")
+              ZS_LOG_WARNING(Detail, slog("expected element is missing"))
               return PeerLocationFindNotifyPtr();
             }
 
             if (!peer->forMessages().verifySignature(findProofEl)) {
-              ZS_LOG_WARNING(Detail, "PeerLocationFindNotify [] could not validate signature of find proof request")
+              ZS_LOG_WARNING(Detail, slog("could not validate signature of find proof request"))
               return PeerLocationFindNotifyPtr();
             }
 
           } catch(CheckFailed &) {
-            ZS_LOG_WARNING(Detail, "PeerLocationFindNotify [] expected element is missing")
+            ZS_LOG_WARNING(Detail, slog("expected element is missing"))
             return PeerLocationFindNotifyPtr();
           }
 
@@ -168,18 +174,18 @@ namespace openpeer
           ElementPtr root = ret->getFirstChildElement();
 
           if (!mPeerFiles) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindNotify [] peer files was null")
+            ZS_LOG_ERROR(Detail, slog("peer files was null"))
             return DocumentPtr();
           }
 
           IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
           if (!peerFilePrivate) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindNotify [] peer file private was null")
+            ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return DocumentPtr();
           }
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, "PeerLocationFindNotify [] peer file public was null")
+            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
             return DocumentPtr();
           }
 

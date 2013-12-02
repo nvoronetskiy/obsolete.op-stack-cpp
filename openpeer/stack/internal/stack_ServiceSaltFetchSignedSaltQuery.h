@@ -92,7 +92,7 @@ namespace openpeer
         #pragma mark ServiceSaltFetchSignedSaltQuery => IServiceSaltFetchSignedSaltQuery
         #pragma mark
 
-        static String toDebugString(IServiceSaltFetchSignedSaltQueryPtr query, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IServiceSaltFetchSignedSaltQueryPtr query);
 
         static ServiceSaltFetchSignedSaltQueryPtr fetchSignedSalt(
                                                                   IServiceSaltFetchSignedSaltQueryDelegatePtr delegate,
@@ -146,8 +146,10 @@ namespace openpeer
 
         RecursiveLock &getLock() const;
 
-        String log(const char *message) const;
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         void step();
 

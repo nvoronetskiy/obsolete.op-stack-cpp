@@ -38,7 +38,10 @@
 
 #include <openpeer/stack/IMessageIncoming.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 
 //#include <algorithm>
@@ -53,6 +56,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using services::IHelper;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -100,10 +105,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      String PeerSubscription::toDebugString(IPeerSubscriptionPtr subscription, bool includeCommaPrefix)
+      ElementPtr PeerSubscription::toDebug(IPeerSubscriptionPtr subscription)
       {
-        if (!subscription) return includeCommaPrefix ? String(", subscription=(null)") : String("subscription=(null)");
-        return PeerSubscription::convert(subscription)->getDebugValueString(includeCommaPrefix);
+        if (!subscription) return ElementPtr();
+        return PeerSubscription::convert(subscription)->toDebug();
       }
 
       //-----------------------------------------------------------------------
@@ -208,7 +213,7 @@ namespace openpeer
 
         if (mPeer) {
           if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring find state for peer") + ", notified peer: " + IPeer::toDebugString(peer, false) + ", subscribing peer" + IPeer::toDebugString(mPeer, false))
+            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", IPeer::toDebug(peer)) + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)))
             return;
           }
         }
@@ -236,11 +241,11 @@ namespace openpeer
         if (mPeer) {
           PeerPtr peer = location->forPeerSubscription().getPeer();
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer, subscribing=") + IPeer::toDebugString(mPeer))
+            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", IPeer::toDebug(mPeer)))
             return;
           }
           if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change") + ", notified peer: " + IPeer::toDebugString(peer, false) + ", subscribing peer" + IPeer::toDebugString(mPeer, false))
+            ZS_LOG_DEBUG(log("ignoring location connection state change") + ZS_PARAM("notified peer", IPeer::toDebug(peer)) + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)))
             return;
           }
         }
@@ -270,11 +275,11 @@ namespace openpeer
         if (mPeer) {
           PeerPtr peer = Peer::convert(location->forPeerSubscription().getPeer());
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ", subscribing peer" + IPeer::toDebugString(mPeer, false) + ", incoming: " + IMessageIncoming::toDebugString(message, false))
+            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
           if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring incoming message for peer") + ", subscribing peer" + IPeer::toDebugString(mPeer, false) + ", incoming: " + IMessageIncoming::toDebugString(message, false))
+            ZS_LOG_DEBUG(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
         }
@@ -310,19 +315,24 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String PeerSubscription::log(const char *message) const
+      Log::Params PeerSubscription::log(const char *message) const
       {
-        return String("PeerSubscription [") + string(mID) + "] " + message;
+        ElementPtr objectEl = Element::create("PeerSubscription");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      String PeerSubscription::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr PeerSubscription::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("peer subscription id", string(mID), firstTime) +
-               Helper::getDebugValue("subscribing", mPeer ? "peer" : "all", firstTime) +
-               IPeer::toDebugString(mPeer);
+        ElementPtr resultEl = Element::create("PeerSubscription");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "subscribing", mPeer ? "peer" : "all");
+        IHelper::debugAppend(resultEl, IPeer::toDebug(mPeer));
+
+        return resultEl;
       }
     }
 
@@ -335,9 +345,9 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    String IPeerSubscription::toDebugString(IPeerSubscriptionPtr subscription, bool includeCommaPrefix)
+    ElementPtr IPeerSubscription::toDebug(IPeerSubscriptionPtr subscription)
     {
-      return internal::PeerSubscription::toDebugString(subscription, includeCommaPrefix);
+      return internal::PeerSubscription::toDebug(subscription);
     }
 
     //-------------------------------------------------------------------------

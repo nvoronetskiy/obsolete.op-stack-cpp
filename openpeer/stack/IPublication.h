@@ -55,7 +55,7 @@ namespace openpeer
       typedef boost::shared_ptr<RelationshipList> RelationshipListPtr;
       typedef boost::weak_ptr<RelationshipList> RelationshipListWeakPtr;
 
-      static String toDebugString(IPublicationPtr publication, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IPublicationPtr publication);
 
       static IPublicationPtr create(
                                     ILocationPtr creatorLocation,

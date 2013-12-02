@@ -48,7 +48,7 @@ namespace openpeer
 
     interaction IMessageIncoming
     {
-      static String toDebugString(IMessageIncomingPtr messageIncoming, bool includeCommaPrefix = true);
+      static ElementPtr toDebug(IMessageIncomingPtr messageIncoming);
 
       virtual PUID getID() const = 0;
 

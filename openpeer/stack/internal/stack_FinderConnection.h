@@ -137,7 +137,7 @@ namespace openpeer
         #pragma mark FinderConnection => IFinderConnection
         #pragma mark
 
-        static String toDebugString(IFinderConnectionPtr connection, bool includeCommaPrefix = true);
+        static ElementPtr toDebug(IFinderConnectionPtr connection);
 
         static IFinderConnectionPtr connect(
                                             IFinderConnectionDelegatePtr delegate,
@@ -256,9 +256,11 @@ namespace openpeer
         bool isFinderRelayConnection() const;
 
         RecursiveLock &getLock() const;
-        String log(const char *message) const;
 
-        virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+        Log::Params log(const char *message) const;
+        Log::Params debug(const char *message) const;
+
+        virtual ElementPtr toDebug() const;
 
         void setState(SessionStates state);
         void setError(WORD errorCode, const char *inReason = NULL);
@@ -332,7 +334,7 @@ namespace openpeer
           static ChannelPtr convert(IFinderConnectionRelayChannelPtr channel);
 
         protected:
-          static String toDebugString(IFinderConnectionRelayChannelPtr channel, bool includeCommaPrefix = true);
+          static ElementPtr toDebug(IFinderConnectionRelayChannelPtr channel);
 
           //-------------------------------------------------------------------
           #pragma mark
@@ -426,11 +428,12 @@ namespace openpeer
           #pragma mark
 
           RecursiveLock &getLock() const;
-          String log(const char *message) const;
+          Log::Params log(const char *message) const;
+          Log::Params debug(const char *message) const;
 
           bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
 
-          virtual String getDebugValueString(bool includeCommaPrefix = true) const;
+          virtual ElementPtr toDebug() const;
 
           void setState(SessionStates state);
           void setError(WORD errorCode, const char *inReason = NULL);

@@ -36,6 +36,7 @@
 #include <openpeer/services/IHelper.h>
 
 #include <zsLib/Log.h>
+#include <zsLib/XML.h>
 #include <zsLib/Stringize.h>
 
 namespace openpeer { namespace stack { namespace message { ZS_IMPLEMENT_SUBSYSTEM(openpeer_stack_message) } } }
@@ -67,13 +68,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Service::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Service::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("service id", mID, firstTime) +
-               Helper::getDebugValue("type", mType, firstTime) +
-               Helper::getDebugValue("version", mVersion, firstTime) +
-               Helper::getDebugValue("methods", mMethods.size() > 0 ? string(mMethods.size()) : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::Service");
+
+        IHelper::debugAppend(resultEl, "service id", mID);
+        IHelper::debugAppend(resultEl, "type", mType);
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "methods", mMethods.size());
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -86,13 +90,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Service::Method::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Service::Method::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("service method name", mName, firstTime) +
-               Helper::getDebugValue("uri", mURI, firstTime) +
-               Helper::getDebugValue("username", mUsername, firstTime) +
-               Helper::getDebugValue("password", mPassword, firstTime);
+        ElementPtr resultEl = Element::create("message::Service::Method");
+
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "uri", mURI);
+        IHelper::debugAppend(resultEl, "username", mUsername);
+        IHelper::debugAppend(resultEl, "password", mPassword);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -113,13 +120,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String Certificate::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Certificate::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("certificate id", mID, firstTime) +
-               Helper::getDebugValue("service", mService, firstTime) +
-               Helper::getDebugValue("expires", Time() != mExpires ? IHelper::timeToString(mExpires) : String(), firstTime) +
-               Helper::getDebugValue("public key", mPublicKey ? String("true") : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::Certificate");
+
+        IHelper::debugAppend(resultEl, "certificate id", mID);
+        IHelper::debugAppend(resultEl, "service", mService);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -143,31 +153,42 @@ namespace openpeer
                (Time() != mExpires);
       }
 
-      static String getProtocolsDebugValueString(const Finder::ProtocolList &protocols, bool &ioFirstTime)
+      //-----------------------------------------------------------------------
+      static ElementPtr getProtocolsDebugValueString(const Finder::ProtocolList &protocols)
       {
-        String result;
-        ULONG index = 0;
+        if (protocols.size() < 1) return ElementPtr();
+
+        ElementPtr resultEl = Element::create("Finder::ProtocolList");
+
         for (Finder::ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
         {
+          ElementPtr protocolEl = Element::create("Finder::Protocol");
           const Finder::Protocol &protocol = (*iter);
-          result += Helper::getDebugValue((String("transport") + string(index)).c_str(), protocol.mTransport, ioFirstTime);
-          result += Helper::getDebugValue((String("host") + string(index)).c_str(), protocol.mHost, ioFirstTime);
+
+          IHelper::debugAppend(protocolEl, "transport", protocol.mTransport);
+          IHelper::debugAppend(protocolEl, "host", protocol.mHost);
+
+          IHelper::debugAppend(resultEl, protocolEl);
         }
-        return result;
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
-      String Finder::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr Finder::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("finder id", mID, firstTime) +
-               getProtocolsDebugValueString(mProtocols, firstTime) +
-               Helper::getDebugValue("public key", mPublicKey ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("priority", 0 != mPriority ? string(mPriority) : String(), firstTime) +
-               Helper::getDebugValue("weight", 0 != mWeight ? string(mWeight) : String(), firstTime) +
-               Helper::getDebugValue("region", mRegion, firstTime) +
-               Helper::getDebugValue("created", Time() != mCreated ? IHelper::timeToString(mCreated) : String(), firstTime) +
-               Helper::getDebugValue("expires", Time() != mExpires ? IHelper::timeToString(mExpires) : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::Finder");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, getProtocolsDebugValueString(mProtocols));
+        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
+        IHelper::debugAppend(resultEl, "priority", mPriority);
+        IHelper::debugAppend(resultEl, "weight", mWeight);
+        IHelper::debugAppend(resultEl, "region", mRegion);
+        IHelper::debugAppend(resultEl, "created", mCreated);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -188,13 +209,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String IdentityInfo::Avatar::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr IdentityInfo::Avatar::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("avatar name", mName, firstTime) +
-               Helper::getDebugValue("url", mURL, firstTime) +
-               Helper::getDebugValue("width", 0 != mWidth ? string(mWidth) : String(), firstTime) +
-               Helper::getDebugValue("height", 0 != mHeight ? string(mHeight) : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::IdentityInfo::Avatar");
+
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "url", mURL);
+        IHelper::debugAppend(resultEl, "width", mWidth);
+        IHelper::debugAppend(resultEl, "height", mHeight);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -265,32 +289,35 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String IdentityInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr IdentityInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("identity disposition", IdentityInfo::Disposition_NA != mDisposition ? String(toString(mDisposition)) : String(), firstTime) +
-               Helper::getDebugValue("identity access token", mAccessToken, firstTime) +
-               Helper::getDebugValue("identity access secret", mAccessSecret, firstTime) +
-               Helper::getDebugValue("identity access secret expires", Time() != mAccessSecretExpires ? IHelper::timeToString(mAccessSecretExpires) : String(), firstTime) +
-               Helper::getDebugValue("identity access secret proof", mAccessSecretProof, firstTime) +
-               Helper::getDebugValue("identity access secret expires", Time() != mAccessSecretProofExpires ? IHelper::timeToString(mAccessSecretProofExpires) : String(), firstTime) +
-               Helper::getDebugValue("identity relogin key", mReloginKey, firstTime) +
-               Helper::getDebugValue("identity base", mBase, firstTime) +
-               Helper::getDebugValue("identity", mURI, firstTime) +
-               Helper::getDebugValue("identity provider", mProvider, firstTime) +
-               Helper::getDebugValue("identity stable ID", mStableID, firstTime) +
-               IPeerFilePublic::toDebugString(mPeerFilePublic, !firstTime) +
-               Helper::getDebugValue("priority", 0 != mPriority ? string(mPriority) : String(), firstTime) +
-               Helper::getDebugValue("weight", 0 != mWeight ? string(mPriority) : String(), firstTime) +
-               Helper::getDebugValue("created", Time() != mCreated ? IHelper::timeToString(mCreated) : String(), firstTime) +
-               Helper::getDebugValue("updated", Time() != mUpdated ? IHelper::timeToString(mUpdated) : String(), firstTime) +
-               Helper::getDebugValue("expires", Time() != mExpires ? IHelper::timeToString(mExpires) : String(), firstTime) +
-               Helper::getDebugValue("name", mName, firstTime) +
-               Helper::getDebugValue("profile", mProfile, firstTime) +
-               Helper::getDebugValue("vprofile", mVProfile, firstTime) +
-               Helper::getDebugValue("avatars", mAvatars.size() > 0 ? string(mAvatars.size()) : String(), firstTime) +
-               Helper::getDebugValue("identity contact proof", mContactProofBundle ? String("true") : String(), firstTime) +
-               Helper::getDebugValue("identity proof", mIdentityProofBundle ? String("true") : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::IdentityInfo");
+
+        IHelper::debugAppend(resultEl, "identity disposition", IdentityInfo::Disposition_NA != mDisposition ? String(toString(mDisposition)) : String());
+        IHelper::debugAppend(resultEl, "identity access token", mAccessToken);
+        IHelper::debugAppend(resultEl, "identity access secret", mAccessSecret);
+        IHelper::debugAppend(resultEl, "identity access secret expires", mAccessSecretExpires);
+        IHelper::debugAppend(resultEl, "identity access secret proof", mAccessSecretProof);
+        IHelper::debugAppend(resultEl, "identity access secret expires", mAccessSecretProofExpires);
+        IHelper::debugAppend(resultEl, "identity relogin key", mReloginKey);
+        IHelper::debugAppend(resultEl, "identity base", mBase);
+        IHelper::debugAppend(resultEl, "identity", mURI);
+        IHelper::debugAppend(resultEl, "identity provider", mProvider);
+        IHelper::debugAppend(resultEl, "identity stable ID", mStableID);
+        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(mPeerFilePublic));
+        IHelper::debugAppend(resultEl, "priority", mPriority);
+        IHelper::debugAppend(resultEl, "weight", mWeight);
+        IHelper::debugAppend(resultEl, "created", mCreated);
+        IHelper::debugAppend(resultEl, "updated", mUpdated);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "profile", mProfile);
+        IHelper::debugAppend(resultEl, "vprofile", mVProfile);
+        IHelper::debugAppend(resultEl, "avatars", mAvatars.size());
+        IHelper::debugAppend(resultEl, "identity contact proof", (bool)mContactProofBundle);
+        IHelper::debugAppend(resultEl, "identity proof", (bool)mIdentityProofBundle);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -449,19 +476,22 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String LockboxInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr LockboxInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("lockbox domain", mDomain, firstTime) +
-               Helper::getDebugValue("lockbox account ID", mAccountID, firstTime) +
-               Helper::getDebugValue("lockbox access token", mAccessToken, firstTime) +
-               Helper::getDebugValue("lockbox access secret", mAccessSecret, firstTime) +
-               Helper::getDebugValue("lockbox access secret expires", Time() != mAccessSecretExpires ? IHelper::timeToString(mAccessSecretExpires) : String(), firstTime) +
-               Helper::getDebugValue("lockbox access secret proof", mAccessSecretProof, firstTime) +
-               Helper::getDebugValue("lockbox access secret expires", Time() != mAccessSecretProofExpires ? IHelper::timeToString(mAccessSecretProofExpires) : String(), firstTime) +
-               Helper::getDebugValue("lockbox key", mKey ? IHelper::convertToBase64(*mKey) : String(), firstTime) +
-               Helper::getDebugValue("lockbox hash", mHash, firstTime) +
-               Helper::getDebugValue("lockbox reset", mResetFlag ? "true" : "false", firstTime);
+        ElementPtr resultEl = Element::create("message::LockboxInfo");
+
+        IHelper::debugAppend(resultEl, "domain", mDomain);
+        IHelper::debugAppend(resultEl, "account ID", mAccountID);
+        IHelper::debugAppend(resultEl, "access token", mAccessToken);
+        IHelper::debugAppend(resultEl, "access secret", mAccessSecret);
+        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretExpires);
+        IHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
+        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretProofExpires);
+        IHelper::debugAppend(resultEl, "key", mKey ? IHelper::convertToBase64(*mKey) : String());
+        IHelper::debugAppend(resultEl, "hash", mHash);
+        IHelper::debugAppend(resultEl, "reset", mResetFlag);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -502,13 +532,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String AgentInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr AgentInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("user agent", mUserAgent, firstTime) +
-               Helper::getDebugValue("name", mName, firstTime) +
-               Helper::getDebugValue("image url", mImageURL, firstTime) +
-               Helper::getDebugValue("agent url", mAgentURL, firstTime);
+        ElementPtr resultEl = Element::create("message::AgentInfo");
+
+        IHelper::debugAppend(resultEl, "user agent", mUserAgent);
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "image url", mImageURL);
+        IHelper::debugAppend(resultEl, "agent url", mAgentURL);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -542,14 +575,17 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String NamespaceGrantChallengeInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr NamespaceGrantChallengeInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("grant challenge ID", mID, firstTime) +
-               Helper::getDebugValue("service name", mName, firstTime) +
-               Helper::getDebugValue("image url", mImageURL, firstTime) +
-               Helper::getDebugValue("service url", mServiceURL, firstTime) +
-               Helper::getDebugValue("domains", mDomains, firstTime);
+        ElementPtr resultEl = Element::create("message::NamespaceGrantChallengeInfo");
+
+        IHelper::debugAppend(resultEl, "grant challenge ID", mID);
+        IHelper::debugAppend(resultEl, "service name", mName);
+        IHelper::debugAppend(resultEl, "image url", mImageURL);
+        IHelper::debugAppend(resultEl, "service url", mServiceURL);
+        IHelper::debugAppend(resultEl, "domains", mDomains);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -581,11 +617,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String NamespaceInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr NamespaceInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("namespace url", mURL, firstTime) +
-               Helper::getDebugValue("last updated", Time() != mLastUpdated ? IHelper::timeToString(mLastUpdated) : String(), firstTime);
+        ElementPtr resultEl = Element::create("message::NamespaceInfo");
+
+        IHelper::debugAppend(resultEl, "namespace url", mURL);
+        IHelper::debugAppend(resultEl, "last updated", mLastUpdated);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------
@@ -624,18 +663,21 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      String RolodexInfo::getDebugValueString(bool includeCommaPrefix) const
+      ElementPtr RolodexInfo::toDebug() const
       {
-        bool firstTime = !includeCommaPrefix;
-        return Helper::getDebugValue("rolodex server token", mServerToken, firstTime) +
-               Helper::getDebugValue("rolodex access token", mAccessToken, firstTime) +
-               Helper::getDebugValue("rolodex access secret", mAccessSecret, firstTime) +
-               Helper::getDebugValue("rolodex access secret expires", Time() != mAccessSecretExpires ? IHelper::timeToString(mAccessSecretExpires) : String(), firstTime) +
-               Helper::getDebugValue("rolodex access secret proof", mAccessSecretProof, firstTime) +
-               Helper::getDebugValue("rolodex access secret expires", Time() != mAccessSecretProofExpires ? IHelper::timeToString(mAccessSecretProofExpires) : String(), firstTime) +
-               Helper::getDebugValue("rolodex version", mVersion, firstTime) +
-               Helper::getDebugValue("rolodex update next", Time() != mUpdateNext ? IHelper::timeToString(mUpdateNext) : String(), firstTime) +
-               Helper::getDebugValue("refresh", mRefreshFlag ? "true" : "false", firstTime);
+        ElementPtr resultEl = Element::create("message::RolodexInfo");
+
+        IHelper::debugAppend(resultEl, "server token", mServerToken);
+        IHelper::debugAppend(resultEl, "access token", mAccessToken);
+        IHelper::debugAppend(resultEl, "access secret", mAccessSecret);
+        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretExpires);
+        IHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
+        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretProofExpires);
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "update next", mUpdateNext);
+        IHelper::debugAppend(resultEl, "refresh", mRefreshFlag);
+
+        return resultEl;
       }
 
       //-----------------------------------------------------------------------

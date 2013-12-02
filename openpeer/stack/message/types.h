@@ -83,7 +83,7 @@ namespace openpeer
           String mPassword;
 
           bool hasData() const;
-          String getDebugValueString(bool includeCommaPrefix = true) const;
+          ElementPtr toDebug() const;
         };
         typedef boost::shared_ptr<Method> MethodPtr;
         typedef boost::weak_ptr<Method> MethodWeakPtr;
@@ -101,7 +101,7 @@ namespace openpeer
         MethodMap mMethods;
 
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
       };
       typedef boost::shared_ptr<Service> ServicePtr;
       typedef boost::weak_ptr<Service> ServiceWeakPtr;
@@ -125,7 +125,7 @@ namespace openpeer
         IRSAPublicKeyPtr mPublicKey;
 
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
       };
       typedef std::map<Certificate::CertificateID, Certificate> CertificateMap;
 
@@ -161,7 +161,7 @@ namespace openpeer
         {}
 
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
       };
       typedef std::list<Finder> FinderList;
 
@@ -191,7 +191,7 @@ namespace openpeer
 
           Avatar() : mWidth(0), mHeight(0) {}
           bool hasData() const;
-          String getDebugValueString(bool includeCommaPrefix = true) const;
+          ElementPtr toDebug() const;
         };
         typedef std::list<Avatar> AvatarList;
 
@@ -233,7 +233,7 @@ namespace openpeer
 
         IdentityInfo() : mDisposition(Disposition_NA), mPriority(0), mWeight(0) {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const IdentityInfo &source,
@@ -270,7 +270,7 @@ namespace openpeer
 
         LockboxInfo() : mResetFlag(false) {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const LockboxInfo &source,
@@ -295,7 +295,7 @@ namespace openpeer
 
         AgentInfo() {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const AgentInfo &source,
@@ -321,7 +321,7 @@ namespace openpeer
 
         NamespaceGrantChallengeInfo() {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const NamespaceGrantChallengeInfo &source,
@@ -346,7 +346,7 @@ namespace openpeer
 
         NamespaceInfo() {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const NamespaceInfo &source,
@@ -381,7 +381,7 @@ namespace openpeer
 
         RolodexInfo() : mRefreshFlag(false) {}
         bool hasData() const;
-        String getDebugValueString(bool includeCommaPrefix = true) const;
+        ElementPtr toDebug() const;
 
         void mergeFrom(
                        const RolodexInfo &source,
