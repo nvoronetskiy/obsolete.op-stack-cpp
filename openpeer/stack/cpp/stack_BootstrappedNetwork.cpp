@@ -1123,7 +1123,7 @@ namespace openpeer
           if (size > 0) {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
           } else {
-            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", NULL))
+            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ""))
           }
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA END   <----<----<----<----<----<----<----"))
