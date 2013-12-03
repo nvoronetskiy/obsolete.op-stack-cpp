@@ -1118,7 +1118,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           if (size > 0) {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
@@ -1149,7 +1149,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("HTTP SEND") + ZS_PARAM("json out", buffer.get()))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))

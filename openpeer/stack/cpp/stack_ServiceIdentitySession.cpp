@@ -642,7 +642,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("sending inner frame message") + ZS_PARAM("json out", (CSTR)(jsonText.get())))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -674,7 +674,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("handling message from inner frame") + ZS_PARAM("json in", (CSTR)(jsonText.get())))
           ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<  MESSAGE FROM INNER FRAME (END)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
@@ -1998,6 +1998,8 @@ namespace openpeer
           ZS_LOG_TRACE(log("do not need an association to the lockbox if association is being killed"))
           return true;
         }
+
+        ZS_LOG_TRACE(log("waiting for association to lockbox"))
 
         setState(SessionState_WaitingForAssociationToLockbox);
         return false;

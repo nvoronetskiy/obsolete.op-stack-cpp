@@ -1869,7 +1869,7 @@ namespace openpeer
                   ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
                   ZS_LOG_BASIC(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
                   ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                  ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+                  ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
                   ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
                   ZS_LOG_BASIC(log("RELAY RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)buffer->BytePtr())))
                   ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -2102,7 +2102,7 @@ namespace openpeer
             mSocket->shutdown();
 
             if (IICESocket::ICESocketState_Shutdown != mSocket->getState()) {
-              ZS_LOG_DEBUG(log("shutdown still waiting for RUDP socket to shutdown"))
+              ZS_LOG_DEBUG(log("shutdown still waiting for ICE socket to shutdown"))
               return;
             }
           }
