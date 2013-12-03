@@ -972,7 +972,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           if (mDocument) {
-            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("jsosn", internal::toString(mDocument)))
+            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("json", internal::toString(mDocument)))
           } else if (mData) {
             ZS_LOG_BASIC(log("publication contains binary data") + ZS_PARAM("length", mData ? mData->SizeInBytes() : 0))
           } else {

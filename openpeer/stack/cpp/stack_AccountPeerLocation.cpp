@@ -353,17 +353,17 @@ namespace openpeer
         size_t length = 0;
         output = document->writeAsJSON(&length);
 
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("PEER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
-        ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-        ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
-        ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
+        if (ZS_IS_LOGGING(Detail)) {
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("PEER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
 
         mLastActivity = zsLib::now();
 
@@ -881,27 +881,27 @@ namespace openpeer
             return;
           }
 
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", reader == mRelayReceiveStream ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
           mLastActivity = zsLib::now();
 
           DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
           MessagePtr message = Message::create(document, mLocation);
+          
+          if (ZS_IS_LOGGING(Detail)) {
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", reader == mRelayReceiveStream ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          }
 
           if (!message) {
             ZS_LOG_WARNING(Detail, log("failed to create a message object from incoming message"))
             return;
           }
-
-          ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
-          ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
           if (IMessageMonitor::handleMessageReceived(message)) {
             ZS_LOG_DEBUG(log("handled message via message handler"))

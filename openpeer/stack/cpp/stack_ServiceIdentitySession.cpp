@@ -630,15 +630,24 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         if (mPendingMessagesToDeliver.size() < 1) return DocumentPtr();
 
-        DocumentPtr result = mPendingMessagesToDeliver.front();
+        DocumentMessagePair resultPair = mPendingMessagesToDeliver.front();
         mPendingMessagesToDeliver.pop_front();
 
-        if (ZS_GET_LOG_LEVEL() >= Log::Trace) {
+        DocumentPtr result = resultPair.first;
+        MessagePtr message = resultPair.second;
+
+        if (ZS_IS_LOGGING(Detail)) {
           GeneratorPtr generator = Generator::createJSONGenerator();
           boost::shared_array<char> jsonText = generator->write(result);
-          ZS_LOG_BASIC(log(">>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("sending inner frame message") + ZS_PARAM("json out", (CSTR)(jsonText.get())))
-          ZS_LOG_BASIC(log(">>>>>>>>>>>>>  MESSAGE TO INNER FRAME (END)  >>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  MESSAGE TO INNER FRAME (END)  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
         if (mDelegate) {
@@ -657,15 +666,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::handleMessageFromInnerBrowserWindowFrame(DocumentPtr unparsedMessage)
       {
-        if (ZS_GET_LOG_LEVEL() >= Log::Trace) {
+        MessagePtr message = Message::create(unparsedMessage, mThisWeak.lock());
+
+        if (ZS_IS_LOGGING(Detail)) {
           GeneratorPtr generator = Generator::createJSONGenerator();
           boost::shared_array<char> jsonText = generator->write(unparsedMessage);
-          ZS_LOG_BASIC(log("<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<"))
-          ZS_LOG_TRACE(log("handling message from inner frame") + ZS_PARAM("json in", (CSTR)(jsonText.get())))
-          ZS_LOG_BASIC(log("<<<<<<<<<<<<<  MESSAGE FROM INNER FRAME (END)  <<<<<<<<<<<<<"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("handling message from inner frame") + ZS_PARAM("json in", (CSTR)(jsonText.get())))
+          ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<  MESSAGE FROM INNER FRAME (END)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
-        MessagePtr message = Message::create(unparsedMessage, mThisWeak.lock());
         if (IMessageMonitor::handleMessageReceived(message)) {
           ZS_LOG_DEBUG(log("message handled via message monitor"))
           return;
@@ -2526,7 +2541,7 @@ namespace openpeer
       void ServiceIdentitySession::sendInnerWindowMessage(MessagePtr message)
       {
         DocumentPtr doc = message->encode();
-        mPendingMessagesToDeliver.push_back(doc);
+        mPendingMessagesToDeliver.push_back(DocumentMessagePair(doc, message));
 
         if (1 != mPendingMessagesToDeliver.size()) {
           ZS_LOG_DEBUG(log("already had previous messages to deliver, no need to send another notification"))

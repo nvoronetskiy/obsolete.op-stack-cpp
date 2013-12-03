@@ -1101,20 +1101,36 @@ namespace openpeer
         SecureByteBlock buffer;
         buffer.CleanNew(size);
         query->readData(buffer, size);
-        ZS_LOG_TRACE(log("------------ http data read start --------------"))
-        if (size > 0) {
-          ZS_LOG_TRACE(log("HTTP DATA") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
-        } else {
-          ZS_LOG_TRACE(log("HTTP DATA") + ZS_PARAM("size", size) + ZS_PARAM("json in", NULL))
-        }
-        ZS_LOG_TRACE(log("------------- http data read end ---------------"))
-        if (size < 1) return MessagePtr();
 
-        DocumentPtr doc = Document::createFromAutoDetect((const char *)((const BYTE *)buffer));
+        DocumentPtr doc;
+        MessagePtr message;
+
+        if (size > 0) {
+          doc = Document::createFromAutoDetect((const char *)((const BYTE *)buffer));
+          message = Message::create(doc, mThisWeak.lock());
+        }
+
         if (outDocument) {
           (*outDocument) = doc;
         }
-        return Message::create(doc, mThisWeak.lock());
+
+        if (ZS_IS_LOGGING(Detail)) {
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          if (size > 0) {
+            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
+          } else {
+            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", NULL))
+          }
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA END   <----<----<----<----<----<----<----"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
+
+        return message;
       }
 
       //-----------------------------------------------------------------------
@@ -1129,7 +1145,17 @@ namespace openpeer
         size_t size = 0;
         boost::shared_array<char> buffer = doc->writeAsJSON(&size);
 
-        ZS_LOG_TRACE(log("posting message") + ZS_PARAM("json out", buffer.get()))
+        if (ZS_IS_LOGGING(Detail)) {
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("HTTP SEND") + ZS_PARAM("json out", buffer.get()))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
 
         return IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, (const BYTE *)buffer.get(), size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
       }

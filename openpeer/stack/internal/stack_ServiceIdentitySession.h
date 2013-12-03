@@ -152,7 +152,8 @@ namespace openpeer
         typedef IServiceNamespaceGrantSession::SessionStates GrantSessionStates;
         typedef IServiceIdentitySession::SessionStates SessionStates;
 
-        typedef std::list<DocumentPtr> DocumentList;
+        typedef std::pair<DocumentPtr, MessagePtr> DocumentMessagePair;
+        typedef std::list<DocumentMessagePair> DocumentList;
 
       protected:
         ServiceIdentitySession(

@@ -1857,21 +1857,25 @@ namespace openpeer
                   break;
                 }
 
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("RELAY RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)buffer->BytePtr())))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
                 DocumentPtr document = Document::createFromAutoDetect(((CSTR)buffer->BytePtr()));
                 MessagePtr message = Message::create(
                                                      document,
                                                      relayInfo->mAccountPeerLocation ?
-                                                      relayInfo->mAccountPeerLocation->forAccount().getLocation() :
-                                                      ILocationForAccount::getForFinder(mThisWeak.lock())
+                                                     relayInfo->mAccountPeerLocation->forAccount().getLocation() :
+                                                     ILocationForAccount::getForFinder(mThisWeak.lock())
                                                      );
+
+                if (ZS_IS_LOGGING(Detail)) {
+                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_BASIC(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
+                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_BASIC(log("RELAY RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)buffer->BytePtr())))
+                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_BASIC(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
+                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+                }
 
                 if (IMessageMonitor::handleMessageReceived(message)) {
                   ZS_LOG_DEBUG(log("handled message via message handler"))

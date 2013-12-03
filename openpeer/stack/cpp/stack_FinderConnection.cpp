@@ -1140,14 +1140,12 @@ namespace openpeer
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log(") ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
+          ZS_LOG_DETAIL(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(request)))
+          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_DETAIL(log("CHANNEL SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log(") ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"))
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
-          ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(request))
-          ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
         }
 
         mPendingMapRequest.erase(found);
@@ -1200,25 +1198,25 @@ namespace openpeer
             if (isFinderRelayConnection()) {
               if (0 == channelHeader->mChannelID) {
                 
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-                ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
-                ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
                 DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
                 MessagePtr message = Message::create(document, mThisWeak.lock());
+
+                if (ZS_IS_LOGGING(Debug)) {
+                  ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
+                  ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_DETAIL(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+                  ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_DETAIL(log("CHANNEL MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+                  ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+                  ZS_LOG_DETAIL(log("( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ( ("))
+                  ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+                }
 
                 if (!message) {
                   ZS_LOG_WARNING(Detail, log("failed to create a message object from incoming message"))
                   continue;
                 }
-
-                ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-                ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
-                ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
                 if (IMessageMonitor::handleMessageReceived(message)) {
                   ZS_LOG_DEBUG(log("handled message via message handler"))

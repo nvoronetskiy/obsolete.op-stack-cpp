@@ -242,13 +242,17 @@ namespace openpeer
         size_t length = 0;
         output = document->writeAsJSON(&length);
 
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log("FINDER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-        ZS_LOG_DETAIL(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
-        ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
+        if (ZS_IS_LOGGING(Detail)) {
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("FINDER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
 
         mSendStream->write((const BYTE *)(output.get()), length);
         return true;
@@ -435,25 +439,25 @@ namespace openpeer
             return;
           }
 
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("FINDER RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_DETAIL(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
-          ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
-
           DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
           message::MessagePtr message = Message::create(document, ILocationForAccount::getForFinder(outer));
+
+          if (ZS_IS_LOGGING(Detail)) {
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("message info", Message::toDebug(message)))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("FINDER RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+            ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
+            ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          }
 
           if (!message) {
             ZS_LOG_WARNING(Detail, log("failed to create a message from the document"))
             continue;
           }
-
-          ZS_LOG_DETAIL(log("v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v"))
-          ZS_LOG_DETAIL(log("||| MESSAGE INFO |||") + Message::toDebug(message))
-          ZS_LOG_DETAIL(log("^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^"))
 
           if (IMessageMonitor::handleMessageReceived(message)) {
             ZS_LOG_DEBUG(log("message requester handled the message"))
