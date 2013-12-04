@@ -1880,7 +1880,7 @@ namespace openpeer
 
         if (!mNeedsBrowserWindowVisible) {
           ZS_LOG_TRACE(log("browser window was not requested to become visible"))
-          return false;
+          return true;
         }
 
         if (mKillAssociation) {
