@@ -1198,7 +1198,7 @@ namespace openpeer
 
         ElementPtr resultEl = Element::create("PublicationRepository");
 
-        IHelper::debugAppend(resultEl, "repository id", mID);
+        IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "cached local", mCachedLocalPublications.size());
         IHelper::debugAppend(resultEl, "cached remote", mCachedRemotePublications.size());
         IHelper::debugAppend(resultEl, IPeerSubscription::toDebug(mPeerSubscription));

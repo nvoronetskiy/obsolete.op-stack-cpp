@@ -1608,7 +1608,7 @@ namespace openpeer
 
         ElementPtr resultEl = Element::create("ServiceIdentitySession");
 
-        IHelper::debugAppend(resultEl, "identity session id", mID);
+        IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
         IHelper::debugAppend(resultEl, "reported", toString(mLastReportedState));

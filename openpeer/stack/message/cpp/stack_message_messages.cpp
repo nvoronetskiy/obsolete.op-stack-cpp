@@ -72,7 +72,7 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Service");
 
-        IHelper::debugAppend(resultEl, "service id", mID);
+        IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "type", mType);
         IHelper::debugAppend(resultEl, "version", mVersion);
         IHelper::debugAppend(resultEl, "methods", mMethods.size());
@@ -124,7 +124,7 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Certificate");
 
-        IHelper::debugAppend(resultEl, "certificate id", mID);
+        IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "service", mService);
         IHelper::debugAppend(resultEl, "expires", mExpires);
         IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
