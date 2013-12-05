@@ -601,9 +601,15 @@ namespace openpeer
       String ServiceIdentitySession::getInnerBrowserWindowFrameURL() const
       {
         AutoRecursiveLock lock(getLock());
-        if (!mActiveBootstrappedNetwork) return String();
+        if (!mActiveBootstrappedNetwork) {
+          ZS_LOG_WARNING(Detail, log("attempted to get inner browser window frame URL but no active bootstrapper is ready yet"))
+          return String();
+        }
 
-        return mActiveBootstrappedNetwork->forServices().getServiceURI("identity", "identity-access-inner-frame");
+        String result = mActiveBootstrappedNetwork->forServices().getServiceURI("identity", "identity-access-inner-frame");
+
+        ZS_LOG_TRACE(log("obtained inner browser window frame url") + ZS_PARAM("inner frame url", result))
+        return result;
       }
 
       //-----------------------------------------------------------------------
