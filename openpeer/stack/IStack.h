@@ -53,6 +53,7 @@ namespace openpeer
                         IMessageQueuePtr defaultDelegateMessageQueue,
                         IMessageQueuePtr stackMessageQueue,
                         IMessageQueuePtr servicesQueue,
+                        IMessageQueuePtr keyGenerationQueue,
                         const char *appID,        // organization assigned ID for the application e.g. "com.xyz123.app1"
                         const char *appName,      // a branded human readable application name, e.g. "Hookflash"
                         const char *appImageURL,  // an HTTPS downloadable branded image for the application

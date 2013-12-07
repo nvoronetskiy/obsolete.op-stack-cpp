@@ -43,6 +43,7 @@
 #include <openpeer/stack/internal/stack_IFinderConnectionRelayChannel.h>
 #include <openpeer/stack/internal/stack_FinderConnection.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+#include <openpeer/stack/internal/stack_KeyGenerator.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_MessageIncoming.h>
 #include <openpeer/stack/internal/stack_MessageMonitor.h>

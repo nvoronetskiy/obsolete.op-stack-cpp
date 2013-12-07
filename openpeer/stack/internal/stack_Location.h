@@ -61,6 +61,8 @@ namespace openpeer
                                       const char *locationID
                                       );
 
+        virtual PUID getID() const = 0;
+
         virtual String getLocationID() const = 0;
         virtual LocationInfoPtr getLocationInfo() const = 0;
 
@@ -254,6 +256,8 @@ namespace openpeer
         #pragma mark
         #pragma mark Location => ILocationForAccount
         #pragma mark
+
+        // (duplicate) virtual PUID getID() const;
 
         // (duplicate) virtual String getLocationID() const;
         // (duplicate) virtual LocationInfoPtr getLocationInfo() const;

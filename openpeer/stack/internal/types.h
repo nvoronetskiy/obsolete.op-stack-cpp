@@ -34,8 +34,8 @@
 #include <openpeer/stack/types.h>
 #include <openpeer/stack/message/types.h>
 
-#define OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES "http://meta.openpeer.org/candidate/ice"
-#define OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY   "http://meta.openpeer.org/candidate/finder-relay"
+#define OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES "https://meta.openpeer.org/candidate/ice"
+#define OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY   "https://meta.openpeer.org/candidate/finder-relay"
 
 #define OPENPEER_STACK_TRANSPORT_JSON_MLS_RUDP "json-mls/rudp"
 #define OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_MLS_TCP "multiplexed-json-mls/tcp"
@@ -72,6 +72,12 @@ namespace openpeer
       using zsLib::XML::Generator;
       using zsLib::XML::GeneratorPtr;
 
+      using services::IDHKeyDomain;
+      using services::IDHKeyDomainPtr;
+      using services::IDHPrivateKey;
+      using services::IDHPrivateKeyPtr;
+      using services::IDHPublicKey;
+      using services::IDHPublicKeyPtr;
       using services::IDNS;
       using services::IICESocket;
       using services::IICESocketPtr;
@@ -223,6 +229,10 @@ namespace openpeer
       class Helper;
       typedef boost::shared_ptr<Helper> HelperPtr;
       typedef boost::weak_ptr<Helper> HelperWeakPtr;
+
+      class KeyGenerator;
+      typedef boost::shared_ptr<KeyGenerator> KeyGeneratorPtr;
+      typedef boost::weak_ptr<KeyGenerator> KeyGeneratorWeakPtr;
 
       class MessageIncoming;
       typedef boost::shared_ptr<MessageIncoming> MessageIncomingPtr;

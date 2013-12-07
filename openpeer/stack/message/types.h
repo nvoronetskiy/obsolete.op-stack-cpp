@@ -57,6 +57,12 @@ namespace openpeer
       using services::IRSAPrivateKeyPtr;
       using services::IRSAPublicKey;
       using services::IRSAPublicKeyPtr;
+      using services::IDHKeyDomain;
+      using services::IDHKeyDomainPtr;
+      using services::IDHPrivateKey;
+      using services::IDHPrivateKeyPtr;
+      using services::IDHPublicKey;
+      using services::IDHPublicKeyPtr;
 
       typedef std::list<String> RouteList;
       typedef std::list<String> StringList;

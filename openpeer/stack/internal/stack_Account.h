@@ -40,6 +40,7 @@
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 
+#include <openpeer/stack/IKeyGenerator.h>
 #include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/ITransportStream.h>
@@ -119,9 +120,6 @@ namespace openpeer
         virtual IPeerFilesPtr getPeerFiles() const = 0;
 
         virtual bool isFinderReady() const = 0;
-
-        virtual String getLocalContextID(const String &peerURI) const = 0;
-        virtual String getLocalPassword(const String &peerURI) const = 0;
 
         virtual bool sendViaRelay(
                                   const String &peerURI,
@@ -276,6 +274,8 @@ namespace openpeer
         const IAccountForServiceLockboxSession &forServiceLockboxSession() const {return *this;}
 
         virtual void notifyServiceLockboxSessionStateChanged() = 0;
+
+        virtual IKeyGeneratorPtr takeOverRSAGeyGeneration() = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -308,7 +308,8 @@ namespace openpeer
                       public IFinderRelayChannelDelegate,
                       public ITransportStreamWriterDelegate,
                       public ITransportStreamReaderDelegate,
-                      public ITimerDelegate
+                      public ITimerDelegate,
+                      public IKeyGeneratorDelegate
       {
       public:
         friend interaction IAccountFactory;
@@ -341,6 +342,9 @@ namespace openpeer
         typedef std::map<PeerSubscriptionID, PeerSubscriptionWeakPtr> PeerSubscriptionMap;
 
         typedef std::map<PeerLocationIDPair, LocationWeakPtr> LocationMap;
+
+        typedef std::pair<IDHPrivateKeyPtr, IDHPublicKeyPtr> DHKeyPair;
+        typedef std::map<IDHKeyDomain::KeyDomainPrecompiledTypes, DHKeyPair> DHKeyPairTemplates;
 
       protected:
         Account(
@@ -425,9 +429,6 @@ namespace openpeer
         // (duplicate) virtual IPeerFilesPtr getPeerFiles() const;
 
         virtual bool isFinderReady() const;
-
-        virtual String getLocalContextID(const String &peerURI) const;
-        virtual String getLocalPassword(const String &peerURI) const;
 
         virtual bool sendViaRelay(
                                   const String &peerURI,
@@ -519,6 +520,8 @@ namespace openpeer
         #pragma mark
 
         virtual void notifyServiceLockboxSessionStateChanged();
+
+        virtual IKeyGeneratorPtr takeOverRSAGeyGeneration();
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -629,6 +632,12 @@ namespace openpeer
 
         virtual void onTimer(TimerPtr timer);
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Account => IKeyGeneratorDelegate
+        #pragma mark
+
+        virtual void onKeyGenerated(IKeyGeneratorPtr generator);
 
       private:
         //---------------------------------------------------------------------
@@ -650,6 +659,8 @@ namespace openpeer
         void step();
         bool stepTimer();
         bool stepRepository();
+        bool stepRSAKeyGeneration();
+        bool stepDefaultDHKeyTemplate();
         bool stepLockboxSession();
         bool stepLocations();
         bool stepSocket();
@@ -660,7 +671,10 @@ namespace openpeer
         void setState(AccountStates accountState);
         void setError(WORD errorCode, const char *reason = NULL);
 
-        virtual CandidatePtr getRelayCandidate(const String &peerURI) const;
+        virtual CandidatePtr getRelayCandidate(const String &localContext) const;
+
+        DHKeyPair getDHKeyPairTemplate(IDHKeyDomain::KeyDomainPrecompiledTypes type);
+        PeerLocationFindRequestPtr getFindRequestWithLocalContext(const String &localContext);
 
         void setFindState(
                           PeerInfo &peerInfo,
@@ -722,6 +736,8 @@ namespace openpeer
           AutoPUID mID;
           ChannelNumber mChannel;
           String mLocalContext;
+          IDHPrivateKeyPtr mDHLocalPrivateKey;
+          IDHPublicKeyPtr mDHLocalPublicKey;
           String mRemoteContext;
 
           IFinderRelayChannelPtr mRelayChannel;
@@ -822,14 +838,17 @@ namespace openpeer
 
         IICESocketPtr mSocket;
 
-        String mMasterPeerSecret;
-
         String mLocationID;
         PeerPtr mSelfPeer;
         LocationPtr mSelfLocation;
         LocationPtr mFinderLocation;
 
         PublicationRepositoryPtr mRepository;
+
+        DHKeyPairTemplates mDHKeyPairTemplates;
+
+        AutoBool mBlockRSAKeyGeneration;
+        IKeyGeneratorPtr mRSAKeyGenerator;
 
         AccountFinderPtr mFinder;
 

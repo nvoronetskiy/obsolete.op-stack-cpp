@@ -67,6 +67,7 @@ namespace openpeer
         static IMessageQueuePtr queueDelegate();
         static IMessageQueuePtr queueStack();
         static IMessageQueuePtr queueServices();
+        static IMessageQueuePtr queueKeyGeneration();
       };
 
       //-----------------------------------------------------------------------
@@ -105,6 +106,7 @@ namespace openpeer
                            IMessageQueuePtr defaultDelegateMessageQueue,
                            IMessageQueuePtr stackMessageQueue,
                            IMessageQueuePtr servicesMessageQueue,
+                           IMessageQueuePtr keyGenerationQueue,
                            const char *appID,       // organization assigned ID for the application e.g. "com.xyz123.app1"
                            const char *appName,     // a branded human readable application name, e.g. "Hookflash"
                            const char *appImageURL, // an HTTPS downloadable branded image for the application
@@ -136,6 +138,7 @@ namespace openpeer
         virtual IMessageQueuePtr queueDelegate() const;
         virtual IMessageQueuePtr queueStack() const;
         virtual IMessageQueuePtr queueServices() const;
+        virtual IMessageQueuePtr queueKeyGeneration() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -166,6 +169,7 @@ namespace openpeer
         IMessageQueuePtr mStackQueue;
         IMessageQueuePtr mServicesQueue;
         IMessageQueuePtr mDelegateQueue;
+        IMessageQueuePtr mKeyGenerationQueue;
       };
     }
   }

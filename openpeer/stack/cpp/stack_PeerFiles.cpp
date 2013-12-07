@@ -117,6 +117,27 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PeerFilesPtr PeerFiles::generate(
+                                       IRSAPrivateKeyPtr privateKey,
+                                       IRSAPublicKeyPtr publicKey,
+                                       const char *password,
+                                       ElementPtr signedSaltBundleEl
+                                       )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!password)
+        ZS_THROW_INVALID_ARGUMENT_IF(!signedSaltBundleEl)
+
+        PeerFilesPtr pThis(new PeerFiles);
+        pThis->mThisWeak = pThis;
+
+        if (!IPeerFilePrivateForPeerFiles::generate(pThis, pThis->mPrivate, pThis->mPublic, privateKey, publicKey, password, signedSaltBundleEl)) {
+          ZS_LOG_DEBUG(pThis->log("failed to generate private peer file"))
+          return PeerFilesPtr();
+        }
+        return pThis;
+      }
+
+      //-----------------------------------------------------------------------
       PeerFilesPtr PeerFiles::loadFromElement(
                                               const char *password,
                                               ElementPtr privatePeerRootElement
@@ -203,6 +224,17 @@ namespace openpeer
                                        )
     {
       return internal::IPeerFilesFactory::singleton().generate(password, signedSalt);
+    }
+
+    //-------------------------------------------------------------------------
+    IPeerFilesPtr IPeerFiles::generate(
+                                       IRSAPrivateKeyPtr privateKey,
+                                       IRSAPublicKeyPtr publicKey,
+                                       const char *password,
+                                       ElementPtr signedSalt
+                                       )
+    {
+      return internal::IPeerFilesFactory::singleton().generate(privateKey, publicKey, password, signedSalt);
     }
 
     //-------------------------------------------------------------------------

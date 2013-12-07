@@ -175,7 +175,7 @@ namespace openpeer
         SecureByteBlockPtr iv = services::IHelper::convertFromHex(salt);
 
         SecureByteBlockPtr dataToConvert = services::IHelper::convertFromBase64(value);
-        if (!dataToConvert) {
+        if (services::IHelper::isEmpty(dataToConvert)) {
           ZS_LOG_WARNING(Detail, log("failed to decode data from base64") + ZS_PARAM("value", value))
           return SecureByteBlockPtr();
         }

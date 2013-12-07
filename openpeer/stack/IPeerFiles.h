@@ -54,6 +54,13 @@ namespace openpeer
                                     ElementPtr signedSaltBundleEl
                                     );
 
+      static IPeerFilesPtr generate(
+                                    IRSAPrivateKeyPtr privateKey,
+                                    IRSAPublicKeyPtr publicKey,
+                                    const char *password,
+                                    ElementPtr signedSaltBundleEl
+                                    );
+
       static IPeerFilesPtr loadFromElement(
                                            const char *password,
                                            ElementPtr privatePeerRootElement

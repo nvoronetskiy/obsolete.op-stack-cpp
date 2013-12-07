@@ -75,6 +75,8 @@ namespace openpeer
     using services::IRSAPrivateKeyPtr;
     using services::IRSAPublicKey;
     using services::IRSAPublicKeyPtr;
+    using services::IDHKeyDomain;
+    using services::IDHKeyDomainPtr;
 
     typedef services::SecureByteBlock SecureByteBlock;
     typedef boost::shared_ptr<SecureByteBlock> SecureByteBlockPtr;
@@ -181,6 +183,20 @@ namespace openpeer
     interaction IHelper;
     typedef boost::shared_ptr<IHelper> IHelperPtr;
     typedef boost::weak_ptr<IHelper> IHelperWeakPtr;
+
+    interaction IKeyGenerator;
+    typedef boost::shared_ptr<IKeyGenerator> IKeyGeneratorPtr;
+    typedef boost::weak_ptr<IKeyGenerator> IKeyGeneratorWeakPtr;
+
+    interaction IKeyGeneratorDelegate;
+    typedef boost::shared_ptr<IKeyGeneratorDelegate> IKeyGeneratorDelegatePtr;
+    typedef boost::weak_ptr<IKeyGeneratorDelegate> IKeyGeneratorDelegateWeakPtr;
+    typedef zsLib::Proxy<IKeyGeneratorDelegate> IKeyGeneratorDelegateProxy;
+
+    interaction IKeyGeneratorSubscription;
+    typedef boost::shared_ptr<IKeyGeneratorSubscription> IKeyGeneratorSubscriptionPtr;
+    typedef boost::weak_ptr<IKeyGeneratorSubscription> IKeyGeneratorSubscriptionWeakPtr;
+    typedef zsLib::ProxySubscriptions<IKeyGeneratorDelegate, IKeyGeneratorSubscription> IKeyGeneratorDelegateSubscriptions;
 
     interaction IMessageIncoming;
     typedef boost::shared_ptr<IMessageIncoming> IMessageIncomingPtr;

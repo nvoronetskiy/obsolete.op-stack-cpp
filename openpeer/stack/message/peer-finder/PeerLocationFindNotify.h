@@ -50,6 +50,10 @@ namespace openpeer
             AttributeType_RequestfindProofBundleDigestValue,
             AttributeType_Context,
             AttributeType_PeerSecret,
+            AttributeType_ICEUsernameFrag,
+            AttributeType_ICEPassword,
+            AttributeType_ICEFinal,
+            AttributeType_RequestFindProofBundleDigest,
             AttributeType_LocationInfo,
             AttributeType_PeerFiles,
           };
@@ -103,10 +107,10 @@ namespace openpeer
           String mICEUsernameFrag;
           String mICEPassword;
 
+          bool mFinal;
+
           String mRequestfindProofBundleDigestValue;
           LocationInfo mLocationInfo;
-
-          bool mFinal;
 
           IPeerFilesPtr mPeerFiles;
         };

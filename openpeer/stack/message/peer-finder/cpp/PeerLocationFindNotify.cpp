@@ -159,6 +159,10 @@ namespace openpeer
             case AttributeType_RequestfindProofBundleDigestValue: return mRequestfindProofBundleDigestValue.hasData();
             case AttributeType_Context:                           return mContext.hasData();
             case AttributeType_PeerSecret:                        return mPeerSecret.hasData();
+            case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
+            case AttributeType_ICEPassword:                       return mICEPassword.hasData();
+            case AttributeType_ICEFinal:                          return mFinal;
+            case AttributeType_RequestFindProofBundleDigest:      return mRequestfindProofBundleDigestValue.hasData();
             case AttributeType_LocationInfo:                      return mLocationInfo.hasData();
             case AttributeType_PeerFiles:                         return (bool)mPeerFiles;
             default:
@@ -205,15 +209,15 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("peerSecret", mPeerSecret));
           }
 
-          if (mICEUsernameFrag.hasData()) {
+          if (hasAttribute(AttributeType_ICEUsernameFrag)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("iceUsernameFrag", mICEUsernameFrag));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("final", mFinal ? "true":"false"));
-
-          if (mICEPassword.hasData()) {
+          if (hasAttribute(AttributeType_ICEPassword)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("icePassword", mICEPassword));
           }
+
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("final", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
             findProofEl->adoptAsLastChild(MessageHelper::createElement(mLocationInfo, mPeerSecret.hasData() ? mPeerSecret.c_str() : NULL));

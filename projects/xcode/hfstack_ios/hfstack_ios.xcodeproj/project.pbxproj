@@ -109,6 +109,7 @@
 		0077F3B717AC1FDD009399FD /* ChannelMapRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F3B517AC1FDD009399FD /* ChannelMapRequest.cpp */; };
 		0077F3B817AC1FDD009399FD /* ChannelMapResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F3B617AC1FDD009399FD /* ChannelMapResult.cpp */; };
 		0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F46F17AD4CAB009399FD /* PeerLocationFindNotify.cpp */; };
+		008400101850169E009F6934 /* stack_KeyGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */; };
 		00AF4DF3171E3DE400DCA0A8 /* stack_ServiceLockboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DF2171E3DE300DCA0A8 /* stack_ServiceLockboxSession.cpp */; };
 		00AF4E02171E3E4A00DCA0A8 /* IdentityAccessCompleteNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DFB171E3E4A00DCA0A8 /* IdentityAccessCompleteNotify.cpp */; };
 		00AF4E03171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DFC171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateRequest.cpp */; };
@@ -382,6 +383,10 @@
 		0077F3BA17AC1FEC009399FD /* ChannelMapResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChannelMapResult.h; sourceTree = "<group>"; };
 		0077F46F17AD4CAB009399FD /* PeerLocationFindNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerLocationFindNotify.cpp; sourceTree = "<group>"; };
 		0077F47117AD4CBB009399FD /* PeerLocationFindNotify.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerLocationFindNotify.h; sourceTree = "<group>"; };
+		0084000E18501686009F6934 /* IServiceNamespaceGrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServiceNamespaceGrant.h; sourceTree = "<group>"; };
+		0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_KeyGenerator.cpp; sourceTree = "<group>"; };
+		00840011185016B0009F6934 /* stack_KeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_KeyGenerator.h; sourceTree = "<group>"; };
+		0084FFB2184F9891009F6934 /* IKeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKeyGenerator.h; sourceTree = "<group>"; };
 		00AF4DF1171E3DC700DCA0A8 /* IServiceLockbox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServiceLockbox.h; sourceTree = "<group>"; };
 		00AF4DF2171E3DE300DCA0A8 /* stack_ServiceLockboxSession.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServiceLockboxSession.cpp; sourceTree = "<group>"; };
 		00AF4DF4171E3E3300DCA0A8 /* IdentityAccessCompleteNotify.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IdentityAccessCompleteNotify.h; sourceTree = "<group>"; };
@@ -533,6 +538,7 @@
 				005F60AF1756B03200BC3DD6 /* ICache.h */,
 				0063BA2B16CA92CF00E6DB4D /* IDiff.h */,
 				0063BA2C16CA92CF00E6DB4D /* IHelper.h */,
+				0084FFB2184F9891009F6934 /* IKeyGenerator.h */,
 				0063BA2D16CA92CF00E6DB4D /* ILocation.h */,
 				0063BA2E16CA92CF00E6DB4D /* IMessageIncoming.h */,
 				0063BA2F16CA92CF00E6DB4D /* IMessageMonitor.h */,
@@ -548,6 +554,7 @@
 				0063BA5916CA92CF00E6DB4D /* IServiceCertificates.h */,
 				0063BA5A16CA92CF00E6DB4D /* IServiceIdentity.h */,
 				00AF4DF1171E3DC700DCA0A8 /* IServiceLockbox.h */,
+				0084000E18501686009F6934 /* IServiceNamespaceGrant.h */,
 				0063BA5C16CA92CF00E6DB4D /* IServiceSalt.h */,
 				0063BA5D16CA92CF00E6DB4D /* IStack.h */,
 			);
@@ -570,6 +577,7 @@
 				00C59C0A17AB4F3D0063A110 /* stack_FinderConnection.cpp */,
 				000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */,
 				0063BA1516CA92CF00E6DB4D /* stack_Helper.cpp */,
+				0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */,
 				0063BA1616CA92CF00E6DB4D /* stack_Location.cpp */,
 				0063BA1716CA92CF00E6DB4D /* stack_MessageIncoming.cpp */,
 				0063BA1816CA92CF00E6DB4D /* stack_MessageMonitor.cpp */,
@@ -611,6 +619,7 @@
 				000CBEAC17A2CBC50075E86C /* stack_IFinderRelayChannel.h */,
 				000CBEAE17A2F7440075E86C /* stack_FinderRelayChannel.h */,
 				0063BA3A16CA92CF00E6DB4D /* stack_Helper.h */,
+				00840011185016B0009F6934 /* stack_KeyGenerator.h */,
 				0063BA3B16CA92CF00E6DB4D /* stack_Location.h */,
 				0063BA3C16CA92CF00E6DB4D /* stack_MessageIncoming.h */,
 				0063BA3D16CA92CF00E6DB4D /* stack_MessageMonitor.h */,
@@ -1157,6 +1166,7 @@
 				00384C44175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp in Sources */,
 				00384C51175BFF9500113845 /* MessageFactoryRolodex.cpp in Sources */,
 				00384C52175BFF9500113845 /* RolodexAccessRequest.cpp in Sources */,
+				008400101850169E009F6934 /* stack_KeyGenerator.cpp in Sources */,
 				00384C53175BFF9500113845 /* RolodexAccessResult.cpp in Sources */,
 				00384C54175BFF9500113845 /* RolodexContactsGetRequest.cpp in Sources */,
 				00384C55175BFF9500113845 /* RolodexContactsGetResult.cpp in Sources */,

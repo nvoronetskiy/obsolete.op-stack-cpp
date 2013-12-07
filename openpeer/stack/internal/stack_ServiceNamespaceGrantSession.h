@@ -510,11 +510,11 @@ namespace openpeer
       {
         static IServiceNamespaceGrantSessionFactory &singleton();
 
-        static ServiceNamespaceGrantSessionPtr create(
-                                                      IServiceNamespaceGrantSessionDelegatePtr delegate,
-                                                      const char *outerFrameURLUponReload,
-                                                      const char *grantID
-                                                      );
+        virtual ServiceNamespaceGrantSessionPtr create(
+                                                       IServiceNamespaceGrantSessionDelegatePtr delegate,
+                                                       const char *outerFrameURLUponReload,
+                                                       const char *grantID
+                                                       );
       };
       
     }

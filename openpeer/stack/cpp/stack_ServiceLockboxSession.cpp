@@ -387,6 +387,10 @@ namespace openpeer
           mSaltQuery.reset();
         }
 
+        if (mPeerFileKeyGenerator) {
+          mPeerFileKeyGenerator->cancel();
+          mPeerFileKeyGenerator.reset();
+        }
         setState(SessionState_Shutdown);
 
         mAccount.reset();
@@ -581,6 +585,23 @@ namespace openpeer
       void ServiceLockboxSession::onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork)
       {
         ZS_LOG_DEBUG(log("bootstrapper reported complete"))
+
+        AutoRecursiveLock lock(getLock());
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServiceLockboxSession => IKeyGeneratorDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServiceLockboxSession::onKeyGenerated(IKeyGeneratorPtr generator)
+      {
+        ZS_LOG_DEBUG(log("key generator is complete") + ZS_PARAM("generator id", generator->getID()))
 
         AutoRecursiveLock lock(getLock());
         step();
@@ -1007,35 +1028,56 @@ namespace openpeer
         ElementPtr resultEl = Element::create("ServiceLockboxSession");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "account", (bool)mAccount.lock());
+
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+
         IHelper::debugAppend(resultEl, "error code", mLastError);
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+
         IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
         IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->forServices().getID() : 0);
         IHelper::debugAppend(resultEl, "grant query", mGrantQuery ? mGrantQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait", mGrantWait ? mGrantWait->getID() : 0);
+
         IHelper::debugAppend(resultEl, "lockbox access monitor", (bool)mLockboxAccessMonitor);
         IHelper::debugAppend(resultEl, "lockbox grant validate monitor", (bool)mLockboxNamespaceGrantChallengeValidateMonitor);
         IHelper::debugAppend(resultEl, "lockbox identities update monitor", (bool)mLockboxIdentitiesUpdateMonitor);
         IHelper::debugAppend(resultEl, "lockbox content get monitor", (bool)mLockboxContentGetMonitor);
         IHelper::debugAppend(resultEl, "lockbox content set monitor", (bool)mLockboxContentSetMonitor);
         IHelper::debugAppend(resultEl, "peer services get monitor", (bool)mPeerServicesGetMonitor);
+
         IHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
-        IHelper::debugAppend(resultEl, "login identity", (bool)mLoginIdentity);
+
+        IHelper::debugAppend(resultEl, "login identity id", mLoginIdentity ? mLoginIdentity->forLockbox().getID() : 0);
+
         IHelper::debugAppend(resultEl, IPeerFiles::toDebug(mPeerFiles));
+
         IHelper::debugAppend(resultEl, "obtained lock", mObtainedLock);
+
         IHelper::debugAppend(resultEl, "login identity set to become associated", mLoginIdentitySetToBecomeAssociated);
+
         IHelper::debugAppend(resultEl, "force new account", mForceNewAccount);
+
         IHelper::debugAppend(resultEl, "salt query id", mSaltQuery ? mSaltQuery->getID() : 0);
+        IHelper::debugAppend(resultEl, "peer file key generator id", mPeerFileKeyGenerator ? mPeerFileKeyGenerator->getID() : 0);
+
         IHelper::debugAppend(resultEl, "services by type", mServicesByType.size());
+
         IHelper::debugAppend(resultEl, "server identities", mServerIdentities.size());
+
         IHelper::debugAppend(resultEl, "associated identities", mAssociatedIdentities.size());
         IHelper::debugAppend(resultEl, "last notification hash", mLastNotificationHash ? IHelper::convertToHex(*mLastNotificationHash) : String());
+
         IHelper::debugAppend(resultEl, "pending updated identities", mPendingUpdateIdentities.size());
         IHelper::debugAppend(resultEl, "pending remove identities", mPendingRemoveIdentities.size());
+
+        IHelper::debugAppend(resultEl, "relogin change hash", mReloginChangeHash ? IHelper::convertToHex(*mReloginChangeHash) : String());
+
         IHelper::debugAppend(resultEl, "content", mContent.size());
+
         IHelper::debugAppend(resultEl, "updated content", mUpdatedContent.size());
 
         return resultEl;
@@ -1383,6 +1425,46 @@ namespace openpeer
           }
         }
 
+        if (mPeerFileKeyGenerator) {
+          if (!mPeerFileKeyGenerator->isComplete()) {
+            ZS_LOG_TRACE(log("waiting for key generation to complete"))
+            return false;
+          }
+
+          mPeerFiles = mPeerFileKeyGenerator->getPeerFiles();
+          if (!mPeerFiles) {
+            ZS_LOG_ERROR(Detail, log("failed to generate peer files"))
+            setError(IHTTP::HTTPStatusCode_InternalServerError, "failed to generate peer files");
+            cancel();
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("peer files were generated"))
+          setState(SessionState_Pending);
+
+          IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
+          ZS_THROW_BAD_STATE_IF(!peerFilePrivate)
+
+          SecureByteBlockPtr peerFileSecret = peerFilePrivate->getPassword();
+          ZS_THROW_BAD_STATE_IF(!peerFileSecret)
+
+          ElementPtr peerFileEl = peerFilePrivate->saveToElement();
+          ZS_THROW_BAD_STATE_IF(!peerFileEl)
+
+          GeneratorPtr generator = Generator::createJSONGenerator();
+          boost::shared_array<char> output = generator->write(peerFileEl);
+
+          String privatePeerFileStr = output.get();
+
+          setContent(OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_NAMESPACE, OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_SECRET_VALUE_NAME, IHelper::convertToString(*peerFileSecret));
+          setContent(OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_NAMESPACE, OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_VALUE_NAME, privatePeerFileStr);
+
+          mPeerFileKeyGenerator->cancel();
+          mPeerFileKeyGenerator.reset();
+
+          return true;
+        }
+
         setState(SessionState_Pending);
 
         String privatePeerSecretStr = getContent(OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_NAMESPACE, OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_SECRET_VALUE_NAME);
@@ -1447,6 +1529,8 @@ namespace openpeer
           return false;
         }
 
+        setState(SessionState_PendingPeerFilesGeneration);
+
         ElementPtr signedSaltEl = mSaltQuery->getNextSignedSalt();
         if (!signedSaltEl) {
           ZS_LOG_ERROR(Detail, log("failed to obtain signed salt from salt query"))
@@ -1455,37 +1539,19 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("generating peer files (may take a while)..."))
-        setState(SessionState_PendingPeerFilesGeneration);
+        IKeyGeneratorPtr rsaKeyGenerator;
 
-        mPeerFiles = IPeerFiles::generate(IHelper::randomString((32*8)/5+1), signedSaltEl);
-        if (!mPeerFiles) {
-          ZS_LOG_ERROR(Detail, log("failed to generate peer files"))
-          setError(IHTTP::HTTPStatusCode_InternalServerError, "failed to generate peer files");
-          cancel();
-          return false;
+        AccountPtr account = mAccount.lock();
+        if (account) {
+          // the account might have attempted to create an RSA key on our behalf in the background while attempting to log in, take it over now...
+          rsaKeyGenerator = account->forServiceLockboxSession().takeOverRSAGeyGeneration();
         }
 
-        ZS_LOG_DEBUG(log("peer files were generated"))
-        setState(SessionState_Pending);
+        mPeerFileKeyGenerator = IKeyGenerator::generatePeerFiles(mThisWeak.lock(), IHelper::randomString((32*8)/5+1), signedSaltEl, rsaKeyGenerator);
+        ZS_THROW_BAD_STATE_IF(!mPeerFileKeyGenerator)
 
-        IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
-        ZS_THROW_BAD_STATE_IF(!peerFilePrivate)
-
-        SecureByteBlockPtr peerFileSecret = peerFilePrivate->getPassword();
-        ZS_THROW_BAD_STATE_IF(!peerFileSecret)
-
-        ElementPtr peerFileEl = peerFilePrivate->saveToElement();
-        ZS_THROW_BAD_STATE_IF(!peerFileEl)
-
-        GeneratorPtr generator = Generator::createJSONGenerator();
-        boost::shared_array<char> output = generator->write(peerFileEl);
-
-        privatePeerFileStr = output.get();
-
-        setContent(OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_NAMESPACE, OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_SECRET_VALUE_NAME, IHelper::convertToString(*peerFileSecret));
-        setContent(OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_NAMESPACE, OPENPEER_STACK_SERVICE_LOCKBOX_PRIVATE_PEER_FILE_VALUE_NAME, privatePeerFileStr);
-        return true;
+        ZS_LOG_DEBUG(log("generating peer files (may take a while)..."))
+        return false;
       }
 
       //-----------------------------------------------------------------------

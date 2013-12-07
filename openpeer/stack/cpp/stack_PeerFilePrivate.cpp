@@ -80,6 +80,20 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool IPeerFilePrivateForPeerFiles::generate(
+                                                  PeerFilesPtr peerFiles,
+                                                  PeerFilePrivatePtr &outPeerFilePrivate,
+                                                  PeerFilePublicPtr &outPeerFilePublic,
+                                                  IRSAPrivateKeyPtr rsaPrivateKey,
+                                                  IRSAPublicKeyPtr rsaPublicKey,
+                                                  const char *password,
+                                                  ElementPtr signedSalt
+                                                  )
+      {
+        return IPeerFilePrivateFactory::singleton().generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, password, signedSalt);
+      }
+
+      //-----------------------------------------------------------------------
       bool IPeerFilePrivateForPeerFiles::loadFromElement(
                                                          PeerFilesPtr peerFiles,
                                                          PeerFilePrivatePtr &outPeerFilePrivate,
@@ -343,6 +357,8 @@ namespace openpeer
                                      PeerFilesPtr peerFiles,
                                      PeerFilePrivatePtr &outPeerFilePrivate,
                                      PeerFilePublicPtr &outPeerFilePublic,
+                                     IRSAPrivateKeyPtr rsaPrivateKey,
+                                     IRSAPublicKeyPtr rsaPublicKey,
                                      const char *password,
                                      ElementPtr signedSaltBundleEl
                                      )
@@ -356,7 +372,14 @@ namespace openpeer
         pThis->init();
 
         IRSAPublicKeyPtr publicKey;
-        pThis->mPrivateKey = IRSAPrivateKey::generate(publicKey);
+        if ((rsaPrivateKey) &&
+            (rsaPublicKey)) {
+          ZS_LOG_DEBUG(pThis->log("generating using existing rsa private / public keys"))
+          pThis->mPrivateKey = rsaPrivateKey;
+          publicKey = rsaPublicKey;
+        } else {
+          pThis->mPrivateKey = IRSAPrivateKey::generate(publicKey);
+        }
 
         if ((!pThis->mPrivateKey) ||
             (!publicKey)) {

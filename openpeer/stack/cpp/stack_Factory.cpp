@@ -105,6 +105,7 @@ namespace openpeer
                                          IServiceLockboxSessionPtr peerContactSession
                                          )
       {
+        if (this) {}
         return Account::create(delegate, peerContactSession);
       }
       
@@ -128,6 +129,7 @@ namespace openpeer
                                                      AccountPtr outer
                                                      )
       {
+        if (this) {}
         return AccountFinder::create(delegate, outer);
       }
 
@@ -149,10 +151,15 @@ namespace openpeer
       AccountPeerLocationPtr IAccountPeerLocationFactory::create(
                                                                  IAccountPeerLocationDelegatePtr delegate,
                                                                  AccountPtr outer,
-                                                                 const LocationInfo &locationInfo
+                                                                 const LocationInfo &locationInfo,
+                                                                 const String &localContext,
+                                                                 const String &localPeerSecret,
+                                                                 IDHPrivateKeyPtr localPrivateKey,
+                                                                 IDHPublicKeyPtr localPublicKey
                                                                  )
       {
-        return AccountPeerLocation::create(delegate, outer, locationInfo);
+        if (this) {}
+        return AccountPeerLocation::create(delegate, outer, locationInfo, localContext, localPeerSecret, localPrivateKey, localPublicKey);
       }
 
       //-----------------------------------------------------------------------
@@ -175,6 +182,7 @@ namespace openpeer
                                                                   IBootstrappedNetworkDelegatePtr delegate
                                                                   )
       {
+        if (this) {}
         return BootstrappedNetwork::prepare(domain, delegate);
       }
 
@@ -195,6 +203,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkManagerPtr IBootstrappedNetworkManagerFactory::createBootstrappedNetworkManager()
       {
+        if (this) {}
         return BootstrappedNetworkManager::create();
       }
 
@@ -224,10 +233,13 @@ namespace openpeer
                                                                 const char *relayDomain,
                                                                 const char *relayAccessToken,
                                                                 const char *relayAccessSecretProof,
-                                                                const char *encryptDataUsingEncodingPassphrase
+                                                                IDHPrivateKeyPtr localPrivateKey,
+                                                                IDHPublicKeyPtr localPublicKey,
+                                                                IDHPublicKeyPtr remotePublicKey
                                                                 )
       {
-        return FinderRelayChannel::connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, encryptDataUsingEncodingPassphrase);
+        if (this) {}
+        return FinderRelayChannel::connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, localPrivateKey, localPublicKey, remotePublicKey);
       }
 
       //-----------------------------------------------------------------------
@@ -240,6 +252,7 @@ namespace openpeer
                                                                        ITransportStreamPtr wireSendStream
                                                                        )
       {
+        if (this) {}
         return FinderRelayChannel::createIncoming(delegate, account, outerReceiveStream, outerSendStream, wireReceiveStream, wireSendStream);
       }
 
@@ -265,6 +278,7 @@ namespace openpeer
                                                                          ITransportStreamPtr sendStream
                                                                          )
       {
+        if (this) {}
         return FinderConnection::connect(delegate, remoteFinderIP, receiveStream, sendStream);
       }
 
@@ -281,8 +295,56 @@ namespace openpeer
                                                                                      ITransportStreamPtr sendStream
                                                                                      )
       {
+        if (this) {}
         return FinderConnection::connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IKeyGeneratorFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IKeyGeneratorFactory &IKeyGeneratorFactory::singleton()
+      {
+        return *(Factory::singleton().get());
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generatePeerFiles(
+                                                              IKeyGeneratorDelegatePtr delegate,
+                                                              const char *password,
+                                                              ElementPtr signedSaltEl,
+                                                              IKeyGeneratorPtr rsaKeyGenerator
+                                                              )
+      {
+        if (this) {}
+        return KeyGenerator::generatePeerFiles(delegate, password, signedSaltEl, rsaKeyGenerator);
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generateRSA(
+                                                        IKeyGeneratorDelegatePtr delegate,
+                                                        size_t keySizeInBits
+                                                        )
+      {
+        if (this) {}
+        return KeyGenerator::generateRSA(delegate, keySizeInBits);
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generateDHKeyDomain(
+                                                                IKeyGeneratorDelegatePtr delegate,
+                                                                size_t keySizeInBits
+                                                                )
+      {
+        if (this) {}
+        return KeyGenerator::generateDHKeyDomain(delegate, keySizeInBits);
+      }
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -305,6 +367,7 @@ namespace openpeer
                                                          message::MessagePtr message
                                                          )
       {
+        if (this) {}
         return MessageIncoming::create(account, location, message);
       }
 
@@ -329,6 +392,7 @@ namespace openpeer
                                                         Duration timeout
                                                         )
       {
+        if (this) {}
         return MessageMonitor::monitor(delegate, requestMessage, timeout);
       }
 
@@ -340,6 +404,7 @@ namespace openpeer
                                                                          Duration timeout
                                                                          )
       {
+        if (this) {}
         return MessageMonitor::monitorAndSendToLocation(delegate, peerLocation, message, timeout);
       }
 
@@ -353,6 +418,7 @@ namespace openpeer
                                                                         Duration timeout
                                                                         )
       {
+        if (this) {}
         return MessageMonitor::monitorAndSendToService(delegate, bootstrappedNetwork, serviceType, serviceMethodName, message, timeout);
       }
 
@@ -373,6 +439,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorManagerPtr IMessageMonitorManagerFactory::createMessageMonitorManager()
       {
+        if (this) {}
         return MessageMonitorManager::create();
       }
 
@@ -393,12 +460,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr ILocationFactory::getForLocal(IAccountPtr account)
       {
+        if (this) {}
         return Location::getForLocal(account);
       }
 
       //-----------------------------------------------------------------------
       LocationPtr ILocationFactory::getForFinder(IAccountPtr account)
       {
+        if (this) {}
         return Location::getForFinder(account);
       }
 
@@ -408,6 +477,7 @@ namespace openpeer
                                                const char *locationID
                                                )
       {
+        if (this) {}
         return Location::getForPeer(peer, locationID);
       }
 
@@ -418,6 +488,7 @@ namespace openpeer
                                            const char *locationID
                                            )
       {
+        if (this) {}
         return Location::create(messageSource, peerURI, locationID);
       }
 
@@ -441,6 +512,7 @@ namespace openpeer
                                    IPeerFilePublicPtr peerFilePublic
                                    )
       {
+        if (this) {}
         return Peer::create(account, peerFilePublic);
       }
 
@@ -450,6 +522,7 @@ namespace openpeer
                                              ElementPtr signedElement
                                              )
       {
+        if (this) {}
         return Peer::getFromSignature(account, signedElement);
       }
 
@@ -459,6 +532,7 @@ namespace openpeer
                                    const char *peerURI
                                    )
       {
+        if (this) {}
         return Peer::create(account, peerURI);
       }
 
@@ -482,8 +556,22 @@ namespace openpeer
                                                ElementPtr signedSaltBundleEl
                                                )
       {
+        if (this) {}
         return PeerFiles::generate(password, signedSaltBundleEl);
       }
+
+      //-----------------------------------------------------------------------
+      PeerFilesPtr IPeerFilesFactory::generate(
+                                               IRSAPrivateKeyPtr privateKey,
+                                               IRSAPublicKeyPtr publicKey,
+                                               const char *password,
+                                               ElementPtr signedSaltBundleEl
+                                               )
+      {
+        if (this) {}
+        return PeerFiles::generate(privateKey, publicKey, password, signedSaltBundleEl);
+      }
+
 
       //-----------------------------------------------------------------------
       PeerFilesPtr IPeerFilesFactory::loadFromElement(
@@ -491,6 +579,7 @@ namespace openpeer
                                                       ElementPtr privatePeerRootElement
                                                       )
       {
+        if (this) {}
         return PeerFiles::loadFromElement(password, privatePeerRootElement);
       }
 
@@ -510,25 +599,42 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       bool IPeerFilePrivateFactory::generate(
-                                                  PeerFilesPtr peerFiles,
-                                                  PeerFilePrivatePtr &outPeerFilePrivate,
-                                                  PeerFilePublicPtr &outPeerFilePublic,
-                                                  const char *password,
-                                                  ElementPtr signedSalt
-                                                  )
+                                             PeerFilesPtr peerFiles,
+                                             PeerFilePrivatePtr &outPeerFilePrivate,
+                                             PeerFilePublicPtr &outPeerFilePublic,
+                                             const char *password,
+                                             ElementPtr signedSalt
+                                             )
       {
-        return PeerFilePrivate::generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, password, signedSalt);
+        if (this) {}
+        return PeerFilePrivate::generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, IRSAPrivateKeyPtr(), IRSAPublicKeyPtr(), password, signedSalt);
+      }
+
+      //-----------------------------------------------------------------------
+      bool IPeerFilePrivateFactory::generate(
+                                             PeerFilesPtr peerFiles,
+                                             PeerFilePrivatePtr &outPeerFilePrivate,
+                                             PeerFilePublicPtr &outPeerFilePublic,
+                                             IRSAPrivateKeyPtr rsaPrivateKey,
+                                             IRSAPublicKeyPtr rsaPublicKey,
+                                             const char *password,
+                                             ElementPtr signedSalt
+                                             )
+      {
+        if (this) {}
+        return PeerFilePrivate::generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, rsaPrivateKey, rsaPublicKey, password, signedSalt);
       }
 
       //-----------------------------------------------------------------------
       bool IPeerFilePrivateFactory::loadFromElement(
-                                                         PeerFilesPtr peerFiles,
-                                                         PeerFilePrivatePtr &outPeerFilePrivate,
-                                                         PeerFilePublicPtr &outPeerFilePublic,
-                                                         const char *password,
-                                                         ElementPtr peerFileRootElement
-                                                         )
+                                                    PeerFilesPtr peerFiles,
+                                                    PeerFilePrivatePtr &outPeerFilePrivate,
+                                                    PeerFilePublicPtr &outPeerFilePublic,
+                                                    const char *password,
+                                                    ElementPtr peerFileRootElement
+                                                    )
       {
+        if (this) {}
         return PeerFilePrivate::loadFromElement(peerFiles, outPeerFilePrivate, outPeerFilePublic, password, peerFileRootElement);
       }
 
@@ -549,6 +655,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilePublicPtr IPeerFilePublicFactory::loadFromElement(ElementPtr publicPeerRootElement)
       {
+        if (this) {}
         return PeerFilePublic::loadFromElement(publicPeerRootElement);
       }
 
@@ -560,6 +667,7 @@ namespace openpeer
                                                                     const String &peerURI
                                                                     )
       {
+        if (this) {}
         return PeerFilePublic::createFromPublicKey(peerFiles, publicDoc, publicKey, peerURI);
       }
 
@@ -569,6 +677,7 @@ namespace openpeer
                                                                 DocumentPtr publicDoc
                                                                 )
       {
+        if (this) {}
         return PeerFilePublic::loadFromElement(peerFiles, publicDoc);
       }
 
@@ -592,6 +701,7 @@ namespace openpeer
                                                                  IPeerSubscriptionDelegatePtr delegate
                                                                  )
       {
+        if (this) {}
         return PeerSubscription::subscribeAll(account, delegate);
       }
 
@@ -601,6 +711,7 @@ namespace openpeer
                                                               IPeerSubscriptionDelegatePtr delegate
                                                               )
       {
+        if (this) {}
         return PeerSubscription::subscribe(peer, delegate);
       }
 
@@ -629,6 +740,7 @@ namespace openpeer
                                                  Time expires
                                                  )
       {
+        if (this) {}
         return Publication::create(creatorLocation, name, mimeType, data, publishToRelationships, publishedLocation, expires);
       }
 
@@ -643,6 +755,7 @@ namespace openpeer
                                                  Time expires
                                                  )
       {
+        if (this) {}
         return Publication::create(creatorLocation, name, mimeType, documentToBeAdopted, publishToRelationships, publishedLocation, expires);
       }
 
@@ -661,6 +774,7 @@ namespace openpeer
                                                  Time expires
                                                  )
       {
+        if (this) {}
         return Publication::create(version, baseVersion, lineage, creatorLocation, name, mimeType, dataEl, encoding, publishToRelationships, publishedLocation, expires);
       }
       
@@ -692,6 +806,7 @@ namespace openpeer
                                                                                    Time expires
                                                                                    )
       {
+        if (this) {}
         return PublicationMetaData::create(version, baseVersion, lineage, creatorLocation, name, mimeType, encoding, relationships, publishedLocation, expires);
       }
 
@@ -712,6 +827,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr IPublicationRepositoryFactory::createPublicationRepository(AccountPtr account)
       {
+        if (this) {}
         return PublicationRepository::create(account);
       }
 
@@ -735,6 +851,7 @@ namespace openpeer
                                                                                                           ElementPtr signedElement
                                                                                                           )
       {
+        if (this) {}
         return ServiceCertificatesValidateQuery::queryIfValidSignature(delegate, signedElement);
       }
 
@@ -762,6 +879,7 @@ namespace openpeer
                                                                                   const char *identityURI_or_identityBaseURI
                                                                                   )
       {
+        if (this) {}
         return ServiceIdentitySession::loginWithIdentity(delegate, provider, grantSession, existingLockbox, outerFrameURLUponReload, identityURI_or_identityBaseURI);
       }
 
@@ -777,6 +895,7 @@ namespace openpeer
                                                                                                Time identityAccessSecretExpires
                                                                                                )
       {
+        if (this) {}
         return ServiceIdentitySession::loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityAccessToken, identityAccessSecret, identityAccessSecretExpires);
       }
 
@@ -789,6 +908,7 @@ namespace openpeer
                                                                        const char *reloginKey
                                                                        )
       {
+        if (this) {}
         return ServiceIdentitySession::reload(provider, grantSession, existingLockbox, identityURI, reloginKey);
       }
 
@@ -815,6 +935,7 @@ namespace openpeer
                                                                     bool forceNewAccount
                                                                     )
       {
+        if (this) {}
         return ServiceLockboxSession::login(delegate, serviceLockbox, grantSession, identitySession, forceNewAccount);
       }
 
@@ -827,6 +948,7 @@ namespace openpeer
                                                                       const SecureByteBlock &lockboxKey
                                                                       )
       {
+        if (this) {}
         return ServiceLockboxSession::relogin(delegate, serviceLockbox, grantSession, lockboxAccountID, lockboxKey);
       }
 
@@ -851,6 +973,7 @@ namespace openpeer
                                                                                    const char *grantID
                                                                                    )
       {
+        if (this) {}
         return ServiceNamespaceGrantSession::create(delegate, outerFrameURLUponReload, grantID);
       }
 
@@ -875,6 +998,7 @@ namespace openpeer
                                                                                                   UINT totalToFetch
                                                                                                   )
       {
+        if (this) {}
         return ServiceSaltFetchSignedSaltQuery::fetchSignedSalt(delegate, serviceSalt, totalToFetch);
       }
     }

@@ -102,7 +102,9 @@ namespace openpeer
           String mRelayDomain;
           String mRelayAccessToken;
           String mRelayAccessSecretProof;
-          String mEncryptionPassphrase;
+          IDHPrivateKeyPtr mLocalPrivateKey;
+          IDHPublicKeyPtr mLocalPublicKey;
+          IDHPublicKeyPtr mRemotePublicKey;
         };
 
       protected:
@@ -144,7 +146,9 @@ namespace openpeer
                                              const char *relayDomain,
                                              const char *relayAccessToken,
                                              const char *relayAccessSecretProof,
-                                             const char *encryptDataUsingEncodingPassphrase
+                                             IDHPrivateKeyPtr localPrivateKey,
+                                             IDHPublicKeyPtr localPublicKey,
+                                             IDHPublicKeyPtr remotePublicKey
                                              );
 
         virtual PUID getID() const {return mID;}
@@ -160,7 +164,8 @@ namespace openpeer
 
         virtual void setIncomingContext(
                                         const char *contextID,
-                                        const char *decryptUsingEncodingPassphrase,
+                                        IDHPrivateKeyPtr localPrivateKey,
+                                        IDHPublicKeyPtr localPublicKey,
                                         IPeerPtr remotePeer
                                         );
 
@@ -171,6 +176,10 @@ namespace openpeer
         virtual IPeerPtr getRemotePeer() const;
 
         virtual IRSAPublicKeyPtr getRemotePublicKey() const;
+
+        virtual IDHKeyDomainPtr getDHRemoteKeyDomain() const;
+
+        virtual IDHPublicKeyPtr getDHRemotePublicKey() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -290,7 +299,9 @@ namespace openpeer
                                               const char *relayDomain,
                                               const char *relayAccessToken,
                                               const char *relayAccessSecretProof,
-                                              const char *encryptDataUsingEncodingPassphrase
+                                              IDHPrivateKeyPtr localPrivateKey,
+                                              IDHPublicKeyPtr localPublicKey,
+                                              IDHPublicKeyPtr remotePublicKey
                                               );
 
         virtual FinderRelayChannelPtr createIncoming(

@@ -37,6 +37,7 @@
 #include <openpeer/stack/ICache.h>
 #include <openpeer/stack/IDiff.h>
 #include <openpeer/stack/IHelper.h>
+#include <openpeer/stack/IKeyGenerator.h>
 #include <openpeer/stack/ILocation.h>
 #include <openpeer/stack/IMessageIncoming.h>
 #include <openpeer/stack/IMessageMonitor.h>

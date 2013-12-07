@@ -42,6 +42,7 @@
 #include <openpeer/stack/message/peer/PeerServicesGetResult.h>
 
 #include <openpeer/stack/IBootstrappedNetwork.h>
+#include <openpeer/stack/IKeyGenerator.h>
 #include <openpeer/stack/IMessageMonitor.h>
 #include <openpeer/stack/IMessageSource.h>
 #include <openpeer/stack/IServiceLockbox.h>
@@ -89,6 +90,8 @@ namespace openpeer
                                                                WORD *lastErrorCode = NULL,
                                                                String *lastErrorReason = NULL
                                                                ) const = 0;
+
+        virtual PUID getID() const = 0;
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
 
@@ -147,6 +150,7 @@ namespace openpeer
                                     public IServiceLockboxSessionForServiceIdentity,
                                     public IWakeDelegate,
                                     public IBootstrappedNetworkDelegate,
+                                    public IKeyGeneratorDelegate,
                                     public IServiceSaltFetchSignedSaltQueryDelegate,
                                     public IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate,
                                     public IServiceNamespaceGrantSessionForServicesQueryDelegate,
@@ -249,6 +253,8 @@ namespace openpeer
         #pragma mark ServiceLockboxSession => IServiceLockboxSessionForAccount
         #pragma mark
 
+        // (duplicate) virtual PUID get() const;
+
         // (duplicate) virtual SessionStates getState(
         //                                            WORD *lastErrorCode,
         //                                            String *lastErrorReason
@@ -298,6 +304,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceLockboxSession => IKeyGeneratorDelegate
+        #pragma mark
+
+        virtual void onKeyGenerated(IKeyGeneratorPtr generator);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -524,6 +537,8 @@ namespace openpeer
         AutoBool mForceNewAccount;
 
         IServiceSaltFetchSignedSaltQueryPtr mSaltQuery;
+        IKeyGeneratorPtr mPeerFileKeyGenerator;
+
         ServiceTypeMap mServicesByType;
 
         IdentityInfoList mServerIdentities;

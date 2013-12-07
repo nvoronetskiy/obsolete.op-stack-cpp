@@ -40,6 +40,8 @@
 #include <openpeer/stack/IPeer.h>
 
 #include <openpeer/services/IRSAPublicKey.h>
+#include <openpeer/services/IDHPrivateKey.h>
+#include <openpeer/services/IDHPublicKey.h>
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IHTTP.h>
 
@@ -60,8 +62,6 @@ namespace openpeer
     namespace internal
     {
       using services::IHelper;
-
-//      typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -133,13 +133,31 @@ namespace openpeer
         }
 
         if (!mIncoming) {
-          mConnectionRelayChannel = IFinderConnectionRelayChannel::connect(mThisWeak.lock(), mConnectInfo.mFinderIP, mConnectInfo.mLocalContextID, mConnectInfo.mRemoteContextID, mConnectInfo.mRelayDomain, mConnectInfo.mRelayAccessToken, mConnectInfo.mRelayAccessSecretProof, mWireReceiveStream, mWireSendStream);
+          mConnectionRelayChannel = IFinderConnectionRelayChannel::connect(
+                                                                           mThisWeak.lock(),
+                                                                           mConnectInfo.mFinderIP,
+                                                                           mConnectInfo.mLocalContextID,
+                                                                           mConnectInfo.mRemoteContextID,
+                                                                           mConnectInfo.mRelayDomain,
+                                                                           mConnectInfo.mRelayAccessToken,
+                                                                           mConnectInfo.mRelayAccessSecretProof,
+                                                                           mWireReceiveStream,
+                                                                           mWireSendStream
+                                                                           );
         }
 
         mMLSChannel = IMessageLayerSecurityChannel::create(mThisWeak.lock(), mWireReceiveStream, mOuterReceiveStream, mOuterSendStream, mWireSendStream);
         if (!mIncoming) {
           mMLSChannel->setLocalContextID(mConnectInfo.mLocalContextID);
-          mMLSChannel->setSendKeyingEncoding(mConnectInfo.mEncryptionPassphrase);
+
+          // NOTE: At this point we know the remote party's public key but they
+          //       do not know the local public key so we must include those
+          //       details in the keying material sent out.
+          mMLSChannel->setSendKeyingEncoding(
+                                             mConnectInfo.mLocalPrivateKey,
+                                             mConnectInfo.mRemotePublicKey,
+                                             mConnectInfo.mLocalPublicKey
+                                             );
         }
 
         step();
@@ -188,7 +206,9 @@ namespace openpeer
                                                         const char *relayDomain,
                                                         const char *relayAccessToken,
                                                         const char *relayAccessSecretProof,
-                                                        const char *encryptDataUsingEncodingPassphrase
+                                                        IDHPrivateKeyPtr localPrivateKey,
+                                                        IDHPublicKeyPtr localPublicKey,
+                                                        IDHPublicKeyPtr remotePublicKey
                                                         )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!account)
@@ -199,7 +219,9 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!relayDomain)
         ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessToken)
         ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessSecretProof)
-        ZS_THROW_INVALID_ARGUMENT_IF(!encryptDataUsingEncodingPassphrase)
+        ZS_THROW_INVALID_ARGUMENT_IF(!localPrivateKey)
+        ZS_THROW_INVALID_ARGUMENT_IF(!localPublicKey)
+        ZS_THROW_INVALID_ARGUMENT_IF(!remotePublicKey)
 
         FinderRelayChannelPtr pThis(new FinderRelayChannel(IStackForInternal::queueStack(), delegate, account, receiveStream, sendStream));
         pThis->mThisWeak = pThis;
@@ -210,7 +232,9 @@ namespace openpeer
         pThis->mConnectInfo.mRelayDomain = String(relayDomain);
         pThis->mConnectInfo.mRelayAccessToken = String(relayAccessToken);
         pThis->mConnectInfo.mRelayAccessSecretProof = String(relayAccessSecretProof);
-        pThis->mConnectInfo.mEncryptionPassphrase = String(encryptDataUsingEncodingPassphrase);
+        pThis->mConnectInfo.mLocalPrivateKey = localPrivateKey;
+        pThis->mConnectInfo.mLocalPublicKey = localPublicKey;
+        pThis->mConnectInfo.mRemotePublicKey = remotePublicKey;
 
         pThis->init();
 
@@ -297,15 +321,17 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderRelayChannel::setIncomingContext(
                                                   const char *contextID,
-                                                  const char *decryptUsingEncodingPassphrase,
+                                                  IDHPrivateKeyPtr localPrivateKey,
+                                                  IDHPublicKeyPtr localPublicKey,
                                                   IPeerPtr remotePeer
                                                   )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!contextID)
-        ZS_THROW_INVALID_ARGUMENT_IF(!decryptUsingEncodingPassphrase)
+        ZS_THROW_INVALID_ARGUMENT_IF(!localPrivateKey)
+        ZS_THROW_INVALID_ARGUMENT_IF(!localPublicKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!remotePeer)
 
-        ZS_LOG_DEBUG(log("set incoming context") + ZS_PARAM("context id", contextID) + ZS_PARAM("decrypt passphrase", decryptUsingEncodingPassphrase) + ZS_PARAM("remote peer", IPeer::toDebug(remotePeer)))
+        ZS_LOG_DEBUG(log("set incoming context") + ZS_PARAM("context id", contextID) + ZS_PARAM("local private key", localPrivateKey->getID()) + ZS_PARAM("local public key", localPublicKey->getID()) + ZS_PARAM("remote peer", IPeer::toDebug(remotePeer)))
 
         AutoRecursiveLock lock(getLock());
 
@@ -315,7 +341,9 @@ namespace openpeer
         }
 
         mMLSChannel->setLocalContextID(contextID);
-        mMLSChannel->setReceiveKeyingDecoding(decryptUsingEncodingPassphrase);
+
+        // NOTE: we don't know the remote public key yet in this case
+        mMLSChannel->setReceiveKeyingDecoding(localPrivateKey, localPublicKey);
 
         IPeerFilePublicPtr peerFilePublic = remotePeer->getPeerFilePublic();
         ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
@@ -363,6 +391,22 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         return mRemotePublicKey;
+      }
+
+      //-----------------------------------------------------------------------
+      IDHKeyDomainPtr FinderRelayChannel::getDHRemoteKeyDomain() const
+      {
+        AutoRecursiveLock lock(getLock());
+        if (!mMLSChannel) return IDHKeyDomainPtr();
+        return mMLSChannel->getDHRemoteKeyDomain();
+      }
+
+      //-----------------------------------------------------------------------
+      IDHPublicKeyPtr FinderRelayChannel::getDHRemotePublicKey() const
+      {
+        AutoRecursiveLock lock(getLock());
+        if (!mMLSChannel) return IDHPublicKeyPtr();
+        return mMLSChannel->getDHRemotePublicKey();
       }
 
       //-----------------------------------------------------------------------
@@ -567,18 +611,35 @@ namespace openpeer
         ElementPtr resultEl = Element::create("FinderRelayChannel");
 
         IHelper::debugAppend(resultEl, "id", mID);
+
         IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
         IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+
         IHelper::debugAppend(resultEl, "last error", get(mLastError));
         IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
+
         IHelper::debugAppend(resultEl, "account", (bool)mAccount.lock());
+
         IHelper::debugAppend(resultEl, "incoming", mIncoming);
+        IHelper::debugAppend(resultEl, "connect info finder IP", !mConnectInfo.mFinderIP.isEmpty() ? mConnectInfo.mFinderIP.string() : String());
+        IHelper::debugAppend(resultEl, "connect info local context id", mConnectInfo.mLocalContextID);
+        IHelper::debugAppend(resultEl, "connect info remote context id", mConnectInfo.mRemoteContextID);
+        IHelper::debugAppend(resultEl, "connect info relay domain", mConnectInfo.mRelayDomain);
+        IHelper::debugAppend(resultEl, "connect info relay access token", mConnectInfo.mRelayAccessToken);
+        IHelper::debugAppend(resultEl, "connect info relay access secret proof", mConnectInfo.mRelayAccessSecretProof);
+        IHelper::debugAppend(resultEl, "connect info local private key", mConnectInfo.mLocalPrivateKey ? mConnectInfo.mLocalPrivateKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "connect info local public key", mConnectInfo.mLocalPublicKey ? mConnectInfo.mLocalPublicKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "connect info remote public key", mConnectInfo.mRemotePublicKey ? mConnectInfo.mRemotePublicKey->getID() : 0);
         IHelper::debugAppend(resultEl, "connection relay channel", mConnectionRelayChannel ? mConnectionRelayChannel->getID() : 0);
+
         IHelper::debugAppend(resultEl, IMessageLayerSecurityChannel::toDebug(mMLSChannel));
+
         IHelper::debugAppend(resultEl, "notified needs context", mNotifiedNeedsContext);
         IHelper::debugAppend(resultEl, IPeer::toDebug(mRemotePeer));
         IHelper::debugAppend(resultEl, "remote public key", (bool)mRemotePublicKey);
+
         IHelper::debugAppend(resultEl, "outer recv stream", ITransportStream::toDebug(mOuterReceiveStream));
         IHelper::debugAppend(resultEl, "outer send stream", ITransportStream::toDebug(mOuterSendStream));
         IHelper::debugAppend(resultEl, "tcp recv stream", ITransportStream::toDebug(mWireReceiveStream));
@@ -730,10 +791,26 @@ namespace openpeer
                                                           const char *relayDomain,
                                                           const char *relayAccessToken,
                                                           const char *relayAccessSecretProof,
-                                                          const char *encryptDataUsingEncodingPassphrase
+                                                          IDHPrivateKeyPtr localPrivateKey,
+                                                          IDHPublicKeyPtr localPublicKey,
+                                                          IDHPublicKeyPtr remotePublicKey
                                                           )
       {
-        return internal::IFinderRelayChannelFactory::singleton().connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, encryptDataUsingEncodingPassphrase);
+        return internal::IFinderRelayChannelFactory::singleton().connect(
+                                                                         delegate,
+                                                                         account,
+                                                                         receiveStream,
+                                                                         sendStream,
+                                                                         remoteFinderIP,
+                                                                         localContextID,
+                                                                         remoteContextID,
+                                                                         relayDomain,
+                                                                         relayAccessToken,
+                                                                         relayAccessSecretProof,
+                                                                         localPrivateKey,
+                                                                         localPublicKey,
+                                                                         remotePublicKey
+                                                                         );
       }
     }
   }

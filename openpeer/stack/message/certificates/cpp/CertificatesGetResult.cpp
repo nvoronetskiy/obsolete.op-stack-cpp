@@ -85,7 +85,9 @@ namespace openpeer
                 ElementPtr x509DataEl = keyEl->findFirstChildElement("x509Data");
                 if (x509DataEl) {
                   SecureByteBlockPtr key = IHelper::convertFromBase64(IMessageHelper::getElementTextAndDecode(x509DataEl));
-                  certificate.mPublicKey = IRSAPublicKey::load(*key);
+                  if (IHelper::hasData(key)) {
+                    certificate.mPublicKey = IRSAPublicKey::load(*key);
+                  }
                 }
               }
 

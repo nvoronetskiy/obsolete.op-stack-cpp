@@ -89,7 +89,11 @@ namespace openpeer
         static AccountPeerLocationPtr create(
                                              IAccountPeerLocationDelegatePtr delegate,
                                              AccountPtr outer,
-                                             const LocationInfo &locationInfo
+                                             const LocationInfo &locationInfo,
+                                             const String &localContext,
+                                             const String &localPeerSecret,
+                                             IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
+                                             IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
                                              );
 
         virtual PUID getID() const = 0;
@@ -106,13 +110,15 @@ namespace openpeer
         virtual Time getTimeOfLastActivity() const = 0;
 
         virtual void connectLocation(
-                                     const char *remoteContextID,
-                                     const char *remotePeerSecret,
+                                     const char *remoteContext,
                                      const char *remoteICEUsernameFrag,
                                      const char *remoteICEPassword,
                                      const CandidateList &candidates,
                                      bool finalCandidates,
-                                     IICESocket::ICEControls control
+                                     IICESocket::ICEControls control,
+                                     IDHPrivateKeyPtr localPrivateKey,
+                                     IDHPublicKeyPtr localPublicKey,
+                                     IDHPublicKeyPtr remotePublicKey = IDHPublicKeyPtr()
                                      ) = 0;
 
         virtual void incomingRespondWhenCandidatesReady(PeerLocationFindRequestPtr request) = 0;
@@ -168,9 +174,13 @@ namespace openpeer
                             IMessageQueuePtr queue,
                             IAccountPeerLocationDelegatePtr delegate,
                             AccountPtr outer,
-                            const LocationInfo &locationInfo
+                            const LocationInfo &locationInfo,
+                            const String &localContext,
+                            const String &localPeerSecret,
+                            IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
+                            IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
                             );
-        
+
         AccountPeerLocation(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
 
         void init();
@@ -189,7 +199,11 @@ namespace openpeer
         static AccountPeerLocationPtr create(
                                              IAccountPeerLocationDelegatePtr delegate,
                                              AccountPtr outer,
-                                             const LocationInfo &locationInfo
+                                             const LocationInfo &locationInfo,
+                                             const String &localContext,
+                                             const String &localPeerSecret,
+                                             IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
+                                             IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
                                              );
 
         virtual PUID getID() const {return mID;}
@@ -207,13 +221,15 @@ namespace openpeer
         virtual Time getTimeOfLastActivity() const;
 
         virtual void connectLocation(
-                                     const char *remoteContextID,
-                                     const char *remotePeerSecret,
+                                     const char *remoteContext,
                                      const char *remoteICEUsernameFrag,
                                      const char *remoteICEPassword,
                                      const CandidateList &candidates,
                                      bool candidatesFinal,
-                                     IICESocket::ICEControls control
+                                     IICESocket::ICEControls control,
+                                     IDHPrivateKeyPtr localPrivateKey,
+                                     IDHPublicKeyPtr localPublicKey,
+                                     IDHPublicKeyPtr remotePublicKey = IDHPublicKeyPtr()
                                      );
 
         virtual void incomingRespondWhenCandidatesReady(PeerLocationFindRequestPtr request);
@@ -394,6 +410,15 @@ namespace openpeer
         AccountWeakPtr mOuter;
         AccountPeerLocationPtr mGracefulShutdownReference;
 
+        String mLocalContext;
+        String mLocalPeerSecret;
+
+        String mRemoteContext;
+
+        IDHPrivateKeyPtr mDHLocalPrivateKey;
+        IDHPublicKeyPtr mDHLocalPublicKey;
+        IDHPublicKeyPtr mDHRemotePublicKey;
+
         AccountStates mCurrentState;
         mutable bool mShouldRefindNow;
 
@@ -401,9 +426,6 @@ namespace openpeer
 
         PendingRequestList mPendingRequests;
         PeerLocationFindRequestPtr mLastRequest;
-
-        String mRemoteContextID;
-        String mRemotePeerSecret;
 
         // information about the location found
         LocationInfo mLocationInfo;
@@ -423,7 +445,6 @@ namespace openpeer
         IMessageLayerSecurityChannelPtr mMLSChannel;
         ITransportStreamReaderPtr mMLSReceiveStream;
         ITransportStreamWriterPtr mMLSSendStream;
-        String mMLSEncodingPassphrase;
         AutoBool mMLSDidConnect;
 
         IFinderRelayChannelPtr mOutgoingRelayChannel;
@@ -478,7 +499,11 @@ namespace openpeer
         virtual AccountPeerLocationPtr create(
                                               IAccountPeerLocationDelegatePtr delegate,
                                               AccountPtr outer,
-                                              const LocationInfo &locationInfo
+                                              const LocationInfo &locationInfo,
+                                              const String &localContext,
+                                              const String &localPeerSecret,
+                                              IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
+                                              IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
                                               );
       };
 

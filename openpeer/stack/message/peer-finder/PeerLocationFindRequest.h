@@ -58,6 +58,9 @@ namespace openpeer
             AttributeType_FindPeer,
             AttributeType_Context,
             AttributeType_PeerSecret,
+            AttributeType_DHKeyDomain,
+            AttributeType_DHPrivateKey,
+            AttributeType_DHPublicKey,
             AttributeType_ICEUsernameFrag,
             AttributeType_ICEPassword,
             AttributeType_ExcludedLocations,
@@ -94,6 +97,15 @@ namespace openpeer
           const String &peerSecret() const                                {return mPeerSecret;}
           void peerSecret(const String &secret)                           {mPeerSecret = secret;}
 
+          IDHKeyDomainPtr dhKeyDomain() const;
+          void dhKeyDomain(IDHKeyDomainPtr value)                         {mDHKeyDomain = value;}
+
+          IDHPrivateKeyPtr dhPrivateKey() const                           {return mDHPrivateKey;}
+          void dhPrivateKey(IDHPrivateKeyPtr value)                       {mDHPrivateKey = value;}
+
+          IDHPublicKeyPtr dhPublicKey() const                             {return mDHPublicKey;}
+          void dhPublicKey(IDHPublicKeyPtr value)                         {mDHPublicKey = value;}
+
           const String &iceUsernameFrag() const                           {return mICEUsernameFrag;}
           void iceUsernameFrag(const String &val)                         {mICEUsernameFrag = val;}
 
@@ -118,6 +130,10 @@ namespace openpeer
 
           String mContext;
           String mPeerSecret;
+
+          IDHKeyDomainPtr mDHKeyDomain;
+          IDHPrivateKeyPtr mDHPrivateKey;
+          IDHPublicKeyPtr mDHPublicKey;
 
           String mICEUsernameFrag;
           String mICEPassword;

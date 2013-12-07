@@ -49,6 +49,8 @@
 #include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/IDHPrivateKey.h>
+#include <openpeer/services/IDHPublicKey.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
@@ -98,10 +100,14 @@ namespace openpeer
       AccountPeerLocationPtr IAccountPeerLocationForAccount::create(
                                                                     IAccountPeerLocationDelegatePtr delegate,
                                                                     AccountPtr outer,
-                                                                    const LocationInfo &locationInfo
+                                                                    const LocationInfo &locationInfo,
+                                                                    const String &localContext,
+                                                                    const String &localPeerSecret,
+                                                                    IDHPrivateKeyPtr localPrivateKey,
+                                                                    IDHPublicKeyPtr localPublicKey
                                                                     )
       {
-        return IAccountPeerLocationFactory::singleton().create(delegate, outer, locationInfo);
+        return IAccountPeerLocationFactory::singleton().create(delegate, outer, locationInfo, localContext, localPeerSecret, localPrivateKey, localPublicKey);
       }
 
       //-----------------------------------------------------------------------
@@ -117,11 +123,19 @@ namespace openpeer
                                                IMessageQueuePtr queue,
                                                IAccountPeerLocationDelegatePtr delegate,
                                                AccountPtr outer,
-                                               const LocationInfo &locationInfo
+                                               const LocationInfo &locationInfo,
+                                               const String &localContext,
+                                               const String &localPeerSecret,
+                                               IDHPrivateKeyPtr localPrivateKey,
+                                               IDHPublicKeyPtr localPublicKey
                                                ) :
         MessageQueueAssociator(queue),
         mDelegate(IAccountPeerLocationDelegateProxy::createWeak(IStackForInternal::queueStack(), delegate)),
         mOuter(outer),
+        mLocalContext(localContext),
+        mLocalPeerSecret(localPeerSecret),
+        mDHLocalPrivateKey(localPrivateKey),
+        mDHLocalPublicKey(localPublicKey),
         mCurrentState(IAccount::AccountState_Pending),
         mShouldRefindNow(false),
         mLastActivity(zsLib::now()),
@@ -169,10 +183,14 @@ namespace openpeer
       AccountPeerLocationPtr AccountPeerLocation::create(
                                                          IAccountPeerLocationDelegatePtr delegate,
                                                          AccountPtr outer,
-                                                         const LocationInfo &locationInfo
+                                                         const LocationInfo &locationInfo,
+                                                         const String &localContext,
+                                                         const String &localPeerSecret,
+                                                         IDHPrivateKeyPtr localPrivateKey,
+                                                         IDHPublicKeyPtr localPublicKey
                                                          )
       {
-        AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, locationInfo));
+        AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, locationInfo, localContext, localPeerSecret, localPrivateKey, localPublicKey));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -231,13 +249,15 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void AccountPeerLocation::connectLocation(
-                                                const char *remoteContextID,
-                                                const char *remotePeerSecret,
+                                                const char *remoteContext,
                                                 const char *remoteICEUsernameFrag,
                                                 const char *remoteICEPassword,
                                                 const CandidateList &candidates,
                                                 bool candidatesFinal,
-                                                IICESocket::ICEControls control
+                                                IICESocket::ICEControls control,
+                                                IDHPrivateKeyPtr localPrivateKey,
+                                                IDHPublicKeyPtr localPublicKey,
+                                                IDHPublicKeyPtr remotePublicKey
                                                 )
       {
         AutoRecursiveLock lock(getLock());
@@ -253,9 +273,19 @@ namespace openpeer
           return;
         }
 
-        mRemoteContextID = String(remoteContextID);
-        mRemotePeerSecret = String(remotePeerSecret);
+        mRemoteContext = String(remoteContext);
+        mDHLocalPrivateKey = localPrivateKey;
+        mDHLocalPublicKey = localPublicKey;
+        if (remotePublicKey) {
+          mDHRemotePublicKey = remotePublicKey;
+        }
         get(mCandidatesFinal) = candidatesFinal;
+
+        if (!mDHRemotePublicKey) {
+          ZS_LOG_ERROR(Detail, log("remote DH public key was never provided by remote party (thus shutting down)"))
+          cancel();
+          return;
+        }
 
         ZS_LOG_DETAIL(debug("creating/updating session from remote candidates") + ZS_PARAM("total candidates", candidates.size()))
 
@@ -305,6 +335,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void AccountPeerLocation::incomingRespondWhenCandidatesReady(PeerLocationFindRequestPtr request)
       {
+        ZS_THROW_INVALID_ARGUMENT_IF(!request)
+        ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPrivateKey)
+        ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPublicKey)
+
         AutoRecursiveLock lock(getLock());
         if (isShutdown()) return;
 
@@ -1064,8 +1098,19 @@ namespace openpeer
         ElementPtr resultEl = Element::create("AccountPeerLocation");
 
         IHelper::debugAppend(resultEl, "id", mID);
+
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "outer", (bool)mOuter.lock());
         IHelper::debugAppend(resultEl, "graceful reference", (bool)mGracefulShutdownReference);
+
+        IHelper::debugAppend(resultEl, "local context", mLocalContext);
+        IHelper::debugAppend(resultEl, "local peer secret", mLocalPeerSecret);
+
+        IHelper::debugAppend(resultEl, "remote context", mRemoteContext);
+
+        IHelper::debugAppend(resultEl, "DH local private key", mDHLocalPrivateKey ? mDHLocalPrivateKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "DH local public key", mDHLocalPublicKey ? mDHLocalPublicKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "DH remote public key", mDHRemotePublicKey ? mDHRemotePublicKey->getID() : 0);
 
         IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
         IHelper::debugAppend(resultEl, "refind", mShouldRefindNow);
@@ -1073,9 +1118,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
         IHelper::debugAppend(resultEl, "pending requests", mPendingRequests.size());
-
-        IHelper::debugAppend(resultEl, "remote context ID", mRemoteContextID);
-        IHelper::debugAppend(resultEl, "remote peer secret", mRemotePeerSecret);
+        IHelper::debugAppend(resultEl, "last request", (bool)mLastRequest);
 
         IHelper::debugAppend(resultEl, "location info", mLocationInfo.toDebug());
         if (mLocation != mLocationInfo.mLocation) {
@@ -1096,7 +1139,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "mls id", mMLSChannel ? mMLSChannel->getID() : 0);
         IHelper::debugAppend(resultEl, "mls receive stream id", mMLSReceiveStream ? mMLSReceiveStream->getID() : 0);
         IHelper::debugAppend(resultEl, "mls send stream id", mMLSSendStream ? mMLSSendStream->getID() : 0);
-        IHelper::debugAppend(resultEl, "mls encoding passphrase", mMLSEncodingPassphrase);
         IHelper::debugAppend(resultEl, "mls did connect", mMLSDidConnect);
 
         IHelper::debugAppend(resultEl, "outgoing relay channel id", mOutgoingRelayChannel ? mOutgoingRelayChannel->getID() : 0);
@@ -1140,6 +1182,8 @@ namespace openpeer
           mKeepAliveMonitor.reset();
         }
 
+        mPendingRequests.clear();
+
         if (mGracefulShutdownReference) {
 
           if (mMessaging) {
@@ -1171,8 +1215,6 @@ namespace openpeer
 
         mGracefulShutdownReference.reset();
         mDelegate.reset();
-
-        mPendingRequests.clear();
 
         if (mOutgoingRelayChannel) {
           mOutgoingRelayChannel->cancel();
@@ -1379,17 +1421,34 @@ namespace openpeer
         ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
         ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
 
-        String localContext = outer->forAccountPeerLocation().getLocalContextID(mPeer->forAccount().getPeerURI());
-        String remoteContext = pendingRequest->context();
+        mRemoteContext = pendingRequest->context();
+        mDHRemotePublicKey = pendingRequest->dhPublicKey();
+
+        if (!mDHRemotePublicKey) {
+          ZS_LOG_ERROR(Detail, log("remote party did not include DH remote public key"))
+          cancel();
+          return false;
+        }
 
         String relayAccessToken = relayCandidate.mAccessToken;
         String relayAccessSecretProof = relayCandidate.mAccessSecretProof;
         String domain = outer->forAccountPeerLocation().getDomain();
 
-        String passphrase = pendingRequest->peerSecret();
-        mMLSEncodingPassphrase = passphrase;
-
-        mOutgoingRelayChannel = IFinderRelayChannel::connect(mThisWeak.lock(), outer, receiveStream, sendStream, relayCandidate.mIPAddress, localContext, remoteContext, domain, relayAccessToken, relayAccessSecretProof, passphrase);
+        mOutgoingRelayChannel = IFinderRelayChannel::connect(
+                                                             mThisWeak.lock(),
+                                                             outer,
+                                                             receiveStream,
+                                                             sendStream,
+                                                             relayCandidate.mIPAddress,
+                                                             mLocalContext,
+                                                             mRemoteContext,
+                                                             domain,
+                                                             relayAccessToken,
+                                                             relayAccessSecretProof,
+                                                             mDHLocalPrivateKey,
+                                                             mDHLocalPublicKey,
+                                                             mDHRemotePublicKey
+                                                             );
 
         if (!mOutgoingRelayChannel) {
           ZS_LOG_ERROR(Detail, log("failed to create outgoing relay channel"))
@@ -1524,23 +1583,17 @@ namespace openpeer
                 remotePeerFilePublic = mPeer->forAccount().getPeerFilePublic();
               }
 
-              if ((mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) &&
-                  (peerFilePrivate) &&
-                  (peerFilePublic)) {
-                ZS_LOG_DEBUG(log("set receive keying decoding by public / private key"))
-                mMLSChannel->setReceiveKeyingDecoding(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
+              if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
+                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPublicKey)
+                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPrivateKey)
+
+                ZS_LOG_DEBUG(log("set receive keying decoding by public / private key") + ZS_PARAM("local private key", mDHLocalPrivateKey->getID()) + ZS_PARAM("local public key", mDHLocalPublicKey->getID()))
+                mMLSChannel->setReceiveKeyingDecoding(mDHLocalPrivateKey, mDHLocalPublicKey);
               }
 
               if (mMLSChannel->needsReceiveKeyingDecodingPassphrase()) {
-                 if (mMLSEncodingPassphrase.hasData()) {
-                   ZS_LOG_DEBUG(log("set receive keying decoding by passphrase"))
-                   mMLSChannel->setReceiveKeyingDecoding(mMLSEncodingPassphrase);
-                 } else if (mPeer) {
-                   String calculatedPassphrase = outer->forAccountPeerLocation().getLocalPassword(mPeer->forAccount().getPeerURI());
-                   mMLSChannel->setReceiveKeyingDecoding(mMLSEncodingPassphrase);
-                   ZS_LOG_DEBUG(log("set receive keying decoding by passphrase (base upon local password for peer URI)") + ZS_PARAM("peer URI", mPeer->forAccount().getPeerURI()) + ZS_PARAM("calculated passphrase", calculatedPassphrase))
-                   mMLSChannel->setReceiveKeyingDecoding(calculatedPassphrase);
-                 }
+                ZS_LOG_WARNING(Detail, log("set receive keying decoding by passphrase is not recommended (as it doesn't support PFS)"))
+                mMLSChannel->setReceiveKeyingDecoding(mLocalPeerSecret);
               }
 
               if ((mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) &&
@@ -1550,17 +1603,10 @@ namespace openpeer
               }
 
               if (mMLSChannel->needsSendKeyingEncodingMaterial()) {
-                if (remotePeerFilePublic) {
-                  ZS_LOG_DEBUG(log("set send keying encoding public key"))
-                  mMLSChannel->setSendKeyingEncoding(remotePeerFilePublic->getPublicKey());
-                } else if (mMLSEncodingPassphrase.hasData()) {
-                  ZS_LOG_DEBUG(log("set send keying encoding passphrase") + ZS_PARAM("passphrase", mMLSEncodingPassphrase))
-                  mMLSChannel->setSendKeyingEncoding(mMLSEncodingPassphrase);
-                } else if (mPeer) {
-                  String calculatedPassphrase = outer->forAccountPeerLocation().getLocalPassword(mPeer->forAccount().getPeerURI());
-                  ZS_LOG_DEBUG(log("set send keying encoding passphrase (base upon local password for peer URI)") + ZS_PARAM("peer URI", mPeer->forAccount().getPeerURI()) + ZS_PARAM("calculated passphrase", calculatedPassphrase))
-                  mMLSChannel->setSendKeyingEncoding(calculatedPassphrase);
-                }
+                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHRemotePublicKey)
+
+                ZS_LOG_DEBUG(log("setting DH send keying encoding"))
+                mMLSChannel->setSendKeyingEncoding(mDHLocalPrivateKey, mDHRemotePublicKey);
               }
 
               if ((mMLSChannel->needsSendKeyingMaterialToeBeSigned()) &&
@@ -1594,12 +1640,17 @@ namespace openpeer
           return false;
         }
 
-        String localContext = outer->forAccountPeerLocation().getLocalContextID(mPeer->forAccount().getPeerURI());
-
         ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
         ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
 
-        mMLSChannel = IMessageLayerSecurityChannel::create(mThisWeak.lock(), mMessagingReceiveStream->getStream(), receiveStream, sendStream, mMessagingSendStream->getStream(), localContext);
+        mMLSChannel = IMessageLayerSecurityChannel::create(
+                                                           mThisWeak.lock(),
+                                                           mMessagingReceiveStream->getStream(),
+                                                           receiveStream,
+                                                           sendStream,
+                                                           mMessagingSendStream->getStream(),
+                                                           mLocalContext
+                                                           );
 
         if (!mMLSChannel) {
           ZS_LOG_ERROR(Detail, log("could not create MLS"))
@@ -1804,6 +1855,11 @@ namespace openpeer
           mLastRequest = pendingRequest;
 
           stepRespondLastRequest(socket);
+          if ((isShuttingDown()) ||
+              (isShutdown())) {
+            ZS_LOG_WARNING(Detail, log("step respond last request must have caused a shutdown to occur"))
+            return false;
+          }
         }
 
         if (!mLastRequest) {
@@ -1836,6 +1892,13 @@ namespace openpeer
           return false;
         }
 
+        mDHRemotePublicKey = mLastRequest->dhPublicKey();
+        if (!mDHRemotePublicKey) {
+          ZS_LOG_ERROR(Detail, log("incoming find request is missing DH keying materials (thus shutting down)"))
+          cancel();
+          return false;
+        }
+
         LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
         LocationInfoPtr selfLocationInfo = selfLocation->forAccount().getLocationInfo();
         
@@ -1861,8 +1924,8 @@ namespace openpeer
         // local candidates are now preparerd, the request can be answered
         PeerLocationFindNotifyPtr reply = PeerLocationFindNotify::create(mLastRequest);
 
-        reply->context(outer->forAccountPeerLocation().getLocalContextID(mPeer->forAccount().getPeerURI()));
-        reply->peerSecret(outer->forAccountPeerLocation().getLocalPassword(mPeer->forAccount().getPeerURI()));
+        reply->context(mLocalContext);
+        reply->peerSecret(mLocalPeerSecret);
         reply->iceUsernameFrag(socket->getUsernameFrag());
         reply->icePassword(socket->getPassword());
         reply->final(selfLocationInfo->mCandidatesFinal);
@@ -1873,7 +1936,17 @@ namespace openpeer
 
         if (mPendingRequests.size() < 1) {
           // this is the final location, use this location as the connection point as it likely to be the latest of all the requests (let's hope)
-          connectLocation(mLastRequest->context(), mLastRequest->peerSecret(), mLastRequest->iceUsernameFrag(), mLastRequest->icePassword(), remoteCandidates, selfLocationInfo->mCandidatesFinal, IICESocket::ICEControl_Controlled);
+          connectLocation(
+                          mLastRequest->context(),
+                          mLastRequest->iceUsernameFrag(),
+                          mLastRequest->icePassword(),
+                          remoteCandidates,
+                          selfLocationInfo->mCandidatesFinal,
+                          IICESocket::ICEControl_Controlled,
+                          mDHLocalPrivateKey,
+                          mDHLocalPublicKey,
+                          mDHRemotePublicKey
+                          );
         }
 
         send(reply);

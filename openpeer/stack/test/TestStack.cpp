@@ -103,11 +103,13 @@ void doTestStack()
   zsLib::MessageQueueThreadPtr threadDelegate(zsLib::MessageQueueThread::createBasic());
   zsLib::MessageQueueThreadPtr threadStack(zsLib::MessageQueueThread::createBasic());
   zsLib::MessageQueueThreadPtr threadServices(zsLib::MessageQueueThread::createBasic());
+  zsLib::MessageQueueThreadPtr threadKeyGeneration(zsLib::MessageQueueThread::createBasic());
 
   IStack::setup(
                 threadDelegate,
                 threadStack,
                 threadServices,
+                threadKeyGeneration,
                 "com.xyz123.app1",
                 "servicesTestApp",
                 "http://test.com/image.png",

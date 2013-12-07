@@ -1847,6 +1847,7 @@ namespace openpeer
 
           if (key.hasData()) {
             info.mKey = IHelper::convertFromBase64(key);
+            if (IHelper::isEmpty(info.mKey)) info.mKey = SecureByteBlockPtr();
           }
           info.mHash = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("hash"));
 

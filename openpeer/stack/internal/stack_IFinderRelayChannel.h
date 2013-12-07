@@ -86,7 +86,9 @@ namespace openpeer
                                               const char *relayDomain,
                                               const char *relayAccessToken,
                                               const char *relayAccessSecretProof,
-                                              const char *encryptDataUsingEncodingPassphrase
+                                              IDHPrivateKeyPtr localPrivateKey,
+                                              IDHPublicKeyPtr localPublicKey,
+                                              IDHPublicKeyPtr remotePublicKey
                                               );
 
         //---------------------------------------------------------------------
@@ -120,13 +122,14 @@ namespace openpeer
         //          bidirection communication.
         //
         //          An incoming stream will always encrypt its data
-        //          using a passphrase that was privded during the "Peer
-        //          Location Find" request. However, until the context
+        //          using a Diffie-Hellman key that was privded during the
+        //          "Peer Location Find" request. However, until the context
         //          information arrives, it's not possible to know which
-        //          passphrase was issued to encrypt the data.
+        //          Diffie-Hellman key was used in the key agreement.
         virtual void setIncomingContext(
                                         const char *contextID,
-                                        const char *decryptUsingEncodingPassphrase,
+                                        IDHPrivateKeyPtr localPrivateKey,
+                                        IDHPublicKeyPtr localPublicKey,
                                         IPeerPtr remotePeer
                                         ) = 0;
 
@@ -157,6 +160,18 @@ namespace openpeer
         //          location may not known the public key of the remote peer
         //          just yet.
         virtual IRSAPublicKeyPtr getRemotePublicKey() const = 0;
+
+        //-----------------------------------------------------------------------
+        // PURPOSE: Obtain the remote Diffie-Hellman keying material.
+        // NOTE:    This is needed to extract out the correct Diffie-Hellman
+        //          keying material when it's incoming.
+        virtual IDHKeyDomainPtr getDHRemoteKeyDomain() const = 0;
+
+        //-----------------------------------------------------------------------
+        // PURPOSE: Obtain the remote Diffie-Hellman keying material.
+        // NOTE:    This is needed to extract out the correct Diffie-Hellman
+        //          keying material when it's incoming.
+        virtual IDHPublicKeyPtr getDHRemotePublicKey() const = 0;
       };
 
       //-----------------------------------------------------------------------

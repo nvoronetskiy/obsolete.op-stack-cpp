@@ -158,6 +158,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      IMessageQueuePtr IStackForInternal::queueKeyGeneration()
+      {
+        return (Stack::singleton())->queueKeyGeneration();
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -226,6 +232,7 @@ namespace openpeer
                         IMessageQueuePtr defaultDelegateMessageQueue,
                         IMessageQueuePtr stackMessageQueue,
                         IMessageQueuePtr servicesMessageQueue,
+                        IMessageQueuePtr keyGenerationQueue,
                         const char *appID,
                         const char *appName,
                         const char *appImageURL,
@@ -248,6 +255,9 @@ namespace openpeer
 
         if (servicesMessageQueue) {
           mServicesQueue = servicesMessageQueue;
+        }
+        if (keyGenerationQueue) {
+          mKeyGenerationQueue = keyGenerationQueue;
         }
 
         if (appID) {
@@ -278,6 +288,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(!mStackQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(!mServicesQueue)
+        ZS_THROW_INVALID_ARGUMENT_IF(!keyGenerationQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(mAppID.isEmpty())
         ZS_THROW_INVALID_ARGUMENT_IF(mAppName.isEmpty())
         ZS_THROW_INVALID_ARGUMENT_IF(mAppImageURL.isEmpty())
@@ -324,6 +335,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      IMessageQueuePtr Stack::queueKeyGeneration() const
+      {
+        return mKeyGenerationQueue;
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -359,6 +376,7 @@ namespace openpeer
                        IMessageQueuePtr defaultDelegateMessageQueue,
                        IMessageQueuePtr stackMessageQueue,
                        IMessageQueuePtr servicesQueue,
+                       IMessageQueuePtr keyGenerationQueue,
                        const char *appID,
                        const char *appName,
                        const char *appImageURL,
@@ -369,7 +387,7 @@ namespace openpeer
                        const char *system
                        )
     {
-      return internal::Stack::singleton()->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, appID, appName, appImageURL, appURL, userAgent, deviceID, os, system);
+      return internal::Stack::singleton()->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue, appID, appName, appImageURL, appURL, userAgent, deviceID, os, system);
     }
   }
 }

@@ -41,6 +41,9 @@
 #include <openpeer/stack/IHelper.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/IDHKeyDomain.h>
+#include <openpeer/services/IDHPrivateKey.h>
+#include <openpeer/services/IDHPublicKey.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
@@ -58,6 +61,7 @@ namespace openpeer
     namespace message
     {
       using services::IHelper;
+      typedef services::IHelper::SplitMap SplitMap;
 
       namespace peer_finder
       {
@@ -157,13 +161,52 @@ namespace openpeer
             ret->mContext = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("context"));
 
             String peerSecretEncrypted = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElement("peerSecretEncrypted"));
+
             if (peerSecretEncrypted.hasData()) {
-              ret->mPeerSecret = IHelper::convertToString(*peerFilePrivate->decrypt(*IHelper::convertFromBase64(peerSecretEncrypted)));
+              SplitMap splits;
+
+              IHelper::split(peerSecretEncrypted, splits, ':');
+
+              String namespaceStr;
+              String passPhraseEncrypted;
+
+              if (splits.size() == 1) {
+                passPhraseEncrypted = (*(splits.find(0))).second;
+              }
+              if (splits.size() > 1) {
+                namespaceStr = (*(splits.find(0))).second;
+                passPhraseEncrypted = (*(splits.find(1))).second;
+              }
+              if (passPhraseEncrypted) {
+                ret->mPeerSecret = IHelper::convertToString(*peerFilePrivate->decrypt(*IHelper::convertFromBase64(passPhraseEncrypted)));
+                ZS_LOG_TRACE(slog("decrypted peer secret") + ZS_PARAM("passphrase", ret->mPeerSecret))
+              }
+              if (splits.size() >= 4) {
+                IDHKeyDomain::KeyDomainPrecompiledTypes precompiledKey = IDHKeyDomain::fromNamespace(IHelper::convertToString(*IHelper::convertFromBase64(namespaceStr)));
+                if (precompiledKey != IDHKeyDomain::KeyDomainPrecompiledType_Unknown) {
+                  ret->mDHKeyDomain = IDHKeyDomain::loadPrecompiled(precompiledKey);
+                  ZS_LOG_TRACE(slog("found DH key domain") + ZS_PARAM("namespace", IDHKeyDomain::toNamespace(precompiledKey)))
+                }
+
+                String staticPublicKeyStr = (*(splits.find(2))).second;
+                String ephemeralPublicKeyStr = (*(splits.find(3))).second;
+
+                SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(staticPublicKeyStr);
+                SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(ephemeralPublicKeyStr);
+
+                if ((IHelper::hasData(staticPublicKey)) &&
+                    (IHelper::hasData(ephemeralPublicKey))) {
+                  ret->mDHPublicKey = IDHPublicKey::load(*staticPublicKey, *ephemeralPublicKey);
+                  ZS_LOG_TRACE(slog("found DH public key") + IDHPublicKey::toDebug(ret->mDHPublicKey))
+                }
+              }
             }
+
             if (ret->mPeerSecret.isEmpty()) {
               ZS_LOG_WARNING(Detail, slog("peer secret failed to decrypt"))
               return PeerLocationFindRequestPtr();
             }
+
             ZS_LOG_TRACE(slog("decrypted peer secret") + ZS_PARAM("secret", ret->mPeerSecret))
 
             ret->mICEUsernameFrag = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceUsernameFrag"));
@@ -213,7 +256,7 @@ namespace openpeer
             if (peer->forMessages().getPeerFilePublic()) {
               // know the peer file public so this should verify the signature
               if (!peer->forMessages().verifySignature(findProofEl)) {
-                ZS_LOG_WARNING(Detail, slog("signatuer on request did not verify"))
+                ZS_LOG_WARNING(Detail, slog("signature on request did not verify"))
                 return PeerLocationFindRequestPtr();
               }
             }
@@ -252,6 +295,9 @@ namespace openpeer
             case AttributeType_FindPeer:                          return (bool)mFindPeer;
             case AttributeType_Context:                           return mContext.hasData();
             case AttributeType_PeerSecret:                        return mPeerSecret.hasData();
+            case AttributeType_DHKeyDomain:                       return (((bool)mDHKeyDomain) || ((bool)mDHPrivateKey));
+            case AttributeType_DHPrivateKey:                      return (bool)mDHPrivateKey;
+            case AttributeType_DHPublicKey:                       return (bool)mDHPublicKey;
             case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
             case AttributeType_ICEPassword:                       return mICEPassword.hasData();
             case AttributeType_LocationInfo:                      return mLocationInfo.hasData();
@@ -260,6 +306,13 @@ namespace openpeer
             default:                                              break;
           }
           return false;
+        }
+        //---------------------------------------------------------------------
+        IDHKeyDomainPtr PeerLocationFindRequest::dhKeyDomain() const
+        {
+          if (mDHKeyDomain) return mDHKeyDomain;
+          if (!mDHPrivateKey) return IDHKeyDomainPtr();
+          return mDHPrivateKey->getKeyDomain();
         }
 
         //---------------------------------------------------------------------
@@ -313,10 +366,30 @@ namespace openpeer
 
               if (hasAttribute(AttributeType_PeerSecret)) {
 
-                ZS_LOG_TRACE(slog("encrypting peer secret") + ZS_PARAM("secret", mPeerSecret))
+                ZS_LOG_TRACE(slog("encrypting peer secret") + ZS_PARAM("passphrase", mPeerSecret))
 
-                String peerSecret = IHelper::convertToBase64(*remotePeerFilePublic->encrypt(* IHelper::convertToBuffer(mPeerSecret)));
-                findProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("peerSecretEncrypted", peerSecret));
+                String peerSecretEncrypted = IHelper::convertToBase64(*remotePeerFilePublic->encrypt(* IHelper::convertToBuffer(mPeerSecret)));
+
+                if ((hasAttribute(AttributeType_DHPublicKey)) &&
+                    (hasAttribute(AttributeType_DHKeyDomain))) {
+
+                  IDHKeyDomain::KeyDomainPrecompiledTypes type = dhKeyDomain()->getPrecompiledType();
+                  if (IDHKeyDomain::KeyDomainPrecompiledType_Unknown != type) {
+                    ZS_LOG_TRACE(slog("adding DH key domain") + ZS_PARAM("namespace", IDHKeyDomain::toNamespace(type)))
+
+                    String keyDomainStr = IHelper::convertToBase64(*IHelper::convertToBuffer(IDHKeyDomain::toNamespace(type)));
+
+                    ZS_LOG_TRACE(slog("adding DH public key") + IDHPublicKey::toDebug(mDHPublicKey))
+
+                    SecureByteBlock staticPublicKey;
+                    SecureByteBlock ephemeralPublicKey;
+                    mDHPublicKey->save(&staticPublicKey, &ephemeralPublicKey);
+
+                    peerSecretEncrypted = keyDomainStr + ":" + peerSecretEncrypted + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+                  }
+                }
+
+                findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("peerSecretEncrypted", peerSecretEncrypted));
               }
             }
           }
