@@ -73,28 +73,32 @@ namespace openpeer
 
         virtual DocumentPtr encode();
 
-        virtual MessageTypes messageType() const    {return Message::MessageType_Result;}
-        virtual Methods method() const              {return mOriginalMethod;}
+        virtual MessageTypes messageType() const        {return Message::MessageType_Result;}
+        virtual Methods method() const                  {return mOriginalMethod;}
 
-        virtual IMessageFactoryPtr factory() const  {return mOriginalFactory;}
+        virtual IMessageFactoryPtr factory() const      {return mOriginalFactory;}
 
-        virtual bool isResult() const               {return true;}
+        virtual bool isResult() const                   {return true;}
 
         bool hasAttribute(AttributeTypes type) const;
 
-        ErrorCodeType errorCode() const             {return mErrorCode;}
-        void errorCode(WORD val)                    {mErrorCode = val;}
+        ErrorCodeType errorCode() const                 {return mErrorCode;}
+        void errorCode(WORD val)                        {mErrorCode = val;}
 
-        String errorReason() const                  {return mErrorReason;}
-        void errorReason(const char *reason)        {mErrorReason = String(reason ? reason : "");}
+        String errorReason() const                      {return mErrorReason;}
+        void errorReason(const char *reason)            {mErrorReason = String(reason);}
 
-        bool hasError() const                       {return (mErrorCode > 0) || (!mErrorReason.isEmpty());}
+        ElementPtr errorRoot() const                    {return mErrorRootEl;}
+
+        bool hasError() const                           {return (mErrorCode > 0) || (!mErrorReason.isEmpty());}
 
       protected:
         MessageResult();
 
         ErrorCodeType mErrorCode;
         String mErrorReason;
+
+        ElementPtr mErrorRootEl;
 
       private:
         Methods mOriginalMethod;

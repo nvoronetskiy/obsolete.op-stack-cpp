@@ -34,6 +34,8 @@
 #include <openpeer/stack/ICache.h>
 #include <openpeer/stack/internal/types.h>
 
+#include <openpeer/services/ICache.h>
+
 namespace openpeer
 {
   namespace stack
@@ -50,16 +52,26 @@ namespace openpeer
 
       interaction ICacheForServices
       {
-        static bool handledFromCache(
-                                     const char *cookieNamePath,
-                                     message::MessagePtr originalMessage
-                                     );
+        static MessagePtr getFromCache(
+                                       const char *cookieNamePath,
+                                       message::MessagePtr originalMessage,
+                                       IMessageSourcePtr source = IMessageSourcePtr()
+                                       );
 
         static void storeMessage(
                                  const char *cookieNamePath,
                                  Time expires,
-                                 message::MessagePtr originalMessage
+                                 message::MessagePtr message
                                  );
+        static String fetch(const char *cookieNamePath);
+
+        static void store(
+                          const char *cookieNamePath,
+                          Time expires,
+                          const char *str
+                          );
+
+        static void clear(const char *cookieNamePath);
       };
 
       //-----------------------------------------------------------------------
@@ -70,7 +82,8 @@ namespace openpeer
       #pragma mark Cache
       #pragma mark
 
-      class Cache : public ICache
+      class Cache : public ICache,
+                    public services::ICacheDelegate
       {
       public:
         friend interaction ICache;
@@ -103,6 +116,20 @@ namespace openpeer
                            );
         virtual void clear(const char *cookieNamePath);
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Cache => services::ICacheDelegate
+        #pragma mark
+
+        // (duplciate) virtual String fetch(const char *cookieNamePath) const = 0;
+
+        // (duplicate) virtual void store(
+        //                                const char *cookieNamePath,
+        //                                Time expires
+        //                                ) = 0;
+
+        // (duplicate) virtual void clear(const char *cookieNamePath) = 0;
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -120,7 +147,7 @@ namespace openpeer
         #pragma mark
 
         mutable RecursiveLock mLock;
-        PUID mID;
+        AutoPUID mID;
         CacheWeakPtr mThisWeak;
 
         ICacheDelegatePtr mDelegate;

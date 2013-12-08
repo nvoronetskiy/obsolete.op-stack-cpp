@@ -32,6 +32,8 @@
 #include <openpeer/stack/internal/stack_Cache.h>
 
 #include <openpeer/stack/message/Message.h>
+#include <openpeer/stack/message/IMessageHelper.h>
+
 #include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IHelper.h>
@@ -62,21 +64,22 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool ICacheForServices::handledFromCache(
+      MessagePtr ICacheForServices::getFromCache(
                                                const char *cookieNamePath,
-                                               message::MessagePtr originalMessage
+                                               message::MessagePtr originalMessage,
+                                               IMessageSourcePtr source
                                                )
       {
         ICachePtr singleton = ICache::singleton();
 
         String str = singleton->fetch(cookieNamePath);
-        if (str.isEmpty()) return false;
+        if (str.isEmpty()) return MessagePtr();
 
         DocumentPtr doc = Document::createFromParsedJSON(str);
-        if (!doc) return false;
+        if (!doc) return MessagePtr();
 
         ElementPtr rootEl = doc->getFirstChildElement();
-        if (!rootEl) return false;
+        if (!rootEl) return MessagePtr();
 
         String messageID = originalMessage->messageID();
         String appID = originalMessage->appID();
@@ -88,22 +91,25 @@ namespace openpeer
           rootEl->setAttribute("appid", appID);
         }
 
-        MessagePtr message = Message::create(rootEl, IMessageSourcePtr());
-        if (!message) return false;
+        Time tick = zsLib::now();
+        IMessageHelper::setAttributeTimestamp(rootEl, tick);
 
-        return IMessageMonitor::handleMessageReceived(message);
+        MessagePtr message = Message::create(rootEl, source);
+        if (!message) return MessagePtr();
+
+        return MessagePtr();
       }
 
       //-----------------------------------------------------------------------
       void ICacheForServices::storeMessage(
                                            const char *cookieNamePath,
                                            Time expires,
-                                           message::MessagePtr originalMessage
+                                           message::MessagePtr message
                                            )
       {
-        if (!originalMessage) return;
+        if (!message) return;
 
-        ElementPtr el = originalMessage->creationElement();
+        ElementPtr el = message->creationElement();
         if (!el) return;
 
         GeneratorPtr generator = Generator::createJSONGenerator();
@@ -117,6 +123,28 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      String ICacheForServices::fetch(const char *cookieNamePath)
+      {
+        return ICache::singleton()->fetch(cookieNamePath);
+      }
+
+      //-----------------------------------------------------------------------
+      void ICacheForServices::store(
+                                    const char *cookieNamePath,
+                                    Time expires,
+                                    const char *str
+                                    )
+      {
+        ICache::singleton()->store(cookieNamePath, expires, str);
+      }
+
+      //-----------------------------------------------------------------------
+      void ICacheForServices::clear(const char *cookieNamePath)
+      {
+        ICache::singleton()->clear(cookieNamePath);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -125,8 +153,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Cache::Cache() :
-        mID(zsLib::createPUID())
+      Cache::Cache()
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -224,7 +251,15 @@ namespace openpeer
 
         if (delegate) return delegate->clear(cookieNamePath);
       }
-      
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Cache => services::ICacheDelegate
+      #pragma mark
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -248,6 +283,8 @@ namespace openpeer
         mDelegate = delegate;
 
         ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
+
+        services::ICache::setup(delegate ? mThisWeak.lock() : services::ICacheDelegatePtr());
       }
 
     }

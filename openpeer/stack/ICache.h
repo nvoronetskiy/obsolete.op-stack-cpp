@@ -74,7 +74,7 @@ namespace openpeer
       //          and must NOT block on any kind of lock that might be
       //          blocked calling inside to the SDK (directly or indirectly).
 
-      virtual String fetch(const char *cookieNamePath) = 0;
+      virtual String fetch(const char *cookieNamePath) const = 0;
       virtual void store(
                          const char *cookieNamePath,
                          Time expires,

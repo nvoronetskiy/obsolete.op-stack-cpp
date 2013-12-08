@@ -31,15 +31,21 @@
 
 #pragma once
 
+#include <openpeer/stack/internal/types.h>
+
+#include <openpeer/stack/message/bootstrapper/ServicesGetResult.h>
+#include <openpeer/stack/message/certificates/CertificatesGetResult.h>
+
+#include <openpeer/stack/message/types.h>
+
 #include <openpeer/stack/IBootstrappedNetwork.h>
 #include <openpeer/stack/IServiceCertificates.h>
 #include <openpeer/stack/IServiceIdentity.h>
 #include <openpeer/stack/IServiceLockbox.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 #include <openpeer/stack/IServiceSalt.h>
-#include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/IMessageSource.h>
-#include <openpeer/stack/message/types.h>
+#include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IDNS.h>
 #include <openpeer/services/IHTTP.h>
@@ -58,6 +64,11 @@ namespace openpeer
   {
     namespace internal
     {
+      using stack::message::bootstrapper::ServicesGetResult;
+      using stack::message::bootstrapper::ServicesGetResultPtr;
+      using stack::message::certificates::CertificatesGetResult;
+      using stack::message::certificates::CertificatesGetResultPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -118,7 +129,9 @@ namespace openpeer
         virtual bool sendServiceMessage(
                                         const char *serviceType,
                                         const char *serviceMethodName,
-                                        message::MessagePtr message
+                                        message::MessagePtr message,
+                                        const char *cachedCookieNameForResult = NULL,
+                                        Time cacheExpires = Time()
                                         ) = 0;
 
         virtual String getServiceURI(
@@ -179,9 +192,10 @@ namespace openpeer
                                   public IBootstrappedNetworkForServices,
                                   public IBootstrappedNetworkForBootstrappedNetworkManager,
                                   public IWakeDelegate,
-                                  public IDNSDelegate,
                                   public IHTTPQueryDelegate,
-                                  public IMessageSource
+                                  public IMessageSource,
+                                  public IMessageMonitorResultDelegate<ServicesGetResult>,
+                                  public IMessageMonitorResultDelegate<CertificatesGetResult>
       {
       public:
         friend interaction IBootstrappedNetworkFactory;
@@ -205,6 +219,7 @@ namespace openpeer
           ErrorCode_InternalServerError = IHTTP::HTTPStatusCode_InternalServerError,
           ErrorCode_ServiceUnavailable =  IHTTP::HTTPStatusCode_ServiceUnavailable,
           ErrorCode_UserCancelled =       IHTTP::HTTPStatusCode_ClientClosedRequest,
+          ErrorCode_LoopDetected =        IHTTP::HTTPStatusCode_LoopDetected,
         };
 
         const char *toString(ErrorCodes errorCode);
@@ -229,6 +244,12 @@ namespace openpeer
         static BootstrappedNetworkPtr convert(IServiceSaltPtr network);
 
         typedef std::map<IHTTPQueryPtr, message::MessagePtr> PendingRequestMap;
+
+        typedef String CookieName;
+        typedef Time CookieExpires;
+        typedef std::pair<CookieName, CookieExpires> CookiePair;
+
+        typedef std::map<IHTTPQueryPtr, CookiePair> PendingRequestCookieMap;
 
       protected:
         //---------------------------------------------------------------------
@@ -259,7 +280,9 @@ namespace openpeer
         virtual bool sendServiceMessage(
                                         const char *serviceType,
                                         const char *serviceMethodName,
-                                        message::MessagePtr message
+                                        message::MessagePtr message,
+                                        const char *cachedCookieNameForResult = NULL,
+                                        Time cacheExpires = Time()
                                         );
 
         //---------------------------------------------------------------------
@@ -340,6 +363,8 @@ namespace openpeer
         //                                             const char *serviceType,
         //                                             const char *serviceMethodName,
         //                                             message::MessagePtr message
+        //                                             const char *cachedCookieNameForResult = NULL,
+        //                                             Time cacheExpires = Time()
         //                                             );
 
         // (duplicate) virtual bool isValidSignature(ElementPtr signedElement) const;
@@ -383,18 +408,43 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark BootstrappedNetwork => IDNSDelegate
-        #pragma mark
-
-        virtual void onLookupCompleted(IDNSQueryPtr query);
-
-        //---------------------------------------------------------------------
-        #pragma mark
         #pragma mark BootstrappedNetwork => IHTTPQueryDelegate
         #pragma mark
 
         virtual void onHTTPReadDataAvailable(IHTTPQueryPtr query);
         virtual void onHTTPCompleted(IHTTPQueryPtr query);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Identity => IMessageMonitorResultDelegate<ServicesGetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        ServicesGetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             ServicesGetResultPtr ignore, // will always be NULL
+                                                             MessageResultPtr result
+                                                             );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Identity => IMessageMonitorResultDelegate<ServicesGetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        CertificatesGetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             CertificatesGetResultPtr ignore, // will always be NULL
+                                                             MessageResultPtr result
+                                                             );
 
       protected:
         //---------------------------------------------------------------------
@@ -427,17 +477,15 @@ namespace openpeer
 
         MessagePtr getMessageFromQuery(
                                        IHTTPQueryPtr query,
-                                       DocumentPtr *outDocument = NULL
+                                       MessagePtr originalMesssage
                                        );
 
         IHTTPQueryPtr post(
                            const char *url,
-                           MessagePtr message
+                           MessagePtr message,
+                           const char *cachedCookieNameForResult = NULL,
+                           Time cacheExpires = Time()
                            );
-        bool handledError(
-                          const char *requestType,
-                          MessagePtr message
-                          );
 
       protected:
         //---------------------------------------------------------------------
@@ -457,12 +505,9 @@ namespace openpeer
         WORD mErrorCode;
         String mErrorReason;
 
-        IDNSQueryPtr mSRVLookup;
-        IDNS::SRVResultPtr mSRVResult;
-        String mServicesGetDNSName;
-
         IHTTPQueryPtr mServicesGetQuery;
-        IHTTPQueryPtr mCertificatesGetQuery;
+        IMessageMonitorPtr mServicesGetMonitor;
+        IMessageMonitorPtr mCertificatesGetMonitor;
 
         ULONG mRedirectionAttempts;
 
@@ -470,6 +515,7 @@ namespace openpeer
         CertificateMap mCertificates;
 
         PendingRequestMap mPendingRequests;
+        PendingRequestCookieMap mPendingRequestCookies;
       };
 
       //-----------------------------------------------------------------------

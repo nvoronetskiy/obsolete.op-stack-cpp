@@ -109,31 +109,37 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageResultPtr MessageResult::create(
-                                             ElementPtr root,
+                                             ElementPtr rootEl,
                                              WORD errorCode,
                                              const char *reason
                                              )
       {
         MessageResultPtr pThis(new MessageResult);
 
-        pThis->mDomain = IMessageHelper::getAttribute(root, "domain");
-        pThis->mAppID = IMessageHelper::getAttribute(root, "appid");
-        pThis->mID = IMessageHelper::getAttributeID(root);
+        pThis->mDomain = IMessageHelper::getAttribute(rootEl, "domain");
+        pThis->mAppID = IMessageHelper::getAttribute(rootEl, "appid");
+        pThis->mID = IMessageHelper::getAttributeID(rootEl);
         pThis->mErrorCode = errorCode;
         pThis->mErrorReason = String(reason ? String(reason) : String());
         if ((0 != errorCode) &&
             (pThis->mErrorReason.isEmpty())) {
           pThis->mErrorReason = IHTTP::toString(IHTTP::toStatusCode(errorCode));
         }
-        pThis->mTime = IMessageHelper::getAttributeEpoch(root);
-        bool found = internal::MessageFactoryManager::getMethod(root, pThis->mOriginalMethod, pThis->mOriginalFactory);
+        pThis->mTime = IMessageHelper::getAttributeEpoch(rootEl);
+        bool found = internal::MessageFactoryManager::getMethod(rootEl, pThis->mOriginalMethod, pThis->mOriginalFactory);
         if (!found) {
-          String handler = IMessageHelper::getAttribute(root, "handler");
-          String method = IMessageHelper::getAttribute(root, "handler");
+          String handler = IMessageHelper::getAttribute(rootEl, "handler");
+          String method = IMessageHelper::getAttribute(rootEl, "handler");
           MessageFactoryUnknownPtr unknownFactory = MessageFactoryUnknown::create(handler, method);
           pThis->mOriginalFactory = unknownFactory;
           pThis->mOriginalMethod = (Message::Methods)MessageFactoryUnknown::Method_Unknown;
         }
+
+        ElementPtr errorEl = rootEl->findFirstChildElement("error");
+        if (errorEl) {
+          pThis->mErrorRootEl = errorEl->clone()->toElement();
+        }
+
         return pThis;
       }
 

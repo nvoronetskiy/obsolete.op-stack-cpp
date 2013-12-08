@@ -72,7 +72,9 @@ namespace openpeer
       virtual bool sendServiceMessage(
                                       const char *serviceType,
                                       const char *serviceMethodName,
-                                      message::MessagePtr message
+                                      message::MessagePtr message,
+                                      const char *cachedCookieNameForResult = NULL,
+                                      Time cacheExpires = Time()
                                       ) = 0;
     };
 

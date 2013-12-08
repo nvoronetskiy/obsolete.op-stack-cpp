@@ -165,8 +165,8 @@ namespace openpeer
       //---------------------------------------------------------------------
       void IMessageHelper::setAttributeID(ElementPtr elem, const String &value)
       {
-        if (!value.isEmpty())
-          IMessageHelper::setAttribute(elem, "id", value);
+        if (value.isEmpty()) return;
+        IMessageHelper::setAttribute(elem, "id", value);
       }
 
       //---------------------------------------------------------------------
@@ -178,6 +178,7 @@ namespace openpeer
       //---------------------------------------------------------------------
       void IMessageHelper::setAttributeTimestamp(ElementPtr elem, const Time &value)
       {
+        if (!elem) return;
         if (Time() == value) return;
         elem->setAttribute("timestamp", IHelper::timeToString(value), false);
       }
@@ -203,6 +204,7 @@ namespace openpeer
                                         const String &value
                                         )
       {
+        if (!elem) return;
         if (value.isEmpty()) return;
 
         AttributePtr attr = Attribute::create();

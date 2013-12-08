@@ -1255,7 +1255,6 @@ namespace openpeer
           return false;
         }
 
-
         if (OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_NOT_SUPPORTED_FOR_IDENTITY == result->errorCode()) {
           ZS_LOG_WARNING(Detail, log("identity does not support rolodex even if identity provider supports"))
           get(mRolodexNotSupportedForIdentity) = true;

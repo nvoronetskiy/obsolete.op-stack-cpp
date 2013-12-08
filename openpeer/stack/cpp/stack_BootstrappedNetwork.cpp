@@ -31,16 +31,18 @@
 
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_BootstrappedNetworkManager.h>
+#include <openpeer/stack/internal/stack_Cache.h>
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_PeerFilePrivate.h>
 #include <openpeer/stack/internal/stack_Stack.h>
-#include <openpeer/stack/IPeer.h>
-#include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/stack/message/bootstrapper/ServicesGetRequest.h>
-#include <openpeer/stack/message/bootstrapper/ServicesGetResult.h>
 #include <openpeer/stack/message/certificates/CertificatesGetRequest.h>
-#include <openpeer/stack/message/certificates/CertificatesGetResult.h>
+
+#include <openpeer/stack/message/IMessageHelper.h>
+
+#include <openpeer/stack/IPeer.h>
+#include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IRSAPublicKey.h>
@@ -53,6 +55,8 @@
 
 #define OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE "application/json"
 
+#define OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS (60)
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 namespace openpeer
@@ -62,12 +66,69 @@ namespace openpeer
     namespace internal
     {
       using services::IHelper;
+      using services::IHTTPQuery;
+      using services::IHTTPQueryDelegateProxy;
 
       using namespace stack::message;
       using namespace stack::message::bootstrapper;
       using namespace stack::message::certificates;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+      class FakeHTTPQuery;
+      typedef boost::shared_ptr<FakeHTTPQuery> FakeHTTPQueryPtr;
+      typedef boost::weak_ptr<FakeHTTPQuery> FakeHTTPQueryWeakPtr;
+
+      class FakeHTTPQuery : public IHTTPQuery
+      {
+      protected:
+        FakeHTTPQuery() {}
+
+      public:
+        ~FakeHTTPQuery() {}
+
+        static FakeHTTPQueryPtr create() {return FakeHTTPQueryPtr(new FakeHTTPQuery);}
+        static FakeHTTPQueryPtr convert(IHTTPQueryPtr query)
+        {
+          return boost::dynamic_pointer_cast<FakeHTTPQuery>(query);
+        }
+
+        MessagePtr result() const       {return mResult;}
+        void result(MessagePtr result)  {mResult = result;}
+
+      protected:
+        typedef IHTTP::HTTPStatusCodes HTTPStatusCodes;
+
+        virtual PUID getID() const {return mID;}
+
+        virtual void cancel() {}
+
+        virtual bool isComplete() const {return true;}
+        virtual bool wasSuccessful() const {return true;}
+        virtual HTTPStatusCodes getStatusCode() const {return IHTTP::HTTPStatusCode_OK;}
+        virtual long getResponseCode() const {return 0;}
+
+        virtual size_t getHeaderReadSizeAvailableInBytes() const {return 0;}
+        virtual size_t readHeader(
+                                  BYTE *outResultData,
+                                  size_t bytesToRead
+                                  ) {return 0;}
+
+        virtual size_t readHeaderAsString(String &outHeader) {return 0;}
+
+        virtual size_t getReadDataAvailableInBytes() const {return 0;}
+
+        virtual size_t readData(
+                                BYTE *outResultData,
+                                size_t bytesToRead
+                                ) {return 0;}
+
+        virtual size_t readDataAsString(String &outResultData) {return 0;}
+
+      protected:
+        AutoPUID mID;
+        MessagePtr mResult;
+      };
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -124,7 +185,7 @@ namespace openpeer
         zsLib::MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
         mManager(IBootstrappedNetworkManagerForBootstrappedNetwork::singleton()),
-        mDomain(domain ? String(domain) : String()),
+        mDomain(domain),
         mCompleted(false),
         mErrorCode(0),
         mRedirectionAttempts(0)
@@ -266,7 +327,9 @@ namespace openpeer
       bool BootstrappedNetwork::sendServiceMessage(
                                                    const char *serviceType,
                                                    const char *serviceMethodName,
-                                                   message::MessagePtr message
+                                                   message::MessagePtr message,
+                                                   const char *cachedCookieNameForResult,
+                                                   Time cacheExpires
                                                    )
       {
         ZS_LOG_DEBUG(log("sending message to service") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName) + Message::toDebug(message))
@@ -301,7 +364,7 @@ namespace openpeer
           return false;
         }
 
-        IHTTPQueryPtr query = post(service->mURI, message);
+        IHTTPQueryPtr query = post(service->mURI, message, cachedCookieNameForResult, cacheExpires);
         if (!query) {
           ZS_LOG_WARNING(Detail, log("failed to create query for message"))
           if ((message->isRequest()) ||
@@ -316,7 +379,6 @@ namespace openpeer
           return false;
         }
 
-        mPendingRequests[query] = message;
         return true;
       }
 
@@ -545,22 +607,6 @@ namespace openpeer
         step();
       }
 
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark BootstrappedNetwork => IDNSDelegate
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      void BootstrappedNetwork::onLookupCompleted(IDNSQueryPtr query)
-      {
-        AutoRecursiveLock lock(getLock());
-
-        step();
-      }
-
       //---------------------------------------------------------------------
       #pragma mark
       #pragma mark BootstrappedNetwork => IHTTPQueryDelegate
@@ -569,21 +615,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void BootstrappedNetwork::onHTTPReadDataAvailable(IHTTPQueryPtr query)
       {
+        // ignored
       }
 
       //-----------------------------------------------------------------------
       void BootstrappedNetwork::onHTTPCompleted(IHTTPQueryPtr query)
       {
-        AutoRecursiveLock lock(getLock());
-
         ZS_LOG_DEBUG(log("on http complete") + ZS_PARAM("query ID", query->getID()))
 
-        // do step asynchronously
-       IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        AutoRecursiveLock lock(getLock());
 
         PendingRequestMap::iterator found = mPendingRequests.find(query);
         if (found == mPendingRequests.end()) {
-          ZS_LOG_DEBUG(log("could not find as pending request (probably okay)"))
+          ZS_LOG_WARNING(Detail, log("could not find as pending request (during shutdown?)"))
           return;
         }
 
@@ -593,7 +637,27 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("found pending request"))
 
-        MessagePtr resultMessage = getMessageFromQuery(query);
+        MessagePtr resultMessage = getMessageFromQuery(query, originalMessage);
+
+        PendingRequestCookieMap::iterator foundCookie = mPendingRequestCookies.find(query);
+
+        if (foundCookie != mPendingRequestCookies.end()) {
+          const CookieName &cookieName = (*foundCookie).second.first;
+          const CookieExpires &cookieExpires = (*foundCookie).second.second;
+
+          if (resultMessage) {
+            MessageResultPtr actualResultMessage = MessageResult::convert(resultMessage);
+            if (!actualResultMessage->hasError()) {
+              ICacheForServices::storeMessage(cookieName, cookieExpires, resultMessage);
+            } else {
+              ICacheForServices::clear(cookieName); // do not store error results
+            }
+          } else {
+            ICacheForServices::clear(cookieName);
+          }
+
+          mPendingRequestCookies.erase(foundCookie);
+        }
 
         if (resultMessage) {
           if (IMessageMonitor::handleMessageReceived(resultMessage)) {
@@ -610,6 +674,158 @@ namespace openpeer
           return;
         }
         IMessageMonitor::handleMessageReceived(result);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Identity => IMessageMonitorResultDelegate<ServicesGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool BootstrappedNetwork::handleMessageMonitorResultReceived(
+                                                                   IMessageMonitorPtr monitor,
+                                                                   ServicesGetResultPtr result
+                                                                   )
+      {
+        ZS_LOG_DEBUG(log("services get result received") + ZS_PARAM("monitor", monitor->getID()))
+
+        AutoRecursiveLock lock(getLock());
+        if (monitor != mServicesGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("services get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
+          return false;
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();   // force a step to perform next action after an HTTP result
+
+        mServiceTypeMap = result->servicesByType();
+        if (mServiceTypeMap.size() < 1) {
+          ZS_LOG_WARNING(Detail, log("services get failed to return any services"))
+          setFailure(ErrorCode_NotFound, "Failed to obtain services");
+          cancel();
+          return true;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool BootstrappedNetwork::handleMessageMonitorErrorResultReceived(
+                                                                        IMessageMonitorPtr monitor,
+                                                                        ServicesGetResultPtr ignore, // will always be NULL
+                                                                        MessageResultPtr result
+                                                                        )
+      {
+        ZS_LOG_DEBUG(log("services get result error received") + ZS_PARAM("monitor", monitor->getID()))
+
+        AutoRecursiveLock lock(getLock());
+        if (monitor != mServicesGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("services get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
+          return false;
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();   // force a step to perform next action after an HTTP result
+
+        mServicesGetQuery.reset();  // forget the services query - only needed to apply message ID
+
+        bool isRedirection = IHTTP::isRedirection(IHTTP::toStatusCode(result->errorCode()));
+
+        String redirectionURL;
+
+        if (isRedirection) {
+          try {
+            ElementPtr errorRootEl = result->errorRoot();
+            if (errorRootEl) {
+              redirectionURL = errorRootEl->findFirstChildElementChecked("location")->getTextDecoded();
+            }
+          } catch (CheckFailed &) {
+            ZS_LOG_WARNING(Detail, log("redirection specified but no redirection location found"))
+          }
+        }
+
+        if (redirectionURL.isEmpty()) {
+          ZS_LOG_WARNING(Detail, log("services get result has an error"))
+          setFailure(result->errorCode(), result->errorReason());
+          cancel();
+          return true;
+        }
+
+        ++mRedirectionAttempts;
+        if (mRedirectionAttempts >= OPENPEER_STACK_BOOTSTRAPPED_NETWORK_MAX_REDIRECTION_ATTEMPTS) {
+          ZS_LOG_WARNING(Detail, debug("too many redirection attempts"))
+          setFailure(ErrorCode_LoopDetected, "too many redirection attempts");
+          cancel();
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("redirecting services get to a new URL") + ZS_PARAM("url", redirectionURL))
+
+        ServicesGetRequestPtr request = ServicesGetRequest::create();
+        request->domain(mDomain);
+
+        mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
+        mServicesGetQuery = post(redirectionURL, request);
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Identity => IMessageMonitorResultDelegate<ServicesGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool BootstrappedNetwork::handleMessageMonitorResultReceived(
+                                                                   IMessageMonitorPtr monitor,
+                                                                   CertificatesGetResultPtr result
+                                                                   )
+      {
+        ZS_LOG_DEBUG(log("certificates get result received") + ZS_PARAM("monitor", monitor->getID()))
+
+        AutoRecursiveLock lock(getLock());
+        if (monitor != mCertificatesGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("certificates get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
+          return false;
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();   // force a step to perform next action after an HTTP result
+
+        mCertificates = result->certificates();
+        if (mCertificates.size() < 1) {
+          ZS_LOG_WARNING(Detail, log("certificates get failed to return any certificates"))
+          setFailure(ErrorCode_NotFound);
+          cancel();
+          return true;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool BootstrappedNetwork::handleMessageMonitorErrorResultReceived(
+                                                                        IMessageMonitorPtr monitor,
+                                                                        CertificatesGetResultPtr ignore, // will always be NULL
+                                                                        MessageResultPtr result
+                                                                        )
+      {
+        ZS_LOG_DEBUG(log("certificates get result error received") + ZS_PARAM("monitor", monitor->getID()))
+
+        AutoRecursiveLock lock(getLock());
+        if (monitor != mCertificatesGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("certificates get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
+          return false;
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();   // force a step to perform next action after an HTTP result
+
+        ZS_LOG_WARNING(Detail, log("certificates get result has an error"))
+        setFailure(result->errorCode(), result->errorReason());
+        cancel();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -651,14 +867,23 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "domain", mDomain);
+
         IHelper::debugAppend(resultEl, "complete", mCompleted);
+
         IHelper::debugAppend(resultEl, "error code", mErrorCode);
         IHelper::debugAppend(resultEl, "error reason", mErrorReason);
-        IHelper::debugAppend(resultEl, "service get dns name", mServicesGetDNSName);
+
+        IHelper::debugAppend(resultEl, "services get HTTP query", mServicesGetQuery ? mServicesGetQuery->getID() : 0);
+        IHelper::debugAppend(resultEl, "services get monitor", mServicesGetMonitor ? mServicesGetMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "certificates get monitor", mCertificatesGetMonitor ? mCertificatesGetMonitor->getID() : 0);
+
         IHelper::debugAppend(resultEl, "redirection attempts", mRedirectionAttempts);
+
         IHelper::debugAppend(resultEl, "service types", mServiceTypeMap.size());
         IHelper::debugAppend(resultEl, "certificates", mCertificates.size());
-        IHelper::debugAppend(resultEl, "pending", mPendingRequests.size());
+
+        IHelper::debugAppend(resultEl, "pending HTTP requests", mPendingRequests.size());
+        IHelper::debugAppend(resultEl, "pending request cookies", mPendingRequestCookies.size());
 
         return resultEl;
       }
@@ -693,19 +918,14 @@ namespace openpeer
         mErrorCode = 0;
         mErrorReason.clear();
 
-        mSRVLookup.reset();
-        mSRVResult.reset();
-
-        mServicesGetDNSName.clear();
-
-        if (mServicesGetQuery) {
-          mServicesGetQuery->cancel();
-          mServicesGetQuery.reset();
+        if (mServicesGetMonitor) {
+          mServicesGetMonitor->cancel();
+          mServicesGetMonitor.reset();
         }
 
-        if (mCertificatesGetQuery) {
-          mCertificatesGetQuery->cancel();
-          mCertificatesGetQuery.reset();
+        if (mCertificatesGetMonitor) {
+          mCertificatesGetMonitor->cancel();
+          mCertificatesGetMonitor.reset();
         }
 
         mRedirectionAttempts = 0;
@@ -735,175 +955,39 @@ namespace openpeer
 
         ZS_LOG_DEBUG(debug("step"))
 
-        if (!mSRVLookup) {
-          ZS_LOG_DEBUG(log("step - creating DNS lookup"))
-          mSRVLookup = IDNS::lookupSRV(mThisWeak.lock(), mDomain, "bootstrapper", "tls");
-        }
-
-        if (!mSRVLookup->isComplete()) {
-          ZS_LOG_DEBUG(log("step - waiting for SRV lookup to complete"))
-          return;
-        }
-
-        if (!mSRVResult) {
-          mSRVResult = mSRVLookup->getSRV();
-          if (!mSRVLookup) {
-            ZS_LOG_WARNING(Detail, log("SRV lookup for domain failed"))
-            setFailure(ErrorCode_ServiceUnavailable);
-            cancel();
-            return;
-          }
-        }
-
-        if (mServicesGetDNSName.isEmpty()) {
-          while (true) {
-            if (!mSRVResult) {
-              ZS_LOG_WARNING(Detail, debug("SRV lookup failed to find any appropriate DNS records"))
-              setFailure(ErrorCode_ServiceUnavailable);
-              cancel();
-              return;
-            }
-            if (mSRVResult->mRecords.size() < 1) {
-              ZS_LOG_WARNING(Detail, debug("SRV lookup failed to find any appropriate DNS records"))
-              setFailure(ErrorCode_ServiceUnavailable);
-              cancel();
-              return;
-            }
-
-            String name;
-
-            // extract out the next record's name
-            {
-              IDNS::SRVResult::SRVRecord &record = mSRVResult->mRecords.front();
-              name = record.mName;
-              mSRVResult->mRecords.pop_front();
-            }
-
-            if (String::npos == name.find('.')) {
-              // this is a domain prefix
-              name += "." + mDomain;
-            }
-
-            if (!IHelper::isValidDomain(name)) {
-              ZS_LOG_WARNING(Detail, log("SRV result not a valid domain name"))
-              continue;
-            }
-
-            if (name.length() < mDomain.length()) {
-              ZS_LOG_WARNING(Detail, debug("SRV name returned was too short thus is not legal") + ZS_PARAM("result", name))
-              continue;
-            }
-
-            // check if the name is legal
-            if (0 != name.compareNoCase(mDomain)) {
-              // must one level up sub-domain
-
-              String domainAdditive = "." + mDomain;
-
-              if (name.length() < domainAdditive.length()) {
-                ZS_LOG_WARNING(Detail, debug("SRV domain name does not match legal domain") + ZS_PARAM("result", name))
-                continue;
-              }
-
-              String postfix = name.substr(name.length() - domainAdditive.length());
-              String prefix = name.substr(0, name.length() - domainAdditive.length());
-              if (postfix != domainAdditive) {
-                ZS_LOG_WARNING(Detail, debug("SRV domain postfix name does not match legal domain") + ZS_PARAM("result", name))
-                continue;
-              }
-
-              if (String::npos != prefix.find(".")) {
-                ZS_LOG_WARNING(Detail, debug("SRV domain prefix contains too many sub-domain levels to be legal") + ZS_PARAM("result", name))
-                continue;
-              }
-            }
-
-            ZS_LOG_DEBUG(debug("legal boostrapper service name found") + ZS_PARAM("result", name))
-            mServicesGetDNSName = name;
-            break;
-          }
-        }
-
 #if (0 != OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP)
 #define OPENPEER_STACK_BOOTSTRAPPER_WARNING_FORCING_OVER_INSECURE_HTTP 1
 #define OPENPEER_STACK_BOOTSTRAPPER_WARNING_FORCING_OVER_INSECURE_HTTP 2
 #endif //(0 != OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP)
 
         // now we have the DNS service name...
-        if (!mServicesGetQuery) {
+        if (!mServicesGetMonitor) {
           bool forceOverHTTP = (0 == OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP ? false : true);
-          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mServicesGetDNSName + "/.well-known/" + OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
+          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mDomain + "/.well-known/" + OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
           ZS_LOG_DEBUG(log("step - performing services get request") + ZS_PARAM("services-get URL", serviceURL))
 
           ServicesGetRequestPtr request = ServicesGetRequest::create();
           request->domain(mDomain);
+
+          mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
           mServicesGetQuery = post(serviceURL, request);
+
+          //mServicesGetQuery = post(serviceURL, MessagePtr());
+#define WARNING_SHOULD_BE_SENDING_AS_A_GET_REQUEST_NOT_A_POST 1
+#define WARNING_SHOULD_BE_SENDING_AS_A_GET_REQUEST_NOT_A_POST 2
         }
 
-        if (!mServicesGetQuery->isComplete()) {
+        if (!mServicesGetMonitor->isComplete()) {
           ZS_LOG_DEBUG(log("waiting for services get query to complete"))
           return;
         }
 
         if (mServiceTypeMap.size() < 1) {
-          DocumentPtr doc;
-          MessagePtr message = getMessageFromQuery(mServicesGetQuery, &doc);
-          if (!message) {
-            setFailure(mServicesGetQuery->getStatusCode());
-            cancel();
-            return;
-          }
-
-          MessageResultPtr messageResult = MessageResult::convert(message);
-          if (messageResult) {
-            if (messageResult->hasError()) {
-              IHTTP::isRedirection(IHTTP::toStatusCode(messageResult->errorCode()));
-              String redirectionURL;
-              try {
-                redirectionURL = doc->getFirstChildElementChecked()->findFirstChildElementChecked("error")->findFirstChildElementChecked("location")->getTextDecoded();
-              } catch (CheckFailed &) {
-                ZS_LOG_WARNING(Detail, log("redirection specified but no redirection location found"))
-              }
-
-              if (!redirectionURL.isEmpty()) {
-                ++mRedirectionAttempts;
-
-                if (mRedirectionAttempts < OPENPEER_STACK_BOOTSTRAPPED_NETWORK_MAX_REDIRECTION_ATTEMPTS) {
-                  mServicesGetQuery->cancel();
-                  mServicesGetQuery.reset();
-
-                  ZS_LOG_DEBUG(log("redirecting services get to a new URL") + ZS_PARAM("url", redirectionURL))
-
-                  ServicesGetRequestPtr request = ServicesGetRequest::create();
-                  request->domain(mDomain);
-                  mServicesGetQuery = post(redirectionURL, request);
-                  return;
-                }
-                ZS_LOG_WARNING(Detail, debug("too many redirection attempts"))
-              }
-            }
-          }
-
-          if (handledError("services get", message)) return;
-
-          ServicesGetResultPtr result = ServicesGetResult::convert(message);
-          if (!result) {
-            ZS_LOG_WARNING(Detail, log("services get failed to return proper result"))
-            setFailure(ErrorCode_BadRequest, "Failed to obtain services");
-            cancel();
-            return;
-          }
-
-          mServiceTypeMap = result->servicesByType();
-          if (mServiceTypeMap.size() < 1) {
-            ZS_LOG_WARNING(Detail, log("services get failed to return any services"))
-            setFailure(ErrorCode_NotFound, "Failed to obtain services");
-            cancel();
-            return;
-          }
+          ZS_LOG_DEBUG(log("waiting for services get query to read data"))
+          return;
         }
 
-        if (!mCertificatesGetQuery) {
+        if (!mCertificatesGetMonitor) {
           const Service::Method *method = findServiceMethod("certificates", "certificates-get");
           if (!method) {
             ZS_LOG_WARNING(Detail, log("failed to obtain certificate service information"))
@@ -920,57 +1004,30 @@ namespace openpeer
           CertificatesGetRequestPtr request = CertificatesGetRequest::create();
           request->domain(mDomain);
 
-          mCertificatesGetQuery = post(method->mURI, request);
+          mCertificatesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<CertificatesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
+          post(method->mURI, request);
         }
 
-        if (!mCertificatesGetQuery->isComplete()) {
+        if (!mCertificatesGetMonitor->isComplete()) {
           ZS_LOG_DEBUG(log("waiting for certificates get query to complete"))
           return;
         }
 
         if (mCertificates.size() < 1) {
-          MessagePtr message = getMessageFromQuery(mCertificatesGetQuery);
-          if (!message) {
-            setFailure(mCertificatesGetQuery->getStatusCode());
-            cancel();
-            return;
-          }
-
-          if (handledError("certificates get", message)) return;
-
-          CertificatesGetResultPtr result = CertificatesGetResult::convert(message);
-          if (!result) {
-            ZS_LOG_WARNING(Detail, log("certifictes get failed to return proper result"))
-            setFailure(ErrorCode_BadRequest);
-            cancel();
-            return;
-          }
-
-          mCertificates = result->certificates();
-          if (mCertificates.size() < 1) {
-            ZS_LOG_WARNING(Detail, log("certificates get failed to return any certificates"))
-            setFailure(ErrorCode_NotFound);
-            cancel();
-            return;
-          }
+          ZS_LOG_DEBUG(log("waiting for certificates get query to read data"))
+          return;
         }
+
 
         mCompleted = true;
 
         // these are no longer needed...
 
-        mSRVLookup->cancel();
-        mSRVLookup.reset();
+        mServicesGetMonitor->cancel();
+        mServicesGetMonitor.reset();
 
-        mSRVResult.reset();
-
-        mServicesGetDNSName.clear();
-
-        mServicesGetQuery->cancel();
-        mServicesGetQuery.reset();
-
-        mCertificatesGetQuery->cancel();
-        mCertificatesGetQuery.reset();
+        mCertificatesGetMonitor->cancel();
+        mCertificatesGetMonitor.reset();
 
         mRedirectionAttempts = 0;
 
@@ -994,21 +1051,15 @@ namespace openpeer
         }
         mCompleted = true;
 
-        if (mSRVLookup) {
-          mSRVLookup->cancel();
-          mSRVLookup.reset();
+        if (mServicesGetMonitor) {
+          mServicesGetMonitor->cancel();
+          mServicesGetMonitor.reset();
         }
+        mServicesGetQuery.reset();  // no need to cancel as the pending request will cause it to cancel
 
-        mSRVResult.reset();
-
-        if (mServicesGetQuery) {
-          mServicesGetQuery->cancel();
-          mServicesGetQuery.reset();
-        }
-
-        if (mCertificatesGetQuery) {
-          mCertificatesGetQuery->cancel();
-          mCertificatesGetQuery.reset();
+        if (mCertificatesGetMonitor) {
+          mCertificatesGetMonitor->cancel();
+          mCertificatesGetMonitor.reset();
         }
 
         mRedirectionAttempts = 0;
@@ -1016,6 +1067,19 @@ namespace openpeer
         mServiceTypeMap.clear();
 
         mCertificates.clear();
+
+        // scope: cancel all pending requests
+        {
+          for (PendingRequestMap::iterator iter = mPendingRequests.begin(); iter != mPendingRequests.end(); ++iter) {
+            IHTTPQueryPtr query = (*iter).first;
+
+            query->cancel();
+            query.reset();
+          }
+        }
+
+        mPendingRequests.clear();
+        mPendingRequestCookies.clear();
 
         if (pThis) {
           BootstrappedNetworkManagerPtr manager = mManager.lock();
@@ -1094,34 +1158,58 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessagePtr BootstrappedNetwork::getMessageFromQuery(
                                                           IHTTPQueryPtr query,
-                                                          DocumentPtr *outDocument
+                                                          MessagePtr originalMesssage
                                                           )
       {
         size_t size = query->getReadDataAvailableInBytes();
-        SecureByteBlock buffer;
-        buffer.CleanNew(size);
-        query->readData(buffer, size);
 
-        DocumentPtr doc;
         MessagePtr message;
 
-        if (size > 0) {
-          doc = Document::createFromAutoDetect((const char *)((const BYTE *)buffer));
-          message = Message::create(doc, mThisWeak.lock());
-        }
+        SecureByteBlock output;
+        SecureByteBlockPtr logBuffer;
 
-        if (outDocument) {
-          (*outDocument) = doc;
+        FakeHTTPQueryPtr fakeQuery = FakeHTTPQuery::convert(query);
+        if (fakeQuery) {
+          message = fakeQuery->result();
+
+          if (ZS_IS_LOGGING(Detail)) {
+            if (message) {
+              size_t sizeInChars = 0;
+              DocumentPtr doc = message->encode();
+              boost::shared_array<char> output = doc->writeAsJSON(&sizeInChars);
+              logBuffer = IHelper::convertToBuffer(output, sizeInChars);
+            }
+          }
+        } else {
+          size_t size = query->getReadDataAvailableInBytes();
+          output.CleanNew(size);
+          query->readData(output, size);
+
+          if (size > 0) {
+            DocumentPtr doc = Document::createFromAutoDetect((const char *)((const BYTE *)output));
+            if (query == mServicesGetQuery) {
+              ElementPtr rootEl = doc->getFirstChildElement();
+              // This is the only request in the system which could have come
+              // from a HTTP GET request where no data was posted. As a result,
+              // the returned message might not contain the message ID. Thus
+              // force the message to have the same message ID as the request.
+              IMessageHelper::setAttributeID(rootEl, originalMesssage->messageID());
+              IMessageHelper::setAttributeTimestamp(rootEl, zsLib::now());
+            }
+            message = Message::create(doc, mThisWeak.lock());
+          }
         }
 
         if (ZS_IS_LOGGING(Detail)) {
+          SecureByteBlock &buffer = (logBuffer ? *logBuffer : output);
+
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          if (size > 0) {
-            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
+          if (buffer.SizeInBytes() > 0) {
+            ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", buffer.SizeInBytes()) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
           } else {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", size) + ZS_PARAM("json in", ""))
           }
@@ -1136,19 +1224,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IHTTPQueryPtr BootstrappedNetwork::post(
                                               const char *url,
-                                              MessagePtr message
+                                              MessagePtr message,
+                                              const char *cachedCookieNameForResult,
+                                              Time cacheExpires
                                               )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!url)
 
-        DocumentPtr doc = message->encode();
         size_t size = 0;
-        boost::shared_array<char> buffer = doc->writeAsJSON(&size);
+        boost::shared_array<char> buffer;
+
+        if (message) {
+          DocumentPtr doc = message->encode();
+          buffer = boost::shared_array<char>(doc->writeAsJSON(&size));
+        }
 
         if (ZS_IS_LOGGING(Detail)) {
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("URL") + ZS_PARAM("url", url))
           ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("HTTP SEND") + ZS_PARAM("json out", buffer.get()))
@@ -1157,23 +1252,47 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
-        return IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, (const BYTE *)buffer.get(), size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
-      }
+        MessagePtr cacheResult = ICacheForServices::getFromCache(cachedCookieNameForResult, message, mThisWeak.lock());
 
-      //-----------------------------------------------------------------------
-      bool BootstrappedNetwork::handledError(
-                                             const char *requestType,
-                                             MessagePtr message
-                                             )
-      {
-        MessageResultPtr result = MessageResult::convert(message);
-        if (result->hasError()) {
-          ZS_LOG_WARNING(Detail, log("result has an error") + ZS_PARAM("type", requestType))
-          setFailure(result->errorCode(), result->errorReason());
-          cancel();
-          return true;
+        FakeHTTPQueryPtr fakeQuery;
+        IHTTPQueryPtr query;
+
+        if (cacheResult) {
+          fakeQuery = FakeHTTPQuery::create();
+
+          fakeQuery->result(cacheResult);
+
+          // treat this query as having been handled immediately
+          IHTTPQueryDelegateProxy::create(mThisWeak.lock())->onHTTPCompleted(fakeQuery);
+
+          query = fakeQuery;
+        } else {
+          if (0 == size) {
+            query = IHTTP::get(mThisWeak.lock(), IStackForInternal::userAgent(), url);
+          } else {
+            query = IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, (const BYTE *)buffer.get(), size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+          }
         }
-        return false;
+
+        if (!query) {
+          ZS_LOG_ERROR(Detail, log("failed to create HTTP query"))
+          MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_BadRequest);
+          if (!result) {
+            ZS_LOG_WARNING(Detail, log("failed to create result for message"))
+            return query;
+          }
+          IMessageMonitor::handleMessageReceived(result);
+          return query;
+        }
+
+        mPendingRequests[query] = message;
+
+        if ((!fakeQuery) &&
+            (cachedCookieNameForResult)) {
+          mPendingRequestCookies[query] = CookiePair(String(cachedCookieNameForResult), cacheExpires);
+        }
+
+        return query;
       }
 
       //-----------------------------------------------------------------------
