@@ -57,6 +57,11 @@
 
 #define OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS (60)
 
+#define OPENPEER_STACK_BOOTSTRAPPER_SERVICES_GET_CACHING_TIME_SECONDS (24*60*60)
+#define OPENPEER_STACK_BOOTSTRAPPER_CERTIFICATES_GET_CACHING_TIME_SECONDS (24*60*60)
+
+#define OPENPEER_STACK_BOOTSTRAPPER_CACHING_NAMESPACE_PREFIX "https://meta.openpeer.org/caching/boostrapper/"
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 namespace openpeer
@@ -74,6 +79,61 @@ namespace openpeer
       using namespace stack::message::certificates;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark (helpers)
+      #pragma mark
+
+      enum BootstrapperRequestTypes
+      {
+        BootstrapperRequestType_ServicesGet,
+        BootstrapperRequestType_CertificatesGet,
+      };
+
+      //-----------------------------------------------------------------------
+      static const char *toName(BootstrapperRequestTypes type)
+      {
+        switch (type) {
+          case BootstrapperRequestType_ServicesGet:     return "services-get";
+          case BootstrapperRequestType_CertificatesGet: return "certificates-get";
+        }
+        return "unknown";
+      }
+
+      //-----------------------------------------------------------------------
+      static String getCookieName(
+                                  BootstrapperRequestTypes type,
+                                  const String &domain,
+                                  ULONG attempt = 0
+                                  )
+      {
+        return String(OPENPEER_STACK_BOOTSTRAPPER_CACHING_NAMESPACE_PREFIX) + domain + "/" + toName(type) + "/" + (attempt > 0 ? string(attempt) : String());
+      }
+
+      //-----------------------------------------------------------------------
+      static Time getCacheTime(BootstrapperRequestTypes type)
+      {
+        Time expires = zsLib::now();
+
+        switch (type) {
+          case BootstrapperRequestType_ServicesGet:     return expires + Seconds(OPENPEER_STACK_BOOTSTRAPPER_SERVICES_GET_CACHING_TIME_SECONDS);
+          case BootstrapperRequestType_CertificatesGet: return expires + Seconds(OPENPEER_STACK_BOOTSTRAPPER_CERTIFICATES_GET_CACHING_TIME_SECONDS);
+        }
+        return Time();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark FakeHTTPQuery
+      #pragma mark
 
       class FakeHTTPQuery;
       typedef boost::shared_ptr<FakeHTTPQuery> FakeHTTPQueryPtr;
@@ -93,8 +153,11 @@ namespace openpeer
           return boost::dynamic_pointer_cast<FakeHTTPQuery>(query);
         }
 
-        MessagePtr result() const       {return mResult;}
-        void result(MessagePtr result)  {mResult = result;}
+        MessagePtr result() const               {return mResult;}
+        void result(MessagePtr result)          {mResult = result;}
+
+        SecureByteBlockPtr buffer() const       {return mBuffer;}
+        void buffer(SecureByteBlockPtr buffer)  {mBuffer = buffer;}
 
       protected:
         typedef IHTTP::HTTPStatusCodes HTTPStatusCodes;
@@ -128,6 +191,8 @@ namespace openpeer
       protected:
         AutoPUID mID;
         MessagePtr mResult;
+
+        SecureByteBlockPtr mBuffer;
       };
 
       //-----------------------------------------------------------------------
@@ -637,20 +702,35 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("found pending request"))
 
-        MessagePtr resultMessage = getMessageFromQuery(query, originalMessage);
-
         PendingRequestCookieMap::iterator foundCookie = mPendingRequestCookies.find(query);
+        bool willAttemptStore = (foundCookie != mPendingRequestCookies.end());
 
-        if (foundCookie != mPendingRequestCookies.end()) {
+        SecureByteBlockPtr output;
+
+        MessagePtr resultMessage = getMessageFromQuery(
+                                                       query,
+                                                       originalMessage,
+                                                       willAttemptStore ? &output : NULL
+                                                       );
+
+        if (willAttemptStore) {
           const CookieName &cookieName = (*foundCookie).second.first;
           const CookieExpires &cookieExpires = (*foundCookie).second.second;
 
           if (resultMessage) {
             MessageResultPtr actualResultMessage = MessageResult::convert(resultMessage);
             if (!actualResultMessage->hasError()) {
-              ICacheForServices::storeMessage(cookieName, cookieExpires, resultMessage);
+              ICacheForServices::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
             } else {
-              ICacheForServices::clear(cookieName); // do not store error results
+              if (mServicesGetQuery == query) {
+                if (IHTTP::isRedirection(IHTTP::toStatusCode(actualResultMessage->errorCode()))) {
+                  ICacheForServices::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
+                } else {
+                  ICacheForServices::clear(cookieName); // do not store error results
+                }
+              } else {
+                ICacheForServices::clear(cookieName); // do not store error results
+              }
             }
           } else {
             ICacheForServices::clear(cookieName);
@@ -766,7 +846,7 @@ namespace openpeer
         request->domain(mDomain);
 
         mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-        mServicesGetQuery = post(redirectionURL, request);
+        mServicesGetQuery = post(redirectionURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain, mRedirectionAttempts), getCacheTime(BootstrapperRequestType_ServicesGet));
         return true;
       }
 
@@ -970,7 +1050,7 @@ namespace openpeer
           request->domain(mDomain);
 
           mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-          mServicesGetQuery = post(serviceURL, request);
+          mServicesGetQuery = post(serviceURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain), getCacheTime(BootstrapperRequestType_ServicesGet));
 
           //mServicesGetQuery = post(serviceURL, MessagePtr());
 #define WARNING_SHOULD_BE_SENDING_AS_A_GET_REQUEST_NOT_A_POST 1
@@ -1005,7 +1085,7 @@ namespace openpeer
           request->domain(mDomain);
 
           mCertificatesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<CertificatesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-          post(method->mURI, request);
+          post(method->mURI, request, getCookieName(BootstrapperRequestType_CertificatesGet, mDomain), getCacheTime(BootstrapperRequestType_CertificatesGet));
         }
 
         if (!mCertificatesGetMonitor->isComplete()) {
@@ -1158,35 +1238,27 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessagePtr BootstrappedNetwork::getMessageFromQuery(
                                                           IHTTPQueryPtr query,
-                                                          MessagePtr originalMesssage
+                                                          MessagePtr originalMesssage,
+                                                          SecureByteBlockPtr *outRawData
                                                           )
       {
         size_t size = query->getReadDataAvailableInBytes();
 
         MessagePtr message;
 
-        SecureByteBlock output;
-        SecureByteBlockPtr logBuffer;
+        SecureByteBlockPtr rawBuffer;
 
         FakeHTTPQueryPtr fakeQuery = FakeHTTPQuery::convert(query);
         if (fakeQuery) {
           message = fakeQuery->result();
-
-          if (ZS_IS_LOGGING(Detail)) {
-            if (message) {
-              size_t sizeInChars = 0;
-              DocumentPtr doc = message->encode();
-              boost::shared_array<char> output = doc->writeAsJSON(&sizeInChars);
-              logBuffer = IHelper::convertToBuffer(output, sizeInChars);
-            }
-          }
+          rawBuffer = fakeQuery->buffer();
         } else {
           size_t size = query->getReadDataAvailableInBytes();
-          output.CleanNew(size);
-          query->readData(output, size);
+          rawBuffer = SecureByteBlockPtr(new SecureByteBlock(size));
+          query->readData(*rawBuffer, size);
 
           if (size > 0) {
-            DocumentPtr doc = Document::createFromAutoDetect((const char *)((const BYTE *)output));
+            DocumentPtr doc = Document::createFromAutoDetect((const char *)((const BYTE *)(*rawBuffer)));
             if (query == mServicesGetQuery) {
               ElementPtr rootEl = doc->getFirstChildElement();
               // This is the only request in the system which could have come
@@ -1201,7 +1273,7 @@ namespace openpeer
         }
 
         if (ZS_IS_LOGGING(Detail)) {
-          SecureByteBlock &buffer = (logBuffer ? *logBuffer : output);
+          SecureByteBlock &buffer = (*rawBuffer);
 
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
@@ -1218,6 +1290,10 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
+        if (outRawData) {
+          *outRawData = rawBuffer;
+        }
+
         return message;
       }
 
@@ -1232,27 +1308,34 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!url)
 
         size_t size = 0;
-        boost::shared_array<char> buffer;
+        SecureByteBlockPtr buffer;
 
         if (message) {
           DocumentPtr doc = message->encode();
-          buffer = boost::shared_array<char>(doc->writeAsJSON(&size));
+          buffer = IHelper::convertToBuffer(doc->writeAsJSON(&size), size);
         }
 
         if (ZS_IS_LOGGING(Detail)) {
+          const char *output = (buffer ? (const char *)buffer->BytePtr(): NULL);
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("URL") + ZS_PARAM("url", url))
           ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("HTTP SEND") + ZS_PARAM("json out", buffer.get()))
+          ZS_LOG_BASIC(log("HTTP SEND") + ZS_PARAM("json out", output))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">---->---->---->---->---->----   HTTP SEND DATA START   >---->---->---->---->---->---->----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
-        MessagePtr cacheResult = ICacheForServices::getFromCache(cachedCookieNameForResult, message, mThisWeak.lock());
+        SecureByteBlockPtr cacheBuffer;
+        MessagePtr cacheResult = ICacheForServices::getFromCache(
+                                                                 cachedCookieNameForResult,
+                                                                 message,
+                                                                 cacheBuffer,
+                                                                 mThisWeak.lock()
+                                                                 );
 
         FakeHTTPQueryPtr fakeQuery;
         IHTTPQueryPtr query;
@@ -1261,16 +1344,17 @@ namespace openpeer
           fakeQuery = FakeHTTPQuery::create();
 
           fakeQuery->result(cacheResult);
+          fakeQuery->buffer(cacheBuffer);
 
           // treat this query as having been handled immediately
           IHTTPQueryDelegateProxy::create(mThisWeak.lock())->onHTTPCompleted(fakeQuery);
 
           query = fakeQuery;
         } else {
-          if (0 == size) {
-            query = IHTTP::get(mThisWeak.lock(), IStackForInternal::userAgent(), url);
+          if (IHelper::hasData(buffer)) {
+            query = IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
           } else {
-            query = IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, (const BYTE *)buffer.get(), size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+            query = IHTTP::get(mThisWeak.lock(), IStackForInternal::userAgent(), url);
           }
         }
 

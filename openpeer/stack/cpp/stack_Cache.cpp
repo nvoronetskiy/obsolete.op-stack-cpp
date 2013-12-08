@@ -65,12 +65,15 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessagePtr ICacheForServices::getFromCache(
-                                               const char *cookieNamePath,
-                                               message::MessagePtr originalMessage,
-                                               IMessageSourcePtr source
-                                               )
+                                                 const char *cookieNamePath,
+                                                 message::MessagePtr originalMessage,
+                                                 SecureByteBlockPtr &outRawBuffer,
+                                                 IMessageSourcePtr source
+                                                 )
       {
         ICachePtr singleton = ICache::singleton();
+
+        outRawBuffer = SecureByteBlockPtr();
 
         String str = singleton->fetch(cookieNamePath);
         if (str.isEmpty()) return MessagePtr();
@@ -97,7 +100,8 @@ namespace openpeer
         MessagePtr message = Message::create(rootEl, source);
         if (!message) return MessagePtr();
 
-        return MessagePtr();
+        outRawBuffer = IHelper::convertToBuffer(str);
+        return message;
       }
 
       //-----------------------------------------------------------------------

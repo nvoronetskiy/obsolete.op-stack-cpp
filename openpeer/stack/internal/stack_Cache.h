@@ -55,6 +55,7 @@ namespace openpeer
         static MessagePtr getFromCache(
                                        const char *cookieNamePath,
                                        message::MessagePtr originalMessage,
+                                       SecureByteBlockPtr &outRawBuffer,
                                        IMessageSourcePtr source = IMessageSourcePtr()
                                        );
 
