@@ -77,8 +77,8 @@ namespace openpeer
           const String &findSecret() const                  {return mFindSecret;}
           void findSecret(const String &val)                {mFindSecret = val;}
 
-          const LocationInfo &locationInfo() const          {return mLocationInfo;}
-          void location(const LocationInfo &locationInfo)   {mLocationInfo = locationInfo;}
+          LocationInfoPtr locationInfo() const              {return mLocationInfo;}
+          void location(LocationInfoPtr locationInfo)       {mLocationInfo = locationInfo;}
 
           IPeerFilePublicPtr peerFilePublic() const         {return mPeerFilePublic;}
           void peerFilesPublic(IPeerFilePublicPtr val)      {mPeerFilePublic = val;}
@@ -89,7 +89,7 @@ namespace openpeer
         protected:
           PeerIdentifyRequest();
 
-          LocationInfo mLocationInfo;
+          LocationInfoPtr mLocationInfo;
 
           String mFindSecret;
 

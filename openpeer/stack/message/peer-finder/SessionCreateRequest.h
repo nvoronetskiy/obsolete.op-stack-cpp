@@ -68,8 +68,8 @@ namespace openpeer
           const String &finderID() const              {return mFinderID;}
           void finderID(const String &val)            {mFinderID = val;}
 
-          const LocationInfo &locationInfo() const    {return mLocationInfo;}
-          void locationInfo(const LocationInfo &val)  {mLocationInfo = val;}
+          LocationInfoPtr locationInfo() const        {return mLocationInfo;}
+          void locationInfo(LocationInfoPtr val)      {mLocationInfo = val;}
 
           IPeerFilesPtr peerFiles() const             {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)     {mPeerFiles = peerFiles;}
@@ -78,7 +78,7 @@ namespace openpeer
           SessionCreateRequest();
 
           String mFinderID;
-          LocationInfo mLocationInfo;
+          LocationInfoPtr mLocationInfo;
 
           IPeerFilesPtr mPeerFiles;
         };

@@ -1501,14 +1501,15 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        LocationInfo MessageHelper::createLocation(
-                                                   ElementPtr elem,
-                                                   IMessageSourcePtr messageSource,
-                                                   const char *encryptionPassphrase
-                                                   )
+        LocationInfoPtr MessageHelper::createLocation(
+                                                      ElementPtr elem,
+                                                      IMessageSourcePtr messageSource,
+                                                      const char *encryptionPassphrase
+                                                      )
         {
-          LocationInfo ret;
-          if (!elem) return ret;
+          if (!elem) return LocationInfoPtr();
+
+          LocationInfoPtr ret = LocationInfo::create();
 
           String id = IMessageHelper::getAttributeID(elem);
 
@@ -1516,7 +1517,7 @@ namespace openpeer
           if (contact)
           {
             String peerURI = IMessageHelper::getElementTextAndDecode(contact);
-            ret.mLocation = ILocationForMessages::create(messageSource, peerURI, id);
+            ret->mLocation = ILocationForMessages::create(messageSource, peerURI, id);
           }
 
           ElementPtr candidates = elem->findFirstChildElement("candidates");
@@ -1533,7 +1534,7 @@ namespace openpeer
             }
 
             if (candidateLst.size() > 0)
-              ret.mCandidates = candidateLst;
+              ret->mCandidates = candidateLst;
           }
 
           if (elem->getValue() == "location")
@@ -1548,17 +1549,17 @@ namespace openpeer
             ElementPtr system = elem->findFirstChildElement("system");
             ElementPtr host = elem->findFirstChildElement("host");
             if (device) {
-              ret.mDeviceID = IMessageHelper::getAttribute(device, "id");
+              ret->mDeviceID = IMessageHelper::getAttribute(device, "id");
             }
             if (ip) {
               IPAddress ipOriginal(IMessageHelper::getElementText(ip), 0);
 
-              ret.mIPAddress.mIPAddress = ipOriginal.mIPAddress;
+              ret->mIPAddress.mIPAddress = ipOriginal.mIPAddress;
             }
-            if (ua) ret.mUserAgent = IMessageHelper::getElementTextAndDecode(ua);
-            if (os) ret.mOS = IMessageHelper::getElementTextAndDecode(os);
-            if (system) ret.mSystem = IMessageHelper::getElementTextAndDecode(system);
-            if (host) ret.mHost = IMessageHelper::getElementTextAndDecode(host);
+            if (ua) ret->mUserAgent = IMessageHelper::getElementTextAndDecode(ua);
+            if (os) ret->mOS = IMessageHelper::getElementTextAndDecode(os);
+            if (system) ret->mSystem = IMessageHelper::getElementTextAndDecode(system);
+            if (host) ret->mHost = IMessageHelper::getElementTextAndDecode(host);
           }
           return ret;
         }

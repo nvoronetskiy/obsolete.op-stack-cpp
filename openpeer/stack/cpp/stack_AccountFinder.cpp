@@ -917,7 +917,7 @@ namespace openpeer
         LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
         LocationInfoPtr locationInfo = selfLocation->forAccount().getLocationInfo();
         locationInfo->mCandidates.clear();
-        request->locationInfo(*locationInfo);
+        request->locationInfo(locationInfo);
         request->peerFiles(peerFiles);
 
         ZS_LOG_DEBUG(log("sending session create request"))

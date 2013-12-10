@@ -61,19 +61,19 @@ namespace openpeer
 
           virtual DocumentPtr encode();
 
-          virtual Methods method() const {return (Message::Methods)MessageFactoryPeerToPeer::Method_PeerIdentify;}
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryPeerToPeer::Method_PeerIdentify;}
 
           virtual IMessageFactoryPtr factory() const  {return MessageFactoryPeerToPeer::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const LocationInfo &locationInfo() const        {return mLocationInfo;}
-          void locationInfo(const LocationInfo &val)      {mLocationInfo = val;}
+          LocationInfoPtr locationInfo() const        {return mLocationInfo;}
+          void locationInfo(LocationInfoPtr val)      {mLocationInfo = val;}
 
         protected:
           PeerIdentifyResult();
 
-          LocationInfo mLocationInfo;
+          LocationInfoPtr mLocationInfo;
         };
       }
     }

@@ -115,21 +115,57 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void MessageMonitorManager::monitorStart(
-                                               MessageMonitorPtr monitor,
-                                               const zsLib::String &requestID
-                                               )
+      void MessageMonitorManager::monitorStart(MessageMonitorPtr monitor)
       {
         AutoRecursiveLock lock(mLock);
-        mMonitors[requestID] = monitor;
+
+        PUID monitorID = monitor->forMessageMonitorManager().getID();
+        String requestID = monitor->forMessageMonitorManager().getMonitoredMessageID();
+
+        ZS_LOG_TRACE(log("monitoring request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("request id", requestID))
+
+        MonitorsMap::iterator found = mMonitors.find(requestID);
+        if (found != mMonitors.end()) {
+          ZS_LOG_TRACE(log("already found a monitor for the request ID") + ZS_PARAM("request id", requestID))
+
+          MonitorMapPtr monitors = (*found).second;
+
+          (*monitors)[monitorID] = monitor;
+          return;
+        }
+
+        MonitorMapPtr monitors(new MonitorMap);
+        (*monitors)[monitorID] = monitor;
+
+        mMonitors[requestID] = monitors;
       }
 
       //-----------------------------------------------------------------------
-      void MessageMonitorManager::monitorEnd(const zsLib::String &requestID)
+      void MessageMonitorManager::monitorEnd(MessageMonitor &monitor)
       {
         AutoRecursiveLock lock(mLock);
-        MonitorMap::iterator found = mMonitors.find(requestID);
-        if (found == mMonitors.end()) return;
+
+        PUID monitorID = monitor.forMessageMonitorManager().getID();
+        String requestID = monitor.forMessageMonitorManager().getMonitoredMessageID();
+
+        ZS_LOG_TRACE(log("remove monitoring of request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("request id", requestID))
+
+        MonitorsMap::iterator found = mMonitors.find(requestID);
+        ZS_THROW_INVALID_ASSUMPTION_IF(found == mMonitors.end())
+
+        MonitorMapPtr monitors = (*found).second;
+        MonitorMap::iterator foundMonitor = monitors->find(monitorID);
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(foundMonitor == monitors->end())
+
+        monitors->erase(foundMonitor);
+
+        if (monitors->size() > 0) {
+          ZS_LOG_TRACE(log("still more monitors active - continue to monitor request ID"))
+          return;
+        }
+
+        ZS_LOG_TRACE(log("still more monitors active - continue to monitor request ID"))
         mMonitors.erase(found);
       }
 
@@ -155,17 +191,27 @@ namespace openpeer
         AutoRecursiveLock lock(mLock);
 
         String id = message->messageID();
-        MonitorMap::iterator found = mMonitors.find(id);
+        MonitorsMap::iterator found = mMonitors.find(id);
         if (found == mMonitors.end()) return false;
 
-        MessageMonitorPtr monitor = (*found).second.lock();
-        if (!monitor) {
-          // the Monitor was deleted at this point so remove it
-          mMonitors.erase(found);
-          return false;
+        MonitorMapPtr monitors = (*found).second;
+
+        bool handled = false;
+
+        for (MonitorMap::iterator iter = monitors->begin(); iter != monitors->end(); )
+        {
+          MonitorMap::iterator current = iter; ++iter;
+
+          MessageMonitorPtr monitor = (*current).second.lock();
+          if (!monitor) {
+            monitors->erase(current);
+            continue;
+          }
+
+          handled = handled || monitor->forMessageMonitorManager().handleMessage(message);
         }
 
-        return monitor->forMessageMonitorManager().handleMessage(message);
+        return handled;
       }
     }
   }

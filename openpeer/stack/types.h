@@ -120,6 +120,10 @@ namespace openpeer
     #pragma mark LocationInfo
     #pragma mark
 
+    struct LocationInfo;
+    typedef boost::shared_ptr<LocationInfo> LocationInfoPtr;
+    typedef boost::weak_ptr<LocationInfo> LocationInfoWeakPtr;
+
     struct LocationInfo
     {
       ILocationPtr mLocation;
@@ -137,12 +141,15 @@ namespace openpeer
 
       bool hasData() const;
       ElementPtr toDebug() const;
+
+      static LocationInfoPtr create();
+
+    protected:
+      LocationInfo() {}
+      LocationInfo(const LocationInfo &info) {} // not legal
     };
 
-    typedef boost::shared_ptr<LocationInfo> LocationInfoPtr;
-    typedef boost::weak_ptr<LocationInfo> LocationInfoWeakPtr;
-
-    typedef std::list<LocationInfo> LocationInfoList;
+    typedef std::list<LocationInfoPtr> LocationInfoList;
     typedef boost::shared_ptr<LocationInfoList> LocationInfoListPtr;
     typedef boost::weak_ptr<LocationInfoList> LocationInfoListWeakPtr;
 

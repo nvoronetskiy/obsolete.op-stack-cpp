@@ -32,14 +32,17 @@
 #pragma once
 
 #include <openpeer/stack/internal/types.h>
-#include <openpeer/stack/IAccount.h>
-#include <openpeer/stack/IPeer.h>
-#include <openpeer/stack/IPeerSubscription.h>
 #include <openpeer/stack/internal/stack_AccountFinder.h>
 #include <openpeer/stack/internal/stack_AccountPeerLocation.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 
+#include <openpeer/stack/message/peer-finder/PeerLocationFindResult.h>
+#include <openpeer/stack/message/bootstrapped-finder/FindersGetResult.h>
+
+#include <openpeer/stack/IAccount.h>
+#include <openpeer/stack/IPeer.h>
+#include <openpeer/stack/IPeerSubscription.h>
 #include <openpeer/stack/IKeyGenerator.h>
 #include <openpeer/stack/IMessageMonitor.h>
 
@@ -57,6 +60,12 @@ namespace openpeer
   {
     namespace internal
     {
+      using message::peer_finder::PeerLocationFindResult;
+      using message::peer_finder::PeerLocationFindResultPtr;
+
+      using message::bootstrapped_finder::FindersGetResult;
+      using message::bootstrapped_finder::FindersGetResultPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -118,15 +127,6 @@ namespace openpeer
         virtual IICESocketPtr getSocket() const = 0;
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
-
-        virtual bool isFinderReady() const = 0;
-
-        virtual bool sendViaRelay(
-                                  const String &peerURI,
-                                  AccountPeerLocationPtr peerLocation,
-                                  const BYTE *buffer,
-                                  size_t bufferSizeInBytes
-                                  ) const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -304,12 +304,10 @@ namespace openpeer
                       public IAccountPeerLocationDelegate,
                       public IDNSDelegate,
                       public IICESocketDelegate,
-                      public IMessageMonitorDelegate,
-                      public IFinderRelayChannelDelegate,
-                      public ITransportStreamWriterDelegate,
-                      public ITransportStreamReaderDelegate,
                       public ITimerDelegate,
-                      public IKeyGeneratorDelegate
+                      public IKeyGeneratorDelegate,
+                      public IMessageMonitorResultDelegate<PeerLocationFindResult>,
+                      public IMessageMonitorResultDelegate<FindersGetResult>
       {
       public:
         friend interaction IAccountFactory;
@@ -318,11 +316,6 @@ namespace openpeer
         typedef IAccount::AccountStates AccountStates;
 
         typedef ULONG ChannelNumber;
-
-        struct RelayInfo;
-        friend struct RelayInfo;
-        typedef boost::shared_ptr<RelayInfo> RelayInfoPtr;
-        typedef boost::weak_ptr<RelayInfo> RelayInfoWeakPtr;
 
         struct PeerInfo;
         friend struct PeerInfo;
@@ -333,8 +326,6 @@ namespace openpeer
         typedef String LocationID;
         typedef PUID PeerSubscriptionID;
         typedef std::pair<PeerURI, LocationID> PeerLocationIDPair;
-
-        typedef std::map<ChannelNumber, RelayInfoPtr> RelayInfoMap;
 
         typedef std::map<PeerURI, PeerWeakPtr> PeerMap;
         typedef std::map<PeerURI, PeerInfoPtr> PeerInfoMap;
@@ -427,15 +418,6 @@ namespace openpeer
         virtual IICESocketPtr getSocket() const;
 
         // (duplicate) virtual IPeerFilesPtr getPeerFiles() const;
-
-        virtual bool isFinderReady() const;
-
-        virtual bool sendViaRelay(
-                                  const String &peerURI,
-                                  AccountPeerLocationPtr peerLocation,
-                                  const BYTE *buffer,
-                                  size_t bufferSizeInBytes
-                                  ) const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -582,15 +564,35 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark Account => IMessageMonitorDelegate
+        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerLocationFindResult>
         #pragma mark
 
-        virtual bool handleMessageMonitorMessageReceived(
-                                                         IMessageMonitorPtr requester,
-                                                         MessagePtr message
-                                                         );
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        PeerLocationFindResultPtr result
+                                                        );
 
-        virtual void onMessageMonitorTimedOut(IMessageMonitorPtr requester);
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             PeerLocationFindResultPtr ignore, // will always be NULL
+                                                             MessageResultPtr result
+                                                             );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<FindersGetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        FindersGetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             FindersGetResultPtr ignore, // will always be NULL
+                                                             MessageResultPtr result
+                                                             );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -598,32 +600,6 @@ namespace openpeer
         #pragma mark
 
         virtual void onWake();
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark Account => IFinderRelayChannelDelegate
-        #pragma mark
-
-        virtual void onFinderRelayChannelStateChanged(
-                                                      IFinderRelayChannelPtr channel,
-                                                      IFinderRelayChannel::SessionStates state
-                                                      );
-
-        virtual void onFinderRelayChannelNeedsContext(IFinderRelayChannelPtr channel);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark Account => ITransportStreamWriterDelegate
-        #pragma mark
-
-        virtual void onTransportStreamWriterReady(ITransportStreamWriterPtr writer);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark Account => ITransportStreamReaderDelegate
-        #pragma mark
-
-        virtual void onTransportStreamReaderReady(ITransportStreamReaderPtr reader);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -674,7 +650,6 @@ namespace openpeer
         virtual CandidatePtr getRelayCandidate(const String &localContext) const;
 
         DHKeyPair getDHKeyPairTemplate(IDHKeyDomain::KeyDomainPrecompiledTypes type);
-        PeerLocationFindRequestPtr getFindRequestWithLocalContext(const String &localContext);
 
         void setFindState(
                           PeerInfo &peerInfo,
@@ -728,43 +703,6 @@ namespace openpeer
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark Account::RelayInfo
-        #pragma mark
-
-        struct RelayInfo
-        {
-          AutoPUID mID;
-          ChannelNumber mChannel;
-          String mLocalContext;
-          IDHPrivateKeyPtr mDHLocalPrivateKey;
-          IDHPublicKeyPtr mDHLocalPublicKey;
-          String mRemoteContext;
-
-          IFinderRelayChannelPtr mRelayChannel;
-          ITransportStreamReaderPtr mReceiveStream;
-          ITransportStreamWriterPtr mSendStream;
-
-          IFinderRelayChannelSubscriptionPtr mRelayChannelSubscription;
-          ITransportStreamReaderSubscriptionPtr mReceiveStreamSubscription;
-          ITransportStreamWriterSubscriptionPtr mSendStreamSubscription;
-
-          AccountPeerLocationPtr mAccountPeerLocation;
-
-          static RelayInfoPtr create();
-
-          RelayInfo() : mChannel(0) {}
-          ~RelayInfo();
-
-          ElementPtr toDebug() const;
-          Log::Params log(const char *message) const;
-          void cancel();
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
         #pragma mark Account::PeerInfo
         #pragma mark
 
@@ -804,8 +742,6 @@ namespace openpeer
           Duration mLastScheduleFindDuration;                      // how long was the duration between finds (used because it will double each time a search is completed)
 
           bool mPreventCrazyRefindNextTime;
-
-          RelayInfoMap mRelayInfos;                                 // all the pending relays sessions
         };
 
       protected:

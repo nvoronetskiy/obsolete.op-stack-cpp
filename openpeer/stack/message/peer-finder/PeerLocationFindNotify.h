@@ -49,7 +49,6 @@ namespace openpeer
           {
             AttributeType_RequestfindProofBundleDigestValue,
             AttributeType_Context,
-            AttributeType_PeerSecret,
             AttributeType_ICEUsernameFrag,
             AttributeType_ICEPassword,
             AttributeType_ICEFinal,
@@ -77,8 +76,8 @@ namespace openpeer
           const String &context() const                                 {return mContext;}
           void context(const String &secret)                            {mContext = secret;}
 
-          const String &peerSecret() const                              {return mPeerSecret;}
-          void peerSecret(const String &secret)                         {mPeerSecret = secret;}
+          bool validated() const                                        {return mFinal;}
+          void validated(bool val)                                      {get(mFinal) = val;}
 
           const String &iceUsernameFrag() const                         {return mICEUsernameFrag;}
           void iceUsernameFrag(const String &val)                       {mICEUsernameFrag = val;}
@@ -87,13 +86,13 @@ namespace openpeer
           void icePassword(const String &val)                           {mICEPassword = val;}
 
           bool final() const                                            {return mFinal;}
-          void final(bool val)                                          {mFinal = val;}
+          void final(bool val)                                          {get(mFinal) = val;}
 
           const String &requestFindProofBundleDigestValue() const       {return mRequestfindProofBundleDigestValue;}
           void requestFindProofBundleDigestValue(const String &secret)  {mRequestfindProofBundleDigestValue = secret;}
 
-          const LocationInfo &locationInfo() const                      {return mLocationInfo;}
-          void locationInfo(const LocationInfo &location)               {mLocationInfo = location;}
+          LocationInfoPtr locationInfo() const                          {return mLocationInfo;}
+          void locationInfo(LocationInfoPtr locationInfo)               {mLocationInfo = locationInfo;}
 
           IPeerFilesPtr peerFiles() const                               {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)                       {mPeerFiles = peerFiles;}
@@ -102,15 +101,16 @@ namespace openpeer
           PeerLocationFindNotify();
 
           String mContext;
-          String mPeerSecret;
+
+          AutoBool mValidated;
 
           String mICEUsernameFrag;
           String mICEPassword;
 
-          bool mFinal;
+          AutoBool mFinal;
 
           String mRequestfindProofBundleDigestValue;
-          LocationInfo mLocationInfo;
+          LocationInfoPtr mLocationInfo;
 
           IPeerFilesPtr mPeerFiles;
         };

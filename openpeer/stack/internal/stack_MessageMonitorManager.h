@@ -56,12 +56,9 @@ namespace openpeer
 
         static MessageMonitorManagerPtr singleton();
 
-        virtual void monitorStart(
-                                  MessageMonitorPtr requester,
-                                  const String &requestID
-                                  ) = 0;
+        virtual void monitorStart(MessageMonitorPtr requester) = 0;
 
-        virtual void monitorEnd(const String &requestID) = 0;
+        virtual void monitorEnd(MessageMonitor &monitor) = 0;
 
         virtual bool handleMessage(message::MessagePtr message) = 0;
 
@@ -101,12 +98,9 @@ namespace openpeer
 
         static MessageMonitorManagerPtr singleton();
 
-        virtual void monitorStart(
-                                  MessageMonitorPtr requester,
-                                  const String &requestID
-                                  );
+        virtual void monitorStart(MessageMonitorPtr requester);
 
-        virtual void monitorEnd(const String &requestID);
+        virtual void monitorEnd(MessageMonitor &monitor);
 
         virtual bool handleMessage(message::MessagePtr message);
 
@@ -132,8 +126,14 @@ namespace openpeer
         mutable RecursiveLock mLock;
         MessageMonitorManagerWeakPtr mThisWeak;
 
-        typedef std::map<String, MessageMonitorWeakPtr> MonitorMap;
-        MonitorMap mMonitors;
+        typedef PUID MonitorID;
+        typedef std::map<MonitorID, MessageMonitorWeakPtr> MonitorMap;
+        typedef boost::shared_ptr<MonitorMap> MonitorMapPtr;
+
+        typedef String MessageID;
+        typedef std::map<MessageID, MonitorMapPtr> MonitorsMap;
+
+        MonitorsMap mMonitors;
       };
 
       //-----------------------------------------------------------------------

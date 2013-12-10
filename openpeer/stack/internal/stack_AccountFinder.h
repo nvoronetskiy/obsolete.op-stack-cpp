@@ -31,19 +31,17 @@
 
 #pragma once
 
-#include <openpeer/stack/IAccount.h>
-#include <openpeer/stack/internal/types.h>
-#include <openpeer/stack/IMessageMonitor.h>
+#include <openpeer/stack/internal/stack_IFinderConnection.h>
 
 #include <openpeer/stack/message/peer-finder/SessionCreateResult.h>
 #include <openpeer/stack/message/peer-finder/SessionKeepAliveResult.h>
 #include <openpeer/stack/message/peer-finder/SessionDeleteResult.h>
 
-#include <openpeer/stack/internal/stack_IFinderConnection.h>
+#include <openpeer/stack/IAccount.h>
+#include <openpeer/stack/internal/types.h>
+#include <openpeer/stack/IMessageMonitor.h>
 
-//#include <openpeer/services/IRUDPICESocket.h>
-//#include <openpeer/services/IRUDPICESocketSession.h>
-//#include <openpeer/services/IRUDPMessaging.h>
+
 #include <openpeer/services/ITransportStream.h>
 #include <openpeer/services/IWakeDelegate.h>
 
@@ -133,6 +131,8 @@ namespace openpeer
       public:
         friend interaction IAccountFinderFactory;
 
+        typedef IFinderConnection::ChannelNumber ChannelNumber;
+
       protected:
         AccountFinder(
                       IMessageQueuePtr queue,
@@ -206,43 +206,6 @@ namespace openpeer
                                                     );
 
         virtual void onFinderConnectionIncomingRelayChannel(IFinderConnectionPtr connection);
-
-#if 0
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark AccountFinder => IRUDPICESocketDelegate
-        #pragma mark
-
-        virtual void onRUDPICESocketStateChanged(
-                                                 IRUDPICESocketPtr socket,
-                                                 RUDPICESocketStates state
-                                                 );
-
-        virtual void onRUDPICESocketCandidatesChanged(IRUDPICESocketPtr socket);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark AccountFinder => IRUDPICESocketSessionDelegate
-        #pragma mark
-
-        virtual void onRUDPICESocketSessionStateChanged(
-                                                        IRUDPICESocketSessionPtr session,
-                                                        RUDPICESocketSessionStates state
-                                                        );
-
-        virtual void onRUDPICESocketSessionChannelWaiting(IRUDPICESocketSessionPtr session);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark AccountFinder => IRUDPMessagingDelegate
-        #pragma mark
-
-        virtual void onRUDPMessagingStateChanged(
-                                                 IRUDPMessagingPtr session,
-                                                 RUDPMessagingStates state
-                                                 );
-
-#endif //0
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -394,7 +357,7 @@ namespace openpeer
 
       interaction IAccountFinderDelegate
       {
-        typedef ULONG ChannelNumber;
+        typedef IFinderConnection::ChannelNumber ChannelNumber;
         typedef IAccount::AccountStates AccountStates;
 
         virtual void onAccountFinderStateChanged(

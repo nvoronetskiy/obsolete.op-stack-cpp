@@ -95,11 +95,11 @@ namespace openpeer
           static WORD getErrorCode(ElementPtr root);
           static String getErrorReason(ElementPtr root);
 
-          static LocationInfo createLocation(
-                                             ElementPtr elem,
-                                             IMessageSourcePtr messageSource,
-                                             const char *encryptionPassphrase = NULL
-                                             );
+          static LocationInfoPtr createLocation(
+                                                ElementPtr elem,
+                                                IMessageSourcePtr messageSource,
+                                                const char *encryptionPassphrase = NULL
+                                                );
           static Candidate    createCandidate(
                                               ElementPtr elem,
                                               const char *encryptionPassphrase = NULL

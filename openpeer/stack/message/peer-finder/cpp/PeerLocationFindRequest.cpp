@@ -223,7 +223,10 @@ namespace openpeer
               ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource, ret->mPeerSecret);
             }
 
-            LocationPtr location = Location::convert(ret->mLocationInfo.mLocation);
+            LocationPtr location;
+            if (ret->mLocationInfo) {
+              location = Location::convert(ret->mLocationInfo->mLocation);
+            }
 
             if (!location) {
               ZS_LOG_ERROR(Detail, slog("missing location information in find request"))
@@ -259,6 +262,7 @@ namespace openpeer
                 ZS_LOG_WARNING(Detail, slog("signature on request did not verify"))
                 return PeerLocationFindRequestPtr();
               }
+              get(ret->mDidVerifySignature) = true;
             }
 
             ElementPtr excludeEl = root->findFirstChildElement("exclude");
@@ -300,7 +304,7 @@ namespace openpeer
             case AttributeType_DHPublicKey:                       return (bool)mDHPublicKey;
             case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
             case AttributeType_ICEPassword:                       return mICEPassword.hasData();
-            case AttributeType_LocationInfo:                      return mLocationInfo.hasData();
+            case AttributeType_LocationInfo:                      return mLocationInfo ? mLocationInfo->hasData() : false;
             case AttributeType_ExcludedLocations:                 return (mExcludedLocations.size() > 0);
             case AttributeType_PeerFiles:                         return (bool)mPeerFiles;
             default:                                              break;
@@ -403,7 +407,7 @@ namespace openpeer
           }
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            ElementPtr locationEl = internal::MessageHelper::createElement(mLocationInfo, mPeerSecret);
+            ElementPtr locationEl = internal::MessageHelper::createElement(*mLocationInfo, mPeerSecret);
             findProofEl->adoptAsLastChild(locationEl);
           }
 

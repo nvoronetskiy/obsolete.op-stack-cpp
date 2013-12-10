@@ -1278,7 +1278,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + Message::toDebug(message))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + ZS_PARAM("override message ID", fakeQuery ? originalMesssage->messageID() : String()) + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           if (buffer.SizeInBytes() > 0) {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", buffer.SizeInBytes()) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))

@@ -116,6 +116,12 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
+    LocationInfoPtr LocationInfo::create()
+    {
+      return LocationInfoPtr(new LocationInfo);
+    }
+
+    //-------------------------------------------------------------------------
     bool LocationInfo::hasData() const
     {
       return (((bool)mLocation) ||

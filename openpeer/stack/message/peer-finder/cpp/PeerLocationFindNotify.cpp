@@ -72,8 +72,7 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        PeerLocationFindNotify::PeerLocationFindNotify() :
-          mFinal(false)
+        PeerLocationFindNotify::PeerLocationFindNotify()
         {
         }
 
@@ -93,28 +92,38 @@ namespace openpeer
             ret->mRequestfindProofBundleDigestValue = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("requestFindProofBundleDigestValue"));
 
             ret->mContext = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("context"));
-            ret->mPeerSecret = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("peerSecret"));
+
+            try {
+              get(ret->mValidated) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("validated")));
+            } catch (Numeric<bool>::ValueOutOfRange &) {
+              ZS_LOG_WARNING(Detail, slog("final value missing"))
+            }
 
             ret->mICEUsernameFrag = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceUsernameFrag"));
             ret->mICEPassword = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("icePassword"));
 
             try {
-              ret->mFinal = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("final"));
+              get(ret->mFinal) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("final")));
             } catch (Numeric<bool>::ValueOutOfRange &) {
               ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
 
             ElementPtr locationEl = findProofEl->findFirstChildElement("location");
             if (locationEl) {
-              ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource, ret->mPeerSecret.hasData() ? ret->mPeerSecret.c_str() : NULL);
+              ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource);
             }
 
-            if (!ret->mLocationInfo.mLocation) {
+            if (!ret->mLocationInfo) {
               ZS_LOG_ERROR(Detail, slog("missing location information in find request"))
               return PeerLocationFindNotifyPtr();
             }
 
-            PeerPtr peer = Location::convert(ret->mLocationInfo.mLocation)->forMessages().getPeer();
+            if (!ret->mLocationInfo->mLocation) {
+              ZS_LOG_ERROR(Detail, slog("missing location information in find request"))
+              return PeerLocationFindNotifyPtr();
+            }
+
+            PeerPtr peer = Location::convert(ret->mLocationInfo->mLocation)->forMessages().getPeer();
 
             if (!peer) {
               ZS_LOG_WARNING(Detail, slog("expected element is missing"))
@@ -142,9 +151,8 @@ namespace openpeer
           ret->mDomain = request->domain();
           ret->mID = request->messageID();
 
-          if (request->hasAttribute(PeerLocationFindRequest::AttributeType_PeerSecret)) {
-            ret->mPeerSecret = request->peerSecret();
-          }
+          get(ret->mValidated) = request->didVerifySignature();
+
           if (request->hasAttribute(PeerLocationFindRequest::AttributeType_RequestfindProofBundleDigestValue)) {
             ret->mRequestfindProofBundleDigestValue = request->mRequestfindProofBundleDigestValue;
           }
@@ -158,12 +166,11 @@ namespace openpeer
           {
             case AttributeType_RequestfindProofBundleDigestValue: return mRequestfindProofBundleDigestValue.hasData();
             case AttributeType_Context:                           return mContext.hasData();
-            case AttributeType_PeerSecret:                        return mPeerSecret.hasData();
             case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
             case AttributeType_ICEPassword:                       return mICEPassword.hasData();
             case AttributeType_ICEFinal:                          return mFinal;
             case AttributeType_RequestFindProofBundleDigest:      return mRequestfindProofBundleDigestValue.hasData();
-            case AttributeType_LocationInfo:                      return mLocationInfo.hasData();
+            case AttributeType_LocationInfo:                      return mLocationInfo ? mLocationInfo->hasData() : false;
             case AttributeType_PeerFiles:                         return (bool)mPeerFiles;
             default:
               break;
@@ -205,9 +212,7 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("context", mContext));
           }
 
-          if (hasAttribute(AttributeType_PeerSecret)) {
-            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("peerSecret", mPeerSecret));
-          }
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("validated", mValidated ? "true":"false"));
 
           if (hasAttribute(AttributeType_ICEUsernameFrag)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("iceUsernameFrag", mICEUsernameFrag));
@@ -220,7 +225,7 @@ namespace openpeer
           findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("final", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            findProofEl->adoptAsLastChild(MessageHelper::createElement(mLocationInfo, mPeerSecret.hasData() ? mPeerSecret.c_str() : NULL));
+            findProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
           }
 
           findProofBundleEl->adoptAsLastChild(findProofEl);

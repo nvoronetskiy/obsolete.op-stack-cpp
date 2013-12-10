@@ -108,11 +108,12 @@ namespace openpeer
         virtual void cancel() = 0;
 
         //---------------------------------------------------------------------
-        // PURPOSE: return the current statte of the connection
+        // PURPOSE: return the current state of the connection
         virtual SessionStates getState(
                                        WORD *outLastErrorCode = NULL,
                                        String *outLastErrorReason = NULL
                                        ) const = 0;
+
 
         //---------------------------------------------------------------------
         // PURPOSE: This method provides context for the incoming stream.

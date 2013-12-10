@@ -48,11 +48,10 @@
 
 #include <openpeer/stack/message/peer-finder/PeerLocationFindRequest.h>
 #include <openpeer/stack/message/peer-finder/PeerLocationFindResult.h>
-#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
+//#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
 #include <openpeer/stack/message/peer-finder/ChannelMapNotify.h>
 
 #include <openpeer/stack/message/bootstrapped-finder/FindersGetRequest.h>
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetResult.h>
 
 #include <openpeer/stack/ICache.h>
 #include <openpeer/stack/IPeerFilePublic.h>
@@ -108,15 +107,11 @@ namespace openpeer
       using message::peer_finder::PeerLocationFindRequestPtr;
       using message::peer_finder::PeerLocationFindResult;
       using message::peer_finder::PeerLocationFindResultPtr;
-      using message::peer_finder::PeerLocationFindNotify;
-      using message::peer_finder::PeerLocationFindNotifyPtr;
       using message::peer_finder::ChannelMapNotify;
       using message::peer_finder::ChannelMapNotifyPtr;
 
       using message::bootstrapped_finder::FindersGetRequest;
       using message::bootstrapped_finder::FindersGetRequestPtr;
-      using message::bootstrapped_finder::FindersGetResult;
-      using message::bootstrapped_finder::FindersGetResultPtr;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -383,54 +378,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool Account::isFinderReady() const
-      {
-        AutoRecursiveLock lock(getLock());
-        if (!mFinder) return false;
-        return IAccount::AccountState_Ready == mFinder->forAccount().getState();
-      }
-
-      //-----------------------------------------------------------------------
-      bool Account::sendViaRelay(
-                                 const String &peerURI,
-                                 AccountPeerLocationPtr peerLocation,
-                                 const BYTE *buffer,
-                                 size_t bufferSizeInBytes
-                                 ) const
-      {
-        ZS_THROW_INVALID_ARGUMENT_IF(!peerLocation)
-
-        ZS_LOG_DEBUG(log("attempting to send via relay") + ZS_PARAM("peer URI", peerURI) + ZS_PARAM("peer location ID", peerLocation->forAccount().getID()) + ZS_PARAM("buffer length", bufferSizeInBytes))
-
-        PeerInfoMap::const_iterator foundPeer = mPeerInfos.find(peerURI);
-        if (foundPeer == mPeerInfos.end()) {
-          ZS_LOG_WARNING(Detail, log("peer URI is not known thus cannot send message"))
-          return false;
-        }
-
-        const PeerInfoPtr &peerInfo = (*foundPeer).second;
-
-        for (RelayInfoMap::const_iterator relayIter = peerInfo->mRelayInfos.begin(); relayIter != peerInfo->mRelayInfos.end(); ++relayIter)
-        {
-          const RelayInfoPtr &relayInfo = (*relayIter).second;
-          if (relayInfo->mAccountPeerLocation->forAccount().getID() != peerLocation->forAccount().getID()) continue;
-
-          ZS_LOG_DEBUG(log("sending via relay") + relayInfo->toDebug())
-
-          if (!relayInfo->mSendStream) {
-            ZS_LOG_WARNING(Detail, log("found relay info but send stream is not valid"))
-            return false;
-          }
-
-          relayInfo->mSendStream->write(buffer, bufferSizeInBytes);
-          return true;
-        }
-
-        ZS_LOG_WARNING(Debug, log("did not find any relay for this peer location"))
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -524,7 +471,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        LocationInfoPtr info(new LocationInfo);
+        LocationInfoPtr info = LocationInfo::create();
         info->mLocation = location;
 
         if (location == mSelfLocation) {
@@ -588,15 +535,15 @@ namespace openpeer
 
         AccountPeerLocationPtr accountPeerLocation = (*foundLocation).second;
 
-        const LocationInfo &sourceInfo = accountPeerLocation->forAccount().getLocationInfo();
+        LocationInfoPtr sourceInfo = accountPeerLocation->forAccount().getLocationInfo();
 
-        info->mDeviceID = sourceInfo.mDeviceID;
-        info->mIPAddress = sourceInfo.mIPAddress;
-        info->mUserAgent = sourceInfo.mUserAgent;
-        info->mOS = sourceInfo.mOS;
-        info->mSystem = sourceInfo.mSystem;
-        info->mHost = sourceInfo.mHost;
-        info->mCandidates = sourceInfo.mCandidates;
+        info->mDeviceID = sourceInfo->mDeviceID;
+        info->mIPAddress = sourceInfo->mIPAddress;
+        info->mUserAgent = sourceInfo->mUserAgent;
+        info->mOS = sourceInfo->mOS;
+        info->mSystem = sourceInfo->mSystem;
+        info->mHost = sourceInfo->mHost;
+        info->mCandidates = sourceInfo->mCandidates;
 
         return info;
       }
@@ -1087,9 +1034,11 @@ namespace openpeer
         if (peerLocationFindRequest) {
           ZS_LOG_DEBUG(log("receiving incoming find peer location request"))
 
-          LocationInfo fromLocationInfo = peerLocationFindRequest->locationInfo();
-
-          LocationPtr fromLocation = Location::convert(fromLocationInfo.mLocation);
+          LocationInfoPtr fromLocationInfo = peerLocationFindRequest->locationInfo();
+          LocationPtr fromLocation;
+          if (fromLocationInfo->mLocation) {
+            fromLocation = Location::convert(fromLocationInfo->mLocation);
+          }
 
           PeerPtr fromPeer;
           if (fromLocation) {
@@ -1122,123 +1071,83 @@ namespace openpeer
           AccountPeerLocationPtr peerLocation;
           PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(fromLocation->forAccount().getLocationID());
           if (foundLocation != peerInfo->mLocations.end()) {
-            // already conducting a search for this location?
+            ZS_LOG_WARNING(Detail, log("received incoming peer find request from existing peer location thus will shutdown this existing location in favour of new location") + PeerInfo::toDebug(peerInfo))
+
             peerLocation = (*foundLocation).second;
-            ZS_LOG_DEBUG(log("received incoming peer find request from known peer location") + PeerInfo::toDebug(peerInfo))
 
-            if (peerLocation->forAccount().hasReceivedCandidateInformation()) {
-              ZS_LOG_WARNING(Detail, log("receiving candidate information for the same peer location thus shutting down current location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(fromLocation))
-              peerInfo->mLocations.erase(foundLocation);
-              peerLocation->forAccount().shutdown();
+            peerInfo->mLocations.erase(foundLocation);
+            peerLocation->forAccount().shutdown();
 
-              notifySubscriptions(fromLocation, ILocation::LocationConnectionState_Disconnected);
+            notifySubscriptions(fromLocation, ILocation::LocationConnectionState_Disconnected);
 
-              foundLocation = peerInfo->mLocations.end();
-              peerLocation.reset();
-            }
+            foundLocation = peerInfo->mLocations.end();
+            peerLocation.reset();
           }
 
-          if (foundLocation == peerInfo->mLocations.end()) {
+          // we must create a DH private / public key pair for use with this location based upon the key domain of the remote public key
 
-            // we must create a DH private / public key pair for use with this location based upon the key domain of the remote public key
+          IDHKeyDomainPtr remoteKeyDomain = peerLocationFindRequest->dhKeyDomain();
+          IDHPublicKeyPtr remotePublicKey = peerLocationFindRequest->dhPublicKey();
 
-            IDHKeyDomainPtr remoteKeyDomain = peerLocationFindRequest->dhKeyDomain();
-            IDHPublicKeyPtr remotePublicKey = peerLocationFindRequest->dhPublicKey();
-
-            if ((!remoteKeyDomain) ||
-                (!remotePublicKey)) {
-              ZS_LOG_ERROR(Detail, log("remote party did not include remote public key and key domain (thus ignoring incoming find request)"))
-              return;
-            }
-
-            DHKeyPair templateKeyPair = getDHKeyPairTemplate(remoteKeyDomain->getPrecompiledType());
-            if ((!templateKeyPair.first) ||
-                (!templateKeyPair.second)) {
-              ZS_LOG_ERROR(Detail, log("remote party's key domain does not have a precompiled domain key template (thus ignoring incoming find request)"))
-              return;
-            }
-
-            IDHPublicKeyPtr newPublicKey;
-            IDHPrivateKeyPtr newPrivateKey = IDHPrivateKey::loadAndGenerateNewEphemeral(templateKeyPair.first, templateKeyPair.second, newPublicKey);
-            ZS_THROW_INVALID_ASSUMPTION_IF(!newPrivateKey)
-            ZS_THROW_INVALID_ASSUMPTION_IF(!newPublicKey)
-
-            peerLocation = IAccountPeerLocationForAccount::create(
-                                                                  mThisWeak.lock(),
-                                                                  mThisWeak.lock(),
-                                                                  fromLocationInfo,
-                                                                  IHelper::randomString(20*8/5),
-                                                                  IHelper::randomString(32*8/5+1),
-                                                                  newPrivateKey,
-                                                                  newPublicKey
-                                                                  );
-
-            peerInfo->mLocations[fromLocation->forAccount().getLocationID()] = peerLocation;
-            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer location") + PeerInfo::toDebug(peerInfo))
+          if ((!remoteKeyDomain) ||
+              (!remotePublicKey)) {
+            ZS_LOG_ERROR(Detail, log("remote party did not include remote public key and key domain (thus ignoring incoming find request)"))
+            return;
           }
 
-          peerLocation->forAccount().incomingRespondWhenCandidatesReady(peerLocationFindRequest);
+          DHKeyPair templateKeyPair = getDHKeyPairTemplate(remoteKeyDomain->getPrecompiledType());
+          if ((!templateKeyPair.first) ||
+              (!templateKeyPair.second)) {
+            ZS_LOG_ERROR(Detail, log("remote party's key domain does not have a precompiled domain key template (thus ignoring incoming find request)"))
+            return;
+          }
+
+          IDHPublicKeyPtr newPublicKey;
+          IDHPrivateKeyPtr newPrivateKey = IDHPrivateKey::loadAndGenerateNewEphemeral(templateKeyPair.first, templateKeyPair.second, newPublicKey);
+          ZS_THROW_INVALID_ASSUMPTION_IF(!newPrivateKey)
+          ZS_THROW_INVALID_ASSUMPTION_IF(!newPublicKey)
+
+          peerLocation = IAccountPeerLocationForAccount::createFromIncomingPeerLocationFind(
+                                                                                           mThisWeak.lock(),
+                                                                                           mThisWeak.lock(),
+                                                                                           peerLocationFindRequest,
+                                                                                           newPrivateKey,
+                                                                                           newPublicKey
+                                                                                           );
+
+          peerInfo->mLocations[fromLocation->forAccount().getLocationID()] = peerLocation;
+          ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->forAccount().getID()))
           return;
         }
 
         ChannelMapNotifyPtr channelMapNotify = ChannelMapNotify::convert(message);
         if (channelMapNotify) {
-          ZS_LOG_DEBUG(log("channel map notification received") + ZS_PARAM("channel number", channelMapNotify->channelNumber()))
 
           IPAddress finderIP;
           String relayAccessToken;
           String relayAccessSecret;
           mFinder->forAccount().getFinderRelayInformation(finderIP, relayAccessToken, relayAccessSecret);
 
-          String nonce = channelMapNotify->nonce();
-          String localContext = channelMapNotify->localContext();
-          String remoteContext = channelMapNotify->remoteContext();
-          ChannelMapNotify::ChannelNumber channel = channelMapNotify->channelNumber();
-          Time expires = channelMapNotify->relayAccessSecretProofExpires();
-          String hash = channelMapNotify->relayAccessSecretProof();
+          for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter)
+          {
+            const PeerURI &uri = (*iter).first;
+            PeerInfoPtr peerInfo = (*iter).second;
 
-          //  hex(hash("proof:" + <client-nonce> + ":" + <remote-context> + ":" + <channel-number> + ":" + <expires> + ":" + hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map"))))
+            PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(channelMapNotify->remoteContext());
+            if (foundLocation == peerInfo->mLocations.end()) {
+              ZS_LOG_TRACE(log("peer location was not found on this peer") + ZS_PARAM("peer uri", uri) + ZS_PARAM("location", channelMapNotify->remoteContext()))
+              continue;
+            }
 
-          // hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map")
-          String innerDataToHash = "finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";
+            AccountPeerLocationPtr peerLocation = (*foundLocation).second;
+            if (!peerLocation->forAccount().handleIncomingChannelMapNotify(channelMapNotify, relayAccessToken, relayAccessSecret)) {
+              ZS_LOG_WARNING(Detail, log("this location did not handle this channel map notification") + ZS_PARAM("location", channelMapNotify->remoteContext()))
+            }
 
-          String innerHash = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(relayAccessSecret), innerDataToHash));
-
-          //  hex(hash("proof:" + <client-nonce> + ":" + <remote-context> + ":" + <channel-number> + ":" + <expires> + ":" + <innerHash>))
-          String finalHash = "proof:" + nonce + ":" + remoteContext + ":" + string(channel) + ":" + IHelper::timeToString(expires) + ":" + innerHash;
-
-          String calculatedProof = IHelper::convertToHex(*IHelper::hash(finalHash));
-
-          if (calculatedProof != channelMapNotify->relayAccessSecretProof()) {
-            ZS_LOG_WARNING(Detail, log("channel map notify proof failed") + ZS_PARAM("calculated proof", calculatedProof) + ZS_PARAM("received", channelMapNotify->relayAccessSecretProof()) + ZS_PARAM("relay access secret", relayAccessSecret) + ZS_PARAM("inner hash str", innerDataToHash) + ZS_PARAM("inner hash result", innerHash) + ZS_PARAM("final hash str", finalHash))
+            ZS_LOG_DEBUG(log("successfully handled channel map notification"))
             return;
           }
-
-          PeerLocationFindRequestPtr findRequest = getFindRequestWithLocalContext(localContext);
-          if (!findRequest) {
-            ZS_LOG_WARNING(Detail, log("did not find any find request with specified location") + ZS_PARAM("local context", localContext))
-            return;
-          }
-
-          IPeerPtr peer = findRequest->findPeer();
-          ZS_THROW_INVALID_ASSUMPTION_IF(!peer)
-
-          PeerInfoMap::iterator found = mPeerInfos.find(peer->getPeerURI());
-          ZS_THROW_INVALID_ASSUMPTION_IF(found == mPeerInfos.end())
-
-          PeerInfoPtr &peerInfo = (*found).second;
-
-          RelayInfoPtr relayInfo = RelayInfo::create();
-          relayInfo->mChannel = channel;
-          relayInfo->mLocalContext = localContext;
-          relayInfo->mDHLocalPrivateKey = findRequest->dhPrivateKey();
-          relayInfo->mDHLocalPublicKey = findRequest->dhPublicKey();
-          relayInfo->mRemoteContext = remoteContext;
-
-          peerInfo->mRelayInfos[channel] = relayInfo;
-
-          ZS_LOG_DEBUG(log("peer relay context added") + relayInfo->toDebug() + peerInfo->toDebug())
-
+          ZS_LOG_WARNING(Detail, log("did not find any peer location that can handle the channel map notification") + ZS_PARAM("location", channelMapNotify->remoteContext()))
           return;
         }
 
@@ -1259,7 +1168,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
-        ZS_LOG_DEBUG(log("on account finder incoming relay channel") + ZS_PARAM("finder ID", finder->forAccount().getID()) + ZS_PARAM("relay channel ID", relayChannel->getID()))
+        ZS_LOG_DEBUG(log("on account finder incoming relay channel") + ZS_PARAM("finder ID", finder->forAccount().getID()) + ZS_PARAM("relay channel ID", relayChannel->getID()) + ZS_PARAM("incoming channel", channelNumber))
 
         // scope: check to see if relay channel can be used
         {
@@ -1280,34 +1189,23 @@ namespace openpeer
           {
             PeerInfoPtr &peerInfo = (*iter).second;
 
-            RelayInfoMap::iterator found = peerInfo->mRelayInfos.find(channelNumber);
-            if (found == peerInfo->mRelayInfos.end()) continue;
+            for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation)
+            {
+              const LocationID &locationID = (*iterLocation).first;
+              AccountPeerLocationPtr peerLocation = (*iterLocation).second;
 
-            RelayInfoPtr &relayInfo = (*found).second;
+              ChannelNumber peerChannelNumber = peerLocation->forAccount().getIncomingRelayChannelNumber();
+              if (peerChannelNumber != channelNumber) {
+                ZS_LOG_TRACE(log("this location is not responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
+              }
 
-            relayInfo->mRelayChannel = relayChannel;
-            relayInfo->mReceiveStream = receiveStream->getReader();
-            relayInfo->mSendStream = sendStream->getWriter();
-
-            relayInfo->mReceiveStream->notifyReaderReadyToRead();
-
-            // important to set context before subscribing otherwise we will receive bogus warning that incoming relay needs context
-            relayChannel->setIncomingContext(
-                                             relayInfo->mLocalContext,
-                                             relayInfo->mDHLocalPrivateKey,
-                                             relayInfo->mDHLocalPublicKey,
-                                             peerInfo->mPeer
-                                             );
-
-            relayInfo->mRelayChannelSubscription = relayChannel->subscribe(mThisWeak.lock());
-            relayInfo->mReceiveStreamSubscription = relayInfo->mReceiveStream->subscribe(mThisWeak.lock());
-            relayInfo->mSendStreamSubscription = relayInfo->mSendStream->subscribe(mThisWeak.lock());
-
-            ZS_LOG_DEBUG(log("incoming finder relay channel setup") + relayInfo->toDebug() + peerInfo->toDebug())
-            return;
+              ZS_LOG_DEBUG(log("this location is responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
+              peerLocation->forAccount().notifyIncomingRelayChannel(relayChannel, receiveStream, sendStream);
+              return;
+            }
           }
 
-          ZS_LOG_WARNING(Detail, log("information about incoming relay channel is not known") + ZS_PARAM("finder ID", finder->forAccount().getID()) + ZS_PARAM("relay channel ID", relayChannel->getID()))
+          ZS_LOG_WARNING(Detail, log("did not find any location responsible for this incoming channel") + ZS_PARAM("incoming channel", channelNumber))
           goto relay_channel_invalid;
         }
 
@@ -1544,45 +1442,22 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Account => IMessageReuqesterDelegate
+      #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerLocationFindResult>
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool Account::handleMessageMonitorMessageReceived(
-                                                        IMessageMonitorPtr monitor,
-                                                        MessagePtr message
-                                                        )
+      bool Account::handleMessageMonitorResultReceived(
+                                                       IMessageMonitorPtr monitor,
+                                                       PeerLocationFindResultPtr findResult
+                                                       )
       {
-        ZS_LOG_DEBUG(log("message requester received response") + IMessageMonitor::toDebug(monitor))
+        ZS_LOG_DEBUG(log("peer location find received result") + IMessageMonitor::toDebug(monitor))
+
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("received response after already shutdown"))
           return false;
-        }
-
-        if (monitor == mFindersGetMonitor) {
-          mFindersGetMonitor->cancel();
-          mFindersGetMonitor.reset();
-
-          FindersGetResultPtr result = FindersGetResult::convert(message);
-          if (!result) {
-            MessageResultPtr result = MessageResult::convert(message);
-            ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebug(message))
-
-            handleFinderRelatedFailure();
-            IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-            return true;
-          }
-
-          mAvailableFinders = result->finders();
-          if (mAvailableFinders.size() < 1) {
-            ZS_LOG_ERROR(Detail, log("finders get failed to return any finders"))
-            handleFinderRelatedFailure();
-          }
-
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return true;
         }
 
         PeerInfoPtr peerInfo;
@@ -1597,260 +1472,153 @@ namespace openpeer
         }
 
         if (!peerInfo) {
-          ZS_LOG_WARNING(Detail, log("did not find any peers monitoring this request (ignoring obsolete result/notify)") + ZS_PARAM("monitor", monitor->getID()))
+          ZS_LOG_WARNING(Detail, log("did not find any peers monitoring this request (ignoring obsolete result)") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
         PeerLocationFindRequestPtr request = PeerLocationFindRequest::convert(monitor->getMonitoredMessage());
         ZS_THROW_INVALID_ASSUMPTION_IF(!request)
 
-        switch (message->messageType()) {
-          case Message::MessageType_Result:  {
+        // prepare all the locations in the result hat do not yet exist
+        const LocationInfoList &locations = findResult->locations();
 
-            //.................................................................
-            // RESULT
-            //.................................................................
+        ZS_LOG_DEBUG(debug("peer location find result received") + ZS_PARAM("size", locations.size()))
 
-            MessageResultPtr result = MessageResult::convert(message);
-            if (result->hasAttribute(MessageResult::AttributeType_ErrorCode)) {
-              ZS_LOG_ERROR(Debug, log("received requester received response error") + Message::toDebug(result))
-              handleFindRequestComplete(monitor);
-              return true;
-            }
+        for (LocationInfoList::const_iterator iterLocation = locations.begin(); iterLocation != locations.end(); ++iterLocation) {
+          LocationInfoPtr locationInfo = (*iterLocation);
 
-            PeerLocationFindResultPtr findResult = PeerLocationFindResult::convert(result);
-            if (!findResult) {
-              ZS_LOG_ERROR(Debug, log("was unable to cast to a find result (ignoring)"))
-              return false;
-            }
+          LocationPtr fromLocation = Location::convert(locationInfo->mLocation);
 
-            // prepare all the locations in the result hat do not yet exist
-            const LocationInfoList &locations = findResult->locations();
-            if (locations.size() < 1) {
-              ZS_LOG_DEBUG(log("finder reply contained no location thus there are no location replies possible"))
-              handleFindRequestComplete(monitor);
-              return true;
-            }
-
-            for (LocationInfoList::const_iterator iterLocation = locations.begin(); iterLocation != locations.end(); ++iterLocation) {
-              const LocationInfo &locationInfo = (*iterLocation);
-
-              LocationPtr location = Location::convert(locationInfo.mLocation);
-
-              if (!location) {
-                ZS_LOG_WARNING(Detail, log("location info missing location object"))
-                continue;
-              }
-              PeerInfo::PeerLocationMap::iterator found = peerInfo->mLocations.find(location->forAccount().getLocationID());
-              if (found != peerInfo->mLocations.end()) {
-                ZS_LOG_DEBUG(log("already knows about this location thus ignoring find result") + ILocation::toDebug(location))
-                continue;   // already know about this location? if so just skip it
-              }
-
-              ZS_LOG_DEBUG(log("receiced find result for location") + ILocation::toDebug(location))
-
-              // scope: see if this would cause a seach redo later (if so, stop it from happening)
-              {
-                PeerInfo::FindingBecauseOfLocationIDMap::iterator redoFound = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.find(location->forAccount().getLocationID());
-                if (redoFound != peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.end()) {
-                  ZS_LOG_DEBUG(log("receiced find result for location that would be searched later thus removing from later search"))
-                  peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.erase(redoFound);
-                }
-              }
-
-              // don't know this location, remember it for later
-              AccountPeerLocationPtr peerLocation = IAccountPeerLocationForAccount::create(
-                                                                                           mThisWeak.lock(),
-                                                                                           mThisWeak.lock(),
-                                                                                           locationInfo,
-                                                                                           request->context(),
-                                                                                           request->peerSecret()
-                                                                                           );
-
-              peerInfo->mLocations[location->forAccount().getLocationID()] = peerLocation;
-
-              // the act of finding a peer does not cause notification to the subscribers as only the establishment of a peer connection notifies the subscribers
-            }
-            break;
+          if (!fromLocation) {
+            ZS_LOG_WARNING(Detail, log("location info missing location object"))
+            continue;
           }
-          case Message::MessageType_Notify:   {
 
-            //.................................................................
-            // NOTIFY
-            //.................................................................
+          PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(fromLocation->forAccount().getLocationID());
+          if (foundLocation != peerInfo->mLocations.end()) {
+            ZS_LOG_WARNING(Detail, log("received result for peer location that already exists thus will shutdown this existing location in favour whatever might be found") + PeerInfo::toDebug(peerInfo))
 
-            PeerLocationFindNotifyPtr findReply = PeerLocationFindNotify::convert(message);
-            if (!findReply) {
-              ZS_LOG_ERROR(Debug, log("receiced received a find reply but was unable to cast object to a reply object") + PeerInfo::toDebug(peerInfo))
-              return false;
-            }
+            AccountPeerLocationPtr peerLocation = (*foundLocation).second;
 
-            String remoteContext = findReply->context();
+            peerInfo->mLocations.erase(foundLocation);
+            peerLocation->forAccount().shutdown();
 
-            RelayInfoPtr relayInfo;
+            notifySubscriptions(fromLocation, ILocation::LocationConnectionState_Disconnected);
 
-            // scope: match any relay channels to the remote context
-            {
-              for (RelayInfoMap::iterator relayIter = peerInfo->mRelayInfos.begin(); relayIter != peerInfo->mRelayInfos.end(); ++relayIter)
-              {
-                RelayInfoPtr &checkRelayInfo = (*relayIter).second;
-
-                if (checkRelayInfo->mRemoteContext != remoteContext) continue;
-
-                ZS_LOG_DEBUG(log("found relay associated to remote context") + checkRelayInfo->toDebug())
-
-                relayInfo = checkRelayInfo;
-                break;
-              }
-            }
-
-            const LocationInfo &locationInfo = findReply->locationInfo();
-
-            LocationPtr location = Location::convert(locationInfo.mLocation);
-
-            CandidateList candidates = locationInfo.mCandidates;
-            if (candidates.size() < 1) {
-              ZS_LOG_ERROR(Debug, log("receiced received a find reply but it did not contain any candidates (thus ignoring reply)") + PeerInfo::toDebug(peerInfo))
-              return false;
-            }
-
-            PeerInfo::PeerLocationMap::iterator found = peerInfo->mLocations.find(location->forAccount().getLocationID());
-
-            bool created = false;
-
-            AccountPeerLocationPtr peerLocation;
-            if (found != peerInfo->mLocations.end()) {
-              peerLocation = (*found).second;
-              ZS_LOG_DEBUG(log("receiced received a find reply to an existing known peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(location))
-
-              if (peerLocation->forAccount().hasReceivedCandidateInformation()) {
-                ZS_LOG_WARNING(Detail, log("receiving candidate information after final location for the same peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation) + ILocation::toDebug(location))
-              }
-            }
-
-            if (found == peerInfo->mLocations.end()) {
-              ZS_LOG_DEBUG(log("receiced received a find reply to a new unknown peer") + PeerInfo::toDebug(peerInfo) + ILocation::toDebug(location))
-
-              peerLocation = IAccountPeerLocationForAccount::create(
-                                                                    mThisWeak.lock(),
-                                                                    mThisWeak.lock(),
-                                                                    locationInfo,
-                                                                    request->context(),
-                                                                    request->peerSecret()
-                                                                    );
-              peerInfo->mLocations[location->forAccount().getLocationID()] = peerLocation;
-
-              created = true;
-
-              // scope: see if this would cause a seach redo later (if so, stop it from happening)
-              {
-                PeerInfo::FindingBecauseOfLocationIDMap::iterator redoFound = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.find(location->forAccount().getLocationID());
-                if (redoFound != peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.end()) {
-                  ZS_LOG_DEBUG(log("receiced find reply for location that would be searched later thus removing from later search") + PeerInfo::toDebug(peerInfo))
-                  peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.erase(redoFound);
-                }
-              }
-
-              // in this case not only was a location found but the request to find the location came back from the remote party with a reply but it's not sufficient reason
-              // to notify any subscribers since they only care when a connection is actually established.
-            }
-
-            String remoteICEUsernameFrag = findReply->iceUsernameFrag();
-            String remoteICEPassword = findReply->icePassword();
-
-            IDHPublicKeyPtr remotePublicKey;
-
-            if (relayInfo) {
-              if (relayInfo->mRelayChannel) {
-                // extract the remote public key from the keying material contained from the relay channel (for re-use with the peer-to-peer data channel)
-                IDHKeyDomainPtr remoteKeyDomain = relayInfo->mRelayChannel->getDHRemoteKeyDomain();
-                remotePublicKey = relayInfo->mRelayChannel->getDHRemotePublicKey();
-
-                // don't allow one without the other
-                if (!remotePublicKey) remoteKeyDomain.reset();
-                if (!remoteKeyDomain) remotePublicKey.reset();
-
-                if (remoteKeyDomain) {
-                  ZS_LOG_DEBUG(log("extracted DH keying material from relay channel") + ZS_PARAM("remote public key", remotePublicKey->getID()) + ZS_PARAM("remote key domain", remoteKeyDomain->getID()))
-
-                  IDHKeyDomain::KeyDomainPrecompiledTypes remoteType = remoteKeyDomain->getPrecompiledType();
-                  IDHKeyDomain::KeyDomainPrecompiledTypes localType = request->dhPrivateKey()->getKeyDomain()->getPrecompiledType();
-
-                  if (remoteType != localType) {
-                    ZS_LOG_ERROR(Detail, log("remote key domain type does not match local key domain type") + ZS_PARAM("remote type", IDHKeyDomain::toNamespace(remoteType)) + ZS_PARAM("local type", IDHKeyDomain::toNamespace(localType)))
-
-                    // NOTE: by reseting the remote public key this will cause
-                    //       the connect to be called without a public key
-                    //       which will cause it to self destruct if it does
-                    //       not already know the remote public key (which it
-                    //       likely would not).
-                    remotePublicKey.reset();
-                  }
-                }
-              }
-
-              relayInfo->mAccountPeerLocation = peerLocation;
-              if (relayInfo->mRelayChannel) {
-                peerLocation->forAccount().notifyIncomingRelayChannel(relayInfo->mRelayChannel);
-              }
-            }
-
-            if (!remotePublicKey) {
-              if (created) {
-                ZS_LOG_ERROR(Detail, log("did not remote DH keying material (relay channel just shutdown moments ago?)"))
-              } else {
-                ZS_LOG_WARNING(Detail, log("did not remote DH keying material (relay channel is now shutdown?)"))
-              }
-            }
-
-            peerLocation->forAccount().connectLocation(
-                                                       remoteContext,
-                                                       remoteICEUsernameFrag,
-                                                       remoteICEPassword,
-                                                       candidates,
-                                                       findReply->final(),
-                                                       IICESocket::ICEControl_Controlling,
-                                                       request->dhPrivateKey(),
-                                                       request->dhPublicKey(),
-                                                       remotePublicKey
-                                                       );
-
-            bool locationRemainThatHaveNotReplied = false;
-            // scope: check to see if their are remaining locations yet to return their replies
-            {
-              for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
-                AccountPeerLocationPtr &peerLocation = (*iterLocation).second;
-                if (!peerLocation->forAccount().hasReceivedCandidateInformation()) {
-                  ZS_LOG_DEBUG(log("at least one peer still waiting for result") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
-                  locationRemainThatHaveNotReplied = true;
-                  break;
-                }
-              }
-            }
-
-            if (locationRemainThatHaveNotReplied) {
-              ZS_LOG_DEBUG(log("at least one location has not replied so waiting to see if the reply will eventually arrive..."))
-              return false;
-            }
-
-            ZS_LOG_DEBUG(log("all known locations have already replied thus no need to continue search"))
-
-            handleFindRequestComplete(monitor);
-
-            peerInfo->findTimeReset();
-            return true;
+            foundLocation = peerInfo->mLocations.end();
+            peerLocation.reset();
           }
-          default: return false;  // ignore these since we aren't expecting them
+
+          ZS_LOG_DEBUG(log("receiced find result for location") + ILocation::toDebug(fromLocation))
+
+          // scope: see if this would cause a seach redo later (if so, stop it from happening)
+          {
+            PeerInfo::FindingBecauseOfLocationIDMap::iterator redoFound = peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.find(fromLocation->forAccount().getLocationID());
+            if (redoFound != peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.end()) {
+              ZS_LOG_DEBUG(log("receiced find result for location that would be searched later thus removing from later search"))
+              peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.erase(redoFound);
+            }
+          }
+
+          // don't know this location, remember it for later
+          AccountPeerLocationPtr peerLocation = IAccountPeerLocationForAccount::createFromPeerLocationFindResult(
+                                                                                                                 mThisWeak.lock(),
+                                                                                                                 mThisWeak.lock(),
+                                                                                                                 request,
+                                                                                                                 locationInfo
+                                                                                                                 );
+
+          peerInfo->mLocations[fromLocation->forAccount().getLocationID()] = peerLocation;
+
+          // the act of finding a peer does not cause notification to the subscribers as only the establishment of a peer connection notifies the subscribers
         }
-        return false;
+
+        ZS_LOG_DEBUG(debug("peer location find result processed"))
+
+        handleFindRequestComplete(monitor);
+        return true;
       }
 
       //-----------------------------------------------------------------------
-      void Account::onMessageMonitorTimedOut(IMessageMonitorPtr monitor)
+      bool Account::handleMessageMonitorErrorResultReceived(
+                                                            IMessageMonitorPtr monitor,
+                                                            PeerLocationFindResultPtr ignore, // will always be NULL
+                                                            MessageResultPtr result
+                                                            )
       {
-        ZS_LOG_WARNING(Detail, log("message requester timed out") + IMessageMonitor::toDebug(monitor))
+        ZS_LOG_DEBUG(log("peer location find received error result") + IMessageMonitor::toDebug(monitor))
 
+        AutoRecursiveLock lock(getLock());
+
+        if (isShutdown()) {
+          ZS_LOG_DEBUG(log("received response after already shutdown"))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("received requester received response error") + Message::toDebug(result))
         handleFindRequestComplete(monitor);
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<FindersGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool Account::handleMessageMonitorResultReceived(
+                                                       IMessageMonitorPtr monitor,
+                                                       FindersGetResultPtr result
+                                                       )
+      {
+        ZS_LOG_DEBUG(log("finders get received result") + IMessageMonitor::toDebug(monitor))
+
+        AutoRecursiveLock lock(getLock());
+
+        if (monitor != mFindersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("received finders get result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
+          return false;
+        }
+
+        mFindersGetMonitor->cancel();
+        mFindersGetMonitor.reset();
+
+        mAvailableFinders = result->finders();
+        if (mAvailableFinders.size() < 1) {
+          ZS_LOG_ERROR(Detail, log("finders get failed to return any finders"))
+          handleFinderRelatedFailure();
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::handleMessageMonitorErrorResultReceived(
+                                                            IMessageMonitorPtr monitor,
+                                                            FindersGetResultPtr ignore,
+                                                            MessageResultPtr result
+                                                            )
+      {
+        ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebug(result))
+
+        AutoRecursiveLock lock(getLock());
+
+        if (monitor != mFindersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("received finders get error result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
+          return false;
+        }
+
+        mFindersGetMonitor->cancel();
+        mFindersGetMonitor.reset();
+
+        handleFinderRelatedFailure();
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1867,168 +1635,6 @@ namespace openpeer
         ZS_LOG_DEBUG(log("on wake"))
         AutoRecursiveLock lock(getLock());
         step();
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark Account => IFinderRelayChannelDelegate
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      void Account::onFinderRelayChannelStateChanged(
-                                                     IFinderRelayChannelPtr channel,
-                                                     IFinderRelayChannel::SessionStates state
-                                                     )
-      {
-        ZS_LOG_DEBUG(log("on finder relay channel state changed"))
-
-        AutoRecursiveLock lock(getLock());
-
-        if (isShutdown()) {
-          ZS_LOG_DEBUG(log("received response after already shutdown"))
-          return;
-        }
-
-        switch (state) {
-          case IFinderRelayChannel::SessionState_Pending:
-          case IFinderRelayChannel::SessionState_Connected: {
-            ZS_LOG_DEBUG(log("ignoring pending / connected state on relay channel") + ZS_PARAM("state", IFinderRelayChannel::toString(state)) + IFinderRelayChannel::toDebug(channel))
-            return;
-          }
-          case IFinderRelayChannel::SessionState_Shutdown: {
-            ZS_LOG_DEBUG(log("finder relay channel shutdown") + ZS_PARAM("state", IFinderRelayChannel::toString(state)) + IFinderRelayChannel::toDebug(channel))
-            break;
-          }
-        }
-
-        for (PeerInfoMap::iterator peerIter = mPeerInfos.begin(); peerIter != mPeerInfos.end(); ++peerIter) {
-          PeerInfoPtr &peerInfo = (*peerIter).second;
-
-          for (RelayInfoMap::iterator relayIter = peerInfo->mRelayInfos.begin(); relayIter != peerInfo->mRelayInfos.end(); ++relayIter)
-          {
-            RelayInfoPtr &relayInfo = (*relayIter).second;
-            if (relayInfo->mRelayChannel->getID() == channel->getID()) {
-              ZS_LOG_DEBUG(log("found shutdown relay channel") + relayInfo->toDebug())
-
-              relayInfo->cancel();
-              peerInfo->mRelayInfos.erase(relayIter);
-              return;
-            }
-          }
-        }
-
-        ZS_LOG_WARNING(Detail, log("relay channel not associated with peer") + IFinderRelayChannel::toDebug(channel))
-      }
-
-      //-----------------------------------------------------------------------
-      void Account::onFinderRelayChannelNeedsContext(IFinderRelayChannelPtr channel)
-      {
-        ZS_LOG_WARNING(Detail, log("on finder relay channel needs context") + ZS_PARAM("channel id", channel->getID()))
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark Account => ITransportStreamWriterDelegate
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      void Account::onTransportStreamWriterReady(ITransportStreamWriterPtr writer)
-      {
-        ZS_LOG_DEBUG(log("on stream writer ready"))
-        AutoRecursiveLock lock(getLock());
-
-        // HERE
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark Account => ITransportStreamReaderDelegate
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      void Account::onTransportStreamReaderReady(ITransportStreamReaderPtr reader)
-      {
-        ZS_LOG_DEBUG(log("on stream reader ready"))
-        AutoRecursiveLock lock(getLock());
-
-        for (PeerInfoMap::iterator peerIter = mPeerInfos.begin(); peerIter != mPeerInfos.end(); ++peerIter) {
-          PeerInfoPtr &peerInfo = (*peerIter).second;
-
-          for (RelayInfoMap::iterator relayIter = peerInfo->mRelayInfos.begin(); relayIter != peerInfo->mRelayInfos.end(); ++relayIter)
-          {
-            RelayInfoPtr &relayInfo = (*relayIter).second;
-            if (relayInfo->mReceiveStream->getID() == reader->getID()) {
-              ZS_LOG_DEBUG(log("reading relay stream") + relayInfo->toDebug() + ITransportStream::toDebug(reader->getStream()))
-
-              while (true) {
-                SecureByteBlockPtr buffer = reader->read();
-                if (!buffer) {
-                  ZS_LOG_TRACE(log("no more data to read"))
-                  break;
-                }
-
-                DocumentPtr document = Document::createFromAutoDetect(((CSTR)buffer->BytePtr()));
-                MessagePtr message = Message::create(
-                                                     document,
-                                                     relayInfo->mAccountPeerLocation ?
-                                                     relayInfo->mAccountPeerLocation->forAccount().getLocation() :
-                                                     ILocationForAccount::getForFinder(mThisWeak.lock())
-                                                     );
-
-                if (ZS_IS_LOGGING(Detail)) {
-                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                  ZS_LOG_BASIC(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
-                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                  ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
-                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                  ZS_LOG_BASIC(log("RELAY RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)buffer->BytePtr())))
-                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                  ZS_LOG_BASIC(log("<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<-<"))
-                  ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-                }
-
-                if (IMessageMonitor::handleMessageReceived(message)) {
-                  ZS_LOG_DEBUG(log("handled message via message handler"))
-                  return;
-                }
-
-                if (relayInfo->mAccountPeerLocation) {
-                  relayInfo->mAccountPeerLocation->forAccount().handleMessage(message, true);
-                  continue;
-                }
-
-                MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_NotFound);
-                if (!result) {
-                  ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created"))
-                  return;
-                }
-
-                DocumentPtr resultDoc = message->encode();
-
-                boost::shared_array<char> output;
-                size_t length = 0;
-                output = document->writeAsJSON(&length);
-
-                ZS_LOG_WARNING(Detail, log("sending automatic failure to relay received message because account peer location for relay was not known (yet)"))
-
-                relayInfo->mSendStream->write((const BYTE *)(output.get()), length);
-                return;
-              }
-
-              ZS_LOG_TRACE(log("incoming relay stream read completed"))
-              return;
-            }
-          }
-        }
       }
 
       //-----------------------------------------------------------------------
@@ -2582,7 +2188,7 @@ namespace openpeer
           request->domain(getDomain());
           request->totalFinders(OPENPEER_STACK_FINDERS_GET_TOTAL_SERVERS_TO_GET);
 
-          mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(mThisWeak.lock(), network, "bootstrapped-finders", "finders-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
+          mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<FindersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-finders", "finders-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
 
           ZS_LOG_DEBUG(log("attempting to get finders"))
           return false;
@@ -2849,27 +2455,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PeerLocationFindRequestPtr Account::getFindRequestWithLocalContext(const String &localContext)
-      {
-        for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter)
-        {
-          PeerInfoPtr &info = (*iter).second;
-
-          if (!info->mPeerFindMonitor) continue;
-          PeerLocationFindRequestPtr request = PeerLocationFindRequest::convert(info->mPeerFindMonitor->getMonitoredMessage());
-          ZS_THROW_INVALID_ASSUMPTION_IF(!request)
-
-          if (localContext != request->context()) continue;
-
-          ZS_LOG_TRACE(log("found find request with context") + ZS_PARAM("context", localContext))
-          return request;
-        }
-
-        ZS_LOG_WARNING(Debug, log("did not find request with local context") + ZS_PARAM("context", localContext))
-        return PeerLocationFindRequestPtr();
-      }
-
-      //-----------------------------------------------------------------------
       void Account::setFindState(
                                  PeerInfo &peerInfo,
                                  IPeer::PeerFindStates state
@@ -3062,12 +2647,12 @@ namespace openpeer
         PeerLocationFindRequest::ExcludedLocationList exclude;
         for (PeerInfo::PeerLocationMap::iterator iter = peerInfo->mLocations.begin(); iter != peerInfo->mLocations.end(); ++iter) {
 
+          const LocationID &locationID = (*iter).first;
           AccountPeerLocationPtr peerLocation = (*iter).second;
 
-          if (peerLocation->forAccount().hasReceivedCandidateInformation())
-            // do not conduct a search for locations that already are connected or in the process of connecting...
-            ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
-            exclude.push_back((*iter).first);
+          // do not conduct a search for locations that already are connected or in the process of connecting...
+          ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(peerLocation))
+          exclude.push_back(locationID);
         }
 
         LocationInfoPtr locationInfo = getLocationInfo(mSelfLocation);
@@ -3095,10 +2680,10 @@ namespace openpeer
           locationInfo->mCandidates.push_front(*relayCandidate);
         }
 
-        request->locationInfo(*locationInfo);
+        request->locationInfo(locationInfo);
         request->peerFiles(peerFiles);
 
-        peerInfo->mPeerFindMonitor = mFinder->forAccount().sendRequest(mThisWeak.lock(), request, Seconds(OPENPEER_STACK_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS));
+        peerInfo->mPeerFindMonitor = mFinder->forAccount().sendRequest(IMessageMonitorResultDelegate<PeerLocationFindResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS));
 
         setFindState(*(peerInfo.get()), IPeer::PeerFindState_Finding);
       }
@@ -3157,22 +2742,6 @@ namespace openpeer
 
         if (mLastRetryFinderAfterDuration > Seconds(OPENPEER_STACK_ACCOUNT_FINDER_MAX_RETRY_AFTER_TIME_IN_SECONDS)) {
           mLastRetryFinderAfterDuration = Seconds(OPENPEER_STACK_ACCOUNT_FINDER_MAX_RETRY_AFTER_TIME_IN_SECONDS);
-        }
-
-        for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter)
-        {
-          PeerInfoPtr &peerInfo = (*iter).second;
-
-          for (RelayInfoMap::iterator relayIter = peerInfo->mRelayInfos.begin(); relayIter != peerInfo->mRelayInfos.end(); ++relayIter)
-          {
-            RelayInfoPtr &relayInfo = (*relayIter).second;
-
-            ZS_LOG_DEBUG(log("shutting down peer's relay") + relayInfo->toDebug())
-
-            relayInfo->cancel();
-          }
-
-          peerInfo->mRelayInfos.clear();
         }
       }
 
@@ -3254,88 +2823,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Account::RelayInfoPtr Account::RelayInfo::create()
-      {
-        RelayInfoPtr pThis(new RelayInfo);
-        pThis->mChannel = 0;
-        return pThis;
-      }
-
-      //-----------------------------------------------------------------------
-      Account::RelayInfo::~RelayInfo()
-      {
-        cancel();
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr Account::RelayInfo::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("stack::Account::RelayInfo");
-
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "channel", mChannel);
-        IHelper::debugAppend(resultEl, "local context", mLocalContext);
-        IHelper::debugAppend(resultEl, "DH local private key", mDHLocalPrivateKey ? mDHLocalPrivateKey->getID() : 0);
-        IHelper::debugAppend(resultEl, "DH local public key", mDHLocalPublicKey ? mDHLocalPublicKey->getID() : 0);
-        IHelper::debugAppend(resultEl, "remote context", mRemoteContext);
-        IHelper::debugAppend(resultEl, "relay channel id", mRelayChannel ? mRelayChannel->getID() : 0);
-        IHelper::debugAppend(resultEl, "send stream id", mSendStream ? mSendStream->getID() : 0);
-        IHelper::debugAppend(resultEl, "receive stream id", mReceiveStream ? mReceiveStream->getID() : 0);
-        IHelper::debugAppend(resultEl, "peer location", mAccountPeerLocation ? mAccountPeerLocation->forAccount().getID() : 0);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      Log::Params Account::RelayInfo::log(const char *message) const
-      {
-        ElementPtr objectEl = Element::create("stack::Account::RelayInfo");
-        IHelper::debugAppend(objectEl, "id", mID);
-        return Log::Params(message, objectEl);
-      }
-
-      //-----------------------------------------------------------------------
-      void Account::RelayInfo::cancel()
-      {
-        ZS_LOG_TRACE(log("cancel called"))
-
-        if (mRelayChannelSubscription) {
-          mRelayChannelSubscription->cancel();
-          mRelayChannelSubscription.reset();
-        }
-        if (mReceiveStreamSubscription) {
-          mReceiveStreamSubscription->cancel();
-          mReceiveStreamSubscription.reset();
-        }
-        if (mSendStreamSubscription) {
-          mSendStreamSubscription->cancel();
-          mSendStreamSubscription.reset();
-        }
-        if (mRelayChannel) {
-          mRelayChannel->cancel();
-          mRelayChannel.reset();
-        }
-        if (mReceiveStream) {
-          mReceiveStream->cancel();
-          mReceiveStream.reset();
-        }
-        if (mSendStream) {
-          mSendStream->cancel();
-          mSendStream.reset();
-        }
-
-        mAccountPeerLocation.reset();
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark Account::PeerInfo
-      #pragma mark
-
-      //-----------------------------------------------------------------------
       ElementPtr Account::PeerInfo::toDebug(PeerInfoPtr peerInfo)
       {
         if (!peerInfo) return ElementPtr();
@@ -3357,17 +2844,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Account::PeerInfo::~PeerInfo()
       {
-        for (RelayInfoMap::iterator iter = mRelayInfos.begin(); iter != mRelayInfos.end(); ++iter)
-        {
-          RelayInfoPtr &relayInfo = (*iter).second;
-
-          ZS_THROW_BAD_STATE_IF(!relayInfo)
-
-          ZS_LOG_DEBUG(log("cancelling incoming relay channel") + relayInfo->toDebug())
-
-          relayInfo->cancel();
-        }
-        mRelayInfos.clear();
       }
 
       //-----------------------------------------------------------------------

@@ -84,7 +84,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitor::MessageMonitor(IMessageQueuePtr queue) :
         MessageQueueAssociator(queue),
-        mID(zsLib::createPUID()),
         mWasHandled(false),
         mTimeoutFired(false),
         mPendingHandled(0)
@@ -100,7 +99,7 @@ namespace openpeer
         mTimer = Timer::create(mThisWeak.lock(), timeout, false);
 
         MessageMonitorManagerPtr manager = IMessageMonitorManagerForMessageMonitor::singleton();
-        manager->forMessageMonitor().monitorStart(mThisWeak.lock(), mMessageID);
+        manager->forMessageMonitor().monitorStart(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -225,7 +224,7 @@ namespace openpeer
         if (!mDelegate) return;
 
         MessageMonitorManagerPtr manager = IMessageMonitorManagerForMessageMonitor::singleton();
-        manager->forMessageMonitor().monitorEnd(mMessageID);
+        manager->forMessageMonitor().monitorEnd(*this);
 
         if (mTimer) {
           mTimer->cancel();

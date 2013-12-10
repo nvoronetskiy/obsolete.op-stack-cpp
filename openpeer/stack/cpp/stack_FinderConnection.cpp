@@ -632,7 +632,7 @@ namespace openpeer
                                                                         )
       {
         AutoRecursiveLock lock(getLock());
-        ZS_LOG_DEBUG(log("notified master relay channel state changed"))
+        ZS_LOG_DEBUG(log("notified master relay channel state changed") + ZS_PARAM("channel", channel->getID()))
         step();
       }
 

@@ -67,9 +67,11 @@ namespace openpeer
             ElementPtr locationEl = locationsEl->findFirstChildElement("location");
             while (locationEl)
             {
-              LocationInfo locationInfo = internal::MessageHelper::createLocation(locationEl, messageSource);
-              if (locationInfo.hasData()) {
-                ret->mLocations.push_back(locationInfo);
+              LocationInfoPtr locationInfo = internal::MessageHelper::createLocation(locationEl, messageSource);
+              if (locationInfo) {
+                if (locationInfo->hasData()) {
+                  ret->mLocations.push_back(locationInfo);
+                }
               }
 
               locationEl = locationEl->findNextSiblingElement("location");

@@ -144,7 +144,10 @@ namespace openpeer
               return PeerIdentifyRequestPtr();
             }
 
-            LocationPtr location = Location::convert(ret->mLocationInfo.mLocation);
+            LocationPtr location;
+            if (ret->mLocationInfo) {
+              location = Location::convert(ret->mLocationInfo->mLocation);
+            }
 
             if (!location) {
               ZS_LOG_WARNING(Detail, slog("remote location object could not be created"))
@@ -184,7 +187,7 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_LocationInfo:    return mLocationInfo.hasData();
+            case AttributeType_LocationInfo:    return mLocationInfo ? mLocationInfo->hasData() : false;
             case AttributeType_FindSecret:      return (!mFindSecret.isEmpty());
             case AttributeType_PeerFilePublic:  return (bool)mPeerFilePublic;
             case AttributeType_PeerFiles:       return (bool)mPeerFiles;
@@ -228,7 +231,7 @@ namespace openpeer
           }
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            peerIdentityProofEl->adoptAsLastChild(MessageHelper::createElement(mLocationInfo));
+            peerIdentityProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
           }
 
           peerIdentityProofEl->adoptAsLastChild(peerFilePublic->saveToElement());

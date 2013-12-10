@@ -91,7 +91,7 @@ namespace openpeer
           switch (type)
           {
             case AttributeType_FinderID:      return (!mFinderID.isEmpty());
-            case AttributeType_LocationInfo:  return (mLocationInfo.hasData());
+            case AttributeType_LocationInfo:  return (mLocationInfo ? mLocationInfo->hasData(): false);
             case AttributeType_PeerFiles:     return (bool)mPeerFiles;
             default:                          break;
           }
@@ -134,7 +134,7 @@ namespace openpeer
           sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            sessionProofEl->adoptAsLastChild(MessageHelper::createElement(mLocationInfo));
+            sessionProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
           }
 
           sessionProofEl->adoptAsLastChild(peerFilePublic->saveToElement());

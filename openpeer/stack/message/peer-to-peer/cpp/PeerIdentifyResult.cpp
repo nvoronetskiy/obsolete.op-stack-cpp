@@ -92,7 +92,7 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_LocationInfo:    return mLocationInfo.hasData();
+            case AttributeType_LocationInfo:    return mLocationInfo ? mLocationInfo->hasData() : false;
             default:                            break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
@@ -105,7 +105,7 @@ namespace openpeer
           ElementPtr root = ret->getFirstChildElement();
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            root->adoptAsLastChild(MessageHelper::createElement(mLocationInfo));
+            root->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
           }
 
           return ret;

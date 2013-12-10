@@ -115,11 +115,13 @@ namespace openpeer
           const ExcludedLocationList &excludeLocations() const            {return mExcludedLocations;}
           void excludeLocations(const ExcludedLocationList &excludeList)  {mExcludedLocations = excludeList;}
 
-          const LocationInfo &locationInfo() const                        {return mLocationInfo;}
-          void locationInfo(const LocationInfo &location)                 {mLocationInfo = location;}
+          LocationInfoPtr locationInfo() const                            {return mLocationInfo;}
+          void locationInfo(LocationInfoPtr location)                     {mLocationInfo = location;}
 
           IPeerFilesPtr peerFiles() const                                 {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)                         {mPeerFiles = peerFiles;}
+
+          bool didVerifySignature() const                                 {return mDidVerifySignature;}
 
         protected:
           PeerLocationFindRequest();
@@ -140,9 +142,11 @@ namespace openpeer
 
           ExcludedLocationList mExcludedLocations;
 
-          LocationInfo mLocationInfo;
+          LocationInfoPtr mLocationInfo;
 
           IPeerFilesPtr mPeerFiles;
+
+          AutoBool mDidVerifySignature;
         };
       }
     }

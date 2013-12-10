@@ -33,6 +33,7 @@
 
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
+#include <openpeer/stack/internal/stack_IFinderConnection.h>
 
 #include <openpeer/stack/IAccount.h>
 #include <openpeer/stack/ILocation.h>
@@ -40,6 +41,8 @@
 #include <openpeer/services/IRUDPICESocketSession.h>
 #include <openpeer/services/IRUDPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
+
+#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
 
 #include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
 #include <openpeer/stack/message/peer-to-peer/PeerKeepAliveResult.h>
@@ -65,6 +68,9 @@ namespace openpeer
       using services::IMessageLayerSecurityChannelPtr;
 
       using message::peer_finder::PeerLocationFindRequestPtr;
+      using message::peer_finder::PeerLocationFindNotify;
+      using message::peer_finder::PeerLocationFindNotifyPtr;
+      using message::peer_finder::ChannelMapNotifyPtr;
 
       using message::peer_to_peer::PeerIdentifyResult;
       using message::peer_to_peer::PeerIdentifyResultPtr;
@@ -82,24 +88,30 @@ namespace openpeer
       interaction IAccountPeerLocationForAccount
       {
         typedef IAccount::AccountStates AccountStates;
+        typedef IFinderConnection::ChannelNumber ChannelNumber;
 
         IAccountPeerLocationForAccount &forAccount() {return *this;}
         const IAccountPeerLocationForAccount &forAccount() const {return *this;}
 
-        static AccountPeerLocationPtr create(
-                                             IAccountPeerLocationDelegatePtr delegate,
-                                             AccountPtr outer,
-                                             const LocationInfo &locationInfo,
-                                             const String &localContext,
-                                             const String &localPeerSecret,
-                                             IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
-                                             IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
-                                             );
+        static AccountPeerLocationPtr createFromIncomingPeerLocationFind(
+                                                                         IAccountPeerLocationDelegatePtr delegate,
+                                                                         AccountPtr outer,
+                                                                         PeerLocationFindRequestPtr request,
+                                                                         IDHPrivateKeyPtr localPrivateKey,
+                                                                         IDHPublicKeyPtr localPublicKey
+                                                                         );
+
+        static AccountPeerLocationPtr createFromPeerLocationFindResult(
+                                                                       IAccountPeerLocationDelegatePtr delegate,
+                                                                       AccountPtr outer,
+                                                                       PeerLocationFindRequestPtr request,
+                                                                       LocationInfoPtr locationInfo
+                                                                       );
 
         virtual PUID getID() const = 0;
 
         virtual LocationPtr getLocation() const = 0;
-        virtual const LocationInfo &getLocationInfo() const = 0;
+        virtual LocationInfoPtr getLocationInfo() const = 0;
 
         virtual void shutdown() = 0;
 
@@ -109,21 +121,8 @@ namespace openpeer
         virtual bool isConnected() const = 0;
         virtual Time getTimeOfLastActivity() const = 0;
 
-        virtual void connectLocation(
-                                     const char *remoteContext,
-                                     const char *remoteICEUsernameFrag,
-                                     const char *remoteICEPassword,
-                                     const CandidateList &candidates,
-                                     bool finalCandidates,
-                                     IICESocket::ICEControls control,
-                                     IDHPrivateKeyPtr localPrivateKey,
-                                     IDHPublicKeyPtr localPublicKey,
-                                     IDHPublicKeyPtr remotePublicKey = IDHPublicKeyPtr()
-                                     ) = 0;
-
-        virtual void incomingRespondWhenCandidatesReady(PeerLocationFindRequestPtr request) = 0;
-
         virtual bool hasReceivedCandidateInformation() const = 0;
+        virtual bool hasReceivedFinalCandidateInformation() const = 0;
 
         virtual bool send(MessagePtr message) const = 0;
         virtual IMessageMonitorPtr sendRequest(
@@ -134,12 +133,19 @@ namespace openpeer
 
         virtual void sendKeepAlive() = 0;
 
-        virtual void handleMessage(
-                                   MessagePtr message,
-                                   bool viaRelay
-                                   ) = 0;
+        virtual bool handleIncomingChannelMapNotify(
+                                                    ChannelMapNotifyPtr notify,
+                                                    const String &relayAccessToken,
+                                                    const String &relayAccessSecret
+                                                    ) = 0;
 
-        virtual void notifyIncomingRelayChannel(IFinderRelayChannelPtr channel) = 0;
+        virtual ChannelNumber getIncomingRelayChannelNumber() const = 0;
+
+        virtual void notifyIncomingRelayChannel(
+                                                IFinderRelayChannelPtr channel,
+                                                ITransportStreamPtr receiveStream,
+                                                ITransportStreamPtr sendStream
+                                                ) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -161,24 +167,39 @@ namespace openpeer
                                   public services::ITransportStreamWriterDelegate,
                                   public services::ITransportStreamReaderDelegate,
                                   public services::IMessageLayerSecurityChannelDelegate,
+                                  public IMessageMonitorResultDelegate<PeerLocationFindNotify>,
                                   public IMessageMonitorResultDelegate<PeerIdentifyResult>,
                                   public IMessageMonitorResultDelegate<PeerKeepAliveResult>
       {
       public:
         friend interaction IAccountPeerLocationFactory;
 
-        typedef std::list<PeerLocationFindRequestPtr> PendingRequestList;
+        typedef IFinderConnection::ChannelNumber ChannelNumber;
+
+        enum CreatedFromReasons
+        {
+          CreatedFromReason_IncomingFind,
+          CreatedFromReason_OutgoingFind,
+        };
+
+        static const char *toString(CreatedFromReasons reason);
 
       protected:
         AccountPeerLocation(
                             IMessageQueuePtr queue,
                             IAccountPeerLocationDelegatePtr delegate,
                             AccountPtr outer,
-                            const LocationInfo &locationInfo,
-                            const String &localContext,
-                            const String &localPeerSecret,
-                            IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
-                            IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
+                            PeerLocationFindRequestPtr request,
+                            IDHPrivateKeyPtr localPrivateKey,
+                            IDHPublicKeyPtr localPublicKey
+                            );
+
+        AccountPeerLocation(
+                            IMessageQueuePtr queue,
+                            IAccountPeerLocationDelegatePtr delegate,
+                            AccountPtr outer,
+                            PeerLocationFindRequestPtr request,
+                            LocationInfoPtr locationInfo
                             );
 
         AccountPeerLocation(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
@@ -196,20 +217,25 @@ namespace openpeer
         #pragma mark AccountPeerLocation => IAccountPeerLocationForAccount
         #pragma mark
 
-        static AccountPeerLocationPtr create(
-                                             IAccountPeerLocationDelegatePtr delegate,
-                                             AccountPtr outer,
-                                             const LocationInfo &locationInfo,
-                                             const String &localContext,
-                                             const String &localPeerSecret,
-                                             IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
-                                             IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
-                                             );
+        static AccountPeerLocationPtr createFromIncomingPeerLocationFind(
+                                                                         IAccountPeerLocationDelegatePtr delegate,
+                                                                         AccountPtr outer,
+                                                                         PeerLocationFindRequestPtr request,
+                                                                         IDHPrivateKeyPtr localPrivateKey,
+                                                                         IDHPublicKeyPtr localPublicKey
+                                                                         );
+
+        static AccountPeerLocationPtr createFromPeerLocationFindResult(
+                                                                       IAccountPeerLocationDelegatePtr delegate,
+                                                                       AccountPtr outer,
+                                                                       PeerLocationFindRequestPtr request,
+                                                                       LocationInfoPtr locationInfo
+                                                                       );
 
         virtual PUID getID() const {return mID;}
 
         virtual LocationPtr getLocation() const;
-        virtual const LocationInfo &getLocationInfo() const;
+        virtual LocationInfoPtr getLocationInfo() const;
 
         virtual void shutdown();
 
@@ -220,21 +246,8 @@ namespace openpeer
         virtual bool isConnected() const;
         virtual Time getTimeOfLastActivity() const;
 
-        virtual void connectLocation(
-                                     const char *remoteContext,
-                                     const char *remoteICEUsernameFrag,
-                                     const char *remoteICEPassword,
-                                     const CandidateList &candidates,
-                                     bool candidatesFinal,
-                                     IICESocket::ICEControls control,
-                                     IDHPrivateKeyPtr localPrivateKey,
-                                     IDHPublicKeyPtr localPublicKey,
-                                     IDHPublicKeyPtr remotePublicKey = IDHPublicKeyPtr()
-                                     );
-
-        virtual void incomingRespondWhenCandidatesReady(PeerLocationFindRequestPtr request);
-
         virtual bool hasReceivedCandidateInformation() const;
+        virtual bool hasReceivedFinalCandidateInformation() const;
 
         virtual bool send(MessagePtr message) const;
         virtual IMessageMonitorPtr sendRequest(
@@ -245,12 +258,19 @@ namespace openpeer
 
         virtual void sendKeepAlive();
 
-        virtual void handleMessage(
-                                   MessagePtr message,
-                                   bool viaRelay
-                                   );
+        virtual bool handleIncomingChannelMapNotify(
+                                                    ChannelMapNotifyPtr notify,
+                                                    const String &relayAccessToken,
+                                                    const String &relayAccessSecret
+                                                    );
 
-        virtual void notifyIncomingRelayChannel(IFinderRelayChannelPtr channel);
+        virtual ChannelNumber getIncomingRelayChannelNumber() const;
+
+        virtual void notifyIncomingRelayChannel(
+                                                IFinderRelayChannelPtr channel,
+                                                ITransportStreamPtr receiveStream,
+                                                ITransportStreamPtr sendStream
+                                                );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -330,7 +350,22 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerIdentifyResult>,
+        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerLocationFindNotify>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        PeerLocationFindNotifyPtr result
+                                                        );
+
+        virtual void onMessageMonitorTimedOut(
+                                              IMessageMonitorPtr monitor,
+                                              PeerLocationFindNotifyPtr response  // will always be NULL
+                                              );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerIdentifyResult>
         #pragma mark
 
         virtual bool handleMessageMonitorResultReceived(
@@ -346,7 +381,7 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerKeepAliveResult>,
+        #pragma mark AccountPeerLocation => IMessageMonitorResultDelegate<PeerKeepAliveResult>
         #pragma mark
 
         virtual bool handleMessageMonitorResultReceived(
@@ -371,6 +406,9 @@ namespace openpeer
         bool isShuttingDown() const {return IAccount::AccountState_ShuttingDown == mCurrentState;}
         bool isShutdown() const     {return IAccount::AccountState_Shutdown == mCurrentState;}
 
+        bool isCreatedFromIncomingFind() const {return CreatedFromReason_IncomingFind == mCreatedReason;}
+        bool isCreatedFromOutgoingFind() const  {return CreatedFromReason_OutgoingFind == mCreatedReason;}
+
         RecursiveLock &getLock() const;
         IICESocketPtr getSocket() const;
 
@@ -386,15 +424,23 @@ namespace openpeer
         bool stepOutgoingRelayChannel();
         bool stepIncomingRelayChannel();
         bool stepAnyConnectionPresent();
-        bool stepPendingRequests(IICESocketPtr socket);
-        bool stepRespondLastRequest(IICESocketPtr socket);  // do not call as a direct step
+        bool stepSendNotify(IICESocketPtr socket);
         bool stepRUDPSocketSession();
-        bool stepIncomingIdentify();
+        bool stepCheckIncomingIdentify();
         bool stepIdentify();
         bool stepMessaging();
         bool stepMLS();
 
         void setState(AccountStates state);
+
+        void handleMessage(MessagePtr message);
+
+        void connectLocation(
+                             const char *remoteICEUsernameFrag,
+                             const char *remoteICEPassword,
+                             const CandidateList &candidates,
+                             bool candidatesFinal
+                             );
 
       protected:
         //---------------------------------------------------------------------
@@ -411,8 +457,6 @@ namespace openpeer
         AccountPeerLocationPtr mGracefulShutdownReference;
 
         String mLocalContext;
-        String mLocalPeerSecret;
-
         String mRemoteContext;
 
         IDHPrivateKeyPtr mDHLocalPrivateKey;
@@ -420,15 +464,12 @@ namespace openpeer
         IDHPublicKeyPtr mDHRemotePublicKey;
 
         AccountStates mCurrentState;
-        mutable bool mShouldRefindNow;
+        AutoBool mShouldRefindNow;
 
         mutable Time mLastActivity;
 
-        PendingRequestList mPendingRequests;
-        PeerLocationFindRequestPtr mLastRequest;
-
         // information about the location found
-        LocationInfo mLocationInfo;
+        LocationInfoPtr mLocationInfo;
         LocationPtr mLocation;
         PeerPtr mPeer;
 
@@ -447,14 +488,28 @@ namespace openpeer
         ITransportStreamWriterPtr mMLSSendStream;
         AutoBool mMLSDidConnect;
 
+        CreatedFromReasons mCreatedReason;
+
+        PeerLocationFindRequestPtr mFindRequest;
+
+        IMessageMonitorPtr mOutgoingFindRequestMonitor;
+
         IFinderRelayChannelPtr mOutgoingRelayChannel;
-        ITransportStreamReaderPtr mRelayReceiveStream;
-        ITransportStreamWriterPtr mRelaySendStream;
+        ITransportStreamReaderPtr mOutgoingRelayReceiveStream;
+        ITransportStreamWriterPtr mOutgoingRelaySendStream;
+
+        ChannelNumber mIncomingRelayChannelNumber;
 
         IFinderRelayChannelPtr mIncomingRelayChannel;
-        IFinderRelayChannelSubscriptionPtr mRelayChannelSubscription;
+        IFinderRelayChannelSubscriptionPtr mIncomingRelayChannelSubscription;
 
-        bool mIncoming;
+        ITransportStreamReaderPtr mIncomingRelayReceiveStream;
+        ITransportStreamWriterPtr mIncomingRelaySendStream;
+        ITransportStreamReaderSubscriptionPtr mIncomingRelayReceiveStreamSubscription;
+        ITransportStreamWriterSubscriptionPtr mIncomingRelaySendStreamSubscription;
+
+        AutoBool mHadConnection;
+
         Time mIdentifyTime;
 
         IMessageMonitorPtr mIdentifyMonitor;
@@ -496,15 +551,20 @@ namespace openpeer
       {
         static IAccountPeerLocationFactory &singleton();
 
-        virtual AccountPeerLocationPtr create(
-                                              IAccountPeerLocationDelegatePtr delegate,
-                                              AccountPtr outer,
-                                              const LocationInfo &locationInfo,
-                                              const String &localContext,
-                                              const String &localPeerSecret,
-                                              IDHPrivateKeyPtr localPrivateKey = IDHPrivateKeyPtr(),
-                                              IDHPublicKeyPtr localPublicKey = IDHPublicKeyPtr()
-                                              );
+        virtual AccountPeerLocationPtr createFromIncomingPeerLocationFind(
+                                                                          IAccountPeerLocationDelegatePtr delegate,
+                                                                          AccountPtr outer,
+                                                                          PeerLocationFindRequestPtr request,
+                                                                          IDHPrivateKeyPtr localPrivateKey,
+                                                                          IDHPublicKeyPtr localPublicKey
+                                                                          );
+
+        virtual AccountPeerLocationPtr createFromPeerLocationFindResult(
+                                                                        IAccountPeerLocationDelegatePtr delegate,
+                                                                        AccountPtr outer,
+                                                                        PeerLocationFindRequestPtr request,
+                                                                        LocationInfoPtr locationInfo
+                                                                        );
       };
 
     }

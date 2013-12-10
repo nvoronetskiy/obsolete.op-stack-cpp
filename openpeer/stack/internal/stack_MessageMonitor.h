@@ -88,6 +88,10 @@ namespace openpeer
         IMessageMonitorForMessageMonitorManager &forMessageMonitorManager() {return *this;}
         const IMessageMonitorForMessageMonitorManager &forMessageMonitorManager() const {return *this;}
 
+        virtual PUID getID() const = 0;
+
+        virtual String getMonitoredMessageID() = 0;
+
         virtual bool handleMessage(message::MessagePtr message) = 0;
       };
 
@@ -215,6 +219,9 @@ namespace openpeer
         #pragma mark MessageMonitor => IMessageMonitorForMessageMonitorManager
         #pragma mark
 
+        // (duplicate) virtual PUID getID() const;
+        // (duplicate) virtual String getMonitoredMessageID();
+
         virtual bool handleMessage(message::MessagePtr message);
 
         //---------------------------------------------------------------------
@@ -238,7 +245,7 @@ namespace openpeer
         RecursiveLock &getLock() const;
 
       protected:
-        PUID mID;
+        AutoPUID mID;
         mutable RecursiveLock mBogusLock;
         MessageMonitorWeakPtr mThisWeak;
 
