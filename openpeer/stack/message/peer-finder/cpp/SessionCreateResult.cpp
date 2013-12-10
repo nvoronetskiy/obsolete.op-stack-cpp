@@ -60,6 +60,10 @@ namespace openpeer
 
       namespace peer_finder
       {
+        typedef stack::internal::IAccountForMessages UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
         //---------------------------------------------------------------------
         static Log::Params slog(const char *message)
         {
@@ -104,13 +108,13 @@ namespace openpeer
             return SessionCreateResultPtr();
           }
 
-          AccountPtr account = messageLocation->forMessages().getAccount();
+          UseAccountPtr account = messageLocation->forMessages().getAccount();
           if (!account) {
             ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return SessionCreateResultPtr();
           }
 
-          IPeerFilesPtr peerFiles = account->forMessages().getPeerFiles();
+          IPeerFilesPtr peerFiles = account->getPeerFiles();
           if (!peerFiles) {
             ZS_LOG_ERROR(Detail, slog("peer files not found in account"))
             return SessionCreateResultPtr();

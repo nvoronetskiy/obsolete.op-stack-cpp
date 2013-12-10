@@ -41,6 +41,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForLocation;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -51,15 +53,18 @@ namespace openpeer
 
       interaction ILocationForAccount
       {
-        ILocationForAccount &forAccount() {return *this;}
-        const ILocationForAccount &forAccount() const {return *this;}
+        typedef ILocationForAccount ForAccount;
+        typedef shared_ptr<ILocationForAccount> ForAccountPtr;
+        typedef weak_ptr<ILocationForAccount> ForAccountWeakPtr;
 
-        static LocationPtr getForLocal(AccountPtr account);
-        static LocationPtr getForFinder(AccountPtr account);
-        static LocationPtr getForPeer(
-                                      PeerPtr peer,
-                                      const char *locationID
-                                      );
+        static ElementPtr toDebug(ForAccountPtr location);
+
+        static ForAccountPtr getForLocal(AccountPtr account);
+        static ForAccountPtr getForFinder(AccountPtr account);
+        static ForAccountPtr getForPeer(
+                                        PeerPtr peer,
+                                        const char *locationID
+                                        );
 
         virtual PUID getID() const = 0;
 
@@ -200,11 +205,15 @@ namespace openpeer
         friend interaction ILocation;
         friend interaction ILocationForMessages;
 
+        typedef IAccountForLocation UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
         typedef ILocation::LocationTypes LocationTypes;
 
       protected:
         Location(
-                 AccountPtr account,
+                 UseAccountPtr account,
                  LocationTypes type,
                  PeerPtr peer,
                  const char *locationID
@@ -218,6 +227,7 @@ namespace openpeer
         ~Location();
 
         static LocationPtr convert(ILocationPtr location);
+        static LocationPtr convert(ForAccountPtr location);
 
       protected:
         //---------------------------------------------------------------------
@@ -345,7 +355,7 @@ namespace openpeer
         PUID mID;
         LocationWeakPtr mThisWeak;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
         LocationTypes mType;
         PeerPtr mPeer;
         String mLocationID;

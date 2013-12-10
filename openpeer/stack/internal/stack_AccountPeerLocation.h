@@ -61,6 +61,9 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IPeerForAccount;
+      interaction IAccountForAccountPeerLocation;
+
       using services::IICESocket;
 
       using services::IRUDPMessagingPtr;
@@ -173,6 +176,18 @@ namespace openpeer
       {
       public:
         friend interaction IAccountPeerLocationFactory;
+
+        typedef ILocationForAccount UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPeerForAccount UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
+        typedef IAccountForAccountPeerLocation UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
@@ -453,7 +468,7 @@ namespace openpeer
         mutable AccountPeerLocationWeakPtr mThisWeak;
 
         IAccountPeerLocationDelegatePtr mDelegate;
-        AccountWeakPtr mOuter;
+        UseAccountWeakPtr mOuter;
         AccountPeerLocationPtr mGracefulShutdownReference;
 
         String mLocalContext;
@@ -470,8 +485,8 @@ namespace openpeer
 
         // information about the location found
         LocationInfoPtr mLocationInfo;
-        LocationPtr mLocation;
-        PeerPtr mPeer;
+        UseLocationPtr mLocation;
+        UsePeerPtr mPeer;
 
         IICESocketSubscriptionPtr mSocketSubscription;
         IICESocketSessionPtr mSocketSession;   // this will only become valid when a connection is establishing

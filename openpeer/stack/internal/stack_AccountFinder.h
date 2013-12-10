@@ -56,6 +56,9 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction ILocationForAccount;
+      interaction IAccountForAccountFinder;
+
       using message::peer_finder::SessionCreateResult;
       using message::peer_finder::SessionCreateResultPtr;
       using message::peer_finder::SessionKeepAliveResult;
@@ -73,10 +76,11 @@ namespace openpeer
 
       interaction IAccountFinderForAccount
       {
-        typedef IAccount::AccountStates AccountStates;
+        typedef IAccountFinderForAccount ForAccount;
+        typedef shared_ptr<ForAccount> ForAccountPtr;
+        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
 
-        IAccountFinderForAccount &forAccount() {return *this;}
-        const IAccountFinderForAccount &forAccount() const {return *this;}
+        typedef IAccount::AccountStates AccountStates;
 
         static AccountFinderPtr create(
                                        IAccountFinderDelegatePtr delegate,
@@ -131,6 +135,14 @@ namespace openpeer
       public:
         friend interaction IAccountFinderFactory;
 
+        typedef ILocationForAccount UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IAccountForAccountFinder UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
       protected:
@@ -144,8 +156,11 @@ namespace openpeer
 
         void init();
 
+
       public:
         ~AccountFinder();
+
+        static AccountFinderPtr convert(ForAccountPtr object);
 
         static ElementPtr toDebug(AccountFinderPtr finder);
 
@@ -300,9 +315,6 @@ namespace openpeer
 
         void step();
         bool stepConnection();
-//        bool stepSocketSubscription(IRUDPICESocketPtr socket);
-//        bool stepSocketSession(IRUDPICESocketPtr socket);
-//        bool stepMessaging();
         bool stepCreateSession();
 
         void setState(AccountStates state);
@@ -320,15 +332,12 @@ namespace openpeer
 
         AccountFinderWeakPtr mThisWeak;
         IAccountFinderDelegatePtr mDelegate;
-        AccountWeakPtr mOuter;
+        UseAccountWeakPtr mOuter;
 
         AccountFinderPtr mGracefulShutdownReference;
 
         IFinderConnectionPtr mFinderConnection;
 
-//        IRUDPICESocketSubscriptionPtr mSocketSubscription;
-//        IRUDPICESocketSessionPtr mSocketSession;
-//        IRUDPMessagingPtr mMessaging;
         ITransportStreamReaderPtr mReceiveStream;
         ITransportStreamWriterPtr mSendStream;
 

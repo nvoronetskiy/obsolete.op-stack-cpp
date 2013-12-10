@@ -46,6 +46,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForPublicationRepository;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -84,6 +86,10 @@ namespace openpeer
       public:
         friend interaction IPublicationRepositoryFactory;
         friend interaction IPublicationRepository;
+
+        typedef IAccountForPublicationRepository UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
         struct CacheCompare
         {
@@ -173,7 +179,7 @@ namespace openpeer
       protected:
         PublicationRepository(
                               IMessageQueuePtr queue,
-                              AccountPtr account
+                              UseAccountPtr account
                               );
         
         PublicationRepository(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
@@ -317,6 +323,8 @@ namespace openpeer
 
         void notifyLocalSubscriptionShutdown(SubscriptionLocalPtr subscription);
 
+        UseAccountPtr getAccount() {return mAccount.lock();}
+
         // (duplicate) RecursiveLock &getLock() const;
         // (duplicate) IAccountForPublicationRepositoryPtr getOuter() const;
 
@@ -360,7 +368,6 @@ namespace openpeer
         #pragma mark
 
         RecursiveLock &getLock() const {return mLock;}
-        AccountPtr getAccount() const {return mAccount.lock();}
 
         Log::Params log(const char *message) const;
 
@@ -1172,7 +1179,7 @@ namespace openpeer
         mutable RecursiveLock mLock;
         PublicationRepositoryWeakPtr mThisWeak;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
 
         TimerPtr mExpiresTimer;
 

@@ -72,6 +72,10 @@ namespace openpeer
       using zsLib::XML::Generator;
       using zsLib::XML::GeneratorPtr;
 
+      using boost::shared_ptr;
+      using boost::weak_ptr;
+      using boost::dynamic_pointer_cast;
+
       using services::IDHKeyDomain;
       using services::IDHKeyDomainPtr;
       using services::IDHPrivateKey;

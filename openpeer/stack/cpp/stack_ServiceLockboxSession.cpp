@@ -1541,10 +1541,10 @@ namespace openpeer
 
         IKeyGeneratorPtr rsaKeyGenerator;
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (account) {
           // the account might have attempted to create an RSA key on our behalf in the background while attempting to log in, take it over now...
-          rsaKeyGenerator = account->forServiceLockboxSession().takeOverRSAGeyGeneration();
+          rsaKeyGenerator = account->takeOverRSAGeyGeneration();
         }
 
         mPeerFileKeyGenerator = IKeyGenerator::generatePeerFiles(mThisWeak.lock(), IHelper::randomString((32*8)/5+1), signedSaltEl, rsaKeyGenerator);
@@ -1970,9 +1970,9 @@ namespace openpeer
           mLoginIdentity->forLockbox().notifyStateChanged();
         }
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (account) {
-          account->forServiceLockboxSession().notifyServiceLockboxSessionStateChanged();
+          account->notifyServiceLockboxSessionStateChanged();
         }
 
         ServiceLockboxSessionPtr pThis = mThisWeak.lock();

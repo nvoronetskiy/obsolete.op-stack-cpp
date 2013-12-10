@@ -61,22 +61,28 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForAccount::getForLocal(AccountPtr account)
+      ElementPtr ILocationForAccount::toDebug(ForAccountPtr location)
+      {
+        return ILocation::toDebug(Location::convert(location));
+      }
+
+      //-----------------------------------------------------------------------
+      ILocationForAccount::ForAccountPtr ILocationForAccount::getForLocal(AccountPtr account)
       {
         return ILocationFactory::singleton().getForLocal(account);
       }
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForAccount::getForFinder(AccountPtr account)
+      ILocationForAccount::ForAccountPtr ILocationForAccount::getForFinder(AccountPtr account)
       {
         return ILocationFactory::singleton().getForFinder(account);
       }
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForAccount::getForPeer(
-                                                  PeerPtr peer,
-                                                  const char *locationID
-                                                  )
+      ILocationForAccount::ForAccountPtr ILocationForAccount::getForPeer(
+                                                                         PeerPtr peer,
+                                                                         const char *locationID
+                                                                         )
       {
         return ILocationFactory::singleton().getForPeer(peer, locationID);
       }
@@ -231,7 +237,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       Location::Location(
-                         AccountPtr account,
+                         UseAccountPtr account,
                          LocationTypes type,
                          PeerPtr peer,
                          const char *locationID
@@ -258,17 +264,23 @@ namespace openpeer
         mThisWeak.reset();
         ZS_LOG_DEBUG(log("destroyed"))
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
 
         if (account) {
-          account->forLocation().notifyDestroyed(*this);
+          account->notifyDestroyed(*this);
         }
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ILocationPtr location)
       {
-        return boost::dynamic_pointer_cast<Location>(location);
+        return dynamic_pointer_cast<Location>(location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForAccountPtr location)
+      {
+        return dynamic_pointer_cast<Location>(location);
       }
 
       //-----------------------------------------------------------------------
@@ -289,13 +301,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::getForLocal(IAccountPtr inAccount)
       {
+        UseAccountPtr account = Account::convert(inAccount);
+
         ZS_THROW_INVALID_ARGUMENT_IF(!inAccount)
-        AccountPtr account = Account::convert(inAccount);
 
-        String locationID = account->forLocation().getLocationID();
-        PeerPtr peerLocal = account->forLocation().getPeerForLocal();
+        String locationID = account->getLocationID();
+        PeerPtr peerLocal = account->getPeerForLocal();
 
-        LocationPtr existing = account->forLocation().getLocationForLocal();
+        LocationPtr existing = account->getLocationForLocal();
         if (existing) {
           ZS_LOG_DEBUG(existing->log("using existing local location"))
           return existing;
@@ -311,10 +324,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::getForFinder(IAccountPtr inAccount)
       {
-        ZS_THROW_INVALID_ARGUMENT_IF(!inAccount)
-        AccountPtr account = Account::convert(inAccount);
+        UseAccountPtr account = Account::convert(inAccount);
 
-        LocationPtr existing = account->forLocation().getLocationForFinder();
+        ZS_THROW_INVALID_ARGUMENT_IF(!inAccount)
+
+        LocationPtr existing = account->getLocationForFinder();
         if (existing) {
           ZS_LOG_DEBUG(existing->log("using existing finder location"))
           return existing;
@@ -337,13 +351,13 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!locationID)
 
         PeerPtr peer = Peer::convert(inPeer);
-        AccountPtr account = peer->forLocation().getAccount();
+        UseAccountPtr account = peer->forLocation().getAccount();
 
         LocationPtr pThis(new Location(account, LocationType_Peer, peer, locationID));
         pThis->mThisWeak = pThis;
         pThis->init();
 
-        LocationPtr useThis = account->forLocation().findExistingOrUse(pThis);
+        LocationPtr useThis = account->findExistingOrUse(pThis);
         if (useThis != pThis) {
           // do not inform the account of destruction since it was not used
           ZS_LOG_DEBUG(pThis->log("discarding object since one exists already"))
@@ -381,9 +395,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationInfoPtr Location::getLocationInfo() const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) return LocationInfoPtr();
-        return account->forLocation().getLocationInfo(mThisWeak.lock());
+        return account->getLocationInfo(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -401,34 +415,34 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ILocation::LocationConnectionStates Location::getConnectionState() const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("location is disconnected as account is gone"))
           return LocationConnectionState_Disconnected;
         }
-        return account->forLocation().getConnectionState(mThisWeak.lock());
+        return account->getConnectionState(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
       bool Location::sendMessage(message::MessagePtr message) const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
           return false;
         }
-        return account->forLocation().send(mThisWeak.lock(), message);
+        return account->send(mThisWeak.lock(), message);
       }
 
       //-----------------------------------------------------------------------
       void Location::hintNowAvailable()
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
           return;
         }
-        return account->forLocation().hintNowAvailable(mThisWeak.lock());
+        return account->hintNowAvailable(mThisWeak.lock());
       }
 
       //---------------------------------------------------------------------
@@ -454,7 +468,7 @@ namespace openpeer
         LocationPtr sourceLocation = convert(messageSource);
         if (!sourceLocation) return LocationPtr();
 
-        AccountPtr account = sourceLocation->mAccount.lock();
+        UseAccountPtr account = sourceLocation->mAccount.lock();
         if (!account) return LocationPtr();
 
         String peerURI(inPeerURI ? inPeerURI : "");
@@ -464,7 +478,7 @@ namespace openpeer
 
         if ((peerURI.isEmpty()) &&
             (locationID.isEmpty())) {
-          return getForFinder(account);
+          return getForFinder(Account::convert(account));
         }
 
         if ((peerURI.isEmpty()) ||
@@ -473,7 +487,7 @@ namespace openpeer
           return LocationPtr();
         }
 
-        LocationPtr selfLocation = getForLocal(account);
+        LocationPtr selfLocation = getForLocal(Account::convert(account));
         PeerPtr selfPeer = Peer::convert(selfLocation->getPeer());
         String selfPeerURI = selfPeer->forLocation().getPeerURI();
 
@@ -482,7 +496,7 @@ namespace openpeer
           return selfLocation;
         }
 
-        PeerPtr peer = IPeerForLocation::create(account, peerURI);
+        PeerPtr peer = IPeerForLocation::create(Account::convert(account), peerURI);
         if (!peer) {
           ZS_LOG_DEBUG(slog("cannot create location as peer failed to create"))
           return LocationPtr();
@@ -500,7 +514,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       AccountPtr Location::getAccount() const
       {
-        return mAccount.lock();
+        return Account::convert(mAccount.lock());
       }
 
       //-----------------------------------------------------------------------

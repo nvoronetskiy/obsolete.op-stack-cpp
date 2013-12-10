@@ -62,8 +62,22 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerSubscriptionForAccount
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IPeerSubscriptionForAccount::toDebug(ForAccountPtr subscription)
+      {
+        return IPeerSubscription::toDebug(PeerSubscription::convert(subscription));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
       PeerSubscription::PeerSubscription(
-                                         AccountPtr account,
+                                         UseAccountPtr account,
                                          IPeerSubscriptionDelegatePtr delegate
                                          ) :
         mID(zsLib::createPUID()),
@@ -76,7 +90,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PeerSubscription::init()
       {
-        mAccount.lock()->forPeerSubscription().subscribe(mThisWeak.lock());
+        mAccount.lock()->subscribe(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -92,6 +106,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::convert(IPeerSubscriptionPtr subscription)
+      {
+        return boost::dynamic_pointer_cast<PeerSubscription>(subscription);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerSubscriptionPtr PeerSubscription::convert(ForAccountPtr subscription)
       {
         return boost::dynamic_pointer_cast<PeerSubscription>(subscription);
       }
@@ -182,13 +202,13 @@ namespace openpeer
 
         mDelegate.reset();
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_DEBUG(log("cancel called but account gone"))
           return;
         }
 
-        account->forPeerSubscription().notifyDestroyed(*this);
+        account->notifyDestroyed(*this);
       }
 
       //-----------------------------------------------------------------------
@@ -273,7 +293,7 @@ namespace openpeer
           return;
         }
         if (mPeer) {
-          PeerPtr peer = Peer::convert(location->forPeerSubscription().getPeer());
+          PeerPtr peer = location->forPeerSubscription().getPeer();
           if (!peer) {
             ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
@@ -309,9 +329,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &PeerSubscription::getLock() const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) return mBogusLock;
-        return account->forPeerSubscription().getLock();
+        return account->getLock();
       }
 
       //-----------------------------------------------------------------------

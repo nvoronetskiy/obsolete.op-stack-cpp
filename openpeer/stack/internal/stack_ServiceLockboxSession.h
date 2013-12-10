@@ -60,6 +60,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForServiceLockboxSession;
+
       using message::identity_lockbox::LockboxAccessResult;
       using message::identity_lockbox::LockboxAccessResultPtr;
       using message::identity_lockbox::LockboxNamespaceGrantChallengeValidateResult;
@@ -164,6 +166,10 @@ namespace openpeer
       public:
         friend interaction IServiceLockboxSessionFactory;
         friend interaction IServiceLockboxSession;
+
+        typedef IAccountForServiceLockboxSession UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
         typedef IServiceLockboxSession::SessionStates SessionStates;
 
@@ -505,7 +511,7 @@ namespace openpeer
         ServiceLockboxSessionWeakPtr mThisWeak;
 
         IServiceLockboxSessionDelegatePtr mDelegate;
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
 
         SessionStates mCurrentState;
 

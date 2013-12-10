@@ -60,6 +60,11 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction ILocationForAccount;
+      interaction IPeerForAccount;
+      interaction IPeerSubscriptionForAccount;
+      interaction IAccountFinderForAccount;
+
       using message::peer_finder::PeerLocationFindResult;
       using message::peer_finder::PeerLocationFindResultPtr;
 
@@ -76,8 +81,9 @@ namespace openpeer
 
       interaction IAccountForAccountFinder
       {
-        IAccountForAccountFinder &forAccountFinder() {return *this;}
-        const IAccountForAccountFinder &forAccountFinder() const {return *this;}
+        typedef IAccountForAccountFinder ForAccountFinder;
+        typedef shared_ptr<ForAccountFinder> ForAccountFinderPtr;
+        typedef weak_ptr<ForAccountFinder> ForAccountFinderWeakPtr;
 
         virtual RecursiveLock &getLock() const = 0;
 
@@ -101,8 +107,9 @@ namespace openpeer
 
       interaction IAccountForFinderRelayChannel
       {
-        IAccountForFinderRelayChannel &forFinderRelay() {return *this;}
-        const IAccountForFinderRelayChannel &forFinderRelay() const {return *this;}
+        typedef IAccountForFinderRelayChannel ForRelayChannel;
+        typedef shared_ptr<ForRelayChannel> ForRelayChannelPtr;
+        typedef weak_ptr<ForRelayChannel> ForRelayChannelWeakPtr;
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
       };
@@ -117,8 +124,9 @@ namespace openpeer
 
       interaction IAccountForAccountPeerLocation
       {
-        IAccountForAccountPeerLocation &forAccountPeerLocation() {return *this;}
-        const IAccountForAccountPeerLocation &forAccountPeerLocation() const {return *this;}
+        typedef IAccountForAccountPeerLocation ForAccountPeerLocation;
+        typedef shared_ptr<ForAccountPeerLocation> ForAccountPeerLocationPtr;
+        typedef weak_ptr<ForAccountPeerLocation> ForAccountPeerLocationWeakPtr;
 
         virtual RecursiveLock &getLock() const = 0;
 
@@ -139,8 +147,9 @@ namespace openpeer
 
       interaction IAccountForLocation
       {
-        IAccountForLocation &forLocation() {return *this;}
-        const IAccountForLocation &forLocation() const {return *this;}
+        typedef IAccountForLocation ForLocation;
+        typedef shared_ptr<ForLocation> ForLocationPtr;
+        typedef weak_ptr<ForLocation> ForLocationWeakPtr;
 
         virtual LocationPtr findExistingOrUse(LocationPtr location) = 0;
         virtual LocationPtr getLocationForLocal() const = 0;
@@ -172,8 +181,7 @@ namespace openpeer
 
       interaction IAccountForMessageIncoming
       {
-        IAccountForMessageIncoming &forMessageIncoming() {return *this;}
-        const IAccountForMessageIncoming &forMessageIncoming() const {return *this;}
+        virtual RecursiveLock &getLock() const = 0;
 
         virtual bool send(
                           LocationPtr location,
@@ -192,8 +200,9 @@ namespace openpeer
 
       interaction IAccountForMessages
       {
-        IAccountForMessages &forMessages() {return *this;}
-        const IAccountForMessages &forMessages() const {return *this;}
+        typedef IAccountForMessages ForMessages;
+        typedef shared_ptr<ForMessages> ForMessagesPtr;
+        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
       };
@@ -208,8 +217,9 @@ namespace openpeer
 
       interaction IAccountForPeer
       {
-        IAccountForPeer &forPeer() {return *this;}
-        const IAccountForPeer &forPeer() const {return *this;}
+        typedef IAccountForPeer ForPeer;
+        typedef shared_ptr<ForPeer> ForPeerPtr;
+        typedef weak_ptr<ForPeer> ForPeerWeakPtr;
 
         virtual PeerPtr findExistingOrUse(PeerPtr peer) = 0;
         virtual void notifyDestroyed(Peer &peer) = 0;
@@ -233,9 +243,6 @@ namespace openpeer
 
       interaction IAccountForPeerSubscription
       {
-        IAccountForPeerSubscription &forPeerSubscription() {return *this;}
-        const IAccountForPeerSubscription &forPeerSubscription() const {return *this;}
-
         virtual void subscribe(PeerSubscriptionPtr subscription) = 0;
         virtual void notifyDestroyed(PeerSubscription &subscription) = 0;
 
@@ -252,8 +259,9 @@ namespace openpeer
 
       interaction IAccountForPublicationRepository
       {
-        IAccountForPublicationRepository &forRepo() {return *this;}
-        const IAccountForPublicationRepository &forRepo() const {return *this;}
+        typedef IAccountForPublicationRepository ForPublicationRepository;
+        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
+        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
 
         virtual PublicationRepositoryPtr getRepository() const = 0;
 
@@ -270,9 +278,6 @@ namespace openpeer
 
       interaction IAccountForServiceLockboxSession
       {
-        IAccountForServiceLockboxSession &forServiceLockboxSession() {return *this;}
-        const IAccountForServiceLockboxSession &forServiceLockboxSession() const {return *this;}
-
         virtual void notifyServiceLockboxSessionStateChanged() = 0;
 
         virtual IKeyGeneratorPtr takeOverRSAGeyGeneration() = 0;
@@ -313,6 +318,22 @@ namespace openpeer
         friend interaction IAccountFactory;
         friend interaction IAccount;
 
+        typedef ILocationForAccount UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPeerForAccount UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
+        typedef IPeerSubscriptionForAccount UsePeerSubscription;
+        typedef shared_ptr<UsePeerSubscription> UsePeerSubscriptionPtr;
+        typedef weak_ptr<UsePeerSubscription> UsePeerSubscriptionWeakPtr;
+
+        typedef IAccountFinderForAccount UseAccountFinder;
+        typedef shared_ptr<UseAccountFinder> UseAccountFinderPtr;
+        typedef weak_ptr<UseAccountFinder> UseAccountFinderWeakPtr;
+
         typedef IAccount::AccountStates AccountStates;
 
         typedef ULONG ChannelNumber;
@@ -327,12 +348,12 @@ namespace openpeer
         typedef PUID PeerSubscriptionID;
         typedef std::pair<PeerURI, LocationID> PeerLocationIDPair;
 
-        typedef std::map<PeerURI, PeerWeakPtr> PeerMap;
+        typedef std::map<PeerURI, UsePeerWeakPtr> PeerMap;
         typedef std::map<PeerURI, PeerInfoPtr> PeerInfoMap;
 
-        typedef std::map<PeerSubscriptionID, PeerSubscriptionWeakPtr> PeerSubscriptionMap;
+        typedef std::map<PeerSubscriptionID, UsePeerSubscriptionWeakPtr> PeerSubscriptionMap;
 
-        typedef std::map<PeerLocationIDPair, LocationWeakPtr> LocationMap;
+        typedef std::map<PeerLocationIDPair, UseLocationWeakPtr> LocationMap;
 
         typedef std::pair<IDHPrivateKeyPtr, IDHPublicKeyPtr> DHKeyPair;
         typedef std::map<IDHKeyDomain::KeyDomainPrecompiledTypes, DHKeyPair> DHKeyPairTemplates;
@@ -351,7 +372,14 @@ namespace openpeer
       public:
         ~Account();
 
-        static AccountPtr convert(IAccountPtr account);// {return AccountPtr();}
+        static AccountPtr convert(IAccountPtr account);
+        static AccountPtr convert(ForAccountFinderPtr account);
+        static AccountPtr convert(ForRelayChannelPtr account);
+        static AccountPtr convert(ForAccountPeerLocationPtr account);
+        static AccountPtr convert(ForLocationPtr account);
+        static AccountPtr convert(ForMessagesPtr account);
+        static AccountPtr convert(ForPeerPtr account);
+        static AccountPtr convert(ForPublicationRepositoryPtr account);
 
       protected:
         //---------------------------------------------------------------------
@@ -447,6 +475,8 @@ namespace openpeer
         #pragma mark
         #pragma mark Account => IAccountForMessageIncoming
         #pragma mark
+
+        // (duplicate) virtual RecursiveLock &getLock() const;
 
         // (duplicate) virtual bool send(
         //                              LocationPtr location,
@@ -685,12 +715,12 @@ namespace openpeer
         void handleFinderRelatedFailure();
 
         void notifySubscriptions(
-                                 LocationPtr location,
+                                 UseLocationPtr location,
                                  ILocation::LocationConnectionStates state
                                  );
 
         void notifySubscriptions(
-                                 PeerPtr peer,
+                                 UsePeerPtr peer,
                                  IPeer::PeerFindStates state
                                  );
 
@@ -723,7 +753,7 @@ namespace openpeer
           AutoPUID mID;
           bool mFindAtNextPossibleMoment;
 
-          PeerPtr mPeer;
+          UsePeerPtr mPeer;
           PeerLocationMap mLocations;                                 // list of connecting/connected peer locations
 
           IMessageMonitorPtr mPeerFindMonitor;                        // the request monitor when a search is being conducted
@@ -775,9 +805,9 @@ namespace openpeer
         IICESocketPtr mSocket;
 
         String mLocationID;
-        PeerPtr mSelfPeer;
-        LocationPtr mSelfLocation;
-        LocationPtr mFinderLocation;
+        UsePeerPtr mSelfPeer;
+        UseLocationPtr mSelfLocation;
+        UseLocationPtr mFinderLocation;
 
         PublicationRepositoryPtr mRepository;
 
@@ -786,7 +816,7 @@ namespace openpeer
         AutoBool mBlockRSAKeyGeneration;
         IKeyGeneratorPtr mRSAKeyGenerator;
 
-        AccountFinderPtr mFinder;
+        UseAccountFinderPtr mFinder;
 
         Time mFinderRetryAfter;
         Duration mLastRetryFinderAfterDuration;

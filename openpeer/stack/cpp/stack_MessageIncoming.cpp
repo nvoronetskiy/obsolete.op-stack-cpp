@@ -80,7 +80,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageIncoming::MessageIncoming(
-                                       AccountPtr account,
+                                       UseAccountPtr account,
                                        LocationPtr location,
                                        message::MessagePtr message
                                        ) :
@@ -111,13 +111,13 @@ namespace openpeer
           return;
         }
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("automatic failure response cannot be sent as account gone"))
           return;
         }
 
-        account->forMessageIncoming().notifyMessageIncomingResponseNotSent(*this);
+        account->notifyMessageIncomingResponseNotSent(*this);
       }
 
       //-----------------------------------------------------------------------
@@ -163,12 +163,12 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("failed to send incoming message response as account is gone"))
           return false;
         }
-        bool sent = account->forMessageIncoming().send(mLocation, message);
+        bool sent = account->send(mLocation, message);
         mResponseSent = mResponseSent ||  sent;
         return sent;
       }
@@ -211,9 +211,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &MessageIncoming::getLock() const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) return mBogusLock;
-        return account->forPeer().getLock();
+        return account->getLock();
       }
 
       //-----------------------------------------------------------------------

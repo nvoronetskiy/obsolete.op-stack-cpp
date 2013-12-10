@@ -488,13 +488,13 @@ namespace openpeer
 
         ZS_THROW_BAD_STATE_IF(channel != mMLSChannel)
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("account is gone"))
           return;
         }
 
-        IPeerFilesPtr peerFiles = account->forFinderRelay().getPeerFiles();
+        IPeerFilesPtr peerFiles = account->getPeerFiles();
         if (!peerFiles) {
           ZS_LOG_WARNING(Detail, log("peer files are missing"))
           return;
@@ -539,7 +539,7 @@ namespace openpeer
             stack::IHelper::getSignatureInfo(receiveSignedEl, NULL, &peerURI, NULL, NULL, NULL, &fullPublicKey);
 
             if (peerURI.hasData()) {
-              mRemotePeer = IPeer::create(account, peerURI);
+              mRemotePeer = IPeer::create(Account::convert(account), peerURI);
               if (mRemotePeer) {
                 IPeerFilePublicPtr remotePeerFilePublic = mRemotePeer->getPeerFilePublic();
                 if (remotePeerFilePublic) {

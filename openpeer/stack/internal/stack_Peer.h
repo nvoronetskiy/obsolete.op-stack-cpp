@@ -40,6 +40,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForPeer;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -50,13 +52,16 @@ namespace openpeer
 
       interaction IPeerForAccount
       {
-        IPeerForAccount &forAccount() {return *this;}
-        const IPeerForAccount &forAccount() const {return *this;}
+        typedef IPeerForAccount ForAccount;
+        typedef shared_ptr<IPeerForAccount> ForAccountPtr;
+        typedef weak_ptr<IPeerForAccount> ForAccountWeakPtr;
 
-        static PeerPtr create(
-                              AccountPtr account,
-                              IPeerFilePublicPtr peerFilePublic
-                              );
+        static ElementPtr toDebug(ForAccountPtr peer);
+
+        static ForAccountPtr create(
+                                    AccountPtr account,
+                                    IPeerFilePublicPtr peerFilePublic
+                                    );
 
         virtual String getPeerURI() const = 0;
 
@@ -184,9 +189,13 @@ namespace openpeer
         friend interaction IPeer;
         friend interaction IPeerForLocation;
 
+        typedef IAccountForPeer UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
       protected:
         Peer(
-             AccountPtr account,
+             UseAccountPtr account,
              IPeerFilePublicPtr peerFilePublic,
              const String &peerURI
              );
@@ -199,6 +208,7 @@ namespace openpeer
         ~Peer();
 
         static PeerPtr convert(IPeerPtr peer);
+        static PeerPtr convert(ForAccountPtr peer);
 
       protected:
         //---------------------------------------------------------------------
@@ -334,7 +344,7 @@ namespace openpeer
         mutable RecursiveLock mBogusLock;
         PeerWeakPtr mThisWeak;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
 
         IPeerFilePublicPtr mPeerFilePublic;
 

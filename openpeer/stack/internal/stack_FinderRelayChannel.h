@@ -48,6 +48,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForFinderRelayChannel;
+
       using services::IMessageLayerSecurityChannel;
       using services::IMessageLayerSecurityChannelPtr;
 
@@ -91,6 +93,10 @@ namespace openpeer
       public:
         friend interaction IFinderRelayChannelFactory;
         friend interaction IFinderRelayChannel;
+
+        typedef IAccountForFinderRelayChannel UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
         typedef IFinderRelayChannel::SessionStates SessionStates;
 
@@ -257,7 +263,7 @@ namespace openpeer
         AutoWORD mLastError;
         String mLastErrorReason;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
 
         AutoBool mIncoming;
         ConnectInfo mConnectInfo;

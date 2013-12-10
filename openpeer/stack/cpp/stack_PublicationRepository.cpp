@@ -141,7 +141,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepository::PublicationRepository(
                                                    IMessageQueuePtr queue,
-                                                   AccountPtr account
+                                                   UseAccountPtr account
                                                    ) :
         MessageQueueAssociator(queue),
         mAccount(account)
@@ -152,10 +152,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::init()
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         ZS_THROW_BAD_STATE_IF(!account)
 
-        mPeerSubscription = IPeerSubscription::subscribeAll(account, mThisWeak.lock());
+        mPeerSubscription = IPeerSubscription::subscribeAll(Account::convert(account), mThisWeak.lock());
         mExpiresTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_PUBLICATIONREPOSITORY_EXPIRES_TIMER_IN_SECONDS));
 
         ZS_LOG_BASIC(log("init"))
@@ -213,9 +213,9 @@ namespace openpeer
       PublicationRepositoryPtr PublicationRepository::getFromAccount(IAccountPtr inAccount)
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!inAccount)
-        AccountPtr account = Account::convert(inAccount);
+        UseAccountPtr account = Account::convert(inAccount);
 
-        return account->forRepo().getRepository();
+        return account->getRepository();
       }
 
       //-----------------------------------------------------------------------
@@ -229,7 +229,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot publish document as account object is gone"))
           return IPublicationPublisherPtr();
@@ -358,7 +358,7 @@ namespace openpeer
 
         RemoverPtr remover = Remover::create(getAssociatedMessageQueue(), mThisWeak.lock(), delegate, publication);
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           remover->cancel();  // sorry, this could not be completed...
           return remover;
@@ -420,7 +420,7 @@ namespace openpeer
           {
             PeerDeleteRequestPtr request = PeerDeleteRequest::create();
             request->publicationMetaData(publication->forRepo().toPublicationMetaData());
-            request->domain(account->forRepo().getDomain());
+            request->domain(account->getDomain());
 
             ZS_LOG_DEBUG(log("requesting to remove remote finder publication"))
 
@@ -450,7 +450,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("creating subcription") + ZS_PARAM("publication path", publicationPath) + subscribeToLocation->forRepo().toDebug())
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
 
         switch (subscribeToLocation->forRepo().getLocationType()) {
           case ILocation::LocationType_Local: {
@@ -476,14 +476,14 @@ namespace openpeer
               return subscriber;
             }
 
-            LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(account);
+            LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(Account::convert(account));
 
             PublicationMetaDataPtr metaData = IPublicationMetaDataForPublicationRepository::create(0, 0, 0, localLocation, publicationPath, "", IPublicationMetaData::Encoding_JSON, relationships, subscribeToLocation);
 
             PeerSubscriptionOutgoingPtr subscriber = PeerSubscriptionOutgoing::create(getAssociatedMessageQueue(), mThisWeak.lock(), delegate, metaData);
 
             PeerSubscribeRequestPtr request = PeerSubscribeRequest::create();
-            request->domain(account->forRepo().getDomain());
+            request->domain(account->getDomain());
 
             request->publicationMetaData(metaData->forRepo().toPublicationMetaData());
 
@@ -1269,7 +1269,7 @@ namespace openpeer
           }
 
           // find the contacts to publish to...
-          AccountPtr account = mAccount.lock();
+          UseAccountPtr account = mAccount.lock();
           if (!account) {
             ZS_LOG_WARNING(Detail, log("cannot fetch publication as account object is gone"))
             fetcher->cancel();  // sorry, this could not be completed...
@@ -1277,7 +1277,7 @@ namespace openpeer
             return;
           }
           PeerGetRequestPtr request = PeerGetRequest::create();
-          request->domain(account->forRepo().getDomain());
+          request->domain(account->getDomain());
           request->publicationMetaData(metaData->forRepo().toPublicationMetaData());
 
           fetcher->setMonitor(IMessageMonitor::monitorAndSendToLocation(fetcher, metaData->forRepo().getPublishedLocation(), request, Seconds(OPENPEER_STACK_PUBLICATIONREPOSITORY_REQUEST_TIMEOUT_IN_SECONDS)));
@@ -1306,7 +1306,7 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("found the correct publisher to activate and will attempt to activate it now"))
 
-          AccountPtr account = mAccount.lock();
+          UseAccountPtr account = mAccount.lock();
           if (!account) {
             ZS_LOG_WARNING(Detail, log("cannot activate next publisher as account object is gone"))
             mPendingPublishers.erase(iter);
@@ -1320,7 +1320,7 @@ namespace openpeer
           }
 
           PeerPublishRequestPtr request = PeerPublishRequest::create();
-          request->domain(account->forRepo().getDomain());
+          request->domain(account->getDomain());
           request->publication(publication);
           request->publishedFromVersion(publication->forRepo().getBaseVersion());
           request->publishedToVersion(publication->forRepo().getVersion());
@@ -1364,7 +1364,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("incoming peer publish request"))
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_TRACE(log("cannot respond to incoming peer publish request as account object is gone"))
           return;
@@ -1372,7 +1372,7 @@ namespace openpeer
 
         PublicationPtr publication = Publication::convert(request->publication());
         publication->forRepo().setCreatorLocation(Location::convert(messageIncoming->getLocation()));
-        publication->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
+        publication->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(Account::convert(account)));
 
         ZS_LOG_TRACE(log("incoming request to publish document") + publication->forRepo().toDebug())
 
@@ -1420,7 +1420,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!request)
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_TRACE(log("cannot respond to incoming peer get request as account object is gone"))
           return;
@@ -1433,7 +1433,7 @@ namespace openpeer
         PeerSourcePtr sourceMetaData = IPublicationMetaDataForPublicationRepository::createForSource(location);
 
         // the publication must have be published to "this" repository...
-        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
+        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(Account::convert(account)));
 
         ZS_LOG_DEBUG(log("incoming request to get a document published to the local cache") + metaData->forRepo().toDebug())
 
@@ -1472,7 +1472,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!request)
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_TRACE(log("cannot respond to incoming peer delete request as account object is gone"))
           return;
@@ -1482,7 +1482,7 @@ namespace openpeer
         PublicationMetaDataPtr metaData = PublicationMetaData::convert(requestMetaData);
 
         metaData->forRepo().setCreatorLocation(Location::convert(messageIncoming->getLocation()));
-        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
+        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(Account::convert(account)));
 
         ZS_LOG_DEBUG(log("incoming request to delete document") + metaData->forRepo().toDebug())
 
@@ -1523,7 +1523,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!request)
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_TRACE(log("cannot respond to incoming peer subscribe request as account object is gone"))
           return;
@@ -1539,7 +1539,7 @@ namespace openpeer
         }
 
         metaData->forRepo().setCreatorLocation(location);
-        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(account));
+        metaData->forRepo().setPublishedLocation(ILocationForPublicationRepository::getForLocal(Account::convert(account)));
 
         ZS_LOG_DEBUG(log("incoming request to subscribe to document path") + metaData->forRepo().toDebug())
 
@@ -1582,7 +1582,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!request)
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_TRACE(log("cannot respond to incoming peer notify request as account object is gone"))
           return;
@@ -2826,10 +2826,10 @@ namespace openpeer
         mDelegate(IPublicationSubscriptionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
         mCurrentState(IPublicationSubscription::PublicationSubscriptionState_Pending)
       {
-        AccountPtr account = outer->getAccount();
+        UseAccountPtr account = outer->getAccount();
         LocationPtr localLocation;
         if (account) {
-          localLocation = Location::convert(ILocation::getForLocal(account));
+          localLocation = Location::convert(ILocation::getForLocal(Account::convert(account)));
         }
 
         mSubscriptionInfo = IPublicationMetaDataForPublicationRepository::create(0, 0, 0, localLocation, publicationPath, "", IPublicationMetaData::Encoding_JSON, relationships, localLocation);
@@ -2902,13 +2902,13 @@ namespace openpeer
           return;
         }
 
-        AccountPtr account = outer->getAccount();
+        UseAccountPtr account = outer->getAccount();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot hanlde publication update notification as account is gone"))
           return;
         }
 
-        LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(account);
+        LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(Account::convert(account));
 
         if (!outer->canSubscribeToPublisher(
                                             publication->forRepo().getCreatorLocation(),
@@ -2957,13 +2957,13 @@ namespace openpeer
           return;
         }
 
-        AccountPtr account = outer->getAccount();
+        UseAccountPtr account = outer->getAccount();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot hanlde publication gone notification as account is gone"))
           return;
         }
 
-        LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(account);
+        LocationPtr localLocation = ILocationForPublicationRepository::getForLocal(Account::convert(account));
 
         if (!outer->canSubscribeToPublisher(
                                             publication->forRepo().getCreatorLocation(),
@@ -3197,7 +3197,7 @@ namespace openpeer
           return;
         }
 
-        AccountPtr account = outer->getAccount();
+        UseAccountPtr account = outer->getAccount();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot hanlde publication update notification as account is gone"))
           return;
@@ -3245,7 +3245,7 @@ namespace openpeer
         ZS_LOG_TRACE(log("publications will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->forRepo().toDebug())
 
         PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
-        request->domain(account->forRepo().getDomain());
+        request->domain(account->getDomain());
         request->publicationList(list);
         request->peerCache(PeerCache::find(mPeerSource, outer));
 
@@ -3269,7 +3269,7 @@ namespace openpeer
           return;
         }
 
-        AccountPtr account = outer->getAccount();
+        UseAccountPtr account = outer->getAccount();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot hanlde publication gone notification as account is gone"))
           return;
@@ -3319,7 +3319,7 @@ namespace openpeer
         ZS_LOG_TRACE(log("'publications are gone' notification will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->forRepo().toDebug())
 
         PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
-        request->domain(account->forRepo().getDomain());
+        request->domain(account->getDomain());
         request->publicationList(list);
 
         IMessageMonitorPtr monitor = IMessageMonitor::monitorAndSendToLocation(mThisWeak.lock(), mSubscriptionInfo->forRepo().getCreatorLocation(), request, Seconds(OPENPEER_STACK_PUBLICATIONREPOSITORY_REQUEST_TIMEOUT_IN_SECONDS));
@@ -3762,13 +3762,13 @@ namespace openpeer
           PublicationRepositoryPtr outer = mOuter.lock();
 
           if (outer) {
-            AccountPtr account = outer->getAccount();
+            UseAccountPtr account = outer->getAccount();
 
             if (account) {
               ZS_LOG_DEBUG(log("sending request to cancel outgoing subscription"))
 
               PeerSubscribeRequestPtr request = PeerSubscribeRequest::create();
-              request->domain(account->forRepo().getDomain());
+              request->domain(account->getDomain());
 
               IPublicationMetaData::SubscribeToRelationshipsMap empty;
               request->publicationMetaData(mSubscriptionInfo->forRepo().toPublicationMetaData());

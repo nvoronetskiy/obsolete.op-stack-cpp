@@ -69,6 +69,10 @@ namespace openpeer
     using zsLib::XML::NodePtr;
     using zsLib::Log;
 
+    using boost::shared_ptr;
+    using boost::weak_ptr;
+    using boost::dynamic_pointer_cast;
+
     using services::IHTTP;
     using services::IICESocket;
     using services::IRSAPrivateKey;

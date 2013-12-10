@@ -65,6 +65,10 @@ namespace openpeer
 
       namespace peer_finder
       {
+        typedef stack::internal::IAccountForMessages UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
         using zsLib::Seconds;
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
         using namespace stack::internal;
@@ -101,13 +105,13 @@ namespace openpeer
             return PeerLocationFindRequestPtr();
           }
 
-          AccountPtr account = messageLocation->forMessages().getAccount();
+          UseAccountPtr account = messageLocation->forMessages().getAccount();
           if (!account) {
             ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return PeerLocationFindRequestPtr();
           }
 
-          IPeerFilesPtr peerFiles = account->forMessages().getPeerFiles();
+          IPeerFilesPtr peerFiles = account->getPeerFiles();
           if (!peerFiles) {
             ZS_LOG_ERROR(Detail, slog("peer files not found in account"))
             return PeerLocationFindRequestPtr();
@@ -124,7 +128,7 @@ namespace openpeer
             return PeerLocationFindRequestPtr();
           }
 
-          LocationPtr localLocation = ILocationForMessages::getForLocal(account);
+          LocationPtr localLocation = ILocationForMessages::getForLocal(Account::convert(account));
           if (!localLocation) {
             ZS_LOG_ERROR(Detail, slog("could not obtain local location"))
             return PeerLocationFindRequestPtr();
@@ -238,7 +242,7 @@ namespace openpeer
               return PeerLocationFindRequestPtr();
             }
 
-            PeerPtr peer = IPeerForMessages::getFromSignature(account, findProofEl);
+            PeerPtr peer = IPeerForMessages::getFromSignature(Account::convert(account), findProofEl);
             if (!peer) {
               ZS_LOG_WARNING(Detail, slog("peer object failed to create from signature"))
               return PeerLocationFindRequestPtr();

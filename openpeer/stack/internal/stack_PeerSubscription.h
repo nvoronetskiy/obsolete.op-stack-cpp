@@ -41,6 +41,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForPeerSubscription;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -51,11 +53,14 @@ namespace openpeer
 
       interaction IPeerSubscriptionForAccount
       {
+        typedef IPeerSubscriptionForAccount ForAccount;
+        typedef shared_ptr<ForAccount> ForAccountPtr;
+        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+
         typedef IPeer::PeerFindStates PeerFindStates;
         typedef ILocation::LocationConnectionStates LocationConnectionStates;
 
-        IPeerSubscriptionForAccount &forAccount() {return *this;}
-        const IPeerSubscriptionForAccount &forAccount() const {return *this;}
+        static ElementPtr toDebug(ForAccountPtr subscription);
 
         virtual PUID getID() const = 0;
 
@@ -94,9 +99,13 @@ namespace openpeer
         friend interaction IPeerSubscriptionFactory;
         friend interaction IPeerSubscription;
 
+        typedef IAccountForPeerSubscription UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
       protected:
         PeerSubscription(
-                         AccountPtr account,
+                         UseAccountPtr account,
                          IPeerSubscriptionDelegatePtr delegate
                          );
         
@@ -108,6 +117,7 @@ namespace openpeer
         ~PeerSubscription();
 
         static PeerSubscriptionPtr convert(IPeerSubscriptionPtr subscription);
+        static PeerSubscriptionPtr convert(ForAccountPtr subscription);
 
       protected:
         //---------------------------------------------------------------------
@@ -182,7 +192,7 @@ namespace openpeer
         mutable RecursiveLock mBogusLock;
         PeerSubscriptionWeakPtr mThisWeak;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
 
         PeerPtr mPeer;
 

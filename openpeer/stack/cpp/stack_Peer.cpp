@@ -65,10 +65,16 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PeerPtr IPeerForAccount::create(
-                                       AccountPtr account,
-                                       IPeerFilePublicPtr peerFilePublic
-                                       )
+      ElementPtr IPeerForAccount::toDebug(ForAccountPtr peer)
+      {
+        return IPeer::toDebug(Peer::convert(peer));
+      }
+
+      //-----------------------------------------------------------------------
+      IPeerForAccount::ForAccountPtr IPeerForAccount::create(
+                                                             AccountPtr account,
+                                                             IPeerFilePublicPtr peerFilePublic
+                                                             )
       {
         return IPeerFactory::singleton().create(account, peerFilePublic);
       }
@@ -132,7 +138,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       Peer::Peer(
-                 AccountPtr account,
+                 UseAccountPtr account,
                  IPeerFilePublicPtr peerFilePublic,
                  const String &peerURI
                  ) :
@@ -157,9 +163,9 @@ namespace openpeer
         mThisWeak.reset();
         ZS_LOG_DEBUG(log("destroyed"))
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (account) {
-          account->forPeer().notifyDestroyed(*this);
+          account->notifyDestroyed(*this);
         }
       }
 
@@ -169,6 +175,11 @@ namespace openpeer
         return boost::dynamic_pointer_cast<Peer>(peer);
       }
 
+      //-----------------------------------------------------------------------
+      PeerPtr Peer::convert(ForAccountPtr peer)
+      {
+        return boost::dynamic_pointer_cast<Peer>(peer);
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -267,7 +278,7 @@ namespace openpeer
         AutoRecursiveLock lock(pThis->getLock());
 
         // check if it already exists in the account
-        PeerPtr useThis = pThis->mAccount.lock()->forPeer().findExistingOrUse(pThis);
+        PeerPtr useThis = pThis->mAccount.lock()->findExistingOrUse(pThis);
 
         if (!(useThis->mPeerFilePublic)) {
           useThis->mPeerFilePublic = peerFilePublic;
@@ -333,13 +344,13 @@ namespace openpeer
         ElementPtr signature;
         ElementPtr signedElement = IHelper::getSignatureInfo(inSignedElement, &signature);
 
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, log("cannot validate signature aas account object is gone"))
           return false;
         }
 
-        PeerPtr peer = getFromSignature(mAccount.lock(), inSignedElement);
+        PeerPtr peer = getFromSignature(Account::convert(account), inSignedElement);
         if (!peer) {
           ZS_LOG_ERROR(Detail, log("could not create peer for given signature"))
           return false;
@@ -387,25 +398,25 @@ namespace openpeer
       IPeer::PeerFindStates Peer::getFindState() const
       {
         AutoRecursiveLock lock(getLock());
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("get find state account gone"))
           return PeerFindState_Completed;
         }
-        return account->forPeer().getPeerState(getPeerURI());
+        return account->getPeerState(getPeerURI());
       }
 
       //-----------------------------------------------------------------------
       LocationListPtr Peer::getLocationsForPeer(bool includeOnlyConnectedLocations) const
       {
         AutoRecursiveLock lock(getLock());
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("locations are not available as account is gone"))
           LocationListPtr locations(new LocationList);
           return locations;
         }
-        return account->forPeer().getPeerLocations(getPeerURI(), includeOnlyConnectedLocations);
+        return account->getPeerLocations(getPeerURI(), includeOnlyConnectedLocations);
       }
 
       //-----------------------------------------------------------------------
@@ -436,10 +447,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::create(
-                           AccountPtr account,
+                           AccountPtr inAccount,
                            const char *peerURI
                            )
       {
+        UseAccountPtr account = inAccount;
+
         if (!account) return PeerPtr();
         if (!peerURI) return PeerPtr();
 
@@ -448,12 +461,12 @@ namespace openpeer
           return PeerPtr();
         }
 
-        PeerPtr pThis(new Peer(Account::convert(account), IPeerFilePublicPtr(), peerURI));
+        PeerPtr pThis(new Peer(account, IPeerFilePublicPtr(), peerURI));
         pThis->mThisWeak = pThis;
         pThis->init();
 
         // check if it already exists in the account
-        PeerPtr useThis = pThis->mAccount.lock()->forPeer().findExistingOrUse(pThis);
+        PeerPtr useThis = account->findExistingOrUse(pThis);
         if (useThis != pThis) {
           // do not inform account of destruction since it is not used
           ZS_LOG_DEBUG(pThis->log("discarding object since one exists already"))
@@ -465,7 +478,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       AccountPtr Peer::getAccount() const
       {
-        return mAccount.lock();
+        return Account::convert(mAccount.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -493,9 +506,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &Peer::getLock() const
       {
-        AccountPtr account = mAccount.lock();
+        UseAccountPtr account = mAccount.lock();
         if (!account) return mBogusLock;
-        return account->forPeer().getLock();
+        return account->getLock();
       }
 
       //-----------------------------------------------------------------------

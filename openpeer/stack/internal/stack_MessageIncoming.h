@@ -40,6 +40,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IAccountForMessageIncoming;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -82,9 +84,13 @@ namespace openpeer
         friend interaction IMessageIncomingFactory;
         friend interaction IMessageIncoming;
 
+        typedef IAccountForMessageIncoming UseAccount;
+        typedef shared_ptr<UseAccount> UseAccountPtr;
+        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
       protected:
         MessageIncoming(
-                        AccountPtr account,
+                        UseAccountPtr account,
                         LocationPtr location,
                         message::MessagePtr message
                         );
@@ -155,7 +161,7 @@ namespace openpeer
         mutable RecursiveLock mBogusLock;
         MessageIncomingWeakPtr mThisWeak;
 
-        AccountWeakPtr mAccount;
+        UseAccountWeakPtr mAccount;
         LocationPtr mLocation;
         message::MessagePtr mMessage;
 

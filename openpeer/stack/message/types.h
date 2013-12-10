@@ -52,6 +52,10 @@ namespace openpeer
       using zsLib::XML::Attribute;
       using zsLib::XML::AttributePtr;
 
+      using boost::shared_ptr;
+      using boost::weak_ptr;
+      using boost::dynamic_pointer_cast;
+
       using services::IICESocket;
       using services::IRSAPrivateKey;
       using services::IRSAPrivateKeyPtr;

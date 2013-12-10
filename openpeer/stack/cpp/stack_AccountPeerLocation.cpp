@@ -162,7 +162,7 @@ namespace openpeer
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
 
-        mLocalContext(ILocationForAccount::getForLocal(outer)->forAccount().getLocationID()), // must be set to "our" location ID
+        mLocalContext(ILocationForAccount::getForLocal(outer)->getLocationID()), // must be set to "our" location ID
         mRemoteContext(request->context()),                                                   // whatever the remote party claims is the context
 
         mDHLocalPrivateKey(localPrivateKey),
@@ -175,7 +175,7 @@ namespace openpeer
         mLocationInfo(request->locationInfo()),
         mLocation(Location::convert(request->locationInfo()->mLocation)),
 
-        mPeer(mLocation->forAccount().getPeer())
+        mPeer(mLocation->getPeer())
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -203,7 +203,7 @@ namespace openpeer
         mIncomingRelayChannelNumber(0),
 
         mLocalContext(request->context()),                                                        // whatever was told to the remote party
-        mRemoteContext(Location::convert(locationInfo->mLocation)->forAccount().getLocationID()), // expecting the remote party to respond with it's location ID
+        mRemoteContext(UseLocationPtr(Location::convert(locationInfo->mLocation))->getLocationID()), // expecting the remote party to respond with it's location ID
 
         mDHLocalPrivateKey(request->dhPrivateKey()),
         mDHLocalPublicKey(request->dhPublicKey()),
@@ -215,7 +215,7 @@ namespace openpeer
         mLocationInfo(locationInfo),
         mLocation(Location::convert(locationInfo->mLocation)),
 
-        mPeer(mLocation->forAccount().getPeer())
+        mPeer(mLocation->getPeer())
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -295,7 +295,7 @@ namespace openpeer
       LocationPtr AccountPeerLocation::getLocation() const
       {
         AutoRecursiveLock lock(getLock());
-        return mLocation;
+        return Location::convert(mLocation);
       }
 
       //-----------------------------------------------------------------------
@@ -470,14 +470,14 @@ namespace openpeer
           return;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_ERROR(Debug, log("stack account appears to be gone thus cannot keep alive"))
           return;
         }
 
         PeerKeepAliveRequestPtr request = PeerKeepAliveRequest::create();
-        request->domain(outer->forAccountPeerLocation().getDomain());
+        request->domain(outer->getDomain());
 
         mKeepAliveMonitor = sendRequest(IMessageMonitorResultDelegate<PeerKeepAliveResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_PEER_KEEP_ALIVE_REQUEST_TIMEOUT_IN_SECONDS));
       }
@@ -850,7 +850,7 @@ namespace openpeer
           mLastActivity = zsLib::now();
 
           DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
-          MessagePtr message = Message::create(document, mLocation);
+          MessagePtr message = Message::create(document, Location::convert(mLocation));
           
           if (ZS_IS_LOGGING(Detail)) {
             bool viaRelay = (reader == mOutgoingRelayReceiveStream) || (reader == mIncomingRelayReceiveStream);
@@ -902,7 +902,7 @@ namespace openpeer
           return false;
         }
 
-        LocationPtr location = Location::convert(notify->locationInfo()->mLocation);
+        UseLocationPtr location = Location::convert(notify->locationInfo()->mLocation);
         if (!location) {
           ZS_LOG_ERROR(Detail, log("location not properly identified"))
           cancel();
@@ -911,8 +911,8 @@ namespace openpeer
 
         // verify this notification comes from the expecting peer
 
-        if (location->forAccount().getPeerURI() != mPeer->forAccount().getPeerURI()) {
-          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + ILocation::toDebug(location) + IPeer::toDebug(mPeer))
+        if (location->getPeerURI() != mPeer->getPeerURI()) {
+          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + UseLocation::toDebug(location) + UsePeer::toDebug(mPeer))
           cancel();
           return true;
         }
@@ -1015,7 +1015,7 @@ namespace openpeer
         mIdentifyMonitor->cancel();
         mIdentifyMonitor.reset();
 
-        LocationPtr location;
+        UseLocationPtr location;
         if (result->locationInfo()) {
           location = Location::convert(result->locationInfo()->mLocation);
         }
@@ -1026,8 +1026,8 @@ namespace openpeer
           return true;
         }
 
-        if (location->forAccount().getPeerURI() != mPeer->forAccount().getPeerURI()) {
-          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + ILocation::toDebug(location) + IPeer::toDebug(mPeer))
+        if (location->getPeerURI() != mPeer->getPeerURI()) {
+          ZS_LOG_ERROR(Detail, log("peer URL does not match expecting peer URI") + UseLocation::toDebug(location) + UsePeer::toDebug(mPeer))
           cancel();
           return true;
         }
@@ -1111,17 +1111,17 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &AccountPeerLocation::getLock() const
       {
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) return mBogusLock;
-        return outer->forAccountPeerLocation().getLock();
+        return outer->getLock();
       }
 
       //-----------------------------------------------------------------------
       IICESocketPtr AccountPeerLocation::getSocket() const
       {
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) return IICESocketPtr();
-        return outer->forAccountPeerLocation().getSocket();
+        return outer->getSocket();
       }
 
       //-----------------------------------------------------------------------
@@ -1165,10 +1165,10 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
         IHelper::debugAppend(resultEl, "location info", mLocationInfo->toDebug());
-        if (mLocation != mLocationInfo->mLocation) {
-          IHelper::debugAppend(resultEl, "location", ILocation::toDebug(mLocation));
+        if (mLocation != Location::convert(mLocationInfo->mLocation)) {
+          IHelper::debugAppend(resultEl, "location", UseLocation::toDebug(mLocation));
         }
-        IHelper::debugAppend(resultEl, "peer", IPeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, "peer", UsePeer::toDebug(mPeer));
 
         IHelper::debugAppend(resultEl, "ice socket subscription id", mSocketSubscription ? mSocketSubscription->getID() : 0);
         IHelper::debugAppend(resultEl, "ice socket session id", mSocketSession ? mSocketSession->getID() : 0);
@@ -1373,7 +1373,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(debug("step"))
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_ERROR(Debug, log("stack account appears to be gone thus shutting down"))
           cancel();
@@ -1492,7 +1492,7 @@ namespace openpeer
 
         Candidate relayCandidate = relayCandidates.front();
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
         ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
@@ -1506,11 +1506,11 @@ namespace openpeer
 
         String relayAccessToken = relayCandidate.mAccessToken;
         String relayAccessSecretProof = relayCandidate.mAccessSecretProof;
-        String domain = outer->forAccountPeerLocation().getDomain();
+        String domain = outer->getDomain();
 
         mOutgoingRelayChannel = IFinderRelayChannel::connect(
                                                              mThisWeak.lock(),
-                                                             outer,
+                                                             Account::convert(outer),
                                                              receiveStream,
                                                              sendStream,
                                                              relayCandidate.mIPAddress,
@@ -1640,7 +1640,7 @@ namespace openpeer
           return false;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
         if (mMLSChannel) {
@@ -1653,7 +1653,7 @@ namespace openpeer
               break;
             }
             case IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation: {
-              IPeerFilesPtr peerFiles = outer->forAccountPeerLocation().getPeerFiles();
+              IPeerFilesPtr peerFiles = outer->getPeerFiles();
               IPeerFilePrivatePtr peerFilePrivate;
               IPeerFilePublicPtr peerFilePublic;
               if (peerFiles) {
@@ -1663,7 +1663,7 @@ namespace openpeer
               IPeerFilePublicPtr remotePeerFilePublic;
               if (mPeer) {
                 ZS_LOG_TRACE(log("remote public peer file is known"))
-                remotePeerFilePublic = mPeer->forAccount().getPeerFilePublic();
+                remotePeerFilePublic = mPeer->getPeerFilePublic();
               }
 
               if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
@@ -1970,11 +1970,11 @@ namespace openpeer
         ZS_LOG_DEBUG(log("candidates have changed since last reported (thus notify another peer location find)") + ZS_PARAM("candidates version", candidatesVersion) + ZS_PARAM("last send version", mLastCandidateVersionSent))
 
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
-        LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
-        LocationInfoPtr selfLocationInfo = selfLocation->forAccount().getLocationInfo();
+        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        LocationInfoPtr selfLocationInfo = selfLocation->getLocationInfo();
 
         CandidateList remoteCandidates;
         remoteCandidates = mFindRequest->locationInfo()->mCandidates;
@@ -2003,7 +2003,7 @@ namespace openpeer
         notify->icePassword(socket->getPassword());
         notify->final(selfLocationInfo->mCandidatesFinal);
         notify->locationInfo(selfLocationInfo);
-        notify->peerFiles(outer->forAccountPeerLocation().getPeerFiles());
+        notify->peerFiles(outer->getPeerFiles());
 
         mLastCandidateVersionSent = selfLocationInfo->mCandidatesVersion;
 
@@ -2055,25 +2055,25 @@ namespace openpeer
           return true;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
 
         ZS_LOG_DETAIL(log("Peer Location connected, sending identity..."))
 
         // we have connected, perform the identity request since we made the connection outgoing...
         PeerIdentifyRequestPtr request = PeerIdentifyRequest::create();
-        request->domain(outer->forAccountPeerLocation().getDomain());
+        request->domain(outer->getDomain());
 
-        IPeerFilePublicPtr remotePeerFilePublic = mPeer->forAccount().getPeerFilePublic();
+        IPeerFilePublicPtr remotePeerFilePublic = mPeer->getPeerFilePublic();
         if (remotePeerFilePublic) {
           request->findSecret(remotePeerFilePublic->getFindSecret());
         }
 
-        LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
-        LocationInfoPtr selfLocationInfo = selfLocation->forAccount().getLocationInfo();
+        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        LocationInfoPtr selfLocationInfo = selfLocation->getLocationInfo();
         selfLocationInfo->mCandidates.clear();
 
         request->location(selfLocationInfo);
-        request->peerFiles(outer->forAccountPeerLocation().getPeerFiles());
+        request->peerFiles(outer->getPeerFiles());
 
         mIdentifyMonitor = sendRequest(IMessageMonitorResultDelegate<PeerIdentifyResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CONNECTION_MANAGER_PEER_IDENTIFY_EXPIRES_IN_SECONDS));
         return false;
@@ -2104,7 +2104,7 @@ namespace openpeer
       void AccountPeerLocation::handleMessage(MessagePtr message)
       {
         // this is something new/incoming from the remote server...
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("peer message is ignored since account is now gone"))
           return;
@@ -2126,7 +2126,7 @@ namespace openpeer
 
         if (!expectingIdentify) {
           // how can this happen we don't have peer files yet we were not expecting identify?
-          ZS_THROW_BAD_STATE_IF(!((bool)mPeer->forAccount().getPeerFilePublic()))
+          ZS_THROW_BAD_STATE_IF(!((bool)mPeer->getPeerFilePublic()))
         }
 
         if (expectingIdentify) {
@@ -2141,7 +2141,7 @@ namespace openpeer
 
             ZS_LOG_DEBUG(log("handling peer identify message"))
 
-            IPeerFilesPtr peerFiles = outer->forAccountPeerLocation().getPeerFiles();
+            IPeerFilesPtr peerFiles = outer->getPeerFiles();
             if (!peerFiles) {
               ZS_LOG_ERROR(Detail, log("failed to obtain local peer files"))
               goto identify_failure;
@@ -2158,10 +2158,10 @@ namespace openpeer
               goto identify_failure;
             }
 
-            LocationPtr location = Location::convert(mLocationInfo->mLocation);
+            UseLocationPtr location = Location::convert(mLocationInfo->mLocation);
 
-            if (location->forAccount().getPeerURI() != mPeer->forAccount().getPeerURI()) {
-              ZS_LOG_ERROR(Detail, log("peer file does not match expecting peer URI") + ILocation::toDebug(location) + IPeer::toDebug(mPeer))
+            if (location->getPeerURI() != mPeer->getPeerURI()) {
+              ZS_LOG_ERROR(Detail, log("peer file does not match expecting peer URI") + UseLocation::toDebug(location) + UsePeer::toDebug(mPeer))
               goto identify_failure;
             }
 
@@ -2169,9 +2169,9 @@ namespace openpeer
 
             PeerIdentifyResultPtr result = PeerIdentifyResult::create(request);
 
-            LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
+            UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
 
-            LocationInfoPtr info = selfLocation->forAccount().getLocationInfo();
+            LocationInfoPtr info = selfLocation->getLocationInfo();
             info->mCandidates.clear();
 
             result->locationInfo(info);
@@ -2255,13 +2255,14 @@ namespace openpeer
         }
 
         if (!mSocketSession) {
-          mSocketSession = socket->createSessionFromRemoteCandidates(
-                                                                     IICESocketSessionDelegatePtr(),
-                                                                     remoteICEUsernameFrag,
-                                                                     remoteICEPassword,
-                                                                     iceCandidates,
-                                                                     isCreatedFromOutgoingFind() ? IICESocket::ICEControl_Controlling : IICESocket::ICEControl_Controlled
-                                                                     );
+          mSocketSession = IICESocketSession::create(
+                                                     IICESocketSessionDelegatePtr(),
+                                                     socket,
+                                                     remoteICEUsernameFrag,
+                                                     remoteICEPassword,
+                                                     iceCandidates,
+                                                     isCreatedFromOutgoingFind() ? IICESocket::ICEControl_Controlling : IICESocket::ICEControl_Controlled
+                                                     );
 
           if (mSocketSession) {
             ZS_LOG_DEBUG(log("setting keep alive properties for socket session"))

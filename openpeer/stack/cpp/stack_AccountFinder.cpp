@@ -159,6 +159,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      AccountFinderPtr AccountFinder::convert(ForAccountPtr object)
+      {
+        return dynamic_pointer_cast<AccountFinder>(object);
+      }
+
+      //-----------------------------------------------------------------------
       ElementPtr AccountFinder::toDebug(AccountFinderPtr finder)
       {
         if (!finder) return ElementPtr();
@@ -366,7 +372,7 @@ namespace openpeer
           return;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("outer account is gone"))
           return;
@@ -377,7 +383,7 @@ namespace openpeer
 
         IFinderConnection::ChannelNumber channel = 0;
 
-        IFinderRelayChannelPtr relayChannel = connection->accept(IFinderRelayChannelDelegatePtr(), outer, receiveStream, sendStream, &channel);
+        IFinderRelayChannelPtr relayChannel = connection->accept(IFinderRelayChannelDelegatePtr(), Account::convert(outer), receiveStream, sendStream, &channel);
 
         if (relayChannel) {
           ZS_LOG_DEBUG(log("relay channel accepted") + IFinderRelayChannel::toDebug(relayChannel))
@@ -426,7 +432,7 @@ namespace openpeer
           return;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("account is gone thus cannot read message"))
           return;
@@ -440,7 +446,7 @@ namespace openpeer
           }
 
           DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
-          message::MessagePtr message = Message::create(document, ILocationForAccount::getForFinder(outer));
+          message::MessagePtr message = Message::create(document, Location::convert(ILocationForAccount::getForFinder(Account::convert(outer))));
 
           if (ZS_IS_LOGGING(Detail)) {
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -633,14 +639,14 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("sending out keep alive request"))
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("account object is gone"))
           return;
         }
 
         SessionKeepAliveRequestPtr request = SessionKeepAliveRequest::create();
-        request->domain(outer->forAccountFinder().getDomain());
+        request->domain(outer->getDomain());
 
         mSessionKeepAliveMonitor = sendRequest(IMessageMonitorResultDelegate<SessionKeepAliveResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SESSION_KEEP_ALIVE_REQUEST_TIMEOUT_IN_SECONDS));
       }
@@ -656,9 +662,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &AccountFinder::getLock() const
       {
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) return mBogusLock;
-        return outer->forAccountFinder().getLock();
+        return outer->getLock();
       }
 
       //-----------------------------------------------------------------------
@@ -760,7 +766,7 @@ namespace openpeer
           mSessionKeepAliveMonitor.reset();
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
 
         if (mGracefulShutdownReference) {
 
@@ -772,7 +778,7 @@ namespace openpeer
                   (outer)) {
                 ZS_LOG_DEBUG(log("sending delete session request"))
                 SessionDeleteRequestPtr request = SessionDeleteRequest::create();
-                request->domain(outer->forAccountFinder().getDomain());
+                request->domain(outer->getDomain());
 
                 mSessionDeleteMonitor = sendRequest(IMessageMonitorResultDelegate<SessionDeleteResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SESSION_DELETE_REQUEST_TIMEOUT_IN_SECONDS));
               }
@@ -820,7 +826,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(debug("step"))
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("account object is gone thus shutting down"))
           cancel();
@@ -861,10 +867,10 @@ namespace openpeer
           ZS_THROW_BAD_STATE("missing state")
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
-        if (!outer->forAccountFinder().extractNextFinder(mFinder, mFinderIP)) {
+        if (!outer->extractNextFinder(mFinder, mFinderIP)) {
           ZS_LOG_TRACE(log("waiting for account to obtain a finder"))
           return false;
         }
@@ -899,10 +905,10 @@ namespace openpeer
           return true;
         }
 
-        AccountPtr outer = mOuter.lock();
+        UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
-        IPeerFilesPtr peerFiles = outer->forAccountFinder().getPeerFiles();
+        IPeerFilesPtr peerFiles = outer->getPeerFiles();
         if (!peerFiles) {
           ZS_LOG_ERROR(Detail, log("no peer files found for session"))
           cancel();
@@ -910,12 +916,12 @@ namespace openpeer
         }
 
         SessionCreateRequestPtr request = SessionCreateRequest::create();
-        request->domain(outer->forAccountFinder().getDomain());
+        request->domain(outer->getDomain());
 
         request->finderID(mFinder.mID);
 
-        LocationPtr selfLocation = ILocationForAccount::getForLocal(outer);
-        LocationInfoPtr locationInfo = selfLocation->forAccount().getLocationInfo();
+        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        LocationInfoPtr locationInfo = selfLocation->getLocationInfo();
         locationInfo->mCandidates.clear();
         request->locationInfo(locationInfo);
         request->peerFiles(peerFiles);
