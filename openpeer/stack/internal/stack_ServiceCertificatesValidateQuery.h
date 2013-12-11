@@ -43,6 +43,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkForServices;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -59,6 +61,10 @@ namespace openpeer
       public:
         friend interaction IServiceCertificatesValidateQueryFactory;
         friend interaction IServiceCertificatesValidateQuery;
+
+        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
       protected:
         ServiceCertificatesValidateQuery(
@@ -142,7 +148,7 @@ namespace openpeer
         SecureByteBlockPtr mDigest;
         SecureByteBlockPtr mDigestSigned;
 
-        BootstrappedNetworkPtr mBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mBootstrappedNetwork;
       };
 
       //-----------------------------------------------------------------------

@@ -90,11 +90,12 @@ namespace openpeer
 
       interaction IAccountPeerLocationForAccount
       {
+        typedef IAccountPeerLocationForAccount ForAccount;
+        typedef shared_ptr<ForAccount> ForAccountPtr;
+        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+
         typedef IAccount::AccountStates AccountStates;
         typedef IFinderConnection::ChannelNumber ChannelNumber;
-
-        IAccountPeerLocationForAccount &forAccount() {return *this;}
-        const IAccountPeerLocationForAccount &forAccount() const {return *this;}
 
         static AccountPeerLocationPtr createFromIncomingPeerLocationFind(
                                                                          IAccountPeerLocationDelegatePtr delegate,
@@ -223,6 +224,8 @@ namespace openpeer
 
       public:
         ~AccountPeerLocation();
+
+        static AccountPeerLocationPtr convert(ForAccountPtr object);
 
         static ElementPtr toDebug(AccountPeerLocationPtr peerLocation);
 

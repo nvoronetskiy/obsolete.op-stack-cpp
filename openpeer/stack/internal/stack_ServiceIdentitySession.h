@@ -60,6 +60,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkForServices;
+
       using message::identity::IdentityAccessLockboxUpdateResult;
       using message::identity::IdentityAccessLockboxUpdateResultPtr;
       using message::identity::IdentityLookupUpdateResult;
@@ -148,6 +150,10 @@ namespace openpeer
       public:
         friend interaction IServiceIdentitySessionFactory;
         friend interaction IServiceIdentitySession;
+
+        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
         typedef IServiceNamespaceGrantSession::SessionStates GrantSessionStates;
         typedef IServiceIdentitySession::SessionStates SessionStates;
@@ -498,9 +504,9 @@ namespace openpeer
 
         IdentityInfo mIdentityInfo;
 
-        BootstrappedNetworkPtr mProviderBootstrappedNetwork;
-        BootstrappedNetworkPtr mIdentityBootstrappedNetwork;
-        BootstrappedNetworkPtr mActiveBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mProviderBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mIdentityBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mActiveBootstrappedNetwork;
 
         ServiceNamespaceGrantSessionPtr mGrantSession;
         IServiceNamespaceGrantSessionForServicesQueryPtr mGrantQuery;

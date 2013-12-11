@@ -248,6 +248,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      AccountPeerLocationPtr AccountPeerLocation::convert(ForAccountPtr object)
+      {
+        return dynamic_pointer_cast<AccountPeerLocation>(object);
+      }
+
+      //-----------------------------------------------------------------------
       ElementPtr AccountPeerLocation::toDebug(AccountPeerLocationPtr peerLocation)
       {
         if (!peerLocation) return ElementPtr();

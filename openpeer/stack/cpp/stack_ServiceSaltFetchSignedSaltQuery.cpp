@@ -97,7 +97,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceSaltFetchSignedSaltQuery::init()
       {
-        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->forServices().getDomain(), mThisWeak.lock());
+        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -142,7 +142,7 @@ namespace openpeer
       IServiceSaltPtr ServiceSaltFetchSignedSaltQuery::getService() const
       {
         AutoRecursiveLock lock(getLock());
-        return mBootstrappedNetwork;
+        return BootstrappedNetwork::convert(mBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -271,7 +271,7 @@ namespace openpeer
         for (SaltBundleList::iterator iter = mSaltBundles.begin(); iter != mSaltBundles.end(); ++iter)
         {
           ElementPtr bundleEl = (*iter);
-          if (!mBootstrappedNetwork->forServices().isValidSignature(bundleEl)) {
+          if (!mBootstrappedNetwork->isValidSignature(bundleEl)) {
             ZS_LOG_WARNING(Detail, log("bundle returned was improperly signed"))
 
             mLastError = IHTTP::HTTPStatusCode_NoCert;
@@ -344,7 +344,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("ServiceSaltFetchSignedSaltQuery");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mSaltMonitor));
         IHelper::debugAppend(resultEl, "salt bundles", mSaltBundles.size());
         IHelper::debugAppend(resultEl, "total to fetch", mTotalToFetch);
@@ -368,23 +368,23 @@ namespace openpeer
           return;
         }
 
-        if (!mBootstrappedNetwork->forServices().isPreparationComplete()) {
+        if (!mBootstrappedNetwork->isPreparationComplete()) {
           ZS_LOG_DEBUG(log("waiting for bootstrapper to complete"))
           return;
         }
 
-        if (!mBootstrappedNetwork->forServices().wasSuccessful(&mLastError, &mLastErrorReason)) {
+        if (!mBootstrappedNetwork->wasSuccessful(&mLastError, &mLastErrorReason)) {
           ZS_LOG_WARNING(Detail, log("salt fetch failed because of bootstrapper failure"))
           cancel();
           return;
         }
 
         SignedSaltGetRequestPtr request = SignedSaltGetRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
         request->salts(mTotalToFetch);
 
         mSaltMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<SignedSaltGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_SALT_FETCH_SIGNED_SALT_QUERY_GET_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("salt", "signed-salt-get", request);
+        mBootstrappedNetwork->sendServiceMessage("salt", "signed-salt-get", request);
         ZS_LOG_DEBUG(log("sending signed salt get request"))
       }
 

@@ -79,24 +79,7 @@ namespace openpeer
 
       interaction IBootstrappedNetworkForAccount
       {
-        IBootstrappedNetworkForAccount &forAccount() {return *this;}
-        const IBootstrappedNetworkForAccount &forAccount() const {return *this;}
-
         virtual String getDomain() const = 0;
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark IBootstrappedNetworkForAccountFinder
-      #pragma mark
-
-      interaction IBootstrappedNetworkForAccountFinder
-      {
-        IBootstrappedNetworkForAccountFinder &forAccountFinder() {return *this;}
-        const IBootstrappedNetworkForAccountFinder &forAccountFinder() const {return *this;}
       };
 
       //-----------------------------------------------------------------------
@@ -109,8 +92,9 @@ namespace openpeer
 
       interaction IBootstrappedNetworkForServices
       {
-        IBootstrappedNetworkForServices &forServices() {return *this;}
-        const IBootstrappedNetworkForServices &forServices() const {return *this;}
+        typedef IBootstrappedNetworkForServices ForServices;
+        typedef shared_ptr<ForServices> ForServicesPtr;
+        typedef weak_ptr<ForServices> ForServicesWeakPtr;
 
         static BootstrappedNetworkPtr prepare(
                                               const char *domain,
@@ -188,7 +172,6 @@ namespace openpeer
                                   public IServiceLockbox,
                                   public IServiceSalt,
                                   public IBootstrappedNetworkForAccount,
-                                  public IBootstrappedNetworkForAccountFinder,
                                   public IBootstrappedNetworkForServices,
                                   public IBootstrappedNetworkForBootstrappedNetworkManager,
                                   public IWakeDelegate,
@@ -242,6 +225,7 @@ namespace openpeer
         static BootstrappedNetworkPtr convert(IServiceIdentityPtr network);
         static BootstrappedNetworkPtr convert(IServiceLockboxPtr network);
         static BootstrappedNetworkPtr convert(IServiceSaltPtr network);
+        static BootstrappedNetworkPtr convert(ForServicesPtr network);
 
         typedef std::map<IHTTPQueryPtr, message::MessagePtr> PendingRequestMap;
 

@@ -208,14 +208,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IBootstrappedNetworkForAccountFinder
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark IBootstrappedNetworkForServices
       #pragma mark
 
@@ -301,6 +293,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceSaltPtr network)
+      {
+        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+      }
+
+      //-----------------------------------------------------------------------
+      BootstrappedNetworkPtr BootstrappedNetwork::convert(ForServicesPtr network)
       {
         return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
       }

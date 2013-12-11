@@ -64,6 +64,8 @@ namespace openpeer
       interaction IPeerForAccount;
       interaction IPeerSubscriptionForAccount;
       interaction IAccountFinderForAccount;
+      interaction IAccountPeerLocationForAccount;
+      interaction IBootstrappedNetworkForAccount;
 
       using message::peer_finder::PeerLocationFindResult;
       using message::peer_finder::PeerLocationFindResultPtr;
@@ -333,6 +335,14 @@ namespace openpeer
         typedef IAccountFinderForAccount UseAccountFinder;
         typedef shared_ptr<UseAccountFinder> UseAccountFinderPtr;
         typedef weak_ptr<UseAccountFinder> UseAccountFinderWeakPtr;
+
+        typedef IAccountPeerLocationForAccount UseAccountPeerLocation;
+        typedef shared_ptr<UseAccountPeerLocation> UseAccountPeerLocationPtr;
+        typedef weak_ptr<UseAccountPeerLocation> UseAccountPeerLocationWeakPtr;
+
+        typedef IBootstrappedNetworkForAccount UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
         typedef IAccount::AccountStates AccountStates;
 
@@ -738,7 +748,7 @@ namespace openpeer
 
         struct PeerInfo
         {
-          typedef std::map<LocationID, AccountPeerLocationPtr> PeerLocationMap;     // every location needs a session
+          typedef std::map<LocationID, UseAccountPeerLocationPtr> PeerLocationMap;     // every location needs a session
           typedef std::map<LocationID, LocationID> FindingBecauseOfLocationIDMap;   // using this to track the reason why the find needs to be initated or reinitated
 
           static ElementPtr toDebug(PeerInfoPtr peerInfo);

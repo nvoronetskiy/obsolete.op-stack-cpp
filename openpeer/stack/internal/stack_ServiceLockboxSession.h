@@ -61,6 +61,7 @@ namespace openpeer
     namespace internal
     {
       interaction IAccountForServiceLockboxSession;
+      interaction IBootstrappedNetworkForServices;
 
       using message::identity_lockbox::LockboxAccessResult;
       using message::identity_lockbox::LockboxAccessResultPtr;
@@ -170,6 +171,10 @@ namespace openpeer
         typedef IAccountForServiceLockboxSession UseAccount;
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
+        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
         typedef IServiceLockboxSession::SessionStates SessionStates;
 
@@ -518,7 +523,7 @@ namespace openpeer
         AutoWORD mLastError;
         String mLastErrorReason;
 
-        BootstrappedNetworkPtr mBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mBootstrappedNetwork;
         ServiceNamespaceGrantSessionPtr mGrantSession;
         IServiceNamespaceGrantSessionForServicesQueryPtr mGrantQuery;
         IServiceNamespaceGrantSessionForServicesWaitPtr mGrantWait;

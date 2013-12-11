@@ -51,6 +51,7 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkForServices;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -168,6 +169,10 @@ namespace openpeer
       public:
         friend interaction IServiceNamespaceGrantSessionFactory;
         friend interaction IServiceNamespaceGrantSession;
+
+        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
         typedef IServiceNamespaceGrantSession::SessionStates SessionStates;
 
@@ -466,7 +471,7 @@ namespace openpeer
 
         IServiceNamespaceGrantSessionDelegatePtr mDelegate;
 
-        BootstrappedNetworkPtr mBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mBootstrappedNetwork;
 
         IMessageMonitorPtr mNamespaceGrantValidateMonitor;
 

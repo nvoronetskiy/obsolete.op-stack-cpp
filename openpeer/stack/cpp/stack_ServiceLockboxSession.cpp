@@ -159,7 +159,7 @@ namespace openpeer
       {
         calculateAndNotifyIdentityChanges();  // calculate the identities hash for the firs ttime
 
-        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->forServices().getDomain(), mThisWeak.lock());
+        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -236,7 +236,7 @@ namespace openpeer
       IServiceLockboxPtr ServiceLockboxSession::getService() const
       {
         AutoRecursiveLock lock(getLock());
-        return mBootstrappedNetwork;
+        return BootstrappedNetwork::convert(mBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -270,7 +270,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (!mBootstrappedNetwork) return String();
-        return mBootstrappedNetwork->forServices().getDomain();
+        return mBootstrappedNetwork->getDomain();
       }
 
       //-----------------------------------------------------------------------
@@ -281,7 +281,7 @@ namespace openpeer
         if (mLockboxInfo.mAccountID.isEmpty()) return String();
         if (!mBootstrappedNetwork) return String();
 
-        return IHelper::convertToHex(*IHelper::hash(String("stable-id:") + mBootstrappedNetwork->forServices().getDomain() + ":" + mLockboxInfo.mAccountID));
+        return IHelper::convertToHex(*IHelper::hash(String("stable-id:") + mBootstrappedNetwork->getDomain() + ":" + mLockboxInfo.mAccountID));
       }
 
       //-----------------------------------------------------------------------
@@ -490,7 +490,7 @@ namespace openpeer
       BootstrappedNetworkPtr ServiceLockboxSession::getBootstrappedNetwork() const
       {
         AutoRecursiveLock lock(getLock());
-        return mBootstrappedNetwork;
+        return BootstrappedNetwork::convert(mBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -1037,7 +1037,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error code", mLastError);
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
         IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->forServices().getID() : 0);
         IHelper::debugAppend(resultEl, "grant query", mGrantQuery ? mGrantQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait", mGrantWait ? mGrantWait->getID() : 0);
@@ -1122,7 +1122,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceLockboxSession::stepBootstrapper()
       {
-        if (!mBootstrappedNetwork->forServices().isPreparationComplete()) {
+        if (!mBootstrappedNetwork->isPreparationComplete()) {
           setState(SessionState_Pending);
 
           ZS_LOG_TRACE(log("waiting for preparation of lockbox bootstrapper to complete"))
@@ -1132,7 +1132,7 @@ namespace openpeer
         WORD errorCode = 0;
         String reason;
 
-        if (mBootstrappedNetwork->forServices().wasSuccessful(&errorCode, &reason)) {
+        if (mBootstrappedNetwork->wasSuccessful(&errorCode, &reason)) {
           ZS_LOG_TRACE(log("lockbox bootstrapper was successful"))
           return true;
         }
@@ -1235,7 +1235,7 @@ namespace openpeer
         setState(SessionState_Pending);
 
         LockboxAccessRequestPtr request = LockboxAccessRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
 
         if (mLoginIdentity) {
           IdentityInfo identityInfo = mLoginIdentity->forLockbox().getIdentityInfo();
@@ -1247,13 +1247,13 @@ namespace openpeer
           if (!IHelper::isValidDomain(mLockboxInfo.mDomain)) {
             ZS_LOG_DEBUG(log("domain from identity is invalid, reseting to default domain") + ZS_PARAM("domain", mLockboxInfo.mDomain))
 
-            mLockboxInfo.mDomain = mBootstrappedNetwork->forServices().getDomain();
+            mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
 
             // account/keying information must also be incorrect if domain is not valid
             mLockboxInfo.mKey.reset();
           }
 
-          if (mBootstrappedNetwork->forServices().getDomain() != mLockboxInfo.mDomain) {
+          if (mBootstrappedNetwork->getDomain() != mLockboxInfo.mDomain) {
             ZS_LOG_DEBUG(log("default bootstrapper is not to be used for this lockbox as an altenative lockbox must be used thus preparing replacement bootstrapper"))
 
             mBootstrappedNetwork = BootstrappedNetwork::convert(IBootstrappedNetwork::prepare(mLockboxInfo.mDomain, mThisWeak.lock()));
@@ -1283,7 +1283,7 @@ namespace openpeer
           mLockboxInfo.mHash = IHelper::convertToHex(*IHelper::hash(*mLockboxInfo.mKey));
         }
 
-        mLockboxInfo.mDomain = mBootstrappedNetwork->forServices().getDomain();
+        mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
 
         request->grantID(mGrantSession->forServices().getGrantID());
         request->lockboxInfo(mLockboxInfo);
@@ -1293,7 +1293,7 @@ namespace openpeer
         request->namespaceURLs(namespaces);
 
         mLockboxAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("identity-lockbox", "lockbox-access", request);
+        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
 
         return false;
       }
@@ -1360,13 +1360,13 @@ namespace openpeer
         ZS_LOG_DEBUG(log("all namespaces required were correctly granted, notify the lockbox of the newly created access"))
 
         LockboxNamespaceGrantChallengeValidateRequestPtr request = LockboxNamespaceGrantChallengeValidateRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
 
         request->lockboxInfo(mLockboxInfo);
         request->namespaceGrantChallengeBundle(bundleEl);
 
         mLockboxNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("identity-lockbox", "lockbox-namespace-grant-challenge-validate", request);
+        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-namespace-grant-challenge-validate", request);
 
         return false;
       }
@@ -1387,7 +1387,7 @@ namespace openpeer
         setState(SessionState_Pending);
 
         LockboxContentGetRequestPtr request = LockboxContentGetRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
 
         NamespaceInfoMap namespaces;
         getNamespaces(namespaces);
@@ -1396,7 +1396,7 @@ namespace openpeer
         request->namespaceInfos(namespaces);
 
         mLockboxContentGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxContentGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("identity-lockbox", "lockbox-content-get", request);
+        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-content-get", request);
 
         return false;
       }
@@ -1522,7 +1522,7 @@ namespace openpeer
         }
 
         if (!mSaltQuery) {
-          IServiceSaltPtr saltService = IServiceSalt::createServiceSaltFrom(mBootstrappedNetwork);
+          IServiceSaltPtr saltService = IServiceSalt::createServiceSaltFrom(BootstrappedNetwork::convert(mBootstrappedNetwork));
           mSaltQuery = IServiceSaltFetchSignedSaltQuery::fetchSignedSalt(mThisWeak.lock(), saltService);
 
           ZS_LOG_DEBUG(log("waiting for signed salt query to complete"))
@@ -1572,12 +1572,12 @@ namespace openpeer
         ZS_LOG_DEBUG(log("requestion information about the peer services available"))
 
         PeerServicesGetRequestPtr request = PeerServicesGetRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
 
         request->lockboxInfo(mLockboxInfo);
 
         mPeerServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("peer", "peer-services-get", request);
+        mBootstrappedNetwork->sendServiceMessage("peer", "peer-services-get", request);
         return false;
       }
 
@@ -1690,7 +1690,7 @@ namespace openpeer
           String id;
           IServiceIdentity::splitURI(info.mURI, domain, id);
 
-          BootstrappedNetworkPtr network = mBootstrappedNetwork;
+          UseBootstrappedNetworkPtr network = mBootstrappedNetwork;
           if (domain != info.mProvider) {
             // not using the lockbox provider, instead using the provider specified
             network = BootstrappedNetwork::convert(IBootstrappedNetwork::prepare(info.mProvider));
@@ -1702,7 +1702,7 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("reloading identity") + ZS_PARAM("identity uri", info.mURI) + ZS_PARAM("provider", info.mProvider) + ZS_PARAM("relogin key", reloginKey))
 
-          ServiceIdentitySessionPtr identitySession = IServiceIdentitySessionForServiceLockbox::reload(network, mGrantSession, mThisWeak.lock(), info.mURI, reloginKey);
+          ServiceIdentitySessionPtr identitySession = IServiceIdentitySessionForServiceLockbox::reload(BootstrappedNetwork::convert(network), mGrantSession, mThisWeak.lock(), info.mURI, reloginKey);
           mAssociatedIdentities[identitySession->forLockbox().getID()] = identitySession;
         }
 
@@ -1907,13 +1907,13 @@ namespace openpeer
             ZS_LOG_DEBUG(log("sending update identities request"))
 
             LockboxIdentitiesUpdateRequestPtr request = LockboxIdentitiesUpdateRequest::create();
-            request->domain(mBootstrappedNetwork->forServices().getDomain());
+            request->domain(mBootstrappedNetwork->getDomain());
             request->lockboxInfo(mLockboxInfo);
             request->identitiesToUpdate(updateInfos);
             request->identitiesToRemove(removeInfos);
 
             mLockboxIdentitiesUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxIdentitiesUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-            mBootstrappedNetwork->forServices().sendServiceMessage("identity-lockbox", "lockbox-identities-update", request);
+            mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-identities-update", request);
 
             // NOTE: It's entirely possible the associate request can fail. Unfortunately, there is very little that can be done upon failure. The user will have to take some responsibility to keep their identities associated.
           }
@@ -1939,13 +1939,13 @@ namespace openpeer
         ZS_LOG_DEBUG(log("sending content set request"))
 
         LockboxContentSetRequestPtr request = LockboxContentSetRequest::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
         request->lockboxInfo(mLockboxInfo);
 
         request->namespaceURLNameValues(mUpdatedContent);
 
         mLockboxContentSetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxContentSetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->forServices().sendServiceMessage("identity-lockbox", "lockbox-content-set", request);
+        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-content-set", request);
 
         mUpdatedContent.clear();  // forget this content ever changed so newly changed content will update
 

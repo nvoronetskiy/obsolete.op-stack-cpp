@@ -337,10 +337,10 @@ namespace openpeer
       void ServiceIdentitySession::init()
       {
         if (mIdentityBootstrappedNetwork) {
-          IBootstrappedNetworkForServices::prepare(mIdentityBootstrappedNetwork->forServices().getDomain(), mThisWeak.lock());
+          IBootstrappedNetworkForServices::prepare(mIdentityBootstrappedNetwork->getDomain(), mThisWeak.lock());
         }
         if (mProviderBootstrappedNetwork) {
-          IBootstrappedNetworkForServices::prepare(mProviderBootstrappedNetwork->forServices().getDomain(), mThisWeak.lock());
+          IBootstrappedNetworkForServices::prepare(mProviderBootstrappedNetwork->getDomain(), mThisWeak.lock());
         }
 
         // one or the other must be valid or a login is not possible
@@ -482,9 +482,9 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (mIdentityBootstrappedNetwork) {
-          return mIdentityBootstrappedNetwork;
+          return BootstrappedNetwork::convert(mIdentityBootstrappedNetwork);
         }
-        return mProviderBootstrappedNetwork;
+        return BootstrappedNetwork::convert(mProviderBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -583,9 +583,9 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (mActiveBootstrappedNetwork) {
-          return mActiveBootstrappedNetwork->forServices().getDomain();
+          return mActiveBootstrappedNetwork->getDomain();
         }
-        return mProviderBootstrappedNetwork->forServices().getDomain();
+        return mProviderBootstrappedNetwork->getDomain();
       }
 
       //-----------------------------------------------------------------------
@@ -606,7 +606,7 @@ namespace openpeer
           return String();
         }
 
-        String result = mActiveBootstrappedNetwork->forServices().getServiceURI("identity", "identity-access-inner-frame");
+        String result = mActiveBootstrappedNetwork->getServiceURI("identity", "identity-access-inner-frame");
 
         ZS_LOG_TRACE(log("obtained inner browser window frame url") + ZS_PARAM("inner frame url", result))
         return result;
@@ -1621,8 +1621,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
         IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
         IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "provider", IBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
-        IHelper::debugAppend(resultEl, "identity", IBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "provider", IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mProviderBootstrappedNetwork)));
+        IHelper::debugAppend(resultEl, "identity", IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mIdentityBootstrappedNetwork)));
         IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
         IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->forServices().getID() : 0);
         IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
@@ -1724,7 +1724,7 @@ namespace openpeer
         setState(SessionState_Pending);
 
         if (mIdentityBootstrappedNetwork) {
-          if (!mIdentityBootstrappedNetwork->forServices().isPreparationComplete()) {
+          if (!mIdentityBootstrappedNetwork->isPreparationComplete()) {
             ZS_LOG_TRACE(log("waiting for preparation of identity bootstrapper to complete"))
             return false;
           }
@@ -1732,7 +1732,7 @@ namespace openpeer
           WORD errorCode = 0;
           String reason;
 
-          if (mIdentityBootstrappedNetwork->forServices().wasSuccessful(&errorCode, &reason)) {
+          if (mIdentityBootstrappedNetwork->wasSuccessful(&errorCode, &reason)) {
             ZS_LOG_DEBUG(log("identity bootstrapper was successful thus using that as the active identity service"))
             mActiveBootstrappedNetwork = mIdentityBootstrappedNetwork;
             return true;
@@ -1754,7 +1754,7 @@ namespace openpeer
           return false;
         }
 
-        if (!mProviderBootstrappedNetwork->forServices().isPreparationComplete()) {
+        if (!mProviderBootstrappedNetwork->isPreparationComplete()) {
           ZS_LOG_TRACE(log("waiting for preparation of provider bootstrapper to complete"))
           return false;
         }
@@ -1762,7 +1762,7 @@ namespace openpeer
         WORD errorCode = 0;
         String reason;
 
-        if (mProviderBootstrappedNetwork->forServices().wasSuccessful(&errorCode, &reason)) {
+        if (mProviderBootstrappedNetwork->wasSuccessful(&errorCode, &reason)) {
           ZS_LOG_DEBUG(log("provider bootstrapper was successful thus using that as the active identity service"))
           mActiveBootstrappedNetwork = mProviderBootstrappedNetwork;
           return true;
@@ -1858,10 +1858,10 @@ namespace openpeer
         setState(SessionState_Pending);
 
         // make sure the provider domain is set to the active bootstrapper for the identity
-        mIdentityInfo.mProvider = mActiveBootstrappedNetwork->forServices().getDomain();
+        mIdentityInfo.mProvider = mActiveBootstrappedNetwork->getDomain();
 
         IdentityAccessStartNotifyPtr request = IdentityAccessStartNotify::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
         request->identityInfo(mIdentityInfo);
 
         request->browserVisibility(IdentityAccessStartNotify::BrowserVisibility_VisibleOnDemand);
@@ -1939,14 +1939,14 @@ namespace openpeer
           return false;
         }
 
-        if (!mActiveBootstrappedNetwork->forServices().supportsRolodex()) {
-          ZS_LOG_WARNING(Detail, log("rolodex service not supported on this domain") + ZS_PARAM("domain", mActiveBootstrappedNetwork->forServices().getDomain()))
+        if (!mActiveBootstrappedNetwork->supportsRolodex()) {
+          ZS_LOG_WARNING(Detail, log("rolodex service not supported on this domain") + ZS_PARAM("domain", mActiveBootstrappedNetwork->getDomain()))
           get(mRolodexNotSupportedForIdentity) = true;
           return true;
         }
 
         IdentityAccessRolodexCredentialsGetRequestPtr request = IdentityAccessRolodexCredentialsGetRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
         request->identityInfo(mIdentityInfo);
 
         ZS_LOG_DEBUG(log("fetching rolodex credentials"))
@@ -1975,10 +1975,10 @@ namespace openpeer
           return true;
         }
 
-        ZS_THROW_BAD_STATE_IF(!mActiveBootstrappedNetwork->forServices().supportsRolodex())
+        ZS_THROW_BAD_STATE_IF(!mActiveBootstrappedNetwork->supportsRolodex())
 
         RolodexAccessRequestPtr request = RolodexAccessRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
         request->rolodexInfo(mRolodexInfo);
         request->identityInfo(mIdentityInfo);
         request->grantID(mGrantSession->forServices().getGrantID());
@@ -1987,7 +1987,7 @@ namespace openpeer
 
         mRolodexAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
 
-        mActiveBootstrappedNetwork->forServices().sendServiceMessage("rolodex", "rolodex-access", request);
+        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-access", request);
         return true;
       }
 
@@ -2031,7 +2031,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("performing identity lookup"))
 
         IdentityLookupRequestPtr request = IdentityLookupRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
 
         IdentityLookupRequest::Provider provider;
 
@@ -2054,7 +2054,7 @@ namespace openpeer
         request->providers(providers);
 
         mIdentityLookupMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->forServices().sendServiceMessage("identity-lookup", "identity-lookup", request);
+        mActiveBootstrappedNetwork->sendServiceMessage("identity-lookup", "identity-lookup", request);
 
         setState(SessionState_Pending);
         return true;
@@ -2133,7 +2133,7 @@ namespace openpeer
           setState(SessionState_Pending);
 
           IdentityAccessLockboxUpdateRequestPtr request = IdentityAccessLockboxUpdateRequest::create();
-          request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+          request->domain(mActiveBootstrappedNetwork->getDomain());
           request->identityInfo(mIdentityInfo);
 
           ZS_LOG_DEBUG(log("clearing lockbox information (but not preventing other requests from continuing)"))
@@ -2169,7 +2169,7 @@ namespace openpeer
         mLockboxInfo.mergeFrom(lockboxInfo, true);
 
         IdentityAccessLockboxUpdateRequestPtr request = IdentityAccessLockboxUpdateRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
         request->identityInfo(mIdentityInfo);
         request->lockboxInfo(lockboxInfo);
 
@@ -2286,13 +2286,13 @@ namespace openpeer
         ZS_LOG_DEBUG(log("all namespaces required were correctly granted, notify the rolodex of the newly created access"))
 
         RolodexNamespaceGrantChallengeValidateRequestPtr request = RolodexNamespaceGrantChallengeValidateRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
 
         request->rolodexInfo(mRolodexInfo);
         request->namespaceGrantChallengeBundle(bundleEl);
 
         mRolodexNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->forServices().sendServiceMessage("rolodex", "rolodex-namespace-grant-challenge-validate", request);
+        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-namespace-grant-challenge-validate", request);
         
         return true;
       }
@@ -2369,12 +2369,12 @@ namespace openpeer
           }
 
           IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
-          request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+          request->domain(mActiveBootstrappedNetwork->getDomain());
           request->lockboxInfo(mLockboxInfo);
           request->identityInfo(mIdentityInfo);
 
           mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-          mActiveBootstrappedNetwork->forServices().sendServiceMessage("identity", "identity-lookup-update", request);
+          mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
 
           return false;
         }
@@ -2411,13 +2411,13 @@ namespace openpeer
         mLockboxInfo.mergeFrom(lockboxInfo, true);
 
         IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
         request->peerFiles(peerFiles);
         request->lockboxInfo(mLockboxInfo);
         request->identityInfo(mIdentityInfo);
 
         mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->forServices().sendServiceMessage("identity", "identity-lookup-update", request);
+        mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
 
         return false;
       }
@@ -2477,7 +2477,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("attempting to download contacts from rolodex"))
 
         RolodexContactsGetRequestPtr request = RolodexContactsGetRequest::create();
-        request->domain(mActiveBootstrappedNetwork->forServices().getDomain());
+        request->domain(mActiveBootstrappedNetwork->getDomain());
 
         RolodexInfo rolodexInfo(mRolodexInfo);
         rolodexInfo.mRefreshFlag = forceRefresh;
@@ -2485,7 +2485,7 @@ namespace openpeer
         request->rolodexInfo(mRolodexInfo);
 
         mRolodexContactsGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexContactsGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->forServices().sendServiceMessage("rolodex", "rolodex-contacts-get", request);
+        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-contacts-get", request);
 
         return true;
       }

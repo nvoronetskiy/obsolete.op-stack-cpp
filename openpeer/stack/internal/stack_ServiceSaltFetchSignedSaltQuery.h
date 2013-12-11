@@ -46,6 +46,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkForServices;
+
       using message::peer_salt::SignedSaltGetResult;
       using message::peer_salt::SignedSaltGetResultPtr;
 
@@ -66,6 +68,10 @@ namespace openpeer
       public:
         friend interaction IServiceSaltFetchSignedSaltQueryFactory;
         friend interaction IServiceSaltFetchSignedSaltQuery;
+
+        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
         typedef message::peer_salt::SaltBundleList SaltBundleList;
 
@@ -165,7 +171,7 @@ namespace openpeer
 
         IServiceSaltFetchSignedSaltQueryDelegatePtr mDelegate;
 
-        BootstrappedNetworkPtr mBootstrappedNetwork;
+        UseBootstrappedNetworkPtr mBootstrappedNetwork;
 
         IMessageMonitorPtr mSaltMonitor;
 

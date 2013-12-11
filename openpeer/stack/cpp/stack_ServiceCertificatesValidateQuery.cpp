@@ -181,7 +181,7 @@ namespace openpeer
       IServiceCertificatesPtr ServiceCertificatesValidateQuery::getService() const
       {
         AutoRecursiveLock lock(getLock());
-        return mBootstrappedNetwork;
+        return BootstrappedNetwork::convert(mBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -204,7 +204,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         if (!mBootstrappedNetwork) return true;
 
-        return mBootstrappedNetwork->forServices().isPreparationComplete();
+        return mBootstrappedNetwork->isPreparationComplete();
       }
 
       //-----------------------------------------------------------------------
@@ -216,17 +216,17 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
         if (!mBootstrappedNetwork) return false;
 
-        if (!mBootstrappedNetwork->forServices().isPreparationComplete()) {
+        if (!mBootstrappedNetwork->isPreparationComplete()) {
           ZS_LOG_WARNING(Detail, log("certificate is not valid because of bootstrapper isn't ready"))
           return false;
         }
 
-        if (!mBootstrappedNetwork->forServices().wasSuccessful(outErrorCode, outErrorReason)) {
+        if (!mBootstrappedNetwork->wasSuccessful(outErrorCode, outErrorReason)) {
           ZS_LOG_WARNING(Detail, log("certificate is not valid because of bootstrapper failure"))
           return false;
         }
 
-        return mBootstrappedNetwork->forServices().isValidSignature(mCertificateID, mDomain, mService, mDigest, mDigestSigned);
+        return mBootstrappedNetwork->isValidSignature(mCertificateID, mDomain, mService, mDigest, mDigestSigned);
       }
 
       //-----------------------------------------------------------------------
@@ -303,7 +303,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
         IHelper::debugAppend(resultEl, "digest", mDigest ? IHelper::convertToBase64(*mDigest) : String());
         IHelper::debugAppend(resultEl, "digest signed", mDigestSigned ? IHelper::convertToBase64(*mDigestSigned) : String());
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
 
         return resultEl;
       }

@@ -189,7 +189,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (!mBootstrappedNetwork) return String();
-        return mBootstrappedNetwork->forServices().getServiceURI("namespace-grant", "namespace-grant-inner-frame");
+        return mBootstrappedNetwork->getServiceURI("namespace-grant", "namespace-grant-inner-frame");
       }
 
       //-----------------------------------------------------------------------
@@ -637,7 +637,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
         IHelper::debugAppend(resultEl, "namespace grant validate", (bool)mNamespaceGrantValidateMonitor);
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
         IHelper::debugAppend(resultEl, "error code", mLastError);
@@ -812,7 +812,7 @@ namespace openpeer
           return true;
         }
 
-        if (!mBootstrappedNetwork->forServices().isPreparationComplete()) {
+        if (!mBootstrappedNetwork->isPreparationComplete()) {
           setState(SessionState_Pending);
 
           ZS_LOG_DEBUG(log("waiting for preparation of lockbox bootstrapper to complete"))
@@ -822,7 +822,7 @@ namespace openpeer
         WORD errorCode = 0;
         String reason;
 
-        if (mBootstrappedNetwork->forServices().wasSuccessful(&errorCode, &reason)) {
+        if (mBootstrappedNetwork->wasSuccessful(&errorCode, &reason)) {
           ZS_LOG_DEBUG(log("lockbox bootstrapper was successful"))
           return true;
         }
@@ -892,7 +892,7 @@ namespace openpeer
         setState(SessionState_Pending);
 
         NamespaceGrantStartNotifyPtr request = NamespaceGrantStartNotify::create();
-        request->domain(mBootstrappedNetwork->forServices().getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
 
         NamespaceGrantChallengeInfoAndNamespacesList process;
 
