@@ -48,6 +48,8 @@ namespace openpeer
     {
       using services::IHelper;
 
+      typedef IBootstrappedNetworkManagerForBootstrappedNetwork::ForBootstrappedNetworkPtr ForBootstrappedNetworkPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -57,7 +59,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkManagerPtr IBootstrappedNetworkManagerForBootstrappedNetwork::singleton()
+      ForBootstrappedNetworkPtr IBootstrappedNetworkManagerForBootstrappedNetwork::singleton()
       {
         return BootstrappedNetworkManager::singleton();
       }
@@ -114,31 +116,35 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkPtr BootstrappedNetworkManager::findExistingOrUse(BootstrappedNetworkPtr network)
+      BootstrappedNetworkPtr BootstrappedNetworkManager::findExistingOrUse(BootstrappedNetworkPtr inNetwork)
       {
+        UseBootstrappedNetworkPtr network = inNetwork;
+
         AutoRecursiveLock lock(getLock());
 
-        String domain = network->forBootstrappedNetworkManager().getDomain();
+        String domain = network->getDomain();
 
         BootstrappedNetworkMap::iterator found = mBootstrappedNetworks.find(domain);
         if (found != mBootstrappedNetworks.end()) {
           ZS_LOG_DEBUG(log("using existing bootstrapped network object") + ZS_PARAM("domain", domain))
-          BootstrappedNetworkPtr &result = (*found).second;
-          return result;
+          UseBootstrappedNetworkPtr &result = (*found).second;
+          return BootstrappedNetwork::convert(result);
         }
 
         ZS_LOG_DEBUG(log("using new bootstrapped network obejct") + ZS_PARAM("domain", domain))
 
         mBootstrappedNetworks[domain] = network;
-        return network;
+        return BootstrappedNetwork::convert(network);
       }
 
       //-----------------------------------------------------------------------
       void BootstrappedNetworkManager::registerDelegate(
-                                                        BootstrappedNetworkPtr network,
+                                                        BootstrappedNetworkPtr inNetwork,
                                                         IBootstrappedNetworkDelegatePtr inDelegate
                                                         )
       {
+        UseBootstrappedNetworkPtr network = inNetwork;
+
         ZS_THROW_INVALID_ARGUMENT_IF(!network)
         ZS_THROW_INVALID_ARGUMENT_IF(!inDelegate)
 
@@ -146,11 +152,11 @@ namespace openpeer
 
         IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(IStackForInternal::queueDelegate(), inDelegate);
 
-        if (network->forBootstrappedNetworkManager().isPreparationComplete()) {
+        if (network->isPreparationComplete()) {
           ZS_LOG_DEBUG(log("bootstrapper has already completed"))
 
           try {
-            delegate->onBootstrappedNetworkPreparationCompleted(network);
+            delegate->onBootstrappedNetworkPreparationCompleted(BootstrappedNetwork::convert(network));
           } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
             ZS_LOG_DEBUG(log("delegate gone"))
           }
@@ -161,22 +167,24 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void BootstrappedNetworkManager::notifyComplete(BootstrappedNetworkPtr network)
+      void BootstrappedNetworkManager::notifyComplete(BootstrappedNetworkPtr inNetwork)
       {
+        UseBootstrappedNetworkPtr network = inNetwork;
+
         AutoRecursiveLock lock(getLock());
         for (PendingDelegateList::iterator iter = mPendingDelegates.begin(); iter != mPendingDelegates.end(); )
         {
           PendingDelegateList::iterator current = iter;
           ++iter;
 
-          BootstrappedNetworkPtr &pendingNetwork = (*current).first;
+          UseBootstrappedNetworkPtr &pendingNetwork = (*current).first;
 
-          if (network->forBootstrappedNetworkManager().getID() == pendingNetwork->forBootstrappedNetworkManager().getID()) {
+          if (network->getID() == pendingNetwork->getID()) {
             // this pending network is now complete...
             IBootstrappedNetworkDelegatePtr delegate = (*current).second;
 
             try {
-              delegate->onBootstrappedNetworkPreparationCompleted(network);
+              delegate->onBootstrappedNetworkPreparationCompleted(BootstrappedNetwork::convert(network));
             } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
               ZS_LOG_DEBUG(log("delegate gone"))
             }

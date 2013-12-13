@@ -165,8 +165,8 @@ namespace openpeer
         ServiceIdentitySession(
                                IMessageQueuePtr queue,
                                IServiceIdentitySessionDelegatePtr delegate,
-                               BootstrappedNetworkPtr providerNetwork,
-                               BootstrappedNetworkPtr identityNetwork,
+                               UseBootstrappedNetworkPtr providerNetwork,
+                               UseBootstrappedNetworkPtr identityNetwork,
                                ServiceNamespaceGrantSessionPtr grantSession,
                                ServiceLockboxSessionPtr existingLockbox,
                                const char *outerFrameURLUponReload

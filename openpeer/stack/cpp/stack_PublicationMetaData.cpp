@@ -55,6 +55,8 @@ namespace openpeer
       using zsLib::Stringize;
       using services::IHelper;
 
+      typedef IPublicationMetaDataForPublicationRepository::ForPublicationRepositoryPtr ForPublicationRepositoryPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -72,18 +74,18 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PublicationMetaDataPtr IPublicationMetaDataForPublicationRepository::create(
-                                                                                  ULONG version,
-                                                                                  ULONG baseVersion,
-                                                                                  ULONG lineage,
-                                                                                  LocationPtr creatorLocation,
-                                                                                  const char *name,
-                                                                                  const char *mimeType,
-                                                                                  Encodings encoding,
-                                                                                  const PublishToRelationshipsMap &relationships,
-                                                                                  LocationPtr publishedLocation,
-                                                                                  Time expires
-                                                                                  )
+      ForPublicationRepositoryPtr IPublicationMetaDataForPublicationRepository::create(
+                                                                                       ULONG version,
+                                                                                       ULONG baseVersion,
+                                                                                       ULONG lineage,
+                                                                                       LocationPtr creatorLocation,
+                                                                                       const char *name,
+                                                                                       const char *mimeType,
+                                                                                       Encodings encoding,
+                                                                                       const PublishToRelationshipsMap &relationships,
+                                                                                       LocationPtr publishedLocation,
+                                                                                       Time expires
+                                                                                       )
       {
         return IPublicationMetaDataFactory::singleton().creatPublicationMetaData(
                                                                                  version,
@@ -100,7 +102,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PublicationMetaDataPtr IPublicationMetaDataForPublicationRepository::createFrom(IPublicationMetaDataPtr metaData)
+      ForPublicationRepositoryPtr IPublicationMetaDataForPublicationRepository::createFrom(IPublicationMetaDataPtr metaData)
       {
         return IPublicationMetaDataFactory::singleton().creatPublicationMetaData(
                                                                                  metaData->getVersion(),
@@ -117,7 +119,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PublicationMetaDataPtr IPublicationMetaDataForPublicationRepository::createForSource(LocationPtr location)
+      ForPublicationRepositoryPtr IPublicationMetaDataForPublicationRepository::createForSource(LocationPtr location)
       {
         PublishToRelationshipsMap empty;
         return IPublicationMetaDataFactory::singleton().creatPublicationMetaData(
@@ -133,7 +135,7 @@ namespace openpeer
                                                                                  Time()
                                                                                  );
       }
-
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -143,18 +145,18 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PublicationMetaDataPtr IPublicationMetaDataForMessages::create(
-                                                                     ULONG version,
-                                                                     ULONG baseVersion,
-                                                                     ULONG lineage,
-                                                                     LocationPtr creatorLocation,
-                                                                     const char *name,
-                                                                     const char *mimeType,
-                                                                     Encodings encoding,
-                                                                     const PublishToRelationshipsMap &relationships,
-                                                                     LocationPtr publishedLocation,
-                                                                     Time expires
-                                                                     )
+      IPublicationMetaDataForMessages::ForMessagesPtr IPublicationMetaDataForMessages::create(
+                                                                                              ULONG version,
+                                                                                              ULONG baseVersion,
+                                                                                              ULONG lineage,
+                                                                                              LocationPtr creatorLocation,
+                                                                                              const char *name,
+                                                                                              const char *mimeType,
+                                                                                              Encodings encoding,
+                                                                                              const PublishToRelationshipsMap &relationships,
+                                                                                              LocationPtr publishedLocation,
+                                                                                              Time expires
+                                                                                              )
       {
         return IPublicationMetaDataFactory::singleton().creatPublicationMetaData(
                                                                                  version,
@@ -226,6 +228,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PublicationMetaDataPtr PublicationMetaData::convert(ForMessagesPtr publication)
+      {
+        return boost::dynamic_pointer_cast<PublicationMetaData>(publication);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -238,14 +246,14 @@ namespace openpeer
       IPublicationPtr PublicationMetaData::toPublication() const
       {
         AutoRecursiveLock lock(mLock);
-        return mPublication;
+        return Publication::convert(mPublication);
       }
 
       //-----------------------------------------------------------------------
       ILocationPtr PublicationMetaData::getCreatorLocation() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getCreatorLocation();
+        if (mPublication) return mPublication->getCreatorLocation();
         return mCreatorLocation;
       }
 
@@ -253,7 +261,7 @@ namespace openpeer
       String PublicationMetaData::getName() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getName();
+        if (mPublication) return mPublication->getName();
         return mName;
       }
 
@@ -261,7 +269,7 @@ namespace openpeer
       String PublicationMetaData::getMimeType() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getMimeType();
+        if (mPublication) return mPublication->getMimeType();
         return mMimeType;
       }
 
@@ -269,7 +277,7 @@ namespace openpeer
       ULONG PublicationMetaData::getVersion() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getVersion();
+        if (mPublication) return mPublication->getVersion();
         return mVersion;
       }
 
@@ -277,7 +285,7 @@ namespace openpeer
       ULONG PublicationMetaData::getBaseVersion() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getBaseVersion();
+        if (mPublication) return mPublication->getBaseVersion();
         return mBaseVersion;
       }
 
@@ -285,7 +293,7 @@ namespace openpeer
       ULONG PublicationMetaData::getLineage() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getLineage();
+        if (mPublication) return mPublication->getLineage();
         return mLineage;
       }
 
@@ -293,7 +301,7 @@ namespace openpeer
       IPublicationMetaData::Encodings PublicationMetaData::getEncoding() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getEncoding();
+        if (mPublication) return mPublication->getEncoding();
         return mEncoding;
       }
 
@@ -301,7 +309,7 @@ namespace openpeer
       Time PublicationMetaData::getExpires() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getExpires();
+        if (mPublication) return mPublication->getExpires();
         return mExpires;
       }
 
@@ -309,7 +317,7 @@ namespace openpeer
       ILocationPtr PublicationMetaData::getPublishedLocation() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getPublishedLocation();
+        if (mPublication) return mPublication->getPublishedLocation();
         return mPublishedLocation;
       }
 
@@ -317,7 +325,7 @@ namespace openpeer
       const IPublicationMetaData::PublishToRelationshipsMap &PublicationMetaData::getRelationships() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().getRelationships();
+        if (mPublication) return mPublication->getRelationships();
         return mPublishedRelationships;
       }
 
@@ -405,7 +413,7 @@ namespace openpeer
         AutoRecursiveLock lock(mLock);
 
         const char *reason = NULL;
-        if (0 != ILocationForPublication::locationCompare(mCreatorLocation, metaData->getCreatorLocation(), reason)) {
+        if (0 != UseLocation::locationCompare(mCreatorLocation, metaData->getCreatorLocation(), reason)) {
           return false;
         }
 
@@ -413,7 +421,7 @@ namespace openpeer
           if (metaData->getLineage() != getLineage()) return false;
         }
         if (metaData->getName() != getName()) return false;
-        if (0 != ILocationForPublication::locationCompare(mPublishedLocation, metaData->getPublishedLocation(), reason)) {
+        if (0 != UseLocation::locationCompare(mPublishedLocation, metaData->getPublishedLocation(), reason)) {
           return false;
         }
         return true;
@@ -430,7 +438,7 @@ namespace openpeer
         const char *reason = "match";
 
         {
-          int compare = ILocationForPublication::locationCompare(mCreatorLocation, metaData->getCreatorLocation(), reason);
+          int compare = UseLocation::locationCompare(mCreatorLocation, metaData->getCreatorLocation(), reason);
 
           if (compare < 0) {goto result_true;}
           if (compare > 0) {goto result_false;}
@@ -442,7 +450,7 @@ namespace openpeer
           if (getName() < metaData->getName()) {reason = "name"; goto result_true;}
           if (getName() > metaData->getName()) {reason = "name"; goto result_false;}
 
-          compare = ILocationForPublication::locationCompare(mPublishedLocation, metaData->getPublishedLocation(), reason);
+          compare = UseLocation::locationCompare(mPublishedLocation, metaData->getPublishedLocation(), reason);
           if (compare < 0) {goto result_true;}
           if (compare > 0) {goto result_false;}
           goto result_false;
@@ -450,18 +458,18 @@ namespace openpeer
 
       result_true:
         {
-          IPublicationPtr publication = metaData->toPublication();
+          UsePublicationPtr publication = Publication::convert(metaData->toPublication());
           ZS_LOG_INSANE(log("less than is TRUE") + ZS_PARAM("reason", reason))
           ZS_LOG_INSANE(log("less than X (TRUE)") + toDebug())
-          ZS_LOG_INSANE(log("less than Y (TRUE)") + (publication ? Publication::convert(publication)->forPublicationMetaData().toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
+          ZS_LOG_INSANE(log("less than Y (TRUE)") + (publication ? publication->toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
           return true;
         }
       result_false:
         {
-          IPublicationPtr publication = metaData->toPublication();
+          UsePublicationPtr publication = Publication::convert(metaData->toPublication());
           ZS_LOG_INSANE(log("less than is FALSE") + ZS_PARAM("reason", reason))
           ZS_LOG_INSANE(log("less than X (FALSE):") + toDebug())
-          ZS_LOG_INSANE(log("less than Y (FALSE):") + (publication ? Publication::convert(publication)->forPublicationMetaData().toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
+          ZS_LOG_INSANE(log("less than Y (FALSE):") + (publication ? publication->toDebug() : PublicationMetaData::convert(metaData)->toDebug()))
         }
         return false;
       }
@@ -505,10 +513,10 @@ namespace openpeer
       ElementPtr PublicationMetaData::toDebug() const
       {
         AutoRecursiveLock lock(mLock);
-        if (mPublication) return mPublication->forPublicationMetaData().toDebug();
+        if (mPublication) return mPublication->toDebug();
 
-        LocationPtr creatorLocation = Location::convert(getCreatorLocation());
-        LocationPtr publishedLocation = Location::convert(getPublishedLocation());
+        UseLocationPtr creatorLocation = Location::convert(getCreatorLocation());
+        UseLocationPtr publishedLocation = Location::convert(getPublishedLocation());
 
         ElementPtr resultEl = Element::create("PublicationMetaData");
 
@@ -518,8 +526,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "version", mVersion);
         IHelper::debugAppend(resultEl, "base version", mBaseVersion);
         IHelper::debugAppend(resultEl, "lineage", mLineage);
-        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->forPublication().toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->toDebug() : ElementPtr());
         IHelper::debugAppend(resultEl, "mime type", getMimeType());
         IHelper::debugAppend(resultEl, "expires", mExpires);
         IHelper::debugAppend(resultEl, "total relationships", mPublishedRelationships.size());

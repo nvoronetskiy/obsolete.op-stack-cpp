@@ -51,8 +51,9 @@ namespace openpeer
 
       interaction IPeerFilePublicForPeerFiles
       {
-        IPeerFilePublicForPeerFiles &forPeerFiles() {return *this;}
-        const IPeerFilePublicForPeerFiles &forPeerFiles() const {return *this;}
+        typedef IPeerFilePublicForPeerFiles ForPeerFiles;
+        typedef shared_ptr<ForPeerFiles> ForPeerFilesPtr;
+        typedef weak_ptr<ForPeerFiles> ForPeerFilesWeakPtr;
 
         virtual ElementPtr toDebug() const = 0;
       };
@@ -67,8 +68,9 @@ namespace openpeer
 
       interaction IPeerFilePublicForPeerFilePrivate
       {
-        IPeerFilePublicForPeerFilePrivate &forPeerFilePrivate() {return *this;}
-        const IPeerFilePublicForPeerFilePrivate &forPeerFilePrivate() const {return *this;}
+        typedef IPeerFilePublicForPeerFilePrivate ForPeerFilePrivate;
+        typedef shared_ptr<ForPeerFilePrivate> ForPeerFilePrivatePtr;
+        typedef weak_ptr<ForPeerFilePrivate> ForPeerFilePrivateWeakPtr;
 
         static PeerFilePublicPtr createFromPublicKey(
                                                      PeerFilesPtr peerFiles,
@@ -115,6 +117,8 @@ namespace openpeer
         ~PeerFilePublic();
 
         static PeerFilePublicPtr convert(IPeerFilePublicPtr peerFilePublic);
+        static PeerFilePublicPtr convert(ForPeerFilesPtr peerFilePublic);
+        static PeerFilePublicPtr convert(ForPeerFilePrivatePtr peerFilePublic);
 
       protected:
         //---------------------------------------------------------------------

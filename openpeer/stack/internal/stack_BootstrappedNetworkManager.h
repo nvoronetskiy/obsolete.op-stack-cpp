@@ -41,6 +41,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkForBootstrappedNetworkManager;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -51,12 +53,13 @@ namespace openpeer
 
       interaction IBootstrappedNetworkManagerForBootstrappedNetwork
       {
+        typedef IBootstrappedNetworkManagerForBootstrappedNetwork ForBootstrappedNetwork;
+        typedef shared_ptr<ForBootstrappedNetwork> ForBootstrappedNetworkPtr;
+        typedef weak_ptr<ForBootstrappedNetwork> ForBootstrappedNetworkWeakPtr;
+
         typedef zsLib::RecursiveLock RecursiveLock;
 
-        IBootstrappedNetworkManagerForBootstrappedNetwork &forBootstrappedNetwork() {return *this;}
-        const IBootstrappedNetworkManagerForBootstrappedNetwork &forBootstrappedNetwork() const {return *this;}
-
-        static BootstrappedNetworkManagerPtr singleton();
+        static ForBootstrappedNetworkPtr singleton();
 
         virtual RecursiveLock &getLock() const = 0;
 
@@ -85,10 +88,14 @@ namespace openpeer
         friend interaction IBootstrappedNetworkManagerFactory;
         friend interaction IBootstrappedNetworkManagerForBootstrappedNetwork;
 
-        typedef String Domain;
-        typedef std::map<Domain, BootstrappedNetworkPtr> BootstrappedNetworkMap;
+        typedef IBootstrappedNetworkForBootstrappedNetworkManager UseBootstrappedNetwork;
+        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
+        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
-        typedef std::pair<BootstrappedNetworkPtr, IBootstrappedNetworkDelegatePtr> PendingDelegatePair;
+        typedef String Domain;
+        typedef std::map<Domain, UseBootstrappedNetworkPtr> BootstrappedNetworkMap;
+
+        typedef std::pair<UseBootstrappedNetworkPtr, IBootstrappedNetworkDelegatePtr> PendingDelegatePair;
         typedef std::list<PendingDelegatePair> PendingDelegateList;
         
       protected:

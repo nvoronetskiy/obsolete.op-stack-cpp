@@ -47,6 +47,10 @@ namespace openpeer
     namespace internal
     {
       interaction IAccountForPublicationRepository;
+      interaction ILocationForPublicationRepository;
+      interaction IPeerForPeerPublicationRepository;
+      interaction IPublicationForPublicationRepository;
+      interaction IPublicationMetaDataForPublicationRepository;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -91,20 +95,36 @@ namespace openpeer
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
+        typedef ILocationForPublicationRepository UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPeerForPeerPublicationRepository UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
+        typedef IPublicationMetaDataForPublicationRepository UsePublicationMetaData;
+        typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
+        typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
+
+        typedef IPublicationForPublicationRepository UsePublication;
+        typedef shared_ptr<UsePublication> UsePublicationPtr;
+        typedef weak_ptr<UsePublication> UsePublicationWeakPtr;
+
         struct CacheCompare
         {
-          bool operator()(const PublicationMetaDataPtr &x, const PublicationMetaDataPtr &y) const;
+          bool operator()(const UsePublicationMetaDataPtr &x, const UsePublicationMetaDataPtr &y) const;
         };
 
       public:
         typedef IPublication::RelationshipList RelationshipList;
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
-        typedef std::map<PublicationMetaDataPtr, PublicationPtr, CacheCompare> CachedPublicationMap;
+        typedef std::map<UsePublicationMetaDataPtr, UsePublicationPtr, CacheCompare> CachedPublicationMap;
         typedef String PublicationName;
-        typedef std::map<PublicationName, PublicationPtr> CachedPublicationPermissionMap;
-        typedef PublicationMetaDataPtr PeerSourcePtr;
-        typedef std::map<PublicationMetaDataPtr, PublicationMetaDataPtr, CacheCompare> CachedPeerPublicationMap;
+        typedef std::map<PublicationName, UsePublicationPtr> CachedPublicationPermissionMap;
+        typedef UsePublicationMetaDataPtr PeerSourcePtr;
+        typedef std::map<UsePublicationMetaDataPtr, UsePublicationMetaDataPtr, CacheCompare> CachedPeerPublicationMap;
         typedef message::peer_common::MessageFactoryPeerCommon MessageFactoryPeerCommon;
         typedef message::peer_common::PeerPublishRequest PeerPublishRequest;
         typedef message::peer_common::PeerPublishRequestPtr PeerPublishRequestPtr;
@@ -335,13 +355,13 @@ namespace openpeer
 
         bool canFetchPublication(
                                  const PublishToRelationshipsMap &publishToRelationships,
-                                 LocationPtr location
+                                 UseLocationPtr location
                                  ) const;
 
         bool canSubscribeToPublisher(
-                                     LocationPtr publicationCreatorLocation,
+                                     UseLocationPtr publicationCreatorLocation,
                                      const PublishToRelationshipsMap &publishToRelationships,
-                                     LocationPtr subscriberLocation,
+                                     UseLocationPtr subscriberLocation,
                                      const SubscribeToRelationshipsMap &subscribeToRelationships
                                      ) const;
 
@@ -373,11 +393,11 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const;
 
-        void activateFetcher(PublicationMetaDataPtr metaData);
-        void activatePublisher(PublicationPtr publication);
+        void activateFetcher(UsePublicationMetaDataPtr metaData);
+        void activatePublisher(UsePublicationPtr publication);
 
 
-        PeerSubscriptionIncomingPtr findIncomingSubscription(PublicationMetaDataPtr metaData) const;
+        PeerSubscriptionIncomingPtr findIncomingSubscription(UsePublicationMetaDataPtr metaData) const;
 
         void onMessageIncoming(
                                IMessageIncomingPtr messageIncoming,
@@ -463,7 +483,7 @@ namespace openpeer
                                    PublicationRepositoryPtr repository
                                    );
 
-          void notifyFetched(PublicationPtr publication);
+          void notifyFetched(UsePublicationPtr publication);
 
           Time getExpires() const       {return mExpires;}
           void setExpires(Time expires) {mExpires = expires;}
@@ -517,7 +537,7 @@ namespace openpeer
                     IMessageQueuePtr queue,
                     PublicationRepositoryPtr outer,
                     IPublicationPublisherDelegatePtr delegate,
-                    PublicationPtr publication
+                    UsePublicationPtr publication
                     );
 
           void init();
@@ -538,7 +558,7 @@ namespace openpeer
                                      IMessageQueuePtr queue,
                                      PublicationRepositoryPtr outer,
                                      IPublicationPublisherDelegatePtr delegate,
-                                     PublicationPtr publication
+                                     UsePublicationPtr publication
                                      );
 
           // PUID getID() const;
@@ -606,7 +626,7 @@ namespace openpeer
 
           IPublicationPublisherDelegatePtr mDelegate;
 
-          PublicationPtr mPublication;
+          UsePublicationPtr mPublication;
 
           IMessageMonitorPtr mMonitor;
 
@@ -635,7 +655,7 @@ namespace openpeer
                   IMessageQueuePtr queue,
                   PublicationRepositoryPtr outer,
                   IPublicationFetcherDelegatePtr delegate,
-                  PublicationMetaDataPtr metaData
+                  UsePublicationMetaDataPtr metaData
                   );
 
           void init();
@@ -656,10 +676,10 @@ namespace openpeer
                                    IMessageQueuePtr queue,
                                    PublicationRepositoryPtr outer,
                                    IPublicationFetcherDelegatePtr delegate,
-                                   PublicationMetaDataPtr metaData
+                                   UsePublicationMetaDataPtr metaData
                                    );
 
-          void setPublication(PublicationPtr publication);
+          void setPublication(UsePublicationPtr publication);
           void setMonitor(IMessageMonitorPtr monitor);
           void notifyCompleted();
 
@@ -725,7 +745,7 @@ namespace openpeer
 
           IPublicationFetcherDelegatePtr mDelegate;
 
-          PublicationMetaDataPtr mPublicationMetaData;
+          UsePublicationMetaDataPtr mPublicationMetaData;
 
           IMessageMonitorPtr mMonitor;
 
@@ -733,7 +753,7 @@ namespace openpeer
           WORD mErrorCode;
           String mErrorReason;
 
-          PublicationPtr mFetchedPublication;
+          UsePublicationPtr mFetchedPublication;
         };
 
         //---------------------------------------------------------------------
@@ -756,7 +776,7 @@ namespace openpeer
                   IMessageQueuePtr queue,
                   PublicationRepositoryPtr outer,
                   IPublicationRemoverDelegatePtr delegate,
-                  PublicationPtr publication
+                  UsePublicationPtr publication
                   );
 
           void init();
@@ -777,7 +797,7 @@ namespace openpeer
                                    IMessageQueuePtr queue,
                                    PublicationRepositoryPtr outer,
                                    IPublicationRemoverDelegatePtr delegate,
-                                   PublicationPtr publication
+                                   UsePublicationPtr publication
                                    );
 
           void setMonitor(IMessageMonitorPtr monitor);
@@ -838,7 +858,7 @@ namespace openpeer
           RemoverWeakPtr mThisWeak;
           IPublicationRemoverDelegatePtr mDelegate;
 
-          PublicationPtr mPublication;
+          UsePublicationPtr mPublication;
 
           IMessageMonitorPtr mMonitor;
 
@@ -894,8 +914,8 @@ namespace openpeer
                                              const SubscribeToRelationshipsMap &relationships
                                              );
 
-          void notifyUpdated(PublicationPtr publication);
-          void notifyGone(PublicationPtr publication);
+          void notifyUpdated(UsePublicationPtr publication);
+          void notifyGone(UsePublicationPtr publication);
 
           // (duplicate) virtual void cancel();
 
@@ -938,7 +958,7 @@ namespace openpeer
 
           IPublicationSubscriptionDelegatePtr mDelegate;
 
-          PublicationMetaDataPtr mSubscriptionInfo;
+          UsePublicationMetaDataPtr mSubscriptionInfo;
           PublicationSubscriptionStates mCurrentState;
         };
 
@@ -963,7 +983,7 @@ namespace openpeer
                                    IMessageQueuePtr queue,
                                    PublicationRepositoryPtr outer,
                                    PeerSourcePtr peerSource,
-                                   PublicationMetaDataPtr subscriptionInfo
+                                   UsePublicationMetaDataPtr subscriptionInfo
                                    );
 
           void init();
@@ -982,13 +1002,13 @@ namespace openpeer
                                                     IMessageQueuePtr queue,
                                                     PublicationRepositoryPtr outer,
                                                     PeerSourcePtr peerSource,
-                                                    PublicationMetaDataPtr subscriptionInfo
+                                                    UsePublicationMetaDataPtr subscriptionInfo
                                                     );
 
           // (duplicate) PUID getID() const;
 
-          void notifyUpdated(PublicationPtr publication);
-          void notifyGone(PublicationPtr publication);
+          void notifyUpdated(UsePublicationPtr publication);
+          void notifyGone(UsePublicationPtr publication);
 
           void notifyUpdated(const CachedPublicationMap &cachedPublications);
           void notifyGone(const CachedPublicationMap &publication);
@@ -1035,7 +1055,7 @@ namespace openpeer
           PeerSubscriptionIncomingWeakPtr mThisWeak;
 
           PeerSourcePtr mPeerSource;
-          PublicationMetaDataPtr mSubscriptionInfo;
+          UsePublicationMetaDataPtr mSubscriptionInfo;
 
           typedef std::list<IMessageMonitorPtr> NotificationMonitorList;
           NotificationMonitorList mNotificationMonitors;
@@ -1063,7 +1083,7 @@ namespace openpeer
                                    IMessageQueuePtr queue,
                                    PublicationRepositoryPtr outer,
                                    IPublicationSubscriptionDelegatePtr delegate,
-                                   PublicationMetaDataPtr subscriptionInfo
+                                   UsePublicationMetaDataPtr subscriptionInfo
                                    );
 
           void init();
@@ -1084,7 +1104,7 @@ namespace openpeer
                                                     IMessageQueuePtr queue,
                                                     PublicationRepositoryPtr outer,
                                                     IPublicationSubscriptionDelegatePtr delegate,
-                                                    PublicationMetaDataPtr subscriptionInfo
+                                                    UsePublicationMetaDataPtr subscriptionInfo
                                                     );
 
           // (duplicate) PUID getID() const;
@@ -1093,7 +1113,7 @@ namespace openpeer
           // (duplicate) virtual IPublicationMetaDataPtr getSource() const;
 
           void setMonitor(IMessageMonitorPtr monitor);
-          void notifyUpdated(PublicationMetaDataPtr metaData);
+          void notifyUpdated(UsePublicationMetaDataPtr metaData);
 
         protected:
           //-------------------------------------------------------------------
@@ -1154,7 +1174,7 @@ namespace openpeer
 
           IPublicationSubscriptionDelegatePtr mDelegate;
 
-          PublicationMetaDataPtr mSubscriptionInfo;
+          UsePublicationMetaDataPtr mSubscriptionInfo;
 
           IMessageMonitorPtr mMonitor;
           IMessageMonitorPtr mCancelMonitor;
@@ -1172,7 +1192,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark PublicationRepository::PeerSubscriptionOutgoing => (data)
+        #pragma mark PublicationRepository => (data)
         #pragma mark
 
         AutoPUID mID;

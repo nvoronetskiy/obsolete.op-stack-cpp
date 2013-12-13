@@ -159,7 +159,7 @@ namespace openpeer
       {
         calculateAndNotifyIdentityChanges();  // calculate the identities hash for the firs ttime
 
-        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
+        UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------

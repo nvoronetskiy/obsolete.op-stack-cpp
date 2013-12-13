@@ -94,6 +94,8 @@ namespace openpeer
       using message::peer_finder::SessionDeleteRequest;
       using message::peer_finder::SessionDeleteRequestPtr;
 
+      typedef IAccountFinderForAccount::ForAccountPtr ForAccountPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -111,10 +113,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      AccountFinderPtr IAccountFinderForAccount::create(
-                                                        IAccountFinderDelegatePtr delegate,
-                                                        AccountPtr outer
-                                                        )
+      ForAccountPtr IAccountFinderForAccount::create(
+                                                     IAccountFinderDelegatePtr delegate,
+                                                     AccountPtr outer
+                                                     )
       {
         return IAccountFinderFactory::singleton().create(delegate, outer);
       }
@@ -180,10 +182,10 @@ namespace openpeer
       #pragma mark
 
       //---------------------------------------------------------------------
-      AccountFinderPtr AccountFinder::create(
-                                             IAccountFinderDelegatePtr delegate,
-                                             AccountPtr outer
-                                             )
+      AccountFinder::ForAccountPtr AccountFinder::create(
+                                                         IAccountFinderDelegatePtr delegate,
+                                                         AccountPtr outer
+                                                         )
       {
         AccountFinderPtr pThis(new AccountFinder(IStackForInternal::queueStack(), delegate, outer));
         pThis->mThisWeak = pThis;
@@ -280,7 +282,7 @@ namespace openpeer
         bool result = send(requestMessage);
         if (!result) {
           // notify that the message requester failed to send the message...
-          MessageMonitor::convert(monitor)->forAccountFinder().notifyMessageSendFailed();
+          UseMessageMonitorPtr(MessageMonitor::convert(monitor))->notifyMessageSendFailed();
           return monitor;
         }
 
@@ -446,7 +448,7 @@ namespace openpeer
           }
 
           DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
-          message::MessagePtr message = Message::create(document, Location::convert(ILocationForAccount::getForFinder(Account::convert(outer))));
+          message::MessagePtr message = Message::create(document, Location::convert(UseLocation::getForFinder(Account::convert(outer))));
 
           if (ZS_IS_LOGGING(Detail)) {
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -920,7 +922,7 @@ namespace openpeer
 
         request->finderID(mFinder.mID);
 
-        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
         LocationInfoPtr locationInfo = selfLocation->getLocationInfo();
         locationInfo->mCandidates.clear();
         request->locationInfo(locationInfo);

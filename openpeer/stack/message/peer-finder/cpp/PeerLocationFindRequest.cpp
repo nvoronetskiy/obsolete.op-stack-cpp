@@ -69,6 +69,14 @@ namespace openpeer
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
+        typedef stack::internal::ILocationForMessages UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef stack::internal::IPeerForMessages UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
         using zsLib::Seconds;
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
         using namespace stack::internal;
@@ -99,13 +107,13 @@ namespace openpeer
           PeerLocationFindRequestPtr ret(new PeerLocationFindRequest);
           IMessageHelper::fill(*ret, root, messageSource);
 
-          LocationPtr messageLocation = ILocationForMessages::convert(messageSource);
+          UseLocationPtr messageLocation = UseLocation::convert(messageSource);
           if (!messageLocation) {
             ZS_LOG_ERROR(Detail, slog("message source was not a known location"))
             return PeerLocationFindRequestPtr();
           }
 
-          UseAccountPtr account = messageLocation->forMessages().getAccount();
+          UseAccountPtr account = messageLocation->getAccount();
           if (!account) {
             ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return PeerLocationFindRequestPtr();
@@ -128,7 +136,7 @@ namespace openpeer
             return PeerLocationFindRequestPtr();
           }
 
-          LocationPtr localLocation = ILocationForMessages::getForLocal(Account::convert(account));
+          UseLocationPtr localLocation = UseLocation::getForLocal(Account::convert(account));
           if (!localLocation) {
             ZS_LOG_ERROR(Detail, slog("could not obtain local location"))
             return PeerLocationFindRequestPtr();
@@ -141,8 +149,8 @@ namespace openpeer
 
             String peerURI = findProofEl->findFirstChildElementChecked("find")->getText();
 
-            if (peerURI != localLocation->forMessages().getPeerURI()) {
-              ZS_LOG_ERROR(Detail, slog("find was not intended for this peer") + ZS_PARAM("find peer URI", peerURI) + ILocation::toDebug(localLocation))
+            if (peerURI != localLocation->getPeerURI()) {
+              ZS_LOG_ERROR(Detail, slog("find was not intended for this peer") + ZS_PARAM("find peer URI", peerURI) + ILocation::toDebug(Location::convert(localLocation)))
               return PeerLocationFindRequestPtr();
             }
 
@@ -227,7 +235,7 @@ namespace openpeer
               ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource, ret->mPeerSecret);
             }
 
-            LocationPtr location;
+            UseLocationPtr location;
             if (ret->mLocationInfo) {
               location = Location::convert(ret->mLocationInfo->mLocation);
             }
@@ -237,18 +245,18 @@ namespace openpeer
               return PeerLocationFindRequestPtr();
             }
 
-            if (!location->forMessages().getPeer()) {
+            if (!location->getPeer()) {
               ZS_LOG_ERROR(Detail, slog("missing location peer information in find request"))
               return PeerLocationFindRequestPtr();
             }
 
-            PeerPtr peer = IPeerForMessages::getFromSignature(Account::convert(account), findProofEl);
+            UsePeerPtr peer = IPeerForMessages::getFromSignature(Account::convert(account), findProofEl);
             if (!peer) {
               ZS_LOG_WARNING(Detail, slog("peer object failed to create from signature"))
               return PeerLocationFindRequestPtr();
             }
 
-            if (location->forMessages().getPeerURI() != peer->forMessages().getPeerURI()) {
+            if (location->getPeerURI() != peer->getPeerURI()) {
               ZS_LOG_WARNING(Detail, slog("location peer is not same as signature peer"))
               return PeerLocationFindRequestPtr();
             }
@@ -260,9 +268,9 @@ namespace openpeer
               ret->mRequestfindProofBundleDigestValue = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
             }
 
-            if (peer->forMessages().getPeerFilePublic()) {
+            if (peer->getPeerFilePublic()) {
               // know the peer file public so this should verify the signature
-              if (!peer->forMessages().verifySignature(findProofEl)) {
+              if (!peer->verifySignature(findProofEl)) {
                 ZS_LOG_WARNING(Detail, slog("signature on request did not verify"))
                 return PeerLocationFindRequestPtr();
               }

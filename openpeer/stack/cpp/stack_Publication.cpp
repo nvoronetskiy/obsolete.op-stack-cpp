@@ -56,6 +56,7 @@ namespace openpeer
     namespace internal
     {
       using services::IHelper;
+      typedef IPublicationForMessages::ForMessagesPtr ForMessagesPtr;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -162,7 +163,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PublicationPtr IPublicationForMessages::create(
+      ForMessagesPtr IPublicationForMessages::create(
                                                      ULONG version,
                                                      ULONG baseVersion,
                                                      ULONG lineage,
@@ -232,6 +233,24 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(IPublicationPtr publication)
+      {
+        return boost::dynamic_pointer_cast<Publication>(publication);
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr Publication::convert(ForPublicationMetaDataPtr publication)
+      {
+        return boost::dynamic_pointer_cast<Publication>(publication);
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr Publication::convert(ForPublicationRepositoryPtr publication)
+      {
+        return boost::dynamic_pointer_cast<Publication>(publication);
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr Publication::convert(ForMessagesPtr publication)
       {
         return boost::dynamic_pointer_cast<Publication>(publication);
       }
@@ -647,7 +666,7 @@ namespace openpeer
 
         ZS_LOG_DETAIL(debug("updating from fetched publication"))
 
-        PublicationPtr publication = convert(fetchedPublication);
+        PublicationPtr publication = fetchedPublication;
 
         if (publication->mData) {
           mData = publication->mData;
@@ -764,16 +783,16 @@ namespace openpeer
 
         ElementPtr resultEl = Element::create("Publication");
 
-        LocationPtr creatorLocation = Location::convert(getCreatorLocation());
-        LocationPtr publishedLocation = Location::convert(getPublishedLocation());
+        UseLocationPtr creatorLocation = Location::convert(getCreatorLocation());
+        UseLocationPtr publishedLocation = Location::convert(getPublishedLocation());
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "name", mName);
         IHelper::debugAppend(resultEl, "version", mVersion);
         IHelper::debugAppend(resultEl, "base version", mBaseVersion);
         IHelper::debugAppend(resultEl, "lineage", mLineage);
-        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->forPublication().toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->forPublication().toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "creator", creatorLocation ? creatorLocation->toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "published", publishedLocation ? publishedLocation->toDebug() : ElementPtr());
         IHelper::debugAppend(resultEl, "mime type", mMimeType);
         IHelper::debugAppend(resultEl, "expires",  mExpires);
         IHelper::debugAppend(resultEl, "data length", mData ? mData->SizeInBytes() : 0);

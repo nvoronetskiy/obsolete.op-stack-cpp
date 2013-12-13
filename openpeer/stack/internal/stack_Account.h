@@ -66,6 +66,7 @@ namespace openpeer
       interaction IAccountFinderForAccount;
       interaction IAccountPeerLocationForAccount;
       interaction IBootstrappedNetworkForAccount;
+      interaction IMessageIncomingForAccount;
 
       using message::peer_finder::PeerLocationFindResult;
       using message::peer_finder::PeerLocationFindResultPtr;
@@ -343,6 +344,10 @@ namespace openpeer
         typedef IBootstrappedNetworkForAccount UseBootstrappedNetwork;
         typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
         typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
+
+        typedef IMessageIncomingForAccount UseMessageIncoming;
+        typedef shared_ptr<UseMessageIncoming> UseMessageIncomingPtr;
+        typedef weak_ptr<UseMessageIncoming> UseMessageIncomingWeakPtr;
 
         typedef IAccount::AccountStates AccountStates;
 
@@ -734,7 +739,7 @@ namespace openpeer
                                  IPeer::PeerFindStates state
                                  );
 
-        void notifySubscriptions(MessageIncomingPtr messageIncoming);
+        void notifySubscriptions(UseMessageIncomingPtr messageIncoming);
 
       public:
 

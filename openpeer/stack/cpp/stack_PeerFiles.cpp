@@ -109,10 +109,15 @@ namespace openpeer
         PeerFilesPtr pThis(new PeerFiles);
         pThis->mThisWeak = pThis;
 
-        if (!IPeerFilePrivateForPeerFiles::generate(pThis, pThis->mPrivate, pThis->mPublic, password, signedSaltBundleEl)) {
+        PeerFilePrivatePtr peerFilePrivate;
+        PeerFilePublicPtr peerFilePublic;
+
+        if (!IPeerFilePrivateForPeerFiles::generate(pThis, peerFilePrivate, peerFilePublic, password, signedSaltBundleEl)) {
           ZS_LOG_DEBUG(pThis->log("failed to generate private peer file"))
           return PeerFilesPtr();
         }
+        pThis->mPrivate = peerFilePrivate;
+        pThis->mPublic = peerFilePublic;
         return pThis;
       }
 
@@ -130,10 +135,15 @@ namespace openpeer
         PeerFilesPtr pThis(new PeerFiles);
         pThis->mThisWeak = pThis;
 
-        if (!IPeerFilePrivateForPeerFiles::generate(pThis, pThis->mPrivate, pThis->mPublic, privateKey, publicKey, password, signedSaltBundleEl)) {
+        PeerFilePrivatePtr peerFilePrivate;
+        PeerFilePublicPtr peerFilePublic;
+
+        if (!IPeerFilePrivateForPeerFiles::generate(pThis, peerFilePrivate, peerFilePublic, privateKey, publicKey, password, signedSaltBundleEl)) {
           ZS_LOG_DEBUG(pThis->log("failed to generate private peer file"))
           return PeerFilesPtr();
         }
+        pThis->mPrivate = peerFilePrivate;
+        pThis->mPublic = peerFilePublic;
         return pThis;
       }
 
@@ -149,10 +159,15 @@ namespace openpeer
         PeerFilesPtr pThis(new PeerFiles);
         pThis->mThisWeak = pThis;
 
-        if (!IPeerFilePrivateForPeerFiles::loadFromElement(pThis, pThis->mPrivate, pThis->mPublic, password, privatePeerRootElement)) {
+        PeerFilePrivatePtr peerFilePrivate;
+        PeerFilePublicPtr peerFilePublic;
+
+        if (!IPeerFilePrivateForPeerFiles::loadFromElement(pThis, peerFilePrivate, peerFilePublic, password, privatePeerRootElement)) {
           ZS_LOG_DEBUG(pThis->log("failed to load private peer file"))
           return PeerFilesPtr();
         }
+        pThis->mPrivate = peerFilePrivate;
+        pThis->mPublic = peerFilePublic;
         return pThis;
       }
 
@@ -160,7 +175,7 @@ namespace openpeer
       ElementPtr PeerFiles::saveToPrivatePeerElement() const
       {
         if (!mPrivate) return ElementPtr();
-        return mPrivate->forPeerFiles().saveToElement();
+        return mPrivate->saveToElement();
       }
 
       //-----------------------------------------------------------------------
@@ -197,7 +212,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PeerFiles");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(mPublic));
+        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(PeerFilePublic::convert(mPublic)));
 
         return resultEl;
       }

@@ -134,6 +134,18 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilesPtr peerFilePublic)
+      {
+        return boost::dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilePrivatePtr peerFilePublic)
+      {
+        return boost::dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

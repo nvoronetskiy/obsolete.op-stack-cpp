@@ -124,10 +124,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      AccountFinderPtr IAccountFinderFactory::create(
-                                                     IAccountFinderDelegatePtr delegate,
-                                                     AccountPtr outer
-                                                     )
+      IAccountFinderForAccount::ForAccountPtr IAccountFinderFactory::create(
+                                                                            IAccountFinderDelegatePtr delegate,
+                                                                            AccountPtr outer
+                                                                            )
       {
         if (this) {}
         return AccountFinder::create(delegate, outer);
@@ -148,25 +148,25 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      AccountPeerLocationPtr IAccountPeerLocationFactory::createFromIncomingPeerLocationFind(
-                                                                                             IAccountPeerLocationDelegatePtr delegate,
-                                                                                             AccountPtr outer,
-                                                                                             PeerLocationFindRequestPtr request,
-                                                                                             IDHPrivateKeyPtr localPrivateKey,
-                                                                                             IDHPublicKeyPtr localPublicKey
-                                                                                             )
+      IAccountPeerLocationForAccount::ForAccountPtr IAccountPeerLocationFactory::createFromIncomingPeerLocationFind(
+                                                                                                                    IAccountPeerLocationDelegatePtr delegate,
+                                                                                                                    AccountPtr outer,
+                                                                                                                    PeerLocationFindRequestPtr request,
+                                                                                                                    IDHPrivateKeyPtr localPrivateKey,
+                                                                                                                    IDHPublicKeyPtr localPublicKey
+                                                                                                                    )
       {
         if (this) {}
         return AccountPeerLocation::createFromIncomingPeerLocationFind(delegate, outer, request, localPrivateKey, localPublicKey);
       }
 
       //-----------------------------------------------------------------------
-      AccountPeerLocationPtr IAccountPeerLocationFactory::createFromPeerLocationFindResult(
-                                                                                           IAccountPeerLocationDelegatePtr delegate,
-                                                                                           AccountPtr outer,
-                                                                                           PeerLocationFindRequestPtr request,
-                                                                                           LocationInfoPtr locationInfo
-                                                                                           )
+      IAccountPeerLocationForAccount::ForAccountPtr IAccountPeerLocationFactory::createFromPeerLocationFindResult(
+                                                                                                                  IAccountPeerLocationDelegatePtr delegate,
+                                                                                                                  AccountPtr outer,
+                                                                                                                  PeerLocationFindRequestPtr request,
+                                                                                                                  LocationInfoPtr locationInfo
+                                                                                                                  )
       {
         if (this) {}
         return AccountPeerLocation::createFromPeerLocationFindResult(delegate, outer, request, locationInfo);
@@ -371,11 +371,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      MessageIncomingPtr IMessageIncomingFactory::create(
-                                                         AccountPtr account,
-                                                         LocationPtr location,
-                                                         message::MessagePtr message
-                                                         )
+      IMessageIncomingForAccount::ForAccountPtr IMessageIncomingFactory::create(
+                                                                                AccountPtr account,
+                                                                                LocationPtr location,
+                                                                                message::MessagePtr message
+                                                                                )
       {
         if (this) {}
         return MessageIncoming::create(account, location, message);

@@ -60,7 +60,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageMonitorManagerPtr IMessageMonitorManagerForMessageMonitor::singleton()
+      IMessageMonitorManagerForMessageMonitor::ForMessageMonitorPtr IMessageMonitorManagerForMessageMonitor::singleton()
       {
         return MessageMonitorManager::singleton();
       }
@@ -108,19 +108,21 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageMonitorManagerPtr MessageMonitorManager::singleton()
+      MessageMonitorManager::ForMessageMonitorPtr MessageMonitorManager::singleton()
       {
         static MessageMonitorManagerPtr global = IMessageMonitorManagerFactory::singleton().createMessageMonitorManager();
         return global;
       }
 
       //-----------------------------------------------------------------------
-      void MessageMonitorManager::monitorStart(MessageMonitorPtr monitor)
+      void MessageMonitorManager::monitorStart(MessageMonitorPtr inMonitor)
       {
+        UseMessageMonitorPtr monitor = inMonitor;
+
         AutoRecursiveLock lock(mLock);
 
-        PUID monitorID = monitor->forMessageMonitorManager().getID();
-        String requestID = monitor->forMessageMonitorManager().getMonitoredMessageID();
+        PUID monitorID = monitor->getID();
+        String requestID = monitor->getMonitoredMessageID();
 
         ZS_LOG_TRACE(log("monitoring request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("request id", requestID))
 
@@ -141,12 +143,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void MessageMonitorManager::monitorEnd(MessageMonitor &monitor)
+      void MessageMonitorManager::monitorEnd(MessageMonitor &inMonitor)
       {
+        UseMessageMonitor &monitor = inMonitor;
+
         AutoRecursiveLock lock(mLock);
 
-        PUID monitorID = monitor.forMessageMonitorManager().getID();
-        String requestID = monitor.forMessageMonitorManager().getMonitoredMessageID();
+        PUID monitorID = monitor.getID();
+        String requestID = monitor.getMonitoredMessageID();
 
         ZS_LOG_TRACE(log("remove monitoring of request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("request id", requestID))
 
@@ -202,13 +206,17 @@ namespace openpeer
         {
           MonitorMap::iterator current = iter; ++iter;
 
-          MessageMonitorPtr monitor = (*current).second.lock();
+          UseMessageMonitorPtr monitor = (*current).second.lock();
           if (!monitor) {
             monitors->erase(current);
             continue;
           }
 
-          handled = handled || monitor->forMessageMonitorManager().handleMessage(message);
+          handled = handled || monitor->handleMessage(message);
+        }
+
+        if (monitors->size() < 1) {
+          mMonitors.erase(found);
         }
 
         return handled;

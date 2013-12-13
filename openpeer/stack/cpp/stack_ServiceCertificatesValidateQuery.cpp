@@ -140,7 +140,7 @@ namespace openpeer
           return;
         }
 
-        mBootstrappedNetwork = IBootstrappedNetworkForServices::prepare(mDomain, mThisWeak.lock());
+        mBootstrappedNetwork = UseBootstrappedNetwork::prepare(mDomain, mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------

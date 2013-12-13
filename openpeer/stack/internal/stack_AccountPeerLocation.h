@@ -63,6 +63,7 @@ namespace openpeer
     {
       interaction IPeerForAccount;
       interaction IAccountForAccountPeerLocation;
+      interaction IMessageMonitorForAccountPeerLocation;
 
       using services::IICESocket;
 
@@ -97,20 +98,20 @@ namespace openpeer
         typedef IAccount::AccountStates AccountStates;
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
-        static AccountPeerLocationPtr createFromIncomingPeerLocationFind(
-                                                                         IAccountPeerLocationDelegatePtr delegate,
-                                                                         AccountPtr outer,
-                                                                         PeerLocationFindRequestPtr request,
-                                                                         IDHPrivateKeyPtr localPrivateKey,
-                                                                         IDHPublicKeyPtr localPublicKey
-                                                                         );
+        static ForAccountPtr createFromIncomingPeerLocationFind(
+                                                                IAccountPeerLocationDelegatePtr delegate,
+                                                                AccountPtr outer,
+                                                                PeerLocationFindRequestPtr request,
+                                                                IDHPrivateKeyPtr localPrivateKey,
+                                                                IDHPublicKeyPtr localPublicKey
+                                                                );
 
-        static AccountPeerLocationPtr createFromPeerLocationFindResult(
-                                                                       IAccountPeerLocationDelegatePtr delegate,
-                                                                       AccountPtr outer,
-                                                                       PeerLocationFindRequestPtr request,
-                                                                       LocationInfoPtr locationInfo
-                                                                       );
+        static ForAccountPtr createFromPeerLocationFindResult(
+                                                              IAccountPeerLocationDelegatePtr delegate,
+                                                              AccountPtr outer,
+                                                              PeerLocationFindRequestPtr request,
+                                                              LocationInfoPtr locationInfo
+                                                              );
 
         virtual PUID getID() const = 0;
 
@@ -190,6 +191,10 @@ namespace openpeer
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
+        typedef IMessageMonitorForAccountPeerLocation UseMessageMonitor;
+        typedef shared_ptr<UseMessageMonitor> UseMessageMonitorPtr;
+        typedef weak_ptr<UseMessageMonitor> UseMessageMonitorWeakPtr;
+
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
         enum CreatedFromReasons
@@ -235,20 +240,20 @@ namespace openpeer
         #pragma mark AccountPeerLocation => IAccountPeerLocationForAccount
         #pragma mark
 
-        static AccountPeerLocationPtr createFromIncomingPeerLocationFind(
-                                                                         IAccountPeerLocationDelegatePtr delegate,
-                                                                         AccountPtr outer,
-                                                                         PeerLocationFindRequestPtr request,
-                                                                         IDHPrivateKeyPtr localPrivateKey,
-                                                                         IDHPublicKeyPtr localPublicKey
-                                                                         );
+        static ForAccountPtr createFromIncomingPeerLocationFind(
+                                                                IAccountPeerLocationDelegatePtr delegate,
+                                                                AccountPtr outer,
+                                                                PeerLocationFindRequestPtr request,
+                                                                IDHPrivateKeyPtr localPrivateKey,
+                                                                IDHPublicKeyPtr localPublicKey
+                                                                );
 
-        static AccountPeerLocationPtr createFromPeerLocationFindResult(
-                                                                       IAccountPeerLocationDelegatePtr delegate,
-                                                                       AccountPtr outer,
-                                                                       PeerLocationFindRequestPtr request,
-                                                                       LocationInfoPtr locationInfo
-                                                                       );
+        static ForAccountPtr createFromPeerLocationFindResult(
+                                                              IAccountPeerLocationDelegatePtr delegate,
+                                                              AccountPtr outer,
+                                                              PeerLocationFindRequestPtr request,
+                                                              LocationInfoPtr locationInfo
+                                                              );
 
         virtual PUID getID() const {return mID;}
 
@@ -569,20 +574,20 @@ namespace openpeer
       {
         static IAccountPeerLocationFactory &singleton();
 
-        virtual AccountPeerLocationPtr createFromIncomingPeerLocationFind(
-                                                                          IAccountPeerLocationDelegatePtr delegate,
-                                                                          AccountPtr outer,
-                                                                          PeerLocationFindRequestPtr request,
-                                                                          IDHPrivateKeyPtr localPrivateKey,
-                                                                          IDHPublicKeyPtr localPublicKey
-                                                                          );
+        virtual IAccountPeerLocationForAccount::ForAccountPtr createFromIncomingPeerLocationFind(
+                                                                                                 IAccountPeerLocationDelegatePtr delegate,
+                                                                                                 AccountPtr outer,
+                                                                                                 PeerLocationFindRequestPtr request,
+                                                                                                 IDHPrivateKeyPtr localPrivateKey,
+                                                                                                 IDHPublicKeyPtr localPublicKey
+                                                                                                 );
 
-        virtual AccountPeerLocationPtr createFromPeerLocationFindResult(
-                                                                        IAccountPeerLocationDelegatePtr delegate,
-                                                                        AccountPtr outer,
-                                                                        PeerLocationFindRequestPtr request,
-                                                                        LocationInfoPtr locationInfo
-                                                                        );
+        virtual IAccountPeerLocationForAccount::ForAccountPtr createFromPeerLocationFindResult(
+                                                                                               IAccountPeerLocationDelegatePtr delegate,
+                                                                                               AccountPtr outer,
+                                                                                               PeerLocationFindRequestPtr request,
+                                                                                               LocationInfoPtr locationInfo
+                                                                                               );
       };
 
     }

@@ -52,6 +52,9 @@ namespace openpeer
     {
       using services::IHelper;
 
+      typedef ILocationForAccount::ForAccountPtr ForAccountPtr;
+      typedef ILocationForMessages::ForMessagesPtr ForMessagesPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -67,22 +70,22 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ILocationForAccount::ForAccountPtr ILocationForAccount::getForLocal(AccountPtr account)
+      ForAccountPtr ILocationForAccount::getForLocal(AccountPtr account)
       {
         return ILocationFactory::singleton().getForLocal(account);
       }
 
       //-----------------------------------------------------------------------
-      ILocationForAccount::ForAccountPtr ILocationForAccount::getForFinder(AccountPtr account)
+      ForAccountPtr ILocationForAccount::getForFinder(AccountPtr account)
       {
         return ILocationFactory::singleton().getForFinder(account);
       }
 
       //-----------------------------------------------------------------------
-      ILocationForAccount::ForAccountPtr ILocationForAccount::getForPeer(
-                                                                         PeerPtr peer,
-                                                                         const char *locationID
-                                                                         )
+      ForAccountPtr ILocationForAccount::getForPeer(
+                                                    PeerPtr peer,
+                                                    const char *locationID
+                                                    )
       {
         return ILocationFactory::singleton().getForPeer(peer, locationID);
       }
@@ -96,23 +99,23 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForMessages::convert(IMessageSourcePtr messageSource)
+      ForMessagesPtr ILocationForMessages::convert(IMessageSourcePtr messageSource)
       {
         return Location::convert(messageSource);
       }
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForMessages::getForLocal(AccountPtr account)
+      ForMessagesPtr ILocationForMessages::getForLocal(AccountPtr account)
       {
         return ILocationFactory::singleton().getForLocal(account);
       }
 
       //-----------------------------------------------------------------------
-      LocationPtr ILocationForMessages::create(
-                                               IMessageSourcePtr messageSource,
-                                               const char *peerURI,
-                                               const char *locationID
-                                               )
+      ForMessagesPtr ILocationForMessages::create(
+                                                  IMessageSourcePtr messageSource,
+                                                  const char *peerURI,
+                                                  const char *locationID
+                                                  )
       {
         return ILocationFactory::singleton().create(messageSource, peerURI, locationID);
       }
@@ -239,7 +242,7 @@ namespace openpeer
       Location::Location(
                          UseAccountPtr account,
                          LocationTypes type,
-                         PeerPtr peer,
+                         UsePeerPtr peer,
                          const char *locationID
                          ) :
         mID(zsLib::createPUID()),
@@ -279,6 +282,24 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForAccountPtr location)
+      {
+        return dynamic_pointer_cast<Location>(location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForMessagesPtr location)
+      {
+        return dynamic_pointer_cast<Location>(location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForPeerSubscriptionPtr location)
+      {
+        return dynamic_pointer_cast<Location>(location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForPublicationRepositoryPtr location)
       {
         return dynamic_pointer_cast<Location>(location);
       }
@@ -350,8 +371,8 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!inPeer)
         ZS_THROW_INVALID_ARGUMENT_IF(!locationID)
 
-        PeerPtr peer = Peer::convert(inPeer);
-        UseAccountPtr account = peer->forLocation().getAccount();
+        UsePeerPtr peer = Peer::convert(inPeer);
+        UseAccountPtr account = peer->getAccount();
 
         LocationPtr pThis(new Location(account, LocationType_Peer, peer, locationID));
         pThis->mThisWeak = pThis;
@@ -383,7 +404,7 @@ namespace openpeer
       {
         if (!mPeer) return String();
 
-        return mPeer->forLocation().getPeerURI();
+        return mPeer->getPeerURI();
       }
 
       //-----------------------------------------------------------------------
@@ -403,7 +424,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeerPtr Location::getPeer() const
       {
-        return mPeer;
+        return Peer::convert(mPeer);
       }
 
       //-----------------------------------------------------------------------
@@ -488,8 +509,8 @@ namespace openpeer
         }
 
         LocationPtr selfLocation = getForLocal(Account::convert(account));
-        PeerPtr selfPeer = Peer::convert(selfLocation->getPeer());
-        String selfPeerURI = selfPeer->forLocation().getPeerURI();
+        UsePeerPtr selfPeer = Peer::convert(selfLocation->getPeer());
+        String selfPeerURI = selfPeer->getPeerURI();
 
         if ((selfLocation->getLocationID() == locationID) &&
             (selfPeerURI == peerURI)) {
@@ -508,7 +529,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Location::getPeer(bool) const
       {
-        return mPeer;
+        return Peer::convert(mPeer);
       }
 
       //-----------------------------------------------------------------------
@@ -532,7 +553,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "type", toString(mType));
-        IHelper::debugAppend(resultEl, IPeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, IPeer::toDebug(Peer::convert(mPeer)));
         IHelper::debugAppend(resultEl, "location id(s)", mLocationID);
 
         return resultEl;

@@ -155,8 +155,8 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!inPeer)
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        PeerPtr peer = Peer::convert(inPeer);
-        AccountPtr account = peer->forPeerSubscription().getAccount();
+        UsePeerPtr peer = Peer::convert(inPeer);
+        AccountPtr account = peer->getAccount();
 
         PeerSubscriptionPtr pThis(new PeerSubscription(account, delegate));
         pThis->mPeer = peer;
@@ -169,7 +169,7 @@ namespace openpeer
       IPeerPtr PeerSubscription::getSubscribedToPeer() const
       {
         AutoRecursiveLock lock(getLock());
-        return mPeer;
+        return Peer::convert(mPeer);
       }
 
       //-----------------------------------------------------------------------
@@ -221,10 +221,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void PeerSubscription::notifyFindStateChanged(
-                                                    PeerPtr peer,
+                                                    PeerPtr inPeer,
                                                     PeerFindStates state
                                                     )
       {
+        UsePeerPtr peer = inPeer;
+
         AutoRecursiveLock lock(getLock());
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("notify of find state changed after shutdown"))
@@ -232,14 +234,14 @@ namespace openpeer
         }
 
         if (mPeer) {
-          if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", IPeer::toDebug(peer)) + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)))
+          if (mPeer->getPeerURI() != peer->getPeerURI()) {
+            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", IPeer::toDebug(Peer::convert(peer))) + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))))
             return;
           }
         }
 
         try {
-          mDelegate->onPeerSubscriptionFindStateChanged(mThisWeak.lock(), peer, state);
+          mDelegate->onPeerSubscriptionFindStateChanged(mThisWeak.lock(), Peer::convert(peer), state);
         } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
@@ -247,10 +249,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void PeerSubscription::notifyLocationConnectionStateChanged(
-                                                                  LocationPtr location,
+                                                                  LocationPtr inLocation,
                                                                   LocationConnectionStates state
                                                                   )
       {
+        UseLocationPtr location = inLocation;
+
         AutoRecursiveLock lock(getLock());
 
         if (!mDelegate) {
@@ -259,19 +263,19 @@ namespace openpeer
         }
 
         if (mPeer) {
-          PeerPtr peer = location->forPeerSubscription().getPeer();
+          UsePeerPtr peer = location->getPeer();
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", IPeer::toDebug(mPeer)))
+            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", IPeer::toDebug(Peer::convert(mPeer))))
             return;
           }
-          if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change") + ZS_PARAM("notified peer", IPeer::toDebug(peer)) + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)))
+          if (mPeer->getPeerURI() != peer->getPeerURI()) {
+            ZS_LOG_DEBUG(log("ignoring location connection state change") + ZS_PARAM("notified peer", IPeer::toDebug(Peer::convert(peer))) + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))))
             return;
           }
         }
 
         try {
-          mDelegate->onPeerSubscriptionLocationConnectionStateChanged(mThisWeak.lock(), location, state);
+          mDelegate->onPeerSubscriptionLocationConnectionStateChanged(mThisWeak.lock(), Location::convert(location), state);
         } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
@@ -287,24 +291,25 @@ namespace openpeer
           return;
         }
 
-        LocationPtr location = Location::convert(message->getLocation());
+        UseLocationPtr location = Location::convert(message->getLocation());
         if (!location) {
           ZS_LOG_DEBUG(log("ignoring incoming message missing location"))
           return;
         }
         if (mPeer) {
-          PeerPtr peer = location->forPeerSubscription().getPeer();
+          UsePeerPtr peer = location->getPeer();
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
-          if (mPeer->forPeerSubscription().getPeerURI() != peer->forPeerSubscription().getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+          if (mPeer->getPeerURI() != peer->getPeerURI()) {
+            ZS_LOG_TRACE(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
         }
 
         try {
+          ZS_LOG_DEBUG(log("notifying peer subscription of messaging incoming") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
           mDelegate->onPeerSubscriptionMessageIncoming(mThisWeak.lock(), message);
         } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
@@ -350,7 +355,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "subscribing", mPeer ? "peer" : "all");
-        IHelper::debugAppend(resultEl, IPeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, IPeer::toDebug(Peer::convert(mPeer)));
 
         return resultEl;
       }

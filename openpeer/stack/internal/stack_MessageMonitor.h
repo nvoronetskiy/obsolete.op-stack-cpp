@@ -43,6 +43,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IMessageMonitorManagerForMessageMonitor;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -53,9 +55,6 @@ namespace openpeer
 
       interaction IMessageMonitorForAccountFinder
       {
-        IMessageMonitorForAccountFinder &forAccountFinder() {return *this;}
-        const IMessageMonitorForAccountFinder &forAccountFinder() const {return *this;}
-
         virtual void notifyMessageSendFailed() = 0;
       };
 
@@ -69,9 +68,6 @@ namespace openpeer
 
       interaction IMessageMonitorForAccountPeerLocation
       {
-        IMessageMonitorForAccountPeerLocation &forAccountPeerLocation() {return *this;}
-        const IMessageMonitorForAccountPeerLocation &forAccountPeerLocation() const {return *this;}
-
         virtual void notifyMessageSendFailed() = 0;
       };
 
@@ -85,9 +81,6 @@ namespace openpeer
 
       interaction IMessageMonitorForMessageMonitorManager
       {
-        IMessageMonitorForMessageMonitorManager &forMessageMonitorManager() {return *this;}
-        const IMessageMonitorForMessageMonitorManager &forMessageMonitorManager() const {return *this;}
-
         virtual PUID getID() const = 0;
 
         virtual String getMonitoredMessageID() = 0;
@@ -133,6 +126,10 @@ namespace openpeer
       public:
         friend interaction IMessageMonitorFactory;
         friend interaction IMessageMonitor;
+
+        typedef IMessageMonitorManagerForMessageMonitor UseMessageMonitorManager;
+        typedef shared_ptr<UseMessageMonitorManager> UseMessageMonitorManagerPtr;
+        typedef weak_ptr<UseMessageMonitorManager> UseMessageMonitorManagerWeakPtr;
 
       protected:
         MessageMonitor(IMessageQueuePtr queue);

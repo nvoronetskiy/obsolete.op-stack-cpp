@@ -64,6 +64,9 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IBootstrappedNetworkManagerForBootstrappedNetwork;
+      interaction ICacheForServices;
+
       using stack::message::bootstrapper::ServicesGetResult;
       using stack::message::bootstrapper::ServicesGetResultPtr;
       using stack::message::certificates::CertificatesGetResult;
@@ -96,10 +99,10 @@ namespace openpeer
         typedef shared_ptr<ForServices> ForServicesPtr;
         typedef weak_ptr<ForServices> ForServicesWeakPtr;
 
-        static BootstrappedNetworkPtr prepare(
-                                              const char *domain,
-                                              IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegatePtr()
-                                              );
+        static ForServicesPtr prepare(
+                                      const char *domain,
+                                      IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegatePtr()
+                                      );
 
         virtual String getDomain() const = 0;
 
@@ -146,8 +149,9 @@ namespace openpeer
 
       interaction IBootstrappedNetworkForBootstrappedNetworkManager
       {
-        IBootstrappedNetworkForBootstrappedNetworkManager &forBootstrappedNetworkManager() {return *this;}
-        const IBootstrappedNetworkForBootstrappedNetworkManager &forBootstrappedNetworkManager() const {return *this;}
+        typedef IBootstrappedNetworkForBootstrappedNetworkManager ForBootstrappedNetworkManager;
+        typedef shared_ptr<ForBootstrappedNetworkManager> ForBootstrappedNetworkManagerPtr;
+        typedef weak_ptr<ForBootstrappedNetworkManager> ForBootstrappedNetworkManagerWeakPtr;
 
         virtual PUID getID() const = 0;
 
@@ -188,6 +192,14 @@ namespace openpeer
         friend interaction IServiceLockbox;
         friend interaction IServiceSalt;
 
+        typedef IBootstrappedNetworkManagerForBootstrappedNetwork UseBootstrappedNetworkManager;
+        typedef shared_ptr<UseBootstrappedNetworkManager> UseBootstrappedNetworkManagerPtr;
+        typedef weak_ptr<UseBootstrappedNetworkManager> UseBootstrappedNetworkManagerWeakPtr;
+
+        typedef ICacheForServices UseCache;
+        typedef shared_ptr<UseCache> UseCachePtr;
+        typedef weak_ptr<UseCache> UseCacheWeakPtr;
+
         typedef zsLib::IMessageQueuePtr IMessageQueuePtr;
         typedef message::ServiceMap ServiceMap;
         typedef message::Service Service;
@@ -226,6 +238,7 @@ namespace openpeer
         static BootstrappedNetworkPtr convert(IServiceLockboxPtr network);
         static BootstrappedNetworkPtr convert(IServiceSaltPtr network);
         static BootstrappedNetworkPtr convert(ForServicesPtr network);
+        static BootstrappedNetworkPtr convert(ForBootstrappedNetworkManagerPtr network);
 
         typedef std::map<IHTTPQueryPtr, message::MessagePtr> PendingRequestMap;
 
@@ -483,7 +496,7 @@ namespace openpeer
         BootstrappedNetworkWeakPtr mThisWeak;
         String mDomain;
 
-        BootstrappedNetworkManagerWeakPtr mManager;
+        UseBootstrappedNetworkManagerWeakPtr mManager;
 
         bool mCompleted;
 

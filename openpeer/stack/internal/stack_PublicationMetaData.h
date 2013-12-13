@@ -42,6 +42,9 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction ILocationForPublication;
+      interaction IPublicationForPublicationMetaData;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -68,28 +71,29 @@ namespace openpeer
 
       interaction IPublicationMetaDataForPublicationRepository
       {
+        typedef IPublicationMetaDataForPublicationRepository ForPublicationRepository;
+        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
+        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
+
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
-        IPublicationMetaDataForPublicationRepository &forRepo() {return *this;}
-        const IPublicationMetaDataForPublicationRepository &forRepo() const {return *this;}
+        static ForPublicationRepositoryPtr create(
+                                                  ULONG version,
+                                                  ULONG baseVersion,
+                                                  ULONG lineage,
+                                                  LocationPtr creatorLocation,
+                                                  const char *name,
+                                                  const char *mimeType,
+                                                  Encodings encoding,
+                                                  const PublishToRelationshipsMap &relationships,
+                                                  LocationPtr publishedLocation,
+                                                  Time expires = Time()
+                                                  );
 
-        static PublicationMetaDataPtr create(
-                                             ULONG version,
-                                             ULONG baseVersion,
-                                             ULONG lineage,
-                                             LocationPtr creatorLocation,
-                                             const char *name,
-                                             const char *mimeType,
-                                             Encodings encoding,
-                                             const PublishToRelationshipsMap &relationships,
-                                             LocationPtr publishedLocation,
-                                             Time expires = Time()
-                                             );
+        static ForPublicationRepositoryPtr createFrom(IPublicationMetaDataPtr metaData);
 
-        static PublicationMetaDataPtr createFrom(IPublicationMetaDataPtr metaData);
-
-        static PublicationMetaDataPtr createForSource(LocationPtr location);
+        static ForPublicationRepositoryPtr createForSource(LocationPtr location);
 
         virtual PublicationMetaDataPtr toPublicationMetaData() const = 0;
         virtual IPublicationPtr toPublication() const = 0;
@@ -139,24 +143,30 @@ namespace openpeer
 
       interaction IPublicationMetaDataForMessages
       {
+        typedef IPublicationMetaDataForMessages ForMessages;
+        typedef shared_ptr<ForMessages> ForMessagesPtr;
+        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
         IPublicationMetaDataForMessages &forMessages() {return *this;}
         const IPublicationMetaDataForMessages &forMessages() const {return *this;}
 
-        static PublicationMetaDataPtr create(
-                                             ULONG version,
-                                             ULONG baseVersion,
-                                             ULONG lineage,
-                                             LocationPtr creatorLocation,
-                                             const char *name,
-                                             const char *mimeType,
-                                             Encodings encoding,
-                                             const PublishToRelationshipsMap &relationships,
-                                             LocationPtr publishedLocation,
-                                             Time expires = Time()
-                                             );
+        static ForMessagesPtr create(
+                                     ULONG version,
+                                     ULONG baseVersion,
+                                     ULONG lineage,
+                                     LocationPtr creatorLocation,
+                                     const char *name,
+                                     const char *mimeType,
+                                     Encodings encoding,
+                                     const PublishToRelationshipsMap &relationships,
+                                     LocationPtr publishedLocation,
+                                     Time expires = Time()
+                                     );
+
+        virtual ~IPublicationMetaDataForMessages() {} // NOTE: to make polymophic - remove if virtual method is needed
       };
 
       //-----------------------------------------------------------------------
@@ -176,6 +186,14 @@ namespace openpeer
       public:
         friend interaction IPublicationMetaDataFactory;
         friend interaction IPublicationMetaData;
+
+        typedef ILocationForPublication UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPublicationForPublicationMetaData UsePublication;
+        typedef shared_ptr<UsePublication> UsePublicationPtr;
+        typedef weak_ptr<UsePublication> UsePublicationWeakPtr;
 
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
@@ -201,6 +219,8 @@ namespace openpeer
         ~PublicationMetaData();
 
         static PublicationMetaDataPtr convert(IPublicationMetaDataPtr publication);
+        static PublicationMetaDataPtr convert(ForPublicationRepositoryPtr publication);
+        static PublicationMetaDataPtr convert(ForMessagesPtr publication);
 
       protected:
         //---------------------------------------------------------------------
@@ -295,7 +315,7 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark PublicationMetaData => IPublicationMetaDataForPublicationRepository
+        #pragma mark PublicationMetaData => IPublicationMetaDataForMessages
         #pragma mark
 
       protected:
@@ -317,7 +337,7 @@ namespace openpeer
         mutable RecursiveLock mLock;
         PublicationMetaDataWeakPtr mThisWeak;
 
-        PublicationPtr mPublication;
+        UsePublicationPtr mPublication;
 
         LocationPtr mCreatorLocation;
 

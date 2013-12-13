@@ -57,6 +57,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IFinderRelayChannelForFinderConnection;
+
       using peer_finder::ChannelMapResult;
       using peer_finder::ChannelMapResultPtr;
 
@@ -87,6 +89,10 @@ namespace openpeer
 
         friend class FinderConnectionManager;
         friend class Channel;
+
+        typedef IFinderRelayChannelForFinderConnection UseFinderRelayChannel;
+        typedef shared_ptr<UseFinderRelayChannel> UseFinderRelayChannelPtr;
+        typedef weak_ptr<UseFinderRelayChannel> UseFinderRelayChannelWeakPtr;
 
         class Channel;
         typedef boost::shared_ptr<Channel> ChannelPtr;

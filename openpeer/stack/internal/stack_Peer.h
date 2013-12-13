@@ -82,8 +82,9 @@ namespace openpeer
 
       interaction IPeerForLocation
       {
-        IPeerForLocation &forLocation() {return *this;}
-        const IPeerForLocation &forLocation() const {return *this;}
+        typedef IPeerForLocation ForLocation;
+        typedef shared_ptr<ForLocation> ForLocationPtr;
+        typedef weak_ptr<ForLocation> ForLocationWeakPtr;
 
         static PeerPtr create(
                               AccountPtr account,
@@ -109,18 +110,19 @@ namespace openpeer
 
       interaction IPeerForMessages
       {
-        IPeerForMessages &forMessages() {return *this;}
-        const IPeerForMessages &forMessages() const {return *this;}
+        typedef IPeerForMessages ForMessages;
+        typedef shared_ptr<ForMessages> ForMessagesPtr;
+        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
 
-        static PeerPtr create(
-                              AccountPtr account,
-                              IPeerFilePublicPtr peerFilePublic
-                              );
+        static ForMessagesPtr create(
+                                     AccountPtr account,
+                                     IPeerFilePublicPtr peerFilePublic
+                                     );
 
-        static PeerPtr getFromSignature(
-                                        AccountPtr account,
-                                        ElementPtr signedElement
-                                        );
+        static ForMessagesPtr getFromSignature(
+                                               AccountPtr account,
+                                               ElementPtr signedElement
+                                               );
 
         virtual PUID getID() const = 0;
 
@@ -141,8 +143,9 @@ namespace openpeer
 
       interaction IPeerForPeerSubscription
       {
-        IPeerForPeerSubscription &forPeerSubscription() {return *this;}
-        const IPeerForPeerSubscription &forPeerSubscription() const {return *this;}
+        typedef IPeerForPeerSubscription ForPeerSubscription;
+        typedef shared_ptr<ForPeerSubscription> ForPeerSubscriptionPtr;
+        typedef weak_ptr<ForPeerSubscription> ForPeerSubscriptionWeakPtr;
 
         virtual AccountPtr getAccount() const = 0;
 
@@ -161,9 +164,6 @@ namespace openpeer
 
       interaction IPeerForPeerPublicationRepository
       {
-        IPeerForPeerPublicationRepository &forRepo() {return *this;}
-        const IPeerForPeerPublicationRepository &forRepo() const {return *this;}
-
         virtual String getPeerURI() const = 0;
       };
 
@@ -209,6 +209,9 @@ namespace openpeer
 
         static PeerPtr convert(IPeerPtr peer);
         static PeerPtr convert(ForAccountPtr peer);
+        static PeerPtr convert(ForMessagesPtr peer);
+        static PeerPtr convert(ForLocationPtr peer);
+        static PeerPtr convert(ForPeerSubscriptionPtr peer);
 
       protected:
         //---------------------------------------------------------------------

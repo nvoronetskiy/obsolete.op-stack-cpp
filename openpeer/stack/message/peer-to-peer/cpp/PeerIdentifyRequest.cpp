@@ -58,6 +58,14 @@ namespace openpeer
 
       namespace peer_to_peer
       {
+        typedef stack::internal::ILocationForMessages UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef stack::internal::IPeerForMessages UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
         using zsLib::Seconds;
         using namespace stack::internal;
         using namespace message::internal;
@@ -111,13 +119,13 @@ namespace openpeer
               return PeerIdentifyRequestPtr();
             }
 
-            LocationPtr locationSource = ILocationForMessages::convert(messageSource);
+            UseLocationPtr locationSource = UseLocation::convert(messageSource);
             if (!locationSource) {
               ZS_LOG_WARNING(Detail, slog("message source could not be identified"))
               return PeerIdentifyRequestPtr();
             }
 
-            AccountPtr account = locationSource->forMessages().getAccount();
+            AccountPtr account = locationSource->getAccount();
             if (!account) {
               ZS_LOG_WARNING(Detail, slog("account gone so peer identify request cannot be verified"))
               return PeerIdentifyRequestPtr();
@@ -138,13 +146,13 @@ namespace openpeer
             ret->mFindSecret = IMessageHelper::getElementTextAndDecode(peerIdentityProofEl->findFirstChildElement("findSecret"));
             ret->mLocationInfo = MessageHelper::createLocation(peerIdentityProofEl->findFirstChildElement("location"), messageSource);
 
-            PeerPtr remotePeer = IPeerForMessages::create(account, ret->mPeerFilePublic);
+            UsePeerPtr remotePeer = IPeerForMessages::create(account, ret->mPeerFilePublic);
             if (!remotePeer) {
               ZS_LOG_ERROR(Detail, slog("remote peer object could not be created"))
               return PeerIdentifyRequestPtr();
             }
 
-            LocationPtr location;
+            UseLocationPtr location;
             if (ret->mLocationInfo) {
               location = Location::convert(ret->mLocationInfo->mLocation);
             }
@@ -154,23 +162,23 @@ namespace openpeer
               return PeerIdentifyRequestPtr();
             }
 
-            if (location->forMessages().getPeerURI() != remotePeer->forMessages().getPeerURI()) {
-              ZS_LOG_WARNING(Detail, slog("location peer does not match public peer file") +  ILocation::toDebug(location) + IPeer::toDebug(remotePeer))
+            if (location->getPeerURI() != remotePeer->getPeerURI()) {
+              ZS_LOG_WARNING(Detail, slog("location peer does not match public peer file") +  ILocation::toDebug(Location::convert(location)) + IPeer::toDebug(Peer::convert(remotePeer)))
               return PeerIdentifyRequestPtr();
             }
 
-            PeerPtr signaturePeer = IPeerForMessages::getFromSignature(account, peerIdentityProofEl);
+            UsePeerPtr signaturePeer = UsePeer::getFromSignature(account, peerIdentityProofEl);
             if (!signaturePeer) {
               ZS_LOG_WARNING(Detail, slog("signature peer is null"))
               return PeerIdentifyRequestPtr();
             }
 
-            if (signaturePeer->forMessages().getID() != remotePeer->forMessages().getID()) {
-              ZS_LOG_WARNING(Detail, slog("signature peer does not match identity peer") + ZS_PARAM("signature peer", IPeer::toDebug(signaturePeer)) + ZS_PARAM("request peer", IPeer::toDebug(remotePeer)))
+            if (signaturePeer->getID() != remotePeer->getID()) {
+              ZS_LOG_WARNING(Detail, slog("signature peer does not match identity peer") + ZS_PARAM("signature peer", IPeer::toDebug(Peer::convert(signaturePeer))) + ZS_PARAM("request peer", IPeer::toDebug(Peer::convert(remotePeer))))
               return PeerIdentifyRequestPtr();
             }
 
-            if (!signaturePeer->forMessages().verifySignature(peerIdentityProofEl)) {
+            if (!signaturePeer->verifySignature(peerIdentityProofEl)) {
               ZS_LOG_WARNING(Detail, slog("signature does not validate"))
               return PeerIdentifyRequestPtr();
             }

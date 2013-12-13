@@ -61,11 +61,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageIncomingPtr IMessageIncomingForAccount::create(
-                                                            AccountPtr account,
-                                                            LocationPtr location,
-                                                            message::MessagePtr message
-                                                            )
+      IMessageIncomingForAccount::ForAccountPtr IMessageIncomingForAccount::create(
+                                                                                   AccountPtr account,
+                                                                                   LocationPtr location,
+                                                                                   message::MessagePtr message
+                                                                                   )
       {
         return IMessageIncomingFactory::singleton().create(account, location, message);
       }
@@ -126,6 +126,11 @@ namespace openpeer
         return boost::dynamic_pointer_cast<MessageIncoming>(messageIncoming);
       }
 
+      //-----------------------------------------------------------------------
+      MessageIncomingPtr MessageIncoming::convert(ForAccountPtr messageIncoming)
+      {
+        return boost::dynamic_pointer_cast<MessageIncoming>(messageIncoming);
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -182,11 +187,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageIncomingPtr MessageIncoming::create(
-                                                 AccountPtr account,
-                                                 LocationPtr location,
-                                                 message::MessagePtr message
-                                                 )
+      MessageIncoming::ForAccountPtr MessageIncoming::create(
+                                                             AccountPtr account,
+                                                             LocationPtr location,
+                                                             message::MessagePtr message
+                                                             )
       {
         MessageIncomingPtr pThis(new MessageIncoming(account, location, message));
         pThis->mThisWeak = pThis;

@@ -41,6 +41,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IMessageMonitorForMessageMonitorManager;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -51,10 +53,11 @@ namespace openpeer
 
       interaction IMessageMonitorManagerForMessageMonitor
       {
-        IMessageMonitorManagerForMessageMonitor &forMessageMonitor() {return *this;}
-        const IMessageMonitorManagerForMessageMonitor &forMessageMonitor() const {return *this;}
+        typedef IMessageMonitorManagerForMessageMonitor ForMessageMonitor;
+        typedef shared_ptr<ForMessageMonitor> ForMessageMonitorPtr;
+        typedef weak_ptr<ForMessageMonitor> ForMessageMonitorWeakPtr;
 
-        static MessageMonitorManagerPtr singleton();
+        static ForMessageMonitorPtr singleton();
 
         virtual void monitorStart(MessageMonitorPtr requester) = 0;
 
@@ -80,6 +83,10 @@ namespace openpeer
         friend interaction IMessageMonitorManagerFactory;
         friend interaction IMessageMonitorManagerForMessageMonitor;
 
+        typedef IMessageMonitorForMessageMonitorManager UseMessageMonitor;
+        typedef shared_ptr<UseMessageMonitor> UseMessageMonitorPtr;
+        typedef weak_ptr<UseMessageMonitor> UseMessageMonitorWeakPtr;
+
       protected:
         MessageMonitorManager();
         
@@ -96,7 +103,7 @@ namespace openpeer
         #pragma mark MessageMonitorManager => IMessageMonitorManagerForMessageMonitor
         #pragma mark
 
-        static MessageMonitorManagerPtr singleton();
+        static ForMessageMonitorPtr singleton();
 
         virtual void monitorStart(MessageMonitorPtr requester);
 
@@ -127,7 +134,7 @@ namespace openpeer
         MessageMonitorManagerWeakPtr mThisWeak;
 
         typedef PUID MonitorID;
-        typedef std::map<MonitorID, MessageMonitorWeakPtr> MonitorMap;
+        typedef std::map<MonitorID, UseMessageMonitorWeakPtr> MonitorMap;
         typedef boost::shared_ptr<MonitorMap> MonitorMapPtr;
 
         typedef String MessageID;

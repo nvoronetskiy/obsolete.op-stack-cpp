@@ -301,8 +301,8 @@ namespace openpeer
       ServiceIdentitySession::ServiceIdentitySession(
                                                      IMessageQueuePtr queue,
                                                      IServiceIdentitySessionDelegatePtr delegate,
-                                                     BootstrappedNetworkPtr providerNetwork,
-                                                     BootstrappedNetworkPtr identityNetwork,
+                                                     UseBootstrappedNetworkPtr providerNetwork,
+                                                     UseBootstrappedNetworkPtr identityNetwork,
                                                      ServiceNamespaceGrantSessionPtr grantSession,
                                                      ServiceLockboxSessionPtr existingLockbox,
                                                      const char *outerFrameURLUponReload
@@ -337,10 +337,10 @@ namespace openpeer
       void ServiceIdentitySession::init()
       {
         if (mIdentityBootstrappedNetwork) {
-          IBootstrappedNetworkForServices::prepare(mIdentityBootstrappedNetwork->getDomain(), mThisWeak.lock());
+          UseBootstrappedNetwork::prepare(mIdentityBootstrappedNetwork->getDomain(), mThisWeak.lock());
         }
         if (mProviderBootstrappedNetwork) {
-          IBootstrappedNetworkForServices::prepare(mProviderBootstrappedNetwork->getDomain(), mThisWeak.lock());
+          UseBootstrappedNetwork::prepare(mProviderBootstrappedNetwork->getDomain(), mThisWeak.lock());
         }
 
         // one or the other must be valid or a login is not possible
@@ -398,8 +398,8 @@ namespace openpeer
           ZS_THROW_INVALID_ARGUMENT_IF(!provider) // provider can normally be derived from the identity but only if the identity contains a provider
         }
 
-        BootstrappedNetworkPtr identityNetwork;
-        BootstrappedNetworkPtr providerNetwork = BootstrappedNetwork::convert(provider);
+        UseBootstrappedNetworkPtr identityNetwork;
+        UseBootstrappedNetworkPtr providerNetwork = BootstrappedNetwork::convert(provider);
 
         if (identityURI_or_identityBaseURI) {
           if (IServiceIdentity::isValid(identityURI_or_identityBaseURI)) {
@@ -407,7 +407,7 @@ namespace openpeer
               String domain;
               String identifier;
               IServiceIdentity::splitURI(identityURI_or_identityBaseURI, domain, identifier);
-              identityNetwork = IBootstrappedNetworkForServices::prepare(domain);
+              identityNetwork = UseBootstrappedNetwork::prepare(domain);
             }
           }
         }
@@ -455,15 +455,15 @@ namespace openpeer
           return ServiceIdentitySessionPtr();
         }
 
-        BootstrappedNetworkPtr identityNetwork;
-        BootstrappedNetworkPtr providerNetwork = BootstrappedNetwork::convert(provider);
+        UseBootstrappedNetworkPtr identityNetwork;
+        UseBootstrappedNetworkPtr providerNetwork = BootstrappedNetwork::convert(provider);
 
         if (IServiceIdentity::isValid(identityURI)) {
           if (!IServiceIdentity::isLegacy(identityURI)) {
             String domain;
             String identifier;
             IServiceIdentity::splitURI(identityURI, domain, identifier);
-            identityNetwork = IBootstrappedNetworkForServices::prepare(domain);
+            identityNetwork = UseBootstrappedNetwork::prepare(domain);
           }
         }
 
@@ -903,14 +903,14 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!existingLockbox)
         ZS_THROW_INVALID_ARGUMENT_IF(!identityURI)
 
-        BootstrappedNetworkPtr identityNetwork;
+        UseBootstrappedNetworkPtr identityNetwork;
 
         if (IServiceIdentity::isValid(identityURI)) {
           if (!IServiceIdentity::isLegacy(identityURI)) {
             String domain;
             String identifier;
             IServiceIdentity::splitURI(identityURI, domain, identifier);
-            identityNetwork = IBootstrappedNetworkForServices::prepare(domain);
+            identityNetwork = UseBootstrappedNetwork::prepare(domain);
           }
         }
 

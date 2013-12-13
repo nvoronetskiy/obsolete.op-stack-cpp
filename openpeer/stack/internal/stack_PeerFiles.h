@@ -40,6 +40,9 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IPeerFilePrivateForPeerFiles;
+      interaction IPeerFilePublicForPeerFiles;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -54,6 +57,14 @@ namespace openpeer
       public:
         friend interaction IPeerFilesFactory;
         friend interaction IPeerFiles;
+
+        typedef IPeerFilePrivateForPeerFiles UsePeerFilePrivate;
+        typedef shared_ptr<UsePeerFilePrivate> UsePeerFilePrivatePtr;
+        typedef weak_ptr<UsePeerFilePrivate> UsePeerFilePrivateWeakPtr;
+
+        typedef IPeerFilePublicForPeerFiles UsePeerFilePublic;
+        typedef shared_ptr<UsePeerFilePublic> UsePeerFilePublicPtr;
+        typedef weak_ptr<UsePeerFilePublic> UsePeerFilePublicWeakPtr;
 
       protected:
         PeerFiles();
@@ -117,8 +128,8 @@ namespace openpeer
         mutable RecursiveLock mLock;
         PeerFilesWeakPtr mThisWeak;
 
-        PeerFilePublicPtr mPublic;
-        PeerFilePrivatePtr mPrivate;
+        UsePeerFilePublicPtr mPublic;
+        UsePeerFilePrivatePtr mPrivate;
       };
 
       //-----------------------------------------------------------------------

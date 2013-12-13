@@ -75,6 +75,14 @@ namespace openpeer
 
       typedef stack::IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
+      typedef stack::internal::IPublicationForMessages UsePublication;
+      typedef shared_ptr<UsePublication> UsePublicationPtr;
+      typedef weak_ptr<UsePublication> UsePublicationWeakPtr;
+
+      typedef stack::internal::IPublicationMetaDataForMessages UsePublicationMetaData;
+      typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
+      typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
+
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       //-----------------------------------------------------------------------
@@ -452,9 +460,9 @@ namespace openpeer
             return ElementPtr();
           }
 
-          LocationPtr location = Location::convert(locationInfo.mLocation);
+          UseLocationPtr location = Location::convert(locationInfo.mLocation);
 
-          ElementPtr locationEl = IMessageHelper::createElementWithID("location", location->forMessages().getLocationID());
+          ElementPtr locationEl = IMessageHelper::createElementWithID("location", location->getLocationID());
           ElementPtr detailEl = IMessageHelper::createElement("details");
 
           if (!locationInfo.mDeviceID.isEmpty()) {
@@ -479,9 +487,9 @@ namespace openpeer
           if (!locationInfo.mHost.isEmpty())
             detailEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("host", locationInfo.mHost));
 
-          PeerPtr peer = location->forMessages().getPeer();
+          UsePeerPtr peer = location->getPeer();
           if (peer) {
-            locationEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("contact", peer->forMessages().getPeerURI()));
+            locationEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("contact", peer->getPeerURI()));
           }
 
           if (detailEl->hasChildren()) {
@@ -897,10 +905,10 @@ namespace openpeer
           String creatorPeerURI;
           String creatorLocationID;
 
-          LocationPtr creatorLocation = Location::convert(publicationMetaData->getCreatorLocation());
+          UseLocationPtr creatorLocation = Location::convert(publicationMetaData->getCreatorLocation());
           if (creatorLocation ) {
-            creatorLocationID = creatorLocation->forMessages().getLocationID();
-            creatorPeerURI = creatorLocation->forMessages().getPeerURI();
+            creatorLocationID = creatorLocation->getLocationID();
+            creatorPeerURI = creatorLocation->getPeerURI();
           }
 
           ElementPtr contactEl = IMessageHelper::createElementWithTextAndJSONEncode("contact", creatorPeerURI);
@@ -1281,7 +1289,7 @@ namespace openpeer
               locationID = locationEl->getTextDecoded();
             }
 
-            LocationPtr location = ILocationForMessages::create(messageSource, contact, locationID);
+            UseLocationPtr location = UseLocation::create(messageSource, contact, locationID);
 
             ElementPtr dataEl = docEl->findFirstChildElement("data");
 
@@ -1409,35 +1417,35 @@ namespace openpeer
             }
 
             if (hasPublication) {
-              PublicationPtr publication = IPublicationForMessages::create(
-                                                                           version,
-                                                                           baseVersion,
-                                                                           lineage,
-                                                                           location,
-                                                                           nameEl->getText(),
-                                                                           mimeType,
-                                                                           dataEl,
-                                                                           encoding,
-                                                                           relationships,
-                                                                           location,
-                                                                           expires
-                                                                           );
-              outPublicationMetaData = publication->forMessages().toPublicationMetaData();
-              outPublication = publication;
+              UsePublicationPtr publication = IPublicationForMessages::create(
+                                                                              version,
+                                                                              baseVersion,
+                                                                              lineage,
+                                                                              Location::convert(location),
+                                                                              nameEl->getText(),
+                                                                              mimeType,
+                                                                              dataEl,
+                                                                              encoding,
+                                                                              relationships,
+                                                                              Location::convert(location),
+                                                                              expires
+                                                                              );
+              outPublicationMetaData = publication->toPublicationMetaData();
+              outPublication = Publication::convert(publication);
             } else {
-              PublicationMetaDataPtr metaData = IPublicationMetaDataForMessages::create(
-                                                                                        version,
-                                                                                        baseVersion,
-                                                                                        lineage,
-                                                                                        location,
-                                                                                        nameEl->getText(),
-                                                                                        mimeType,
-                                                                                        encoding,
-                                                                                        relationships,
-                                                                                        location,
-                                                                                        expires
-                                                                                        );
-              outPublicationMetaData = metaData;
+              UsePublicationMetaDataPtr metaData = IPublicationMetaDataForMessages::create(
+                                                                                           version,
+                                                                                           baseVersion,
+                                                                                           lineage,
+                                                                                           Location::convert(location),
+                                                                                           nameEl->getText(),
+                                                                                           mimeType,
+                                                                                           encoding,
+                                                                                           relationships,
+                                                                                           Location::convert(location),
+                                                                                           expires
+                                                                                           );
+              outPublicationMetaData = PublicationMetaData::convert(metaData);
             }
           } catch (CheckFailed &) {
           }
@@ -1517,7 +1525,7 @@ namespace openpeer
           if (contact)
           {
             String peerURI = IMessageHelper::getElementTextAndDecode(contact);
-            ret->mLocation = ILocationForMessages::create(messageSource, peerURI, id);
+            ret->mLocation = Location::convert(UseLocation::create(messageSource, peerURI, id));
           }
 
           ElementPtr candidates = elem->findFirstChildElement("candidates");

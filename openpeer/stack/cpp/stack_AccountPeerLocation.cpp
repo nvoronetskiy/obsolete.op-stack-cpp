@@ -95,6 +95,8 @@ namespace openpeer
       using message::peer_to_peer::PeerKeepAliveRequest;
       using message::peer_to_peer::PeerKeepAliveRequestPtr;
 
+      typedef IAccountPeerLocationForAccount::ForAccountPtr ForAccountPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -104,24 +106,24 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      AccountPeerLocationPtr IAccountPeerLocationForAccount::createFromIncomingPeerLocationFind(
-                                                                                               IAccountPeerLocationDelegatePtr delegate,
-                                                                                               AccountPtr outer,
-                                                                                               PeerLocationFindRequestPtr request,
-                                                                                               IDHPrivateKeyPtr localPrivateKey,
-                                                                                               IDHPublicKeyPtr localPublicKey
-                                                                                               )
+      ForAccountPtr IAccountPeerLocationForAccount::createFromIncomingPeerLocationFind(
+                                                                                       IAccountPeerLocationDelegatePtr delegate,
+                                                                                       AccountPtr outer,
+                                                                                       PeerLocationFindRequestPtr request,
+                                                                                       IDHPrivateKeyPtr localPrivateKey,
+                                                                                       IDHPublicKeyPtr localPublicKey
+                                                                                       )
       {
         return IAccountPeerLocationFactory::singleton().createFromIncomingPeerLocationFind(delegate, outer, request, localPrivateKey, localPublicKey);
       }
 
       //-----------------------------------------------------------------------
-      AccountPeerLocationPtr IAccountPeerLocationForAccount::createFromPeerLocationFindResult(
-                                                                                              IAccountPeerLocationDelegatePtr delegate,
-                                                                                              AccountPtr outer,
-                                                                                              PeerLocationFindRequestPtr request,
-                                                                                              LocationInfoPtr locationInfo
-                                                                                              )
+      ForAccountPtr IAccountPeerLocationForAccount::createFromPeerLocationFindResult(
+                                                                                     IAccountPeerLocationDelegatePtr delegate,
+                                                                                     AccountPtr outer,
+                                                                                     PeerLocationFindRequestPtr request,
+                                                                                     LocationInfoPtr locationInfo
+                                                                                     )
       {
         return IAccountPeerLocationFactory::singleton().createFromPeerLocationFindResult(delegate, outer, request, locationInfo);
       }
@@ -162,7 +164,7 @@ namespace openpeer
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
 
-        mLocalContext(ILocationForAccount::getForLocal(outer)->getLocationID()), // must be set to "our" location ID
+        mLocalContext(UseLocation::getForLocal(outer)->getLocationID()), // must be set to "our" location ID
         mRemoteContext(request->context()),                                                   // whatever the remote party claims is the context
 
         mDHLocalPrivateKey(localPrivateKey),
@@ -269,13 +271,13 @@ namespace openpeer
       #pragma mark
 
       //---------------------------------------------------------------------
-      AccountPeerLocationPtr AccountPeerLocation::createFromIncomingPeerLocationFind(
-                                                                                     IAccountPeerLocationDelegatePtr delegate,
-                                                                                     AccountPtr outer,
-                                                                                     PeerLocationFindRequestPtr request,
-                                                                                     IDHPrivateKeyPtr localPrivateKey,
-                                                                                     IDHPublicKeyPtr localPublicKey
-                                                                                     )
+      AccountPeerLocation::ForAccountPtr AccountPeerLocation::createFromIncomingPeerLocationFind(
+                                                                                                 IAccountPeerLocationDelegatePtr delegate,
+                                                                                                 AccountPtr outer,
+                                                                                                 PeerLocationFindRequestPtr request,
+                                                                                                 IDHPrivateKeyPtr localPrivateKey,
+                                                                                                 IDHPublicKeyPtr localPublicKey
+                                                                                                 )
       {
         AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, request, localPrivateKey, localPublicKey));
         pThis->mThisWeak = pThis;
@@ -284,12 +286,12 @@ namespace openpeer
       }
 
       //---------------------------------------------------------------------
-      AccountPeerLocationPtr AccountPeerLocation::createFromPeerLocationFindResult(
-                                                                                   IAccountPeerLocationDelegatePtr delegate,
-                                                                                   AccountPtr outer,
-                                                                                   PeerLocationFindRequestPtr request,
-                                                                                   LocationInfoPtr locationInfo
-                                                                                   )
+      AccountPeerLocation::ForAccountPtr AccountPeerLocation::createFromPeerLocationFindResult(
+                                                                                               IAccountPeerLocationDelegatePtr delegate,
+                                                                                               AccountPtr outer,
+                                                                                               PeerLocationFindRequestPtr request,
+                                                                                               LocationInfoPtr locationInfo
+                                                                                               )
       {
         AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, request, locationInfo));
         pThis->mThisWeak = pThis;
@@ -458,7 +460,7 @@ namespace openpeer
         bool result = send(requestMessage);
         if (!result) {
           // notify that the message requester failed to send the message...
-          MessageMonitor::convert(monitor)->forAccountPeerLocation().notifyMessageSendFailed();
+          UseMessageMonitorPtr(MessageMonitor::convert(monitor))->notifyMessageSendFailed();
           return monitor;
         }
 
@@ -1979,7 +1981,7 @@ namespace openpeer
         UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
-        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
         LocationInfoPtr selfLocationInfo = selfLocation->getLocationInfo();
 
         CandidateList remoteCandidates;
@@ -2074,7 +2076,7 @@ namespace openpeer
           request->findSecret(remotePeerFilePublic->getFindSecret());
         }
 
-        UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+        UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
         LocationInfoPtr selfLocationInfo = selfLocation->getLocationInfo();
         selfLocationInfo->mCandidates.clear();
 
@@ -2175,7 +2177,7 @@ namespace openpeer
 
             PeerIdentifyResultPtr result = PeerIdentifyResult::create(request);
 
-            UseLocationPtr selfLocation = ILocationForAccount::getForLocal(Account::convert(outer));
+            UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
 
             LocationInfoPtr info = selfLocation->getLocationInfo();
             info->mCandidates.clear();

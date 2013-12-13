@@ -97,7 +97,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceSaltFetchSignedSaltQuery::init()
       {
-        IBootstrappedNetworkForServices::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
+        UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------

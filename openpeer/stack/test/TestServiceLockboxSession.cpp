@@ -435,7 +435,7 @@ namespace hookflash
       {
         TestBootstrappedNetworkForPeerContactPtr pThis(new TestBootstrappedNetworkForPeerContact(IStackForInternal::queueStack()));
         
-        BootstrappedNetworkManagerPtr manager = IBootstrappedNetworkManagerForBootstrappedNetwork::singleton();
+        BootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
         ZS_THROW_BAD_STATE_IF(!manager)
 
         pThis->mThisWeak = pThis;

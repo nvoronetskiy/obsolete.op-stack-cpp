@@ -52,14 +52,15 @@ namespace openpeer
 
       interaction IMessageIncomingForAccount
       {
-        IMessageIncomingForAccount &forAccount() {return *this;}
-        const IMessageIncomingForAccount &forAccount() const {return *this;}
+        typedef IMessageIncomingForAccount ForAccount;
+        typedef shared_ptr<ForAccount> ForAccountPtr;
+        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
 
-        static MessageIncomingPtr create(
-                                         AccountPtr account,
-                                         LocationPtr location,
-                                         message::MessagePtr message
-                                         );
+        static ForAccountPtr create(
+                                    AccountPtr account,
+                                    LocationPtr location,
+                                    message::MessagePtr message
+                                    );
 
         virtual LocationPtr getLocation(bool internal = true) const = 0;
         virtual message::MessagePtr getMessage() const = 0;
@@ -103,6 +104,7 @@ namespace openpeer
         ~MessageIncoming();
 
         static MessageIncomingPtr convert(IMessageIncomingPtr peer);
+        static MessageIncomingPtr convert(ForAccountPtr peer);
 
       protected:
         //---------------------------------------------------------------------
@@ -127,11 +129,11 @@ namespace openpeer
         // (duplicate) virtual ILocationPtr getLocation() const;
         // (duplicate) virtual message::MessagePtr getMessage() const;
 
-        static MessageIncomingPtr create(
-                                         AccountPtr account,
-                                         LocationPtr location,
-                                         message::MessagePtr message
-                                         );
+        static ForAccountPtr create(
+                                    AccountPtr account,
+                                    LocationPtr location,
+                                    message::MessagePtr message
+                                    );
 
         virtual LocationPtr getLocation(bool) const;
 
@@ -180,11 +182,11 @@ namespace openpeer
       {
         static IMessageIncomingFactory &singleton();
 
-        virtual MessageIncomingPtr create(
-                                          AccountPtr account,
-                                          LocationPtr location,
-                                          message::MessagePtr message
-                                          );
+        virtual IMessageIncomingForAccount::ForAccountPtr create(
+                                                                 AccountPtr account,
+                                                                 LocationPtr location,
+                                                                 message::MessagePtr message
+                                                                 );
       };
 
     }

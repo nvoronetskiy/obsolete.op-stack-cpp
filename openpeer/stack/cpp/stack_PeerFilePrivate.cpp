@@ -142,6 +142,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PeerFilePrivatePtr PeerFilePrivate::convert(ForPeerFilesPtr peerFilePrivate)
+      {
+        return boost::dynamic_pointer_cast<PeerFilePrivate>(peerFilePrivate);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -426,18 +432,18 @@ namespace openpeer
           return false;
         }
 
-        PeerFilePublicPtr peerFilePublic = IPeerFilePublicForPeerFilePrivate::loadFromElement(peerFiles, publicDoc);
+        UsePeerFilePublicPtr peerFilePublic = IPeerFilePublicForPeerFilePrivate::loadFromElement(peerFiles, publicDoc);
         if (!peerFilePublic) {
           ZS_LOG_ERROR(Basic, pThis->log("failed to load public peer file"))
           return false;
         }
 
         if (!pThis->verifySignatures(peerFilePublic)) {
-          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + IPeerFilePublic::toDebug(peerFilePublic))
+          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + IPeerFilePublic::toDebug(PeerFilePublic::convert(peerFilePublic)))
           return false;
         }
 
-        outPeerFilePublic = peerFilePublic;
+        outPeerFilePublic = PeerFilePublic::convert(peerFilePublic);
         outPeerFilePrivate = pThis;
 
         return (bool)peerFiles;
@@ -797,7 +803,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool PeerFilePrivate::verifySignatures(PeerFilePublicPtr peerFilePublic)
+      bool PeerFilePrivate::verifySignatures(UsePeerFilePublicPtr peerFilePublic)
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
 
@@ -809,17 +815,17 @@ namespace openpeer
           return false;
         }
 
-        if (mPeerURI != peerFilePublic->forPeerFilePrivate().getPeerURI()) {
-          ZS_LOG_ERROR(Detail, log("public/private peer file URIs do not match") + ZS_PARAM("public", peerFilePublic->forPeerFilePrivate().getPeerURI()) + ZS_PARAM("private", mPeerURI))
+        if (mPeerURI != peerFilePublic->getPeerURI()) {
+          ZS_LOG_ERROR(Detail, log("public/private peer file URIs do not match") + ZS_PARAM("public", peerFilePublic->getPeerURI()) + ZS_PARAM("private", mPeerURI))
           return false;
         }
 
-        if (!peerFilePublic->forPeerFilePrivate().verifySignature(sectionAEl)) {
+        if (!peerFilePublic->verifySignature(sectionAEl)) {
           ZS_LOG_ERROR(Detail, log("private peer file section A was not signed properly"))
           return false;
         }
 
-        if (!peerFilePublic->forPeerFilePrivate().verifySignature(sectionBEl)) {
+        if (!peerFilePublic->verifySignature(sectionBEl)) {
           ZS_LOG_ERROR(Detail, log("private peer file section B was not signed properly"))
           return false;
         }

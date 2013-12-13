@@ -40,12 +40,28 @@ namespace openpeer
 {
   namespace stack
   {
+    namespace internal
+    {
+      interaction ILocationForMessages;
+      interaction IPeerForMessages;
+    }
+
     namespace message
     {
       namespace internal
       {
+
         class MessageHelper : public IMessageHelper
         {
+        public:
+          typedef stack::internal::ILocationForMessages UseLocation;
+          typedef shared_ptr<UseLocation> UseLocationPtr;
+          typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+          typedef stack::internal::IPeerForMessages UsePeer;
+          typedef shared_ptr<UsePeer> UsePeerPtr;
+          typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
         public:
           typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
           typedef Message::Methods Methods;

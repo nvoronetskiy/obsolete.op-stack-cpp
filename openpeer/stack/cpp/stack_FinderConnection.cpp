@@ -476,8 +476,8 @@ namespace openpeer
 
         channel->getStreams(wireReceiveStream, wireSendStream);
 
-        FinderRelayChannelPtr relay = IFinderRelayChannelForFinderConnection::createIncoming(delegate, account, receiveStream, sendStream, wireReceiveStream, wireSendStream);
-        channel->notifyIncomingFinderRelayChannel(relay);
+        UseFinderRelayChannelPtr relay = UseFinderRelayChannel::createIncoming(delegate, account, receiveStream, sendStream, wireReceiveStream, wireSendStream);
+        channel->notifyIncomingFinderRelayChannel(FinderRelayChannel::convert(relay));
 
         mIncomingChannels.erase(found);
 
@@ -490,7 +490,7 @@ namespace openpeer
           *outChannelNumber = channelNumber;
         }
 
-        return relay;
+        return FinderRelayChannel::convert(relay);
       }
 
       //-----------------------------------------------------------------------
@@ -1520,17 +1520,19 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void FinderConnection::Channel::notifyIncomingFinderRelayChannel(FinderRelayChannelPtr relayChannel)
+      void FinderConnection::Channel::notifyIncomingFinderRelayChannel(FinderRelayChannelPtr inRelayChannel)
       {
+        UseFinderRelayChannelPtr relayChannel = inRelayChannel;
+
         if (!relayChannel) {
           ZS_LOG_ERROR(Detail, log("incoming finder relay channel is missing"))
           return;
         }
 
-        ZS_LOG_DEBUG(log("monitoring incoming finder relay channel for shutdown (to ensure related channel gets shutdown too)") + ZS_PARAM("finder relay channel", relayChannel->forConnection().getID()))
+        ZS_LOG_DEBUG(log("monitoring incoming finder relay channel for shutdown (to ensure related channel gets shutdown too)") + ZS_PARAM("finder relay channel", relayChannel->getID()))
 
         AutoRecursiveLock lock(getLock());
-        mRelayChannelSubscription = relayChannel->forConnection().subscribe(mThisWeak.lock());
+        mRelayChannelSubscription = relayChannel->subscribe(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------

@@ -42,6 +42,7 @@ namespace openpeer
     namespace internal
     {
       interaction IAccountForLocation;
+      interaction IPeerForLocation;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -91,18 +92,19 @@ namespace openpeer
 
       interaction ILocationForMessages
       {
-        ILocationForMessages &forMessages() {return *this;}
-        const ILocationForMessages &forMessages() const {return *this;}
+        typedef ILocationForMessages ForMessages;
+        typedef shared_ptr<ForMessages> ForMessagesPtr;
+        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
 
-        static LocationPtr convert(IMessageSourcePtr messageSource);
+        static ForMessagesPtr convert(IMessageSourcePtr messageSource);
 
-        static LocationPtr getForLocal(AccountPtr account);
+        static ForMessagesPtr getForLocal(AccountPtr account);
 
-        static LocationPtr create(
-                                  IMessageSourcePtr messageSource,
-                                  const char *peerURI,
-                                  const char *locationID
-                                  );
+        static ForMessagesPtr create(
+                                     IMessageSourcePtr messageSource,
+                                     const char *peerURI,
+                                     const char *locationID
+                                     );
 
         virtual String getLocationID() const = 0;
 
@@ -123,8 +125,9 @@ namespace openpeer
 
       interaction ILocationForPeerSubscription
       {
-        ILocationForPeerSubscription &forPeerSubscription() {return *this;}
-        const ILocationForPeerSubscription &forPeerSubscription() const {return *this;}
+        typedef ILocationForPeerSubscription ForPeerSubscription;
+        typedef shared_ptr<ForPeerSubscription> ForPeerSubscriptionPtr;
+        typedef weak_ptr<ForPeerSubscription> ForPeerSubscriptionWeakPtr;
 
         virtual PeerPtr getPeer(bool internal = true) const = 0;
 
@@ -141,9 +144,6 @@ namespace openpeer
 
       interaction ILocationForPublication
       {
-        ILocationForPublication &forPublication() {return *this;}
-        const ILocationForPublication &forPublication() const {return *this;}
-
         static int locationCompare(
                                    const ILocationPtr &left,
                                    const ILocationPtr &right,
@@ -163,10 +163,11 @@ namespace openpeer
 
       interaction ILocationForPublicationRepository
       {
-        typedef ILocation::LocationTypes LocationTypes;
+        typedef ILocationForPublicationRepository ForPublicationRepository;
+        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
+        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
 
-        ILocationForPublicationRepository &forRepo() {return *this;}
-        const ILocationForPublicationRepository &forRepo() const {return *this;}
+        typedef ILocation::LocationTypes LocationTypes;
 
         static int locationCompare(
                                    const ILocationPtr &left,
@@ -209,13 +210,17 @@ namespace openpeer
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
+        typedef IPeerForLocation UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
         typedef ILocation::LocationTypes LocationTypes;
 
       protected:
         Location(
                  UseAccountPtr account,
                  LocationTypes type,
-                 PeerPtr peer,
+                 UsePeerPtr peer,
                  const char *locationID
                  );
         
@@ -228,6 +233,9 @@ namespace openpeer
 
         static LocationPtr convert(ILocationPtr location);
         static LocationPtr convert(ForAccountPtr location);
+        static LocationPtr convert(ForMessagesPtr location);
+        static LocationPtr convert(ForPeerSubscriptionPtr location);
+        static LocationPtr convert(ForPublicationRepositoryPtr location);
 
       protected:
         //---------------------------------------------------------------------
@@ -357,7 +365,7 @@ namespace openpeer
 
         UseAccountWeakPtr mAccount;
         LocationTypes mType;
-        PeerPtr mPeer;
+        UsePeerPtr mPeer;
         String mLocationID;
       };
 

@@ -45,6 +45,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction ILocationForPublication;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -55,11 +57,12 @@ namespace openpeer
 
       interaction IPublicationForPublicationMetaData
       {
+        typedef IPublicationForPublicationMetaData ForPublicationMetaData;
+        typedef shared_ptr<ForPublicationMetaData> ForPublicationMetaDataPtr;
+        typedef weak_ptr<ForPublicationMetaData> ForPublicationMetaDataWeakPtr;
+
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
         typedef IPublicationMetaData::Encodings Encodings;
-
-        IPublicationForPublicationMetaData &forPublicationMetaData() {return *this;}
-        const IPublicationForPublicationMetaData &forPublicationMetaData() const {return *this;}
 
         virtual LocationPtr getCreatorLocation(bool internal = true) const = 0;
 
@@ -91,15 +94,16 @@ namespace openpeer
 
       interaction IPublicationForPublicationRepository : public IPublicationMetaDataForPublicationRepository
       {
+        typedef IPublicationForPublicationRepository ForPublicationRepository;
+        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
+        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
+
         struct Exceptions
         {
           ZS_DECLARE_CUSTOM_EXCEPTION(VersionMismatch)
         };
 
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
-
-        IPublicationForPublicationRepository &forRepo() {return *this;}
-        const IPublicationForPublicationRepository &forRepo() const {return *this;}
 
         virtual PUID getID() const = 0;
 
@@ -175,13 +179,14 @@ namespace openpeer
 
       interaction IPublicationForMessages : public IPublicationMetaDataForMessages
       {
+        typedef IPublicationForMessages ForMessages;
+        typedef shared_ptr<ForMessages> ForMessagesPtr;
+        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
-        IPublicationForMessages &forMessages() {return *this;}
-        const IPublicationForMessages &forMessages() const {return *this;}
-
-        static PublicationPtr create(
+        static ForMessagesPtr create(
                                      ULONG version,
                                      ULONG baseVersion,
                                      ULONG lineage,
@@ -225,9 +230,21 @@ namespace openpeer
         friend interaction IPublicationFactory;
         friend interaction IPublication;
 
+        typedef ILocationForPublication UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
         typedef IPublication::Encodings Encodings;
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
         typedef IPublication::PublishToRelationshipsMap PublishToRelationshipsMap;
+
+        typedef IPublicationForPublicationRepository::ForPublicationRepository ForPublicationRepository;
+        typedef IPublicationForPublicationRepository::ForPublicationRepositoryPtr ForPublicationRepositoryPtr;
+        typedef IPublicationForPublicationRepository::ForPublicationRepositoryWeakPtr ForPublicationRepositoryWeakPtr;
+
+        typedef IPublicationForMessages::ForMessages ForMessages;
+        typedef IPublicationForMessages::ForMessagesPtr ForMessagesPtr;
+        typedef IPublicationForMessages::ForMessagesWeakPtr ForMessagesWeakPtr;
 
         typedef ULONG VersionNumber;
         typedef DocumentPtr DiffDocument;
@@ -251,6 +268,9 @@ namespace openpeer
         ~Publication();
 
         static PublicationPtr convert(IPublicationPtr publication);
+        static PublicationPtr convert(ForPublicationMetaDataPtr publication);
+        static PublicationPtr convert(ForPublicationRepositoryPtr publication);
+        static PublicationPtr convert(ForMessagesPtr publication);
 
       protected:
         //---------------------------------------------------------------------

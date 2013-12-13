@@ -58,17 +58,18 @@ namespace openpeer
 
       interaction IFinderRelayChannelForFinderConnection
       {
-        IFinderRelayChannelForFinderConnection &forConnection() {return *this;}
-        const IFinderRelayChannelForFinderConnection &forConnection() const {return *this;}
+        typedef IFinderRelayChannelForFinderConnection ForFinderConnection;
+        typedef shared_ptr<ForFinderConnection> ForFinderConnectionPtr;
+        typedef weak_ptr<ForFinderConnection> ForFinderConnectionWeakPtr;
 
-        static FinderRelayChannelPtr createIncoming(
-                                                    IFinderRelayChannelDelegatePtr delegate, // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
-                                                    AccountPtr account,
-                                                    ITransportStreamPtr outerReceiveStream,
-                                                    ITransportStreamPtr outerSendStream,
-                                                    ITransportStreamPtr wireReceiveStream,
-                                                    ITransportStreamPtr wireSendStream
-                                                    );
+        static ForFinderConnectionPtr createIncoming(
+                                                     IFinderRelayChannelDelegatePtr delegate, // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
+                                                     AccountPtr account,
+                                                     ITransportStreamPtr outerReceiveStream,
+                                                     ITransportStreamPtr outerSendStream,
+                                                     ITransportStreamPtr wireReceiveStream,
+                                                     ITransportStreamPtr wireSendStream
+                                                     );
 
         virtual PUID getID() const = 0;
 
@@ -132,6 +133,7 @@ namespace openpeer
         ~FinderRelayChannel();
 
         static FinderRelayChannelPtr convert(IFinderRelayChannelPtr channel);
+        static FinderRelayChannelPtr convert(ForFinderConnectionPtr channel);
 
       protected:
         //---------------------------------------------------------------------
@@ -319,7 +321,7 @@ namespace openpeer
                                                      ITransportStreamPtr wireSendStream
                                                      );
       };
-      
+
     }
   }
 }

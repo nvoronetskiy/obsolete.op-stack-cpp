@@ -52,6 +52,14 @@ namespace openpeer
     {
       namespace peer_finder
       {
+        typedef stack::internal::ILocationForMessages UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef stack::internal::IPeerForMessages UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         using zsLib::Numeric;
@@ -123,14 +131,14 @@ namespace openpeer
               return PeerLocationFindNotifyPtr();
             }
 
-            PeerPtr peer = Location::convert(ret->mLocationInfo->mLocation)->forMessages().getPeer();
+            UsePeerPtr peer = UseLocationPtr(Location::convert(ret->mLocationInfo->mLocation))->getPeer();
 
             if (!peer) {
               ZS_LOG_WARNING(Detail, slog("expected element is missing"))
               return PeerLocationFindNotifyPtr();
             }
 
-            if (!peer->forMessages().verifySignature(findProofEl)) {
+            if (!peer->verifySignature(findProofEl)) {
               ZS_LOG_WARNING(Detail, slog("could not validate signature of find proof request"))
               return PeerLocationFindNotifyPtr();
             }

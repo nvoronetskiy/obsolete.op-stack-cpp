@@ -42,6 +42,8 @@ namespace openpeer
     namespace internal
     {
       interaction IAccountForPeerSubscription;
+      interaction ILocationForPeerSubscription;
+      interaction IPeerForPeerSubscription;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -102,6 +104,14 @@ namespace openpeer
         typedef IAccountForPeerSubscription UseAccount;
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+
+        typedef ILocationForPeerSubscription UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef shared_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPeerForPeerSubscription UsePeer;
+        typedef shared_ptr<UsePeer> UsePeerPtr;
+        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
 
       protected:
         PeerSubscription(
@@ -194,7 +204,7 @@ namespace openpeer
 
         UseAccountWeakPtr mAccount;
 
-        PeerPtr mPeer;
+        UsePeerPtr mPeer;
 
         IPeerSubscriptionDelegatePtr mDelegate;
       };

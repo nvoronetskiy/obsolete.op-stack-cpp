@@ -750,16 +750,18 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Account::notifyMessageIncomingResponseNotSent(MessageIncoming &messageIncoming)
+      void Account::notifyMessageIncomingResponseNotSent(MessageIncoming &inMessageIncoming)
       {
+        UseMessageIncoming &messageIncoming = inMessageIncoming;
+
         AutoRecursiveLock lock(getLock());
 
-        LocationPtr location = messageIncoming.forAccount().getLocation();
-        MessagePtr message = messageIncoming.forAccount().getMessage();
+        LocationPtr location = messageIncoming.getLocation();
+        MessagePtr message = messageIncoming.getMessage();
 
         MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_NotFound);
         if (!result) {
-          ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created") + messageIncoming.forAccount().toDebug())
+          ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created") + messageIncoming.toDebug())
           return;
         }
 
@@ -1169,13 +1171,13 @@ namespace openpeer
           ZS_THROW_INVALID_ASSUMPTION_IF(!newPrivateKey)
           ZS_THROW_INVALID_ASSUMPTION_IF(!newPublicKey)
 
-          peerLocation = IAccountPeerLocationForAccount::createFromIncomingPeerLocationFind(
-                                                                                           mThisWeak.lock(),
-                                                                                           mThisWeak.lock(),
-                                                                                           peerLocationFindRequest,
-                                                                                           newPrivateKey,
-                                                                                           newPublicKey
-                                                                                           );
+          peerLocation = UseAccountPeerLocation::createFromIncomingPeerLocationFind(
+                                                                                    mThisWeak.lock(),
+                                                                                    mThisWeak.lock(),
+                                                                                    peerLocationFindRequest,
+                                                                                    newPrivateKey,
+                                                                                    newPublicKey
+                                                                                    );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
           ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
@@ -1213,7 +1215,7 @@ namespace openpeer
           return;
         }
 
-        MessageIncomingPtr messageIncoming = IMessageIncomingForAccount::create(mThisWeak.lock(), Location::convert(mFinderLocation), message);
+        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(mFinderLocation), message);
         notifySubscriptions(messageIncoming);
       }
 
@@ -1403,7 +1405,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("handling message") + PeerInfo::toDebug(peerInfo))
 
-        MessageIncomingPtr messageIncoming = IMessageIncomingForAccount::create(mThisWeak.lock(), Location::convert(location), message);
+        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(location), message);
         notifySubscriptions(messageIncoming);
       }
 
@@ -1589,12 +1591,12 @@ namespace openpeer
           }
 
           // don't know this location, remember it for later
-          AccountPeerLocationPtr peerLocation = IAccountPeerLocationForAccount::createFromPeerLocationFindResult(
-                                                                                                                 mThisWeak.lock(),
-                                                                                                                 mThisWeak.lock(),
-                                                                                                                 request,
-                                                                                                                 locationInfo
-                                                                                                                 );
+          UseAccountPeerLocationPtr peerLocation = UseAccountPeerLocation::createFromPeerLocationFindResult(
+                                                                                                            mThisWeak.lock(),
+                                                                                                            mThisWeak.lock(),
+                                                                                                            request,
+                                                                                                            locationInfo
+                                                                                                            );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
 
@@ -2174,8 +2176,8 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerFilePrivate)
 
         mSelfPeer = IPeerForAccount::create(mThisWeak.lock(), peerFilePublic);
-        mSelfLocation = ILocationForAccount::getForLocal(mThisWeak.lock());
-        mFinderLocation = ILocationForAccount::getForFinder(mThisWeak.lock());
+        mSelfLocation = UseLocation::getForLocal(mThisWeak.lock());
+        mFinderLocation = UseLocation::getForFinder(mThisWeak.lock());
         return true;
       }
 
@@ -2297,7 +2299,7 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(log("creating finder instance"))
-        mFinder = IAccountFinderForAccount::create(mThisWeak.lock(), mThisWeak.lock());
+        mFinder = UseAccountFinder::create(mThisWeak.lock(), mThisWeak.lock());
 
         if (mFinder) {
           ZS_LOG_TRACE(log("waiting for finder to be ready"))
@@ -2862,7 +2864,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Account::notifySubscriptions(MessageIncomingPtr messageIncoming)
+      void Account::notifySubscriptions(UseMessageIncomingPtr messageIncoming)
       {
         for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
         {
@@ -2877,8 +2879,8 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + UsePeerSubscription::toDebug(subscription) + IMessageIncoming::toDebug(messageIncoming))
-          subscription->notifyMessageIncoming(messageIncoming);
+          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + UsePeerSubscription::toDebug(subscription) + IMessageIncoming::toDebug(MessageIncoming::convert(messageIncoming)))
+          subscription->notifyMessageIncoming(MessageIncoming::convert(messageIncoming));
         }
       }
 

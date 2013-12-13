@@ -44,6 +44,8 @@ namespace openpeer
   {
     namespace internal
     {
+      interaction IPeerFilePublicForPeerFilePrivate;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -54,8 +56,9 @@ namespace openpeer
 
       interaction IPeerFilePrivateForPeerFiles
       {
-        IPeerFilePrivateForPeerFiles &forPeerFiles() {return *this;}
-        const IPeerFilePrivateForPeerFiles &forPeerFiles() const {return *this;}
+        typedef IPeerFilePrivateForPeerFiles ForPeerFiles;
+        typedef shared_ptr<ForPeerFiles> ForPeerFilesPtr;
+        typedef weak_ptr<ForPeerFiles> ForPeerFilesWeakPtr;
 
         static bool generate(
                              PeerFilesPtr peerFiles,
@@ -101,6 +104,10 @@ namespace openpeer
       public:
         friend interaction IPeerFilePrivateFactory;
 
+        typedef IPeerFilePublicForPeerFilePrivate UsePeerFilePublic;
+        typedef shared_ptr<UsePeerFilePublic> UsePeerFilePublicPtr;
+        typedef weak_ptr<UsePeerFilePublic> UsePeerFilePublicWeakPtr;
+
       protected:
         PeerFilePrivate(PeerFilesPtr peerFiles);
         
@@ -112,6 +119,7 @@ namespace openpeer
         ~PeerFilePrivate();
 
         static PeerFilePrivatePtr convert(IPeerFilePrivatePtr peerFilePrivate);
+        static PeerFilePrivatePtr convert(ForPeerFilesPtr peerFilePrivate);
 
       protected:
         //---------------------------------------------------------------------
@@ -220,7 +228,7 @@ namespace openpeer
                              DocumentPtr &outPublicPeerDocument
                              );
 
-        bool verifySignatures(PeerFilePublicPtr peerFilePublic);
+        bool verifySignatures(UsePeerFilePublicPtr peerFilePublic);
 
         ElementPtr findSection(const char *sectionID) const;
 

@@ -98,8 +98,8 @@ namespace openpeer
 
         mTimer = Timer::create(mThisWeak.lock(), timeout, false);
 
-        MessageMonitorManagerPtr manager = IMessageMonitorManagerForMessageMonitor::singleton();
-        manager->forMessageMonitor().monitorStart(mThisWeak.lock());
+        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+        manager->monitorStart(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -199,7 +199,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool MessageMonitor::handleMessageReceived(message::MessagePtr message)
       {
-        return (IMessageMonitorManagerForMessageMonitor::singleton())->forMessageMonitor().handleMessage(message);
+        return (UseMessageMonitorManager::singleton())->handleMessage(message);
       }
 
       //-----------------------------------------------------------------------
@@ -223,8 +223,8 @@ namespace openpeer
 
         if (!mDelegate) return;
 
-        MessageMonitorManagerPtr manager = IMessageMonitorManagerForMessageMonitor::singleton();
-        manager->forMessageMonitor().monitorEnd(*this);
+        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+        manager->monitorEnd(*this);
 
         if (mTimer) {
           mTimer->cancel();
@@ -411,8 +411,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &MessageMonitor::getLock() const
       {
-        MessageMonitorManagerPtr manager = IMessageMonitorManagerForMessageMonitor::singleton();
-        return manager->forMessageMonitor().getLock();
+        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+        return manager->getLock();
       }
     }
 

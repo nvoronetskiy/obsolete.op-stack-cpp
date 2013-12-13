@@ -60,6 +60,10 @@ namespace openpeer
 
       namespace peer_finder
       {
+        typedef stack::internal::ILocationForMessages UseLocation;
+        typedef shared_ptr<UseLocation> UseLocationPtr;
+        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
         typedef stack::internal::IAccountForMessages UseAccount;
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
@@ -102,13 +106,13 @@ namespace openpeer
             return SessionCreateResultPtr();
           }
 
-          LocationPtr messageLocation = ILocationForMessages::convert(messageSource);
+          UseLocationPtr messageLocation = UseLocation::convert(messageSource);
           if (!messageLocation) {
             ZS_LOG_ERROR(Detail, slog("message source was not a known location"))
             return SessionCreateResultPtr();
           }
 
-          UseAccountPtr account = messageLocation->forMessages().getAccount();
+          UseAccountPtr account = messageLocation->getAccount();
           if (!account) {
             ZS_LOG_ERROR(Detail, slog("account object is gone"))
             return SessionCreateResultPtr();

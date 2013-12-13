@@ -80,6 +80,8 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
+      typedef IBootstrappedNetworkForServices::ForServicesPtr ForServicesPtr;
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -212,10 +214,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkPtr IBootstrappedNetworkForServices::prepare(
-                                                                      const char *domain,
-                                                                      IBootstrappedNetworkDelegatePtr delegate
-                                                                      )
+      ForServicesPtr IBootstrappedNetworkForServices::prepare(
+                                                              const char *domain,
+                                                              IBootstrappedNetworkDelegatePtr delegate
+                                                              )
       {
         return IBootstrappedNetworkFactory::singleton().prepare(domain, delegate);
       }
@@ -241,7 +243,7 @@ namespace openpeer
                                                ) :
         zsLib::MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
-        mManager(IBootstrappedNetworkManagerForBootstrappedNetwork::singleton()),
+        mManager(UseBootstrappedNetworkManager::singleton()),
         mDomain(domain),
         mCompleted(false),
         mErrorCode(0),
@@ -304,6 +306,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      BootstrappedNetworkPtr BootstrappedNetwork::convert(ForBootstrappedNetworkManagerPtr network)
+      {
+        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -331,7 +339,7 @@ namespace openpeer
 
         domain.toLower();
 
-        BootstrappedNetworkManagerPtr manager = IBootstrappedNetworkManagerForBootstrappedNetwork::singleton();
+        UseBootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
         ZS_THROW_BAD_STATE_IF(!manager)
 
         BootstrappedNetworkPtr pThis(new BootstrappedNetwork(IStackForInternal::queueStack(), domain));
@@ -340,7 +348,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(pThis->getLock());
 
-        BootstrappedNetworkPtr useThis = manager->forBootstrappedNetwork().findExistingOrUse(pThis);
+        BootstrappedNetworkPtr useThis = manager->findExistingOrUse(pThis);
 
         if (pThis->getID() != useThis->getID()) {
           ZS_LOG_DEBUG(useThis->log("reusing existing object") + useThis->toDebug())
@@ -349,7 +357,7 @@ namespace openpeer
         }
 
         if (delegate) {
-          manager->forBootstrappedNetwork().registerDelegate(useThis, delegate);
+          manager->registerDelegate(useThis, delegate);
         }
 
         if (pThis->getID() == useThis->getID()) {
@@ -718,20 +726,20 @@ namespace openpeer
           if (resultMessage) {
             MessageResultPtr actualResultMessage = MessageResult::convert(resultMessage);
             if (!actualResultMessage->hasError()) {
-              ICacheForServices::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
+              UseCache::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
             } else {
               if (mServicesGetQuery == query) {
                 if (IHTTP::isRedirection(IHTTP::toStatusCode(actualResultMessage->errorCode()))) {
-                  ICacheForServices::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
+                  UseCache::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
                 } else {
-                  ICacheForServices::clear(cookieName); // do not store error results
+                  UseCache::clear(cookieName); // do not store error results
                 }
               } else {
-                ICacheForServices::clear(cookieName); // do not store error results
+                UseCache::clear(cookieName); // do not store error results
               }
             }
           } else {
-            ICacheForServices::clear(cookieName);
+            UseCache::clear(cookieName);
           }
 
           mPendingRequestCookies.erase(foundCookie);
@@ -917,9 +925,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &BootstrappedNetwork::getLock() const
       {
-        BootstrappedNetworkManagerPtr manager = mManager.lock();
+        UseBootstrappedNetworkManagerPtr manager = mManager.lock();
         if (!manager) return mBogusLock;
-        return manager->forBootstrappedNetwork().getLock();
+        return manager->getLock();
       }
 
       //-----------------------------------------------------------------------
@@ -1109,9 +1117,9 @@ namespace openpeer
 
         mRedirectionAttempts = 0;
 
-        BootstrappedNetworkManagerPtr manager = mManager.lock();
+        UseBootstrappedNetworkManagerPtr manager = mManager.lock();
         if (manager) {
-          manager->forBootstrappedNetwork().notifyComplete(mThisWeak.lock());
+          manager->notifyComplete(mThisWeak.lock());
         }
       }
 
@@ -1160,9 +1168,9 @@ namespace openpeer
         mPendingRequestCookies.clear();
 
         if (pThis) {
-          BootstrappedNetworkManagerPtr manager = mManager.lock();
+          UseBootstrappedNetworkManagerPtr manager = mManager.lock();
           if (manager) {
-            manager->forBootstrappedNetwork().notifyComplete(pThis);
+            manager->notifyComplete(pThis);
           }
         }
       }
@@ -1328,12 +1336,12 @@ namespace openpeer
         }
 
         SecureByteBlockPtr cacheBuffer;
-        MessagePtr cacheResult = ICacheForServices::getFromCache(
-                                                                 cachedCookieNameForResult,
-                                                                 message,
-                                                                 cacheBuffer,
-                                                                 mThisWeak.lock()
-                                                                 );
+        MessagePtr cacheResult = UseCache::getFromCache(
+                                                        cachedCookieNameForResult,
+                                                        message,
+                                                        cacheBuffer,
+                                                        mThisWeak.lock()
+                                                        );
 
         FakeHTTPQueryPtr fakeQuery;
         IHTTPQueryPtr query;

@@ -58,6 +58,7 @@ namespace openpeer
     {
       interaction ILocationForAccount;
       interaction IAccountForAccountFinder;
+      interaction IMessageMonitorForAccountFinder;
 
       using message::peer_finder::SessionCreateResult;
       using message::peer_finder::SessionCreateResultPtr;
@@ -82,10 +83,10 @@ namespace openpeer
 
         typedef IAccount::AccountStates AccountStates;
 
-        static AccountFinderPtr create(
-                                       IAccountFinderDelegatePtr delegate,
-                                       AccountPtr outer
-                                       );
+        static ForAccountPtr create(
+                                    IAccountFinderDelegatePtr delegate,
+                                    AccountPtr outer
+                                    );
         virtual PUID getID() const = 0;
         virtual AccountStates getState() const = 0;
 
@@ -143,6 +144,10 @@ namespace openpeer
         typedef shared_ptr<UseAccount> UseAccountPtr;
         typedef weak_ptr<UseAccount> UseAccountWeakPtr;
 
+        typedef IMessageMonitorForAccountFinder UseMessageMonitor;
+        typedef shared_ptr<UseMessageMonitor> UseMessageMonitorPtr;
+        typedef weak_ptr<UseMessageMonitor> UseMessageMonitorWeakPtr;
+
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
       protected:
@@ -171,10 +176,10 @@ namespace openpeer
         #pragma mark AccountFinder => IAccountFinderForAccount
         #pragma mark
 
-        static AccountFinderPtr create(
-                                       IAccountFinderDelegatePtr delegate,
-                                       AccountPtr outer
-                                       );
+        static ForAccountPtr create(
+                                    IAccountFinderDelegatePtr delegate,
+                                    AccountPtr outer
+                                    );
 
         virtual PUID getID() const {return mID;}
 
@@ -400,10 +405,10 @@ namespace openpeer
       {
         static IAccountFinderFactory &singleton();
 
-        virtual AccountFinderPtr create(
-                                        IAccountFinderDelegatePtr delegate,
-                                        AccountPtr outer
-                                        );
+        virtual IAccountFinderForAccount::ForAccountPtr create(
+                                                               IAccountFinderDelegatePtr delegate,
+                                                               AccountPtr outer
+                                                               );
       };
 
     }

@@ -800,7 +800,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("all queries will now execute"))
         }
 
-        mBootstrappedNetwork = IBootstrappedNetworkForServices::prepare(mostFoundDomain, mThisWeak.lock());
+        mBootstrappedNetwork = UseBootstrappedNetwork::prepare(mostFoundDomain, mThisWeak.lock());
         return false;
       }
 

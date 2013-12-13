@@ -111,19 +111,19 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PeerPtr IPeerForMessages::create(
-                                       AccountPtr account,
-                                       IPeerFilePublicPtr peerFilePublic
-                                       )
+      IPeerForMessages::ForMessagesPtr IPeerForMessages::create(
+                                                                AccountPtr account,
+                                                                IPeerFilePublicPtr peerFilePublic
+                                                                )
       {
         return IPeerFactory::singleton().create(account, peerFilePublic);
       }
 
       //-----------------------------------------------------------------------
-      PeerPtr IPeerForMessages::getFromSignature(
-                                                 AccountPtr account,
-                                                 ElementPtr signedElement
-                                                 )
+      IPeerForMessages::ForMessagesPtr IPeerForMessages::getFromSignature(
+                                                                          AccountPtr account,
+                                                                          ElementPtr signedElement
+                                                                          )
       {
         return IPeerFactory::singleton().getFromSignature(account, signedElement);
       }
@@ -177,6 +177,24 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForAccountPtr peer)
+      {
+        return boost::dynamic_pointer_cast<Peer>(peer);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr Peer::convert(ForMessagesPtr peer)
+      {
+        return boost::dynamic_pointer_cast<Peer>(peer);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr Peer::convert(ForLocationPtr peer)
+      {
+        return boost::dynamic_pointer_cast<Peer>(peer);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr Peer::convert(ForPeerSubscriptionPtr peer)
       {
         return boost::dynamic_pointer_cast<Peer>(peer);
       }

@@ -63,6 +63,8 @@ namespace openpeer
     {
       using services::IHelper;
 
+      typedef IFinderRelayChannelForFinderConnection::ForFinderConnectionPtr ForFinderConnectionPtr;
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -80,14 +82,14 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      FinderRelayChannelPtr IFinderRelayChannelForFinderConnection::createIncoming(
-                                                                                   IFinderRelayChannelDelegatePtr delegate, // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
-                                                                                   AccountPtr account,
-                                                                                   ITransportStreamPtr outerReceiveStream,
-                                                                                   ITransportStreamPtr outerSendStream,
-                                                                                   ITransportStreamPtr wireReceiveStream,
-                                                                                   ITransportStreamPtr wireSendStream
-                                                                                   )
+      ForFinderConnectionPtr IFinderRelayChannelForFinderConnection::createIncoming(
+                                                                                    IFinderRelayChannelDelegatePtr delegate, // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
+                                                                                    AccountPtr account,
+                                                                                    ITransportStreamPtr outerReceiveStream,
+                                                                                    ITransportStreamPtr outerSendStream,
+                                                                                    ITransportStreamPtr wireReceiveStream,
+                                                                                    ITransportStreamPtr wireSendStream
+                                                                                    )
       {
         return IFinderRelayChannelFactory::singleton().createIncoming(delegate, account, outerReceiveStream, outerSendStream, wireReceiveStream, wireSendStream);
       }
@@ -173,6 +175,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       FinderRelayChannelPtr FinderRelayChannel::convert(IFinderRelayChannelPtr channel)
+      {
+        return boost::dynamic_pointer_cast<FinderRelayChannel>(channel);
+      }
+
+      //-----------------------------------------------------------------------
+      FinderRelayChannelPtr FinderRelayChannel::convert(ForFinderConnectionPtr channel)
       {
         return boost::dynamic_pointer_cast<FinderRelayChannel>(channel);
       }
