@@ -62,10 +62,11 @@ namespace openpeer
 
       interaction IPublicationRepositoryForAccount
       {
-        IPublicationRepositoryForAccount &forAccount() {return *this;}
-        const IPublicationRepositoryForAccount &forAccount() const {return *this;}
+        typedef IPublicationRepositoryForAccount ForAccount;
+        typedef shared_ptr<ForAccount> ForAccountPtr;
+        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
 
-        static PublicationRepositoryPtr create(AccountPtr account);
+        static ForAccountPtr create(AccountPtr account);
 
         virtual PUID getID() const = 0;
 
@@ -210,6 +211,7 @@ namespace openpeer
         ~PublicationRepository();
 
         static PublicationRepositoryPtr convert(IPublicationRepositoryPtr repository);
+        static PublicationRepositoryPtr convert(ForAccountPtr repository);
 
       protected:
         //---------------------------------------------------------------------

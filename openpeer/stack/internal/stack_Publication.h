@@ -46,6 +46,7 @@ namespace openpeer
     namespace internal
     {
       interaction ILocationForPublication;
+      interaction IPublicationMetaDataForPublication;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -104,6 +105,8 @@ namespace openpeer
         };
 
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
+
+        static ElementPtr toDebug(ForPublicationRepositoryPtr publication);
 
         virtual PUID getID() const = 0;
 
@@ -229,10 +232,15 @@ namespace openpeer
       public:
         friend interaction IPublicationFactory;
         friend interaction IPublication;
+        friend interaction IPublicationForPublicationRepository;
 
         typedef ILocationForPublication UseLocation;
         typedef shared_ptr<UseLocation> UseLocationPtr;
         typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+
+        typedef IPublicationMetaDataForPublication UsePublicationMetaData;
+        typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
+        typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
 
         typedef IPublication::Encodings Encodings;
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
@@ -376,10 +384,6 @@ namespace openpeer
         #pragma mark Publication => IPublicationForPublicationRepository
         #pragma mark
 
-      public:
-        IPublicationForPublicationRepository &forRepo() {return *this;}
-        const IPublicationForPublicationRepository &forRepo() const {return *this;}
-
       protected:
         // (duplicate) virtual PUID getID() const {return mID;}
 
@@ -448,10 +452,6 @@ namespace openpeer
         #pragma mark
         #pragma mark Publication => IPublicationForMessages
         #pragma mark
-
-      public:
-        IPublicationForMessages &forMessages() {return *this;}
-        const IPublicationForMessages &forMessages() const {return *this;}
 
       protected:
         static PublicationPtr create(

@@ -105,6 +105,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      ElementPtr ILocationForMessages::toDebug(ForMessagesPtr location)
+      {
+        return Location::toDebug(Location::convert(location));
+      }
+
+      //-----------------------------------------------------------------------
       ForMessagesPtr ILocationForMessages::getForLocal(AccountPtr account)
       {
         return ILocationFactory::singleton().getForLocal(account);
@@ -553,7 +559,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "type", toString(mType));
-        IHelper::debugAppend(resultEl, IPeer::toDebug(Peer::convert(mPeer)));
+        IHelper::debugAppend(resultEl, UsePeer::toDebug(mPeer));
         IHelper::debugAppend(resultEl, "location id(s)", mLocationID);
 
         return resultEl;

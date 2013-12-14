@@ -56,6 +56,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+      
       using services::IHelper;
 
       //-----------------------------------------------------------------------
@@ -82,7 +84,7 @@ namespace openpeer
                                          ) :
         mID(zsLib::createPUID()),
         mAccount(account),
-        mDelegate(IPeerSubscriptionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate))
+        mDelegate(IPeerSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
         ZS_LOG_DEBUG(log("constructed"))
       }
@@ -235,7 +237,7 @@ namespace openpeer
 
         if (mPeer) {
           if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", IPeer::toDebug(Peer::convert(peer))) + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))))
+            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", UsePeer::toDebug(peer)) + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)))
             return;
           }
         }
@@ -265,11 +267,11 @@ namespace openpeer
         if (mPeer) {
           UsePeerPtr peer = location->getPeer();
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", IPeer::toDebug(Peer::convert(mPeer))))
+            ZS_LOG_DEBUG(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", UsePeer::toDebug(mPeer)))
             return;
           }
           if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring location connection state change") + ZS_PARAM("notified peer", IPeer::toDebug(Peer::convert(peer))) + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))))
+            ZS_LOG_DEBUG(log("ignoring location connection state change") + ZS_PARAM("notified peer", UsePeer::toDebug(peer)) + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)))
             return;
           }
         }
@@ -299,17 +301,17 @@ namespace openpeer
         if (mPeer) {
           UsePeerPtr peer = location->getPeer();
           if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
           if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_TRACE(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+            ZS_LOG_TRACE(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
         }
 
         try {
-          ZS_LOG_DEBUG(log("notifying peer subscription of messaging incoming") + ZS_PARAM("subscribing peer", IPeer::toDebug(Peer::convert(mPeer))) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+          ZS_LOG_DEBUG(log("notifying peer subscription of messaging incoming") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
           mDelegate->onPeerSubscriptionMessageIncoming(mThisWeak.lock(), message);
         } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
@@ -355,7 +357,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "subscribing", mPeer ? "peer" : "all");
-        IHelper::debugAppend(resultEl, IPeer::toDebug(Peer::convert(mPeer)));
+        IHelper::debugAppend(resultEl, UsePeer::toDebug(mPeer));
 
         return resultEl;
       }

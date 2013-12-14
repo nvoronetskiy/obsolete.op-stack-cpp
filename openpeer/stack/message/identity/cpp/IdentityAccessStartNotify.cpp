@@ -47,6 +47,8 @@ namespace openpeer
     {
       namespace identity
       {
+        typedef stack::internal::IStackForInternal UseStack;
+
         using zsLib::Seconds;
         using internal::MessageHelper;
         using stack::internal::Helper;
@@ -116,7 +118,7 @@ namespace openpeer
           identityInfo.mProvider = mIdentityInfo.mProvider;
           identityInfo.mReloginKey = mIdentityInfo.mReloginKey;
 
-          AgentInfo agentInfo = IStackForInternal::agentInfo();
+          AgentInfo agentInfo = UseStack::agentInfo();
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (identityInfo.mURI.hasData()) {

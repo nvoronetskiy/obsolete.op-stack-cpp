@@ -52,6 +52,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       //      typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
@@ -76,7 +78,7 @@ namespace openpeer
                                                                        ) :
         zsLib::MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
-        mDelegate(IServiceSaltFetchSignedSaltQueryDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IServiceSaltFetchSignedSaltQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mBootstrappedNetwork(BootstrappedNetwork::convert(serviceSalt)),
         mLastError(0),
         mTotalToFetch(totalToFetch)
@@ -132,7 +134,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!serviceSalt)
         ZS_THROW_INVALID_ARGUMENT_IF(totalToFetch < 1)
 
-        ServiceSaltFetchSignedSaltQueryPtr pThis(new ServiceSaltFetchSignedSaltQuery(IStackForInternal::queueStack(), delegate, serviceSalt, totalToFetch));
+        ServiceSaltFetchSignedSaltQueryPtr pThis(new ServiceSaltFetchSignedSaltQuery(UseStack::queueStack(), delegate, serviceSalt, totalToFetch));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -344,7 +346,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("ServiceSaltFetchSignedSaltQuery");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
+        IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mSaltMonitor));
         IHelper::debugAppend(resultEl, "salt bundles", mSaltBundles.size());
         IHelper::debugAppend(resultEl, "total to fetch", mTotalToFetch);

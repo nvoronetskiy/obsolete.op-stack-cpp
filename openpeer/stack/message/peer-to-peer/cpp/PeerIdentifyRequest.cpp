@@ -163,7 +163,7 @@ namespace openpeer
             }
 
             if (location->getPeerURI() != remotePeer->getPeerURI()) {
-              ZS_LOG_WARNING(Detail, slog("location peer does not match public peer file") +  ILocation::toDebug(Location::convert(location)) + IPeer::toDebug(Peer::convert(remotePeer)))
+              ZS_LOG_WARNING(Detail, slog("location peer does not match public peer file") +  UseLocation::toDebug(location) + UsePeer::toDebug(remotePeer))
               return PeerIdentifyRequestPtr();
             }
 
@@ -174,7 +174,7 @@ namespace openpeer
             }
 
             if (signaturePeer->getID() != remotePeer->getID()) {
-              ZS_LOG_WARNING(Detail, slog("signature peer does not match identity peer") + ZS_PARAM("signature peer", IPeer::toDebug(Peer::convert(signaturePeer))) + ZS_PARAM("request peer", IPeer::toDebug(Peer::convert(remotePeer))))
+              ZS_LOG_WARNING(Detail, slog("signature peer does not match identity peer") + ZS_PARAM("signature peer", UsePeer::toDebug(signaturePeer)) + ZS_PARAM("request peer", UsePeer::toDebug(remotePeer)))
               return PeerIdentifyRequestPtr();
             }
 

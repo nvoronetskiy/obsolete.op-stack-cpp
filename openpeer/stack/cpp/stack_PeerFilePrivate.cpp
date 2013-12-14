@@ -439,7 +439,7 @@ namespace openpeer
         }
 
         if (!pThis->verifySignatures(peerFilePublic)) {
-          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + IPeerFilePublic::toDebug(PeerFilePublic::convert(peerFilePublic)))
+          ZS_LOG_ERROR(Basic, pThis->log("signatures did not validate in private peer file")  + UsePeerFilePublic::toDebug(peerFilePublic))
           return false;
         }
 

@@ -822,14 +822,14 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(msg);
           ElementPtr root = ret->getFirstChildElement();
 
-          PublicationPtr publication = Publication::convert(publicationMetaData->toPublication());
+          UsePublicationPtr publication = Publication::convert(publicationMetaData->toPublication());
 
           ULONG fromVersion = 0;
           ULONG toVersion = 0;
 
           if (publication) {
-            fromVersion = publication->forMessages().getBaseVersion();
-            toVersion = publication->forMessages().getVersion();
+            fromVersion = publication->getBaseVersion();
+            toVersion = publication->getVersion();
           } else {
             fromVersion = publicationMetaData->getBaseVersion();
             toVersion = publicationMetaData->getVersion();
@@ -882,7 +882,7 @@ namespace openpeer
                 if (peerCache) {
                   size_t bogusFillSize = 0;
                   size_t &maxFillSize = (notifyPeerPublishMaxDocumentSizeInBytes ? *notifyPeerPublishMaxDocumentSizeInBytes : bogusFillSize);
-                  if (peerCache->getNextVersionToNotifyAboutAndMarkNotified(publication, maxFillSize, fromVersion, toVersion)) {
+                  if (peerCache->getNextVersionToNotifyAboutAndMarkNotified(Publication::convert(publication), maxFillSize, fromVersion, toVersion)) {
                     break;
                   }
                 }
@@ -916,10 +916,10 @@ namespace openpeer
 
           NodePtr publishedDocEl;
           if (publication) {
-            publishedDocEl = publication->forMessages().getDiffs(
-                                                                 fromVersion,
-                                                                 toVersion
-                                                                 );
+            publishedDocEl = publication->getDiffs(
+                                                   fromVersion,
+                                                   toVersion
+                                                   );
 
             if (0 == toVersion) {
               // put the version back to something more sensible

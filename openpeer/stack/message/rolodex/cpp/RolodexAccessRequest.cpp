@@ -52,6 +52,8 @@ namespace openpeer
 
       namespace rolodex
       {
+        typedef stack::internal::IStackForInternal UseStack;
+
         using zsLib::Seconds;
         using internal::MessageHelper;
         using stack::internal::IStackForInternal;
@@ -120,7 +122,7 @@ namespace openpeer
           }
 
           AgentInfo agentInfo;
-          agentInfo = IStackForInternal::agentInfo();
+          agentInfo = UseStack::agentInfo();
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (mAgentInfo.hasData()) {

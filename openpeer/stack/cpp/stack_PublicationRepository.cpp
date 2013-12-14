@@ -82,6 +82,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       typedef PublicationRepository::PublisherPtr PublisherPtr;
@@ -91,6 +93,8 @@ namespace openpeer
       typedef PublicationRepository::PeerSubscriptionIncomingPtr PeerSubscriptionIncomingPtr;
       typedef PublicationRepository::PeerSubscriptionOutgoingPtr PeerSubscriptionOutgoingPtr;
       typedef PublicationRepository::PeerCachePtr PeerCachePtr;
+
+      typedef IPublicationRepositoryForAccount::ForAccountPtr ForAccountPtr;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -109,7 +113,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PublicationRepositoryPtr IPublicationRepositoryForAccount::create(AccountPtr account)
+      ForAccountPtr IPublicationRepositoryForAccount::create(AccountPtr account)
       {
         return IPublicationRepositoryFactory::singleton().createPublicationRepository(account);
       }
@@ -178,6 +182,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PublicationRepositoryPtr PublicationRepository::convert(ForAccountPtr repository)
+      {
+        return boost::dynamic_pointer_cast<PublicationRepository>(repository);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -188,7 +198,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr PublicationRepository::create(AccountPtr account)
       {
-        PublicationRepositoryPtr pThis(new PublicationRepository(IStackForInternal::queueStack(), account));
+        PublicationRepositoryPtr pThis(new PublicationRepository(UseStack::queueStack(), account));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -1969,7 +1979,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::PeerCache");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(PublicationMetaData::convert(mPeerSource)));
+        IHelper::debugAppend(resultEl, UsePublicationMetaData::toDebug(mPeerSource));
         IHelper::debugAppend(resultEl, "expires", mExpires);
         IHelper::debugAppend(resultEl, "cached remote", mCachedPublications.size());
 
@@ -2002,7 +2012,7 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
         mOuter(outer),
-        mDelegate(IPublicationPublisherDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IPublicationPublisherDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mPublication(publication),
         mSucceeded(false),
         mErrorCode(0)
@@ -2238,7 +2248,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::Publisher");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPublication::toDebug(Publication::convert(mPublication)));
+        IHelper::debugAppend(resultEl, UsePublication::toDebug(mPublication));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
         IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
         IHelper::debugAppend(resultEl, "error code", mErrorCode);
@@ -2280,7 +2290,7 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
         mOuter(outer),
-        mDelegate(IPublicationFetcherDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IPublicationFetcherDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mPublicationMetaData(metaData),
         mSucceeded(false),
         mErrorCode(0)
@@ -2526,12 +2536,12 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::Fetcher");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(PublicationMetaData::convert(mPublicationMetaData)));
+        IHelper::debugAppend(resultEl, UsePublicationMetaData::toDebug(mPublicationMetaData));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
         IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
         IHelper::debugAppend(resultEl, "error code", mErrorCode);
         IHelper::debugAppend(resultEl, "error reason", mErrorReason);
-        IHelper::debugAppend(resultEl, IPublication::toDebug(Publication::convert(mFetchedPublication)));
+        IHelper::debugAppend(resultEl, UsePublication::toDebug(mFetchedPublication));
 
         return resultEl;
       }
@@ -2568,7 +2578,7 @@ namespace openpeer
                                               ) :
         MessageQueueAssociator(queue),
         mOuter(outer),
-        mDelegate(IPublicationRemoverDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IPublicationRemoverDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mPublication(publication),
         mSucceeded(false),
         mErrorCode(0)
@@ -2795,7 +2805,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::Remover");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPublication::toDebug(Publication::convert(mPublication)));
+        IHelper::debugAppend(resultEl, UsePublication::toDebug(mPublication));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
         IHelper::debugAppend(resultEl, "succeeded", mSucceeded);
         IHelper::debugAppend(resultEl, "error code", mErrorCode);
@@ -2823,7 +2833,7 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
         mOuter(outer),
-        mDelegate(IPublicationSubscriptionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IPublicationSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mCurrentState(IPublicationSubscription::PublicationSubscriptionState_Pending)
       {
         UseAccountPtr account = outer->getAccount();
@@ -3059,7 +3069,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::SubscriptionLocal");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(PublicationMetaData::convert(mSubscriptionInfo)));
+        IHelper::debugAppend(resultEl, UsePublicationMetaData::toDebug(mSubscriptionInfo));
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
         return resultEl;
@@ -3426,8 +3436,8 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PublicationRepository::PeerSubscriptionIncoming");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "source", IPublicationMetaData::toDebug(PublicationMetaData::convert(mPeerSource)));
-        IHelper::debugAppend(resultEl, "subscription info", IPublicationMetaData::toDebug(PublicationMetaData::convert(mSubscriptionInfo)));
+        IHelper::debugAppend(resultEl, "source", UsePublicationMetaData::toDebug(mPeerSource));
+        IHelper::debugAppend(resultEl, "subscription info", UsePublicationMetaData::toDebug(mSubscriptionInfo));
         IHelper::debugAppend(resultEl, "notification monitors", mNotificationMonitors.size());
 
         return resultEl;
@@ -3451,7 +3461,7 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
         mOuter(outer),
-        mDelegate(IPublicationSubscriptionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IPublicationSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mCurrentState(PublicationSubscriptionState_Pending),
         mSubscriptionInfo(subscriptionInfo)
       {
@@ -3699,7 +3709,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
-        IHelper::debugAppend(resultEl, IPublicationMetaData::toDebug(PublicationMetaData::convert(mSubscriptionInfo)));
+        IHelper::debugAppend(resultEl, UsePublicationMetaData::toDebug(mSubscriptionInfo));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mMonitor));
         IHelper::debugAppend(resultEl, IMessageMonitor::toDebug(mCancelMonitor));
         IHelper::debugAppend(resultEl, "succeeded", mSucceeded);

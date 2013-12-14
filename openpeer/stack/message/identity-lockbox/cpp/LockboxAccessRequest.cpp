@@ -52,6 +52,8 @@ namespace openpeer
 
       namespace identity_lockbox
       {
+        typedef stack::internal::IStackForInternal UseStack;
+
         using zsLib::Seconds;
         using internal::MessageHelper;
         using stack::internal::IStackForInternal;
@@ -123,7 +125,7 @@ namespace openpeer
           }
 
           AgentInfo agentInfo;
-          agentInfo = IStackForInternal::agentInfo();
+          agentInfo = UseStack::agentInfo();
           mAgentInfo.mergeFrom(agentInfo, true);
 
           if (mAgentInfo.hasData()) {

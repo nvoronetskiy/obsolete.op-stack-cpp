@@ -61,6 +61,8 @@ namespace openpeer
 
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       typedef IFinderRelayChannelForFinderConnection::ForFinderConnectionPtr ForFinderConnectionPtr;
@@ -118,7 +120,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("created"))
         if (delegate) {
-          mDefaultSubscription = mSubscriptions.subscribe(delegate, IStackForInternal::queueDelegate());
+          mDefaultSubscription = mSubscriptions.subscribe(delegate, UseStack::queueDelegate());
         }
       }
 
@@ -231,7 +233,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!localPublicKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!remotePublicKey)
 
-        FinderRelayChannelPtr pThis(new FinderRelayChannel(IStackForInternal::queueStack(), delegate, account, receiveStream, sendStream));
+        FinderRelayChannelPtr pThis(new FinderRelayChannel(UseStack::queueStack(), delegate, account, receiveStream, sendStream));
         pThis->mThisWeak = pThis;
 
         pThis->mConnectInfo.mFinderIP = remoteFinderIP;
@@ -299,7 +301,7 @@ namespace openpeer
 
         if (!originalDelegate) return mDefaultSubscription;
 
-        IFinderRelayChannelSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, IStackForInternal::queueDelegate());
+        IFinderRelayChannelSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
         IFinderRelayChannelDelegatePtr delegate = mSubscriptions.delegate(subscription);
 
@@ -441,7 +443,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!wireReceiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!wireSendStream)
 
-        FinderRelayChannelPtr pThis(new FinderRelayChannel(IStackForInternal::queueStack(), delegate, account, outerReceiveStream, outerSendStream));
+        FinderRelayChannelPtr pThis(new FinderRelayChannel(UseStack::queueStack(), delegate, account, outerReceiveStream, outerSendStream));
         pThis->mThisWeak = pThis;
         pThis->mWireReceiveStream = wireReceiveStream;
         pThis->mWireSendStream = wireSendStream;

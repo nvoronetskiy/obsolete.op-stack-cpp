@@ -71,12 +71,24 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IPeerFilePublicForPeerFiles::toDebug(ForPeerFilesPtr peerFilePublic)
+      {
+        return PeerFilePublic::toDebug(PeerFilePublic::convert(peerFilePublic));
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
       #pragma mark IPeerFilePublicForPeerFilePrivate
       #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IPeerFilePublicForPeerFilePrivate::toDebug(ForPeerFilePrivatePtr peerFilePublic)
+      {
+        return PeerFilePublic::toDebug(PeerFilePublic::convert(peerFilePublic));
+      }
 
       //-----------------------------------------------------------------------
       PeerFilePublicPtr IPeerFilePublicForPeerFilePrivate::createFromPublicKey(

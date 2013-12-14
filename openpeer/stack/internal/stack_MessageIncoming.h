@@ -56,6 +56,8 @@ namespace openpeer
         typedef shared_ptr<ForAccount> ForAccountPtr;
         typedef weak_ptr<ForAccount> ForAccountWeakPtr;
 
+        static ElementPtr toDebug(ForAccountPtr messageIncoming);
+
         static ForAccountPtr create(
                                     AccountPtr account,
                                     LocationPtr location,
@@ -84,6 +86,7 @@ namespace openpeer
       public:
         friend interaction IMessageIncomingFactory;
         friend interaction IMessageIncoming;
+        friend interaction IMessageIncomingForAccount;
 
         typedef IAccountForMessageIncoming UseAccount;
         typedef shared_ptr<UseAccount> UseAccountPtr;

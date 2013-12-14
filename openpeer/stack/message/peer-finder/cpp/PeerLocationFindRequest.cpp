@@ -150,7 +150,7 @@ namespace openpeer
             String peerURI = findProofEl->findFirstChildElementChecked("find")->getText();
 
             if (peerURI != localLocation->getPeerURI()) {
-              ZS_LOG_ERROR(Detail, slog("find was not intended for this peer") + ZS_PARAM("find peer URI", peerURI) + ILocation::toDebug(Location::convert(localLocation)))
+              ZS_LOG_ERROR(Detail, slog("find was not intended for this peer") + ZS_PARAM("find peer URI", peerURI) + UseLocation::toDebug(localLocation))
               return PeerLocationFindRequestPtr();
             }
 

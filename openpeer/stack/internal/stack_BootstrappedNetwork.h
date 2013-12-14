@@ -99,6 +99,8 @@ namespace openpeer
         typedef shared_ptr<ForServices> ForServicesPtr;
         typedef weak_ptr<ForServices> ForServicesWeakPtr;
 
+        static ElementPtr toDebug(ForServicesPtr network);
+
         static ForServicesPtr prepare(
                                       const char *domain,
                                       IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegatePtr()

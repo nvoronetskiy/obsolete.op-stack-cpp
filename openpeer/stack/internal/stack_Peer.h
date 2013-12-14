@@ -86,6 +86,8 @@ namespace openpeer
         typedef shared_ptr<ForLocation> ForLocationPtr;
         typedef weak_ptr<ForLocation> ForLocationWeakPtr;
 
+        static ElementPtr toDebug(ForLocationPtr peer);
+
         static PeerPtr create(
                               AccountPtr account,
                               const char *peerURI
@@ -113,6 +115,8 @@ namespace openpeer
         typedef IPeerForMessages ForMessages;
         typedef shared_ptr<ForMessages> ForMessagesPtr;
         typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+
+        static ElementPtr toDebug(ForMessagesPtr peer);
 
         static ForMessagesPtr create(
                                      AccountPtr account,
@@ -146,6 +150,8 @@ namespace openpeer
         typedef IPeerForPeerSubscription ForPeerSubscription;
         typedef shared_ptr<ForPeerSubscription> ForPeerSubscriptionPtr;
         typedef weak_ptr<ForPeerSubscription> ForPeerSubscriptionWeakPtr;
+
+        static ElementPtr toDebug(ForPeerSubscriptionPtr peer);
 
         virtual AccountPtr getAccount() const = 0;
 
@@ -185,6 +191,9 @@ namespace openpeer
       {
       public:
         friend interaction IPeerFactory;
+        friend interaction IPeerForAccount;
+        friend interaction IPeerForMessages;
+        friend interaction IPeerForPeerSubscription;
 
         friend interaction IPeer;
         friend interaction IPeerForLocation;

@@ -51,6 +51,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       //-----------------------------------------------------------------------
@@ -125,7 +127,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!password)
         ZS_THROW_INVALID_ARGUMENT_IF(!signedSaltEl)
 
-        KeyGeneratorPtr pThis(new KeyGenerator(IStackForInternal::queueKeyGeneration(), delegate));
+        KeyGeneratorPtr pThis(new KeyGenerator(UseStack::queueKeyGeneration(), delegate));
         pThis->mThisWeak = pThis;
         pThis->mPassword = String(password);
         pThis->mSignedSaltEl = signedSaltEl;
@@ -144,7 +146,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
         ZS_THROW_INVALID_ARGUMENT_IF(keySizeInBits < 1)
 
-        KeyGeneratorPtr pThis(new KeyGenerator(IStackForInternal::queueKeyGeneration(), delegate));
+        KeyGeneratorPtr pThis(new KeyGenerator(UseStack::queueKeyGeneration(), delegate));
         pThis->mThisWeak = pThis;
         pThis->mRSAKeyLength = keySizeInBits;
         pThis->init();
@@ -161,7 +163,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
         ZS_THROW_INVALID_ARGUMENT_IF(keySizeInBits < 1)
 
-        KeyGeneratorPtr pThis(new KeyGenerator(IStackForInternal::queueKeyGeneration(), delegate));
+        KeyGeneratorPtr pThis(new KeyGenerator(UseStack::queueKeyGeneration(), delegate));
         pThis->mThisWeak = pThis;
         pThis->mDHKeyDomainKeyLength = keySizeInBits;
         pThis->init();

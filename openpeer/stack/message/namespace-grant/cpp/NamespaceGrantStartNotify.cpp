@@ -53,6 +53,8 @@ namespace openpeer
 
       namespace namespace_grant
       {
+        typedef stack::internal::IStackForInternal UseStack;
+        
         using zsLib::Seconds;
         using internal::MessageHelper;
         using stack::internal::Helper;
@@ -117,7 +119,7 @@ namespace openpeer
 
           String clientNonce = IHelper::randomString(32);
 
-          AgentInfo agentInfo = IStackForInternal::agentInfo();
+          AgentInfo agentInfo = UseStack::agentInfo();
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {

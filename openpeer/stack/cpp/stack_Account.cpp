@@ -99,6 +99,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       using services::IWakeDelegateProxy;
@@ -165,7 +167,7 @@ namespace openpeer
         mLocationID(IHelper::randomString(32)),
         mCurrentState(IAccount::AccountState_Pending),
         mLastError(0),
-        mDelegate(IAccountDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+        mDelegate(IAccountDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mBlockLocationShutdownsUntil(zsLib::now()),
         mLockboxSession(lockboxSession),
         mFinderRetryAfter(zsLib::now()),
@@ -181,7 +183,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        mLockboxSession->forAccount().attach(mThisWeak.lock());
+        mLockboxSession->attach(mThisWeak.lock());
 
         step();
       }
@@ -270,9 +272,9 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate);
         ZS_THROW_INVALID_ARGUMENT_IF(!peerContactSession);
 
-        AccountPtr pThis(new Account(IStackForInternal::queueStack(), delegate, ServiceLockboxSession::convert(peerContactSession)));
+        AccountPtr pThis(new Account(UseStack::queueStack(), delegate, ServiceLockboxSession::convert(peerContactSession)));
         pThis->mThisWeak = pThis;
-        pThis->mDelegate = IAccountDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate);
+        pThis->mDelegate = IAccountDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
         pThis->init();
         return pThis;
       }
@@ -294,7 +296,7 @@ namespace openpeer
       IServiceLockboxSessionPtr Account::getLockboxSession() const
       {
         AutoRecursiveLock lock(getLock());
-        return mLockboxSession;
+        return ServiceLockboxSession::convert(mLockboxSession);
       }
 
       //-----------------------------------------------------------------------
@@ -364,7 +366,7 @@ namespace openpeer
 
         ZS_THROW_BAD_STATE_IF(!mLockboxSession)
 
-        UseBootstrappedNetworkPtr network = mLockboxSession->forAccount().getBootstrappedNetwork();
+        UseBootstrappedNetworkPtr network = mLockboxSession->getBootstrappedNetwork();
 
         ZS_THROW_BAD_STATE_IF(!network)
 
@@ -546,10 +548,10 @@ namespace openpeer
 
           gethostname(&(buffer[0]), (sizeof(buffer)*sizeof(char))-sizeof(char));
 
-          info->mDeviceID = IStackForInternal::deviceID();
-          info->mUserAgent = IStackForInternal::userAgent();
-          info->mOS = IStackForInternal::os();
-          info->mSystem = IStackForInternal::system();
+          info->mDeviceID = UseStack::deviceID();
+          info->mUserAgent = UseStack::userAgent();
+          info->mOS = UseStack::os();
+          info->mSystem = UseStack::system();
           info->mHost = &(buffer[0]);
           return info;
         }
@@ -786,7 +788,7 @@ namespace openpeer
           return IPeerFilesPtr();
         }
 
-        return mLockboxSession->forAccount().getPeerFiles();
+        return mLockboxSession->getPeerFiles();
       }
 
       //-----------------------------------------------------------------------
@@ -885,7 +887,7 @@ namespace openpeer
           if ((!includeOnlyConnectedLocations) ||
               (peerLocation->isConnected())) {
             // only push back sessions that are actually connected (unless all are desired)
-            ZS_LOG_TRACE(log("returning location") + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+            ZS_LOG_TRACE(log("returning location") + UseAccountPeerLocation::toDebug(peerLocation))
             result->push_back(peerLocation->getLocation());
           }
         }
@@ -1016,7 +1018,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (!mRepository) return PublicationRepositoryPtr();
-        return mRepository;
+        return PublicationRepository::convert(mRepository);
       }
 
       //-----------------------------------------------------------------------
@@ -1035,7 +1037,7 @@ namespace openpeer
       {
         ZS_THROW_BAD_STATE_IF(!finder)
 
-        ZS_LOG_DETAIL(log("received notification finder state changed") + ZS_PARAM("notified state", toString(state)) + AccountFinder::toDebug(finder))
+        ZS_LOG_DETAIL(log("received notification finder state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountFinder::toDebug(finder))
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
@@ -1044,7 +1046,7 @@ namespace openpeer
         }
 
         if (finder != mFinder) {
-          ZS_LOG_WARNING(Detail, log("received state change on obsolete finder") + AccountFinder::toDebug(finder))
+          ZS_LOG_WARNING(Detail, log("received state change on obsolete finder") + UseAccountFinder::toDebug(finder))
           return;
         }
 
@@ -1305,11 +1307,11 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerLocation)
 
         if (isShutdown()) {
-          ZS_LOG_WARNING(Detail, log("notified account peer location state changed when account was shutdown") + ZS_PARAM("notified state", toString(state)) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+          ZS_LOG_WARNING(Detail, log("notified account peer location state changed when account was shutdown") + ZS_PARAM("notified state", toString(state)) + UseAccountPeerLocation::toDebug(peerLocation))
           return;
         }
 
-        ZS_LOG_DETAIL(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+        ZS_LOG_DETAIL(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountPeerLocation::toDebug(peerLocation))
 
         Time tick = zsLib::now();
 
@@ -1397,7 +1399,7 @@ namespace openpeer
 
         PeerInfoMap::iterator found = mPeerInfos.find(location->getPeerURI());
         if (found == mPeerInfos.end()) {
-          ZS_LOG_WARNING(Detail, log("incoming message coming in from unknown peer location") + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)) + UseLocation::toDebug(location))
+          ZS_LOG_WARNING(Detail, log("incoming message coming in from unknown peer location") + UseAccountPeerLocation::toDebug(peerLocation) + UseLocation::toDebug(location))
           return;
         }
 
@@ -1798,7 +1800,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "timer last fired", mLastTimerFired);
         IHelper::debugAppend(resultEl, "block until", mBlockLocationShutdownsUntil);
 
-        IHelper::debugAppend(resultEl, "lockbox session id", mLockboxSession ? mLockboxSession->forAccount().getID() : 0);
+        IHelper::debugAppend(resultEl, "lockbox session id", mLockboxSession ? mLockboxSession->getID() : 0);
         IHelper::debugAppend(resultEl, "turn method list", mTURN ? mTURN->size() : 0);
         IHelper::debugAppend(resultEl, "stun method list", mSTUN ? mSTUN->size() : 0);
 
@@ -1809,7 +1811,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "self location", UseLocation::toDebug(mSelfLocation));
         IHelper::debugAppend(resultEl, "finder location", UseLocation::toDebug(mFinderLocation));
 
-        IHelper::debugAppend(resultEl, "repository id", mRepository ? mRepository->forAccount().getID() : 0);
+        IHelper::debugAppend(resultEl, "repository id", mRepository ? mRepository->getID() : 0);
 
         IHelper::debugAppend(resultEl, "dh key pair templates", mDHKeyPairTemplates.size());
 
@@ -1852,7 +1854,7 @@ namespace openpeer
         if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
 
         if (mRepository) {
-          mRepository->forAccount().cancel();
+          mRepository->cancel();
           mRepository.reset();
         }
 
@@ -1920,7 +1922,7 @@ namespace openpeer
                   // send a shutdown request to each outstanding location
                   UseAccountPeerLocationPtr peerLocation = (*iterLocation).second;
 
-                  ZS_LOG_DEBUG(log("cancel shutting down peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+                  ZS_LOG_DEBUG(log("cancel shutting down peer location") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
                   peerLocation->shutdown();
                 }
               } else {
@@ -1932,7 +1934,7 @@ namespace openpeer
           }
 
           if (mFinder) {
-            ZS_LOG_DEBUG(log("shutting down peer finder") + AccountFinder::toDebug(AccountFinder::convert(mFinder)))
+            ZS_LOG_DEBUG(log("shutting down peer finder") + UseAccountFinder::toDebug(mFinder))
             mFinder->shutdown();
           }
 
@@ -1971,7 +1973,7 @@ namespace openpeer
 
             for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
               UseAccountPeerLocationPtr peerLocation = (*iterLocation).second;
-              ZS_LOG_DEBUG(log("hard shutdown of peer location") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert( peerLocation)))
+              ZS_LOG_DEBUG(log("hard shutdown of peer location") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
               peerLocation->shutdown();
             }
             peerInfo->mLocations.clear();
@@ -2055,7 +2057,7 @@ namespace openpeer
         }
 
         mRepository = IPublicationRepositoryForAccount::create(mThisWeak.lock());
-        ZS_LOG_TRACE(log("repository created") + ZS_PARAM("respository ID", mRepository->forAccount().getID()))
+        ZS_LOG_TRACE(log("repository created") + ZS_PARAM("respository ID", mRepository->getID()))
         return true;
       }
 
@@ -2115,7 +2117,9 @@ namespace openpeer
           return true;
         }
 
-        IServiceLockboxSession::SessionStates state = mLockboxSession->forAccount().getState();
+        WORD errorCode = 0;
+        String reason;
+        IServiceLockboxSession::SessionStates state = mLockboxSession->getState(&errorCode, &reason);
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
@@ -2126,9 +2130,6 @@ namespace openpeer
           case IServiceLockboxSession::SessionState_Shutdown:
           {
             ZS_LOG_ERROR(Detail, log("lockbox session is shutdown thus account must shutdown"))
-            WORD errorCode = 0;
-            String reason;
-            mLockboxSession->forAccount().getState(&errorCode, &reason);
             setError(errorCode, reason);
             return false;
           }
@@ -2140,10 +2141,10 @@ namespace openpeer
 
         if (!mTURN) {
           ZS_LOG_DEBUG(log("creating TURN session"))
-          mTURN = mLockboxSession->forAccount().findServiceMethods("turn", "turn");
+          mTURN = mLockboxSession->findServiceMethods("turn", "turn");
         }
         if (!mSTUN) {
-          mSTUN = mLockboxSession->forAccount().findServiceMethods("stun", "stun");
+          mSTUN = mLockboxSession->findServiceMethods("stun", "stun");
         }
 
         return true;
@@ -2159,7 +2160,7 @@ namespace openpeer
           return true;
         }
 
-        IPeerFilesPtr peerFiles = mLockboxSession->forAccount().getPeerFiles();
+        IPeerFilesPtr peerFiles = mLockboxSession->getPeerFiles();
         if (!peerFiles) {
           ZS_LOG_ERROR(Detail, log("peer files are missing"))
           setError(IHTTP::HTTPStatusCode_PreconditionFailed, "Peer files are missing");
@@ -2211,7 +2212,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("creating ICE socket") + ZS_PARAM("turn servers", turnServers.size()) + ZS_PARAM("stun servers", stunServers.size()))
 
         mSocket = IICESocket::create(
-                                     IStackForInternal::queueServices(),
+                                     UseStack::queueServices(),
                                      mThisWeak.lock(),
                                      turnServers,
                                      stunServers
@@ -2250,7 +2251,7 @@ namespace openpeer
         if (mAvailableFinders.size() < 1) {
           ZS_THROW_BAD_STATE_IF(!mLockboxSession)
 
-          BootstrappedNetworkPtr network = mLockboxSession->forAccount().getBootstrappedNetwork();
+          BootstrappedNetworkPtr network = mLockboxSession->getBootstrappedNetwork();
 
           ZS_THROW_BAD_STATE_IF(!network)
 
@@ -2642,11 +2643,11 @@ namespace openpeer
             Time lastActivityTime = peerLocation->getTimeOfLastActivity();
 
             if (lastActivityTime + Seconds(OPENPEER_STACK_PEER_LOCATION_INACTIVITY_TIMEOUT_IN_SECONDS) > tick) {
-              ZS_LOG_DEBUG(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+              ZS_LOG_DEBUG(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
               continue;
             }
 
-            ZS_LOG_DEBUG(log("shutting down non incoming peer location that does not have a subscription") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+            ZS_LOG_DEBUG(log("shutting down non incoming peer location that does not have a subscription") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
 
             // signal the shutdown now...
             peerLocation->shutdown();
@@ -2676,11 +2677,11 @@ namespace openpeer
           Time lastActivityTime = peerLocation->getTimeOfLastActivity();
 
           if (lastActivityTime + Seconds(OPENPEER_STACK_PEER_LOCATION_KEEP_ALIVE_TIME_IN_SECONDS) > tick) {
-            ZS_LOG_TRACE(log("peer location is not requiring a keep alive yet") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+            ZS_LOG_TRACE(log("peer location is not requiring a keep alive yet") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
             continue;
           }
 
-          ZS_LOG_DEBUG(log("peer location is still needed thus sending keep alive now (if possible)...") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+          ZS_LOG_DEBUG(log("peer location is still needed thus sending keep alive now (if possible)...") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
           peerLocation->sendKeepAlive();
         }
       }
@@ -2691,7 +2692,7 @@ namespace openpeer
                                     PeerInfoPtr &peerInfo
                                     )
       {
-        IPeerFilesPtr peerFiles = mLockboxSession->forAccount().getPeerFiles();
+        IPeerFilesPtr peerFiles = mLockboxSession->getPeerFiles();
         ZS_THROW_BAD_STATE_IF(!peerFiles)
 
         if (!shouldFind(peerURI, peerInfo)) {
@@ -2721,7 +2722,7 @@ namespace openpeer
           UseAccountPeerLocationPtr peerLocation = (*iter).second;
 
           // do not conduct a search for locations that already are connected or in the process of connecting...
-          ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+          ZS_LOG_DEBUG(log("peer find will exclude location in search since location is already connecting or connected") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
           exclude.push_back(locationID);
         }
 
@@ -2784,10 +2785,10 @@ namespace openpeer
             for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
               UseAccountPeerLocationPtr &peerLocation = (*iterLocation).second;
               if (!peerLocation->hasReceivedCandidateInformation()) {
-                ZS_LOG_DEBUG(log("shutting down peer location as did not receive ICE candidates") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+                ZS_LOG_DEBUG(log("shutting down peer location as did not receive ICE candidates") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
                 peerLocation->shutdown();
               } else {
-                ZS_LOG_DEBUG(log("find location is valid") + PeerInfo::toDebug(peerInfo) + AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation)))
+                ZS_LOG_DEBUG(log("find location is valid") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
                 foundValid = true;
                 peerInfo->findTimeReset();
               }
@@ -2879,7 +2880,7 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + UsePeerSubscription::toDebug(subscription) + IMessageIncoming::toDebug(MessageIncoming::convert(messageIncoming)))
+          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + UsePeerSubscription::toDebug(subscription) + UseMessageIncoming::toDebug(messageIncoming))
           subscription->notifyMessageIncoming(MessageIncoming::convert(messageIncoming));
         }
       }

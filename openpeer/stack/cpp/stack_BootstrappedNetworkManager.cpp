@@ -46,6 +46,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       typedef IBootstrappedNetworkManagerForBootstrappedNetwork::ForBootstrappedNetworkPtr ForBootstrappedNetworkPtr;
@@ -150,7 +152,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(IStackForInternal::queueDelegate(), inDelegate);
+        IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(UseStack::queueDelegate(), inDelegate);
 
         if (network->isPreparationComplete()) {
           ZS_LOG_DEBUG(log("bootstrapper has already completed"))

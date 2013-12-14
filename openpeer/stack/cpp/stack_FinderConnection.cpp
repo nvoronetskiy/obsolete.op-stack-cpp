@@ -58,6 +58,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       typedef ITCPMessaging::ChannelHeader ChannelHeader;
@@ -272,7 +274,7 @@ namespace openpeer
           return existing->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
         }
 
-        FinderConnectionPtr pThis(new FinderConnection(IStackForInternal::queueStack(), remoteFinderIP));
+        FinderConnectionPtr pThis(new FinderConnection(UseStack::queueStack(), remoteFinderIP));
         pThis->mThisWeak = pThis;
         pThis->mOuter = manager;
         pThis->init();
@@ -310,7 +312,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
-        FinderConnectionPtr pThis(new FinderConnection(IStackForInternal::queueStack(), remoteFinderIP));
+        FinderConnectionPtr pThis(new FinderConnection(UseStack::queueStack(), remoteFinderIP));
         pThis->mThisWeak = pThis;
 
         if (delegate) {
@@ -334,7 +336,7 @@ namespace openpeer
 
         if (!originalDelegate) return mDefaultSubscription;
 
-        IFinderConnectionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, IStackForInternal::queueDelegate());
+        IFinderConnectionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
         IFinderConnectionDelegatePtr delegate = mSubscriptions.delegate(subscription);
 
@@ -1307,7 +1309,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("created"))
         if (delegate) {
-          mDelegate = IFinderConnectionRelayChannelDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate);
+          mDelegate = IFinderConnectionRelayChannelDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
         }
       }
 
@@ -1374,7 +1376,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
-        ChannelPtr pThis(new Channel(IStackForInternal::queueStack(), outer, delegate, receiveStream, sendStream, channelNumber));
+        ChannelPtr pThis(new Channel(UseStack::queueStack(), outer, delegate, receiveStream, sendStream, channelNumber));
         pThis->mThisWeak = pThis;
         pThis->mConnectionInfo.mLocalContextID = String(localContextID);
         pThis->mConnectionInfo.mRemoteContextID = String(remoteContextID);
@@ -1513,7 +1515,7 @@ namespace openpeer
                                                                        ULONG channelNumber
                                                                        )
       {
-        ChannelPtr pThis(new Channel(IStackForInternal::queueStack(), outer, delegate, receiveStream, sendStream, channelNumber));
+        ChannelPtr pThis(new Channel(UseStack::queueStack(), outer, delegate, receiveStream, sendStream, channelNumber));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;

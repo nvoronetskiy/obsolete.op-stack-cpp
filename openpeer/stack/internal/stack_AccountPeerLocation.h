@@ -98,6 +98,8 @@ namespace openpeer
         typedef IAccount::AccountStates AccountStates;
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
+        static ElementPtr toDebug(ForAccountPtr peerLocation);
+
         static ForAccountPtr createFromIncomingPeerLocationFind(
                                                                 IAccountPeerLocationDelegatePtr delegate,
                                                                 AccountPtr outer,
@@ -178,6 +180,7 @@ namespace openpeer
       {
       public:
         friend interaction IAccountPeerLocationFactory;
+        friend interaction IAccountPeerLocationForAccount;
 
         typedef ILocationForAccount UseLocation;
         typedef shared_ptr<UseLocation> UseLocationPtr;
@@ -232,13 +235,13 @@ namespace openpeer
 
         static AccountPeerLocationPtr convert(ForAccountPtr object);
 
-        static ElementPtr toDebug(AccountPeerLocationPtr peerLocation);
-
       protected:
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark AccountPeerLocation => IAccountPeerLocationForAccount
         #pragma mark
+
+        static ElementPtr toDebug(AccountPeerLocationPtr peerLocation);
 
         static ForAccountPtr createFromIncomingPeerLocationFind(
                                                                 IAccountPeerLocationDelegatePtr delegate,

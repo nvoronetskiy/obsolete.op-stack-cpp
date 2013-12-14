@@ -67,7 +67,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr IPeerForAccount::toDebug(ForAccountPtr peer)
       {
-        return IPeer::toDebug(Peer::convert(peer));
+        return Peer::toDebug(Peer::convert(peer));
       }
 
       //-----------------------------------------------------------------------
@@ -86,6 +86,12 @@ namespace openpeer
       #pragma mark
       #pragma mark IPeerForLocation
       #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IPeerForLocation::toDebug(ForLocationPtr peer)
+      {
+        return Peer::toDebug(Peer::convert(peer));
+      }
 
       //-----------------------------------------------------------------------
       PeerPtr IPeerForLocation::create(
@@ -111,6 +117,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IPeerForMessages::toDebug(ForMessagesPtr peer)
+      {
+        return Peer::toDebug(Peer::convert(peer));
+      }
+
+      //-----------------------------------------------------------------------
       IPeerForMessages::ForMessagesPtr IPeerForMessages::create(
                                                                 AccountPtr account,
                                                                 IPeerFilePublicPtr peerFilePublic
@@ -126,6 +138,20 @@ namespace openpeer
                                                                           )
       {
         return IPeerFactory::singleton().getFromSignature(account, signedElement);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerForPeerSubscription
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IPeerForPeerSubscription::toDebug(ForPeerSubscriptionPtr peer)
+      {
+        return Peer::toDebug(Peer::convert(peer));
       }
 
       //-----------------------------------------------------------------------

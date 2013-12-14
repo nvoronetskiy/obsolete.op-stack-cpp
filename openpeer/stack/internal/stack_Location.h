@@ -98,6 +98,8 @@ namespace openpeer
 
         static ForMessagesPtr convert(IMessageSourcePtr messageSource);
 
+        static ElementPtr toDebug(ForMessagesPtr location);
+
         static ForMessagesPtr getForLocal(AccountPtr account);
 
         static ForMessagesPtr create(

@@ -60,6 +60,8 @@ namespace openpeer
   {
     namespace test
     {
+      typedef stack::internal::UseStack:: UseStack;
+
 //#pragma mark
 //#pragma mark XML helpers
 //#pragma mark
@@ -567,7 +569,7 @@ namespace openpeer
                                                   IBootstrappedNetworkDelegatePtr delegate
                                                   )
       {
-        TestBootstrappedNetworkForAccountPtr pThis(new TestBootstrappedNetworkForAccount(IStackForInternal::queueStack()));
+        TestBootstrappedNetworkForAccountPtr pThis(new TestBootstrappedNetworkForAccount(UseStack::queueStack()));
         
         BootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
         ZS_THROW_BAD_STATE_IF(!manager)

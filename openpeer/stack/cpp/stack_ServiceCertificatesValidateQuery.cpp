@@ -51,6 +51,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       using services::IHelper;
@@ -71,7 +73,7 @@ namespace openpeer
                                                                          ) :
         zsLib::MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
-        mDelegate(IServiceCertificatesValidateQueryDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate))
+        mDelegate(IServiceCertificatesValidateQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
         ZS_LOG_DEBUG(log("created"))
 
@@ -171,7 +173,7 @@ namespace openpeer
                                                                                                 )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
-        ServiceCertificatesValidateQueryPtr pThis(new ServiceCertificatesValidateQuery(IStackForInternal::queueStack(), delegate, signedElement));
+        ServiceCertificatesValidateQueryPtr pThis(new ServiceCertificatesValidateQuery(UseStack::queueStack(), delegate, signedElement));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -303,7 +305,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
         IHelper::debugAppend(resultEl, "digest", mDigest ? IHelper::convertToBase64(*mDigest) : String());
         IHelper::debugAppend(resultEl, "digest signed", mDigestSigned ? IHelper::convertToBase64(*mDigestSigned) : String());
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
+        IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
 
         return resultEl;
       }

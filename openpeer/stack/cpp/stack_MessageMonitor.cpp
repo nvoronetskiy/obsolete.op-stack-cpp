@@ -53,6 +53,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+      
       using services::IHelper;
 
       //-----------------------------------------------------------------------
@@ -144,11 +146,11 @@ namespace openpeer
       {
         if (!requestMessage) return MessageMonitorPtr();
 
-        MessageMonitorPtr pThis(new MessageMonitor(IStackForInternal::queueStack()));
+        MessageMonitorPtr pThis(new MessageMonitor(UseStack::queueStack()));
         pThis->mThisWeak = pThis;
         pThis->mMessageID = requestMessage->messageID();
         pThis->mOriginalMessage = requestMessage;
-        pThis->mDelegate = IMessageMonitorDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate);
+        pThis->mDelegate = IMessageMonitorDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
         pThis->init(timeout);
 
         ZS_THROW_INVALID_USAGE_IF(!pThis->mDelegate)
@@ -312,7 +314,7 @@ namespace openpeer
         MessageResultPtr result = MessageResult::create(mOriginalMessage, IHTTP::HTTPStatusCode_Networkconnecttimeouterror);
         if (result) {
           // create a fake error result since the send failed
-          IMessageMonitorAsyncDelegateProxy::create(IStackForInternal::queueStack(), mThisWeak.lock())->onAutoHandleFailureResult(result);
+          IMessageMonitorAsyncDelegateProxy::create(UseStack::queueStack(), mThisWeak.lock())->onAutoHandleFailureResult(result);
           return;
         }
 
@@ -340,7 +342,7 @@ namespace openpeer
         if (mTimeoutFired) return false;  // message arrived too late
 
         // create a strong reference proxy from a weak reference proxy
-        IMessageMonitorDelegatePtr delegate = IMessageMonitorDelegateProxy::create(IStackForInternal::queueDelegate(), mDelegate);
+        IMessageMonitorDelegatePtr delegate = IMessageMonitorDelegateProxy::create(UseStack::queueDelegate(), mDelegate);
         if (!delegate) return false;
 
         ++mPendingHandled;

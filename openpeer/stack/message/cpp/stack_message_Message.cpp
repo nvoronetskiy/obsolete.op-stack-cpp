@@ -50,6 +50,8 @@ namespace openpeer
   {
     namespace message
     {
+      typedef stack::internal::IStackForInternal UseStack;
+
       using services::IHelper;
 
       using stack::internal::IStackForInternal;
@@ -87,7 +89,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       Message::Message() :
-        mAppID(IStackForInternal::appID()),
+        mAppID(UseStack::appID()),
         mID(IHelper::randomString(32)),
         mTime(zsLib::now())
       {

@@ -55,9 +55,6 @@ namespace openpeer
 
       interaction IPublicationMetaDataForPublication
       {
-        IPublicationMetaDataForPublication &forPublication() {return *this;}
-        const IPublicationMetaDataForPublication &forPublication() const {return *this;}
-
         virtual ElementPtr toDebug() const = 0;
       };
 
@@ -77,6 +74,8 @@ namespace openpeer
 
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
+
+        static ElementPtr toDebug(ForPublicationRepositoryPtr metaData);
 
         static ForPublicationRepositoryPtr create(
                                                   ULONG version,
@@ -150,9 +149,6 @@ namespace openpeer
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
-        IPublicationMetaDataForMessages &forMessages() {return *this;}
-        const IPublicationMetaDataForMessages &forMessages() const {return *this;}
-
         static ForMessagesPtr create(
                                      ULONG version,
                                      ULONG baseVersion,
@@ -186,6 +182,7 @@ namespace openpeer
       public:
         friend interaction IPublicationMetaDataFactory;
         friend interaction IPublicationMetaData;
+        friend interaction IPublicationMetaDataForPublicationRepository;
 
         typedef ILocationForPublication UseLocation;
         typedef shared_ptr<UseLocation> UseLocationPtr;

@@ -70,6 +70,7 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
       using services::IHelper;
       using services::IHTTPQuery;
       using services::IHTTPQueryDelegateProxy;
@@ -214,6 +215,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IBootstrappedNetworkForServices::toDebug(ForServicesPtr network)
+      {
+        return IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(network));
+      }
+
+      //-----------------------------------------------------------------------
       ForServicesPtr IBootstrappedNetworkForServices::prepare(
                                                               const char *domain,
                                                               IBootstrappedNetworkDelegatePtr delegate
@@ -342,7 +349,7 @@ namespace openpeer
         UseBootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
         ZS_THROW_BAD_STATE_IF(!manager)
 
-        BootstrappedNetworkPtr pThis(new BootstrappedNetwork(IStackForInternal::queueStack(), domain));
+        BootstrappedNetworkPtr pThis(new BootstrappedNetwork(UseStack::queueStack(), domain));
         pThis->mThisWeak = pThis;
         pThis->init();
 
@@ -1358,9 +1365,9 @@ namespace openpeer
           query = fakeQuery;
         } else {
           if (IHelper::hasData(buffer)) {
-            query = IHTTP::post(mThisWeak.lock(), IStackForInternal::userAgent(), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+            query = IHTTP::post(mThisWeak.lock(), UseStack::userAgent(), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
           } else {
-            query = IHTTP::get(mThisWeak.lock(), IStackForInternal::userAgent(), url);
+            query = IHTTP::get(mThisWeak.lock(), UseStack::userAgent(), url);
           }
         }
 

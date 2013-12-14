@@ -76,6 +76,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       using CryptoPP::Weak::MD5;
@@ -136,7 +138,7 @@ namespace openpeer
                                                    ServiceNamespaceGrantSessionPtr grantSession
                                                    ) :
         zsLib::MessageQueueAssociator(queue),
-        mDelegate(delegate ? IServiceLockboxSessionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate) : IServiceLockboxSessionDelegatePtr()),
+        mDelegate(delegate ? IServiceLockboxSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceLockboxSessionDelegatePtr()),
         mBootstrappedNetwork(network),
         mGrantSession(grantSession),
         mCurrentState(SessionState_Pending)
@@ -164,6 +166,18 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(IServiceLockboxSessionPtr session)
+      {
+        return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForAccountPtr session)
+      {
+        return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForServiceIdentityPtr session)
       {
         return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
       }
@@ -197,7 +211,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!grantSession)
         ZS_THROW_INVALID_ARGUMENT_IF(!identitySession)
 
-        ServiceLockboxSessionPtr pThis(new ServiceLockboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(serviceLockbox), delegate, ServiceNamespaceGrantSession::convert(grantSession)));
+        ServiceLockboxSessionPtr pThis(new ServiceLockboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(serviceLockbox), delegate, ServiceNamespaceGrantSession::convert(grantSession)));
         pThis->mThisWeak = pThis;
         pThis->mLoginIdentity = ServiceIdentitySession::convert(identitySession);
         get(pThis->mForceNewAccount) = forceNewAccount;
@@ -223,7 +237,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!lockboxAccountID)
         ZS_THROW_INVALID_ARGUMENT_IF(lockboxKey.SizeInBytes() < 1)
 
-        ServiceLockboxSessionPtr pThis(new ServiceLockboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(serviceLockbox), delegate, ServiceNamespaceGrantSession::convert(grantSession)));
+        ServiceLockboxSessionPtr pThis(new ServiceLockboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(serviceLockbox), delegate, ServiceNamespaceGrantSession::convert(grantSession)));
         pThis->mThisWeak = pThis;
         pThis->mLockboxInfo.mAccountID = String(lockboxAccountID);
         pThis->mLockboxInfo.mKey = IHelper::clone(lockboxKey);
@@ -299,7 +313,7 @@ namespace openpeer
         ServiceIdentitySessionListPtr result(new ServiceIdentitySessionList);
         for (ServiceIdentitySessionMap::const_iterator iter = mAssociatedIdentities.begin(); iter != mAssociatedIdentities.end(); ++iter)
         {
-          result->push_back((*iter).second);
+          result->push_back(ServiceIdentitySession::convert((*iter).second));
         }
         return result;
       }
@@ -321,14 +335,14 @@ namespace openpeer
 
         for (ServiceIdentitySessionList::const_iterator iter = identitiesToAssociate.begin(); iter != identitiesToAssociate.end(); ++iter)
         {
-          ServiceIdentitySessionPtr session = ServiceIdentitySession::convert(*iter);
-          session->forLockbox().associate(mThisWeak.lock());
-          mPendingUpdateIdentities[session->forLockbox().getID()] = session;
+          UseServiceIdentitySessionPtr session = ServiceIdentitySession::convert(*iter);
+          session->associate(mThisWeak.lock());
+          mPendingUpdateIdentities[session->getID()] = session;
         }
         for (ServiceIdentitySessionList::const_iterator iter = identitiesToRemove.begin(); iter != identitiesToRemove.end(); ++iter)
         {
-          ServiceIdentitySessionPtr session = ServiceIdentitySession::convert(*iter);
-          mPendingRemoveIdentities[session->forLockbox().getID()] = session;
+          UseServiceIdentitySessionPtr session = ServiceIdentitySession::convert(*iter);
+          mPendingRemoveIdentities[session->getID()] = session;
         }
 
         ZS_LOG_DEBUG(log("waking up to process identities") + ZS_PARAM("pending size", mPendingUpdateIdentities.size()) + ZS_PARAM("pending remove size", mPendingRemoveIdentities.size()))
@@ -396,26 +410,26 @@ namespace openpeer
         mAccount.reset();
 
         if (mLoginIdentity) {
-          mLoginIdentity->forLockbox().notifyStateChanged();
+          mLoginIdentity->notifyStateChanged();
           mLoginIdentity.reset();
         }
 
         for (ServiceIdentitySessionMap::iterator iter = mAssociatedIdentities.begin(); iter != mAssociatedIdentities.end(); ++iter)
         {
-          ServiceIdentitySessionPtr session = (*iter).second;
-          session->forLockbox().notifyStateChanged();
+          UseServiceIdentitySessionPtr session = (*iter).second;
+          session->notifyStateChanged();
         }
 
         for (ServiceIdentitySessionMap::iterator iter = mPendingUpdateIdentities.begin(); iter != mPendingUpdateIdentities.end(); ++iter)
         {
-          ServiceIdentitySessionPtr session = (*iter).second;
-          session->forLockbox().notifyStateChanged();
+          UseServiceIdentitySessionPtr session = (*iter).second;
+          session->notifyStateChanged();
         }
 
         for (ServiceIdentitySessionMap::iterator iter = mPendingUpdateIdentities.begin(); iter != mPendingUpdateIdentities.end(); ++iter)
         {
-          ServiceIdentitySessionPtr session = (*iter).second;
-          session->forLockbox().notifyStateChanged();
+          UseServiceIdentitySessionPtr session = (*iter).second;
+          session->notifyStateChanged();
         }
 
         mAssociatedIdentities.clear();
@@ -510,10 +524,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       IdentityInfo ServiceLockboxSession::getIdentityInfoForIdentity(
-                                                                     ServiceIdentitySessionPtr session,
+                                                                     ServiceIdentitySessionPtr inSession,
                                                                      IPeerFilesPtr *outPeerFiles
                                                                      ) const
       {
+        UseServiceIdentitySessionPtr session = inSession;
+
         if (outPeerFiles) {
           *outPeerFiles = IPeerFilesPtr();
         }
@@ -536,9 +552,9 @@ namespace openpeer
 
         for (ServiceIdentitySessionMap::const_iterator iter = mAssociatedIdentities.begin(); iter != mAssociatedIdentities.end(); ++iter)
         {
-          const ServiceIdentitySessionPtr &identity = (*iter).second;
+          const UseServiceIdentitySessionPtr &identity = (*iter).second;
 
-          if (identity->forLockbox().getID() == session->forLockbox().getID()) {
+          if (identity->getID() == session->getID()) {
             break;
           }
 
@@ -629,7 +645,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServiceLockboxSession => IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate
+      #pragma mark ServiceLockboxSession => IServiceNamespaceGrantSessionWaitDelegate
       #pragma mark
 
       //-----------------------------------------------------------------------
@@ -651,7 +667,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void ServiceLockboxSession::onServiceNamespaceGrantSessionForServicesQueryComplete(
-                                                                                         IServiceNamespaceGrantSessionForServicesQueryPtr query,
+                                                                                         IServiceNamespaceGrantSessionQueryPtr query,
                                                                                          ElementPtr namespaceGrantChallengeBundleEl
                                                                                          )
       {
@@ -697,7 +713,7 @@ namespace openpeer
           // a namespace grant challenge was issue
           NamespaceInfoMap namespaces;
           getNamespaces(namespaces);
-          mGrantQuery = mGrantSession->forServices().query(mThisWeak.lock(), challengeInfo, namespaces);
+          mGrantQuery = mGrantSession->query(mThisWeak.lock(), challengeInfo, namespaces);
         }
 
         step();
@@ -1037,8 +1053,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error code", mLastError);
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
-        IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->forServices().getID() : 0);
+        IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->getID() : 0);
         IHelper::debugAppend(resultEl, "grant query", mGrantQuery ? mGrantQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait", mGrantWait ? mGrantWait->getID() : 0);
 
@@ -1051,7 +1067,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
 
-        IHelper::debugAppend(resultEl, "login identity id", mLoginIdentity ? mLoginIdentity->forLockbox().getID() : 0);
+        IHelper::debugAppend(resultEl, "login identity id", mLoginIdentity ? mLoginIdentity->getID() : 0);
 
         IHelper::debugAppend(resultEl, IPeerFiles::toDebug(mPeerFiles));
 
@@ -1164,7 +1180,7 @@ namespace openpeer
         // happen at once rather than asking the user to issue a grant
         // permission twice.
 
-        mGrantWait = mGrantSession->forServices().obtainWaitToProceed(mThisWeak.lock());
+        mGrantWait = mGrantSession->obtainWaitToProceed(mThisWeak.lock());
 
         if (!mGrantWait) {
           ZS_LOG_TRACE(log("waiting to obtain grant wait lock"))
@@ -1185,11 +1201,11 @@ namespace openpeer
           return true;
         }
 
-        if (mLoginIdentity->forLockbox().isShutdown()) {
+        if (mLoginIdentity->isShutdown()) {
           WORD errorCode = 0;
           String reason;
 
-          mLoginIdentity->forLockbox().getState(&errorCode, &reason);
+          mLoginIdentity->getState(&errorCode, &reason);
 
           if (0 == errorCode) {
             errorCode = IHTTP::HTTPStatusCode_ClientClosedRequest;
@@ -1201,14 +1217,14 @@ namespace openpeer
           return false;
         }
 
-        if (!mLoginIdentity->forLockbox().isAssociated()) {
+        if (!mLoginIdentity->isAssociated()) {
           // require the association now to ensure the identity changes in state cause lockbox state changes too
           ZS_LOG_DEBUG(log("associated login identity to lockbox"))
           
-          mLoginIdentity->forLockbox().associate(mThisWeak.lock());
+          mLoginIdentity->associate(mThisWeak.lock());
         }
 
-        if (mLoginIdentity->forLockbox().isLoginComplete()) {
+        if (mLoginIdentity->isLoginComplete()) {
           ZS_LOG_TRACE(log("identity login is complete"))
           return true;
         }
@@ -1238,10 +1254,10 @@ namespace openpeer
         request->domain(mBootstrappedNetwork->getDomain());
 
         if (mLoginIdentity) {
-          IdentityInfo identityInfo = mLoginIdentity->forLockbox().getIdentityInfo();
+          IdentityInfo identityInfo = mLoginIdentity->getIdentityInfo();
           request->identityInfo(identityInfo);
 
-          LockboxInfo lockboxInfo = mLoginIdentity->forLockbox().getLockboxInfo();
+          LockboxInfo lockboxInfo = mLoginIdentity->getLockboxInfo();
           mLockboxInfo.mergeFrom(lockboxInfo);
 
           if (!IHelper::isValidDomain(mLockboxInfo.mDomain)) {
@@ -1285,7 +1301,7 @@ namespace openpeer
 
         mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
 
-        request->grantID(mGrantSession->forServices().getGrantID());
+        request->grantID(mGrantSession->getGrantID());
         request->lockboxInfo(mLockboxInfo);
 
         NamespaceInfoMap namespaces;
@@ -1346,7 +1362,7 @@ namespace openpeer
         {
           NamespaceInfo &namespaceInfo = (*iter).second;
 
-          if (!mGrantSession->forServices().isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
+          if (!mGrantSession->isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
             ZS_LOG_WARNING(Detail, log("lockbox was not granted required namespace") + ZS_PARAM("namespace", namespaceInfo.mURL))
             setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access lockbox");
             cancel();
@@ -1594,14 +1610,14 @@ namespace openpeer
           return true;
         }
 
-        ZS_LOG_DEBUG(log("login identity will become associated identity") + IServiceIdentitySession::toDebug(mLoginIdentity))
+        ZS_LOG_DEBUG(log("login identity will become associated identity") + UseServiceIdentitySession::toDebug(mLoginIdentity))
 
         get(mLoginIdentitySetToBecomeAssociated) = true;
 
         for (ServiceIdentitySessionMap::iterator associatedIter = mAssociatedIdentities.begin(); associatedIter != mAssociatedIdentities.end(); ++associatedIter)
         {
-          ServiceIdentitySessionPtr &identity = (*associatedIter).second;
-          if (identity->forLockbox().getID() == mLoginIdentity->forLockbox().getID()) {
+          UseServiceIdentitySessionPtr &identity = (*associatedIter).second;
+          if (identity->getID() == mLoginIdentity->getID()) {
             ZS_LOG_DEBUG(log("login identity is already associated"))
             return true;
           }
@@ -1609,14 +1625,14 @@ namespace openpeer
 
         for (ServiceIdentitySessionMap::iterator pendingIter = mPendingUpdateIdentities.begin(); pendingIter != mPendingUpdateIdentities.end(); ++pendingIter)
         {
-          ServiceIdentitySessionPtr &identity = (*pendingIter).second;
-          if (identity->forLockbox().getID() == mLoginIdentity->forLockbox().getID()) {
+          UseServiceIdentitySessionPtr &identity = (*pendingIter).second;
+          if (identity->getID() == mLoginIdentity->getID()) {
             ZS_LOG_DEBUG(log("login identity is already in pending list"))
             return true;
           }
         }
 
-        mPendingUpdateIdentities[mLoginIdentity->forLockbox().getID()] = mLoginIdentity;
+        mPendingUpdateIdentities[mLoginIdentity->getID()] = mLoginIdentity;
         ZS_LOG_DEBUG(log("adding login identity to the pending list so that it will become associated (if it is not already known by the server)") + ZS_PARAM("pending size", mPendingUpdateIdentities.size()))
 
         return true;
@@ -1641,8 +1657,8 @@ namespace openpeer
 
           for (ServiceIdentitySessionMap::iterator assocIter = mAssociatedIdentities.begin(); assocIter != mAssociatedIdentities.end(); ++assocIter)
           {
-            ServiceIdentitySessionPtr &identitySession = (*assocIter).second;
-            IdentityInfo associatedInfo = identitySession->forLockbox().getIdentityInfo();
+            UseServiceIdentitySessionPtr &identitySession = (*assocIter).second;
+            IdentityInfo associatedInfo = identitySession->getIdentityInfo();
 
             if ((info.mURI == associatedInfo.mURI) &&
                 (info.mProvider == associatedInfo.mProvider)) {
@@ -1660,8 +1676,8 @@ namespace openpeer
             ServiceIdentitySessionMap::iterator pendingCurrentIter = pendingIter;
             ++pendingIter;
 
-            ServiceIdentitySessionPtr &identitySession = (*pendingCurrentIter).second;
-            IdentityInfo pendingInfo = identitySession->forLockbox().getIdentityInfo();
+            UseServiceIdentitySessionPtr &identitySession = (*pendingCurrentIter).second;
+            IdentityInfo pendingInfo = identitySession->getIdentityInfo();
 
             if ((info.mURI == pendingInfo.mURI) &&
                 (info.mProvider == pendingInfo.mProvider)) {
@@ -1673,7 +1689,7 @@ namespace openpeer
               }
 
               // move the pending identity to the actual identity rather than creating a new identity
-              mAssociatedIdentities[identitySession->forLockbox().getID()] = identitySession;
+              mAssociatedIdentities[identitySession->getID()] = identitySession;
 
               // found an existing match...
               ZS_LOG_DEBUG(log("found a match to a pending identity (moving pending identity to associated identity)") + ZS_PARAM("uri", info.mURI) + ZS_PARAM("provider", info.mProvider) + ZS_PARAM("associated size", mAssociatedIdentities.size()))
@@ -1702,8 +1718,8 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("reloading identity") + ZS_PARAM("identity uri", info.mURI) + ZS_PARAM("provider", info.mProvider) + ZS_PARAM("relogin key", reloginKey))
 
-          ServiceIdentitySessionPtr identitySession = IServiceIdentitySessionForServiceLockbox::reload(BootstrappedNetwork::convert(network), mGrantSession, mThisWeak.lock(), info.mURI, reloginKey);
-          mAssociatedIdentities[identitySession->forLockbox().getID()] = identitySession;
+          UseServiceIdentitySessionPtr identitySession = UseServiceIdentitySession::reload(BootstrappedNetwork::convert(network), ServiceNamespaceGrantSession::convert(mGrantSession), mThisWeak.lock(), info.mURI, reloginKey);
+          mAssociatedIdentities[identitySession->getID()] = identitySession;
         }
 
         // all server identities should now be processed or matched
@@ -1725,17 +1741,17 @@ namespace openpeer
 
         for (ServiceIdentitySessionMap::iterator assocIter = mAssociatedIdentities.begin(); assocIter != mAssociatedIdentities.end(); ++assocIter)
         {
-          ServiceIdentitySessionPtr &identitySession = (*assocIter).second;
-          IdentityInfo associatedInfo = identitySession->forLockbox().getIdentityInfo();
+          UseServiceIdentitySessionPtr &identitySession = (*assocIter).second;
+          IdentityInfo associatedInfo = identitySession->getIdentityInfo();
 
           for (ServiceIdentitySessionMap::iterator pendingUpdateIter = mPendingUpdateIdentities.begin(); pendingUpdateIter != mPendingUpdateIdentities.end();)
           {
             ServiceIdentitySessionMap::iterator pendingUpdateCurrentIter = pendingUpdateIter;
             ++pendingUpdateIter;
 
-            ServiceIdentitySessionPtr &pendingIdentity = (*pendingUpdateCurrentIter).second;
+            UseServiceIdentitySessionPtr &pendingIdentity = (*pendingUpdateCurrentIter).second;
 
-            IdentityInfo pendingUpdateInfo = pendingIdentity->forLockbox().getIdentityInfo();
+            IdentityInfo pendingUpdateInfo = pendingIdentity->getIdentityInfo();
             if ((pendingUpdateInfo.mURI == associatedInfo.mURI) &&
                 (pendingUpdateInfo.mProvider = associatedInfo.mProvider)) {
               ZS_LOG_DEBUG(log("identity pending update is actually already associated so remove it from the pending list (thus will prune this identity)") + ZS_PARAM("uri", associatedInfo.mURI) + ZS_PARAM("provider", associatedInfo.mProvider))
@@ -1759,11 +1775,11 @@ namespace openpeer
           ServiceIdentitySessionMap::iterator pendingUpdateCurrentIter = pendingUpdateIter;
           ++pendingUpdateIter;
 
-          ServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
-          if (!pendingUpdateIdentity->forLockbox().isShutdown()) continue;
+          UseServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
+          if (!pendingUpdateIdentity->isShutdown()) continue;
 
           // cannot associate an identity that shutdown
-          ZS_LOG_WARNING(Detail, log("pending identity shutdown unexpectedly") + IServiceIdentitySession::toDebug(pendingUpdateIdentity));
+          ZS_LOG_WARNING(Detail, log("pending identity shutdown unexpectedly") + UseServiceIdentitySession::toDebug(pendingUpdateIdentity));
           mPendingUpdateIdentities.erase(pendingUpdateCurrentIter);
         }
 
@@ -1795,20 +1811,20 @@ namespace openpeer
           ServiceIdentitySessionMap::iterator pendingRemovalCurrentIter = pendingRemovalIter;
           ++pendingRemovalIter;
 
-          ServiceIdentitySessionPtr &pendingRemovalIdentity = (*pendingRemovalCurrentIter).second;
-          IdentityInfo pendingRemovalIdentityInfo = pendingRemovalIdentity->forLockbox().getIdentityInfo();
+          UseServiceIdentitySessionPtr &pendingRemovalIdentity = (*pendingRemovalCurrentIter).second;
+          IdentityInfo pendingRemovalIdentityInfo = pendingRemovalIdentity->getIdentityInfo();
 
-          ZS_LOG_DEBUG(log("checking if identity to be removed is in the udpate list") + IServiceIdentitySession::toDebug(pendingRemovalIdentity))
+          ZS_LOG_DEBUG(log("checking if identity to be removed is in the udpate list") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
 
           for (ServiceIdentitySessionMap::iterator pendingUpdateIter = mPendingUpdateIdentities.begin(); pendingUpdateIter != mPendingUpdateIdentities.end(); )
           {
             ServiceIdentitySessionMap::iterator pendingUpdateCurrentIter = pendingUpdateIter;
             ++pendingUpdateIter;
 
-            ServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
+            UseServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
 
-            if (pendingUpdateIdentity->forLockbox().getID() == pendingRemovalIdentity->forLockbox().getID()) {
-              ZS_LOG_DEBUG(log("identity being removed is in the pending list (thus will remove it from pending list)") + IServiceIdentitySession::toDebug(pendingRemovalIdentity))
+            if (pendingUpdateIdentity->getID() == pendingRemovalIdentity->getID()) {
+              ZS_LOG_DEBUG(log("identity being removed is in the pending list (thus will remove it from pending list)") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
 
               mPendingUpdateIdentities.erase(pendingUpdateCurrentIter);
               continue;
@@ -1822,13 +1838,13 @@ namespace openpeer
             ServiceIdentitySessionMap::iterator associatedCurrentIter = associatedIter;
             ++associatedIter;
 
-            ServiceIdentitySessionPtr &associatedIdentity = (*associatedCurrentIter).second;
+            UseServiceIdentitySessionPtr &associatedIdentity = (*associatedCurrentIter).second;
 
-            if (associatedIdentity->forLockbox().getID() != pendingRemovalIdentity->forLockbox().getID()) continue;
+            if (associatedIdentity->getID() != pendingRemovalIdentity->getID()) continue;
 
             foundMatch = true;
 
-            ZS_LOG_DEBUG(log("killing association to the associated identity") + IServiceIdentitySession::toDebug(pendingRemovalIdentity))
+            ZS_LOG_DEBUG(log("killing association to the associated identity") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
 
             // clear relogin key (if present)
             {
@@ -1836,10 +1852,10 @@ namespace openpeer
               clearContent(OPENPEER_STACK_SERVICE_LOCKBOX_IDENTITY_RELOGINS_NAMESPACE, hash);
             }
 
-            removedIdentities[pendingRemovalIdentity->forLockbox().getID()] = pendingRemovalIdentity;
+            removedIdentities[pendingRemovalIdentity->getID()] = pendingRemovalIdentity;
 
             // force the identity to disassociate from the lockbox
-            pendingRemovalIdentity->forLockbox().killAssociation(mThisWeak.lock());
+            pendingRemovalIdentity->killAssociation(mThisWeak.lock());
 
             mAssociatedIdentities.erase(associatedCurrentIter);
             mPendingRemoveIdentities.erase(pendingRemovalCurrentIter);
@@ -1847,7 +1863,7 @@ namespace openpeer
 
           if (foundMatch) continue;
 
-          ZS_LOG_DEBUG(log("killing identity that was never associated") + IServiceIdentitySession::toDebug(pendingRemovalIdentity))
+          ZS_LOG_DEBUG(log("killing identity that was never associated") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
 
           mPendingRemoveIdentities.erase(pendingRemovalCurrentIter);
         }
@@ -1857,14 +1873,14 @@ namespace openpeer
           ServiceIdentitySessionMap::iterator pendingUpdateCurrentIter = pendingUpdateIter;
           ++pendingUpdateIter;
 
-          ServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
+          UseServiceIdentitySessionPtr &pendingUpdateIdentity = (*pendingUpdateCurrentIter).second;
 
-          if (!pendingUpdateIdentity->forLockbox().isLoginComplete()) continue;
+          if (!pendingUpdateIdentity->isLoginComplete()) continue;
 
-          ZS_LOG_DEBUG(log("pending identity is now logged in (thus can cause the association)") + IServiceIdentitySession::toDebug(pendingUpdateIdentity))
-          completedIdentities[pendingUpdateIdentity->forLockbox().getID()] = pendingUpdateIdentity;
+          ZS_LOG_DEBUG(log("pending identity is now logged in (thus can cause the association)") + UseServiceIdentitySession::toDebug(pendingUpdateIdentity))
+          completedIdentities[pendingUpdateIdentity->getID()] = pendingUpdateIdentity;
 
-          IdentityInfo info = pendingUpdateIdentity->forLockbox().getIdentityInfo();
+          IdentityInfo info = pendingUpdateIdentity->getIdentityInfo();
           if (info.mReloginKey.hasData()) {
             String hash = IHelper::convertToHex(*IHelper::hash(String("identity-relogin:") + info.mURI + ":" + info.mProvider));
 
@@ -1880,9 +1896,9 @@ namespace openpeer
 
           for (ServiceIdentitySessionMap::iterator iter = removedIdentities.begin(); iter != removedIdentities.end(); ++iter)
           {
-            ServiceIdentitySessionPtr &identity = (*iter).second;
+            UseServiceIdentitySessionPtr &identity = (*iter).second;
 
-            IdentityInfo info = identity->forLockbox().getIdentityInfo();
+            IdentityInfo info = identity->getIdentityInfo();
 
             if ((info.mURI.hasData()) &&
                 (info.mProvider.hasData())) {
@@ -1893,9 +1909,9 @@ namespace openpeer
 
           for (ServiceIdentitySessionMap::iterator iter = completedIdentities.begin(); iter != completedIdentities.end(); ++iter)
           {
-            ServiceIdentitySessionPtr &identity = (*iter).second;
+            UseServiceIdentitySessionPtr &identity = (*iter).second;
 
-            IdentityInfo info = identity->forLockbox().getIdentityInfo();
+            IdentityInfo info = identity->getIdentityInfo();
 
             ZS_LOG_DEBUG(log("adding identity to request update list") + info.toDebug())
             updateInfos.push_back(info);
@@ -1967,7 +1983,7 @@ namespace openpeer
         mCurrentState = state;
 
         if (mLoginIdentity) {
-          mLoginIdentity->forLockbox().notifyStateChanged();
+          mLoginIdentity->notifyStateChanged();
         }
 
         UseAccountPtr account = mAccount.lock();

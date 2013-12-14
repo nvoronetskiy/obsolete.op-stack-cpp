@@ -83,6 +83,8 @@ namespace openpeer
 
         typedef IAccount::AccountStates AccountStates;
 
+        static ElementPtr toDebug(ForAccountPtr object);
+
         static ForAccountPtr create(
                                     IAccountFinderDelegatePtr delegate,
                                     AccountPtr outer
@@ -135,6 +137,7 @@ namespace openpeer
       {
       public:
         friend interaction IAccountFinderFactory;
+        friend interaction IAccountFinderForAccount;
 
         typedef ILocationForAccount UseLocation;
         typedef shared_ptr<UseLocation> UseLocationPtr;
@@ -167,14 +170,14 @@ namespace openpeer
 
         static AccountFinderPtr convert(ForAccountPtr object);
 
-        static ElementPtr toDebug(AccountFinderPtr finder);
-
       protected:
 
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark AccountFinder => IAccountFinderForAccount
         #pragma mark
+
+        static ElementPtr toDebug(AccountFinderPtr finder);
 
         static ForAccountPtr create(
                                     IAccountFinderDelegatePtr delegate,

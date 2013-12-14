@@ -63,21 +63,22 @@ namespace openpeer
 
       interaction IServiceNamespaceGrantSessionForServices
       {
-        typedef IServiceNamespaceGrantSession::SessionStates SessionStates;
+        typedef IServiceNamespaceGrantSessionForServices ForServices;
+        typedef shared_ptr<ForServices> ForServicesPtr;
+        typedef weak_ptr<ForServices> ForServicesWeakPtr;
 
-        IServiceNamespaceGrantSessionForServices &forServices() {return *this;}
-        const IServiceNamespaceGrantSessionForServices &forServices() const {return *this;}
+        typedef IServiceNamespaceGrantSession::SessionStates SessionStates;
 
         virtual PUID getID() const = 0;
 
         virtual String getGrantID() const = 0;
 
-        virtual IServiceNamespaceGrantSessionForServicesWaitPtr obtainWaitToProceed(
-                                                                                    IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr()
-                                                                                    ) = 0;  // returns IServiceNamespaceGrantSessionForServicesWaitPtr() (i.e. NULL) if not obtain to wait at this time
+        virtual IServiceNamespaceGrantSessionWaitPtr obtainWaitToProceed(
+                                                                                    IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionWaitDelegatePtr()
+                                                                                    ) = 0;  // returns IServiceNamespaceGrantSessionWaitPtr() (i.e. NULL) if not obtain to wait at this time
 
-        virtual IServiceNamespaceGrantSessionForServicesQueryPtr query(
-                                                                       IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+        virtual IServiceNamespaceGrantSessionQueryPtr query(
+                                                                       IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                                                        const NamespaceGrantChallengeInfo &challengeInfo,
                                                                        const NamespaceInfoMap &namespaces
                                                                        ) = 0;
@@ -93,10 +94,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IServiceNamespaceGrantSessionForServicesWait
+      #pragma mark IServiceNamespaceGrantSessionWait
       #pragma mark
 
-      interaction IServiceNamespaceGrantSessionForServicesWait
+      interaction IServiceNamespaceGrantSessionWait
       {
         virtual PUID getID() const = 0;
 
@@ -108,10 +109,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate
+      #pragma mark IServiceNamespaceGrantSessionWaitDelegate
       #pragma mark
 
-      interaction IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate
+      interaction IServiceNamespaceGrantSessionWaitDelegate
       {
         virtual void onServiceNamespaceGrantSessionForServicesWaitComplete(IServiceNamespaceGrantSessionPtr session) = 0;
       };
@@ -121,10 +122,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IServiceNamespaceGrantSessionForServicesQuery
+      #pragma mark IServiceNamespaceGrantSessionQuery
       #pragma mark
 
-      interaction IServiceNamespaceGrantSessionForServicesQuery
+      interaction IServiceNamespaceGrantSessionQuery
       {
         virtual PUID getID() const = 0;
 
@@ -139,13 +140,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IServiceNamespaceGrantSessionForServicesQueryDelegate
+      #pragma mark IServiceNamespaceGrantSessionQueryDelegate
       #pragma mark
 
-      interaction IServiceNamespaceGrantSessionForServicesQueryDelegate
+      interaction IServiceNamespaceGrantSessionQueryDelegate
       {
         virtual void onServiceNamespaceGrantSessionForServicesQueryComplete(
-                                                                            IServiceNamespaceGrantSessionForServicesQueryPtr query,
+                                                                            IServiceNamespaceGrantSessionQueryPtr query,
                                                                             ElementPtr namespaceGrantChallengeBundleEl
                                                                             ) = 0;
       };
@@ -191,7 +192,7 @@ namespace openpeer
 
         typedef std::list<DocumentPtr> DocumentList;
 
-        typedef std::list<IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr> WaitingDelegateList;
+        typedef std::list<IServiceNamespaceGrantSessionWaitDelegatePtr> WaitingDelegateList;
 
       protected:
         ServiceNamespaceGrantSession(
@@ -209,6 +210,7 @@ namespace openpeer
         ~ServiceNamespaceGrantSession();
 
         static ServiceNamespaceGrantSessionPtr convert(IServiceNamespaceGrantSessionPtr session);
+        static ServiceNamespaceGrantSessionPtr convert(ForServicesPtr session);
 
       protected:
         //---------------------------------------------------------------------
@@ -259,10 +261,10 @@ namespace openpeer
 
         // (duplicate) virtual String getGrantID() const;
 
-        virtual IServiceNamespaceGrantSessionForServicesWaitPtr obtainWaitToProceed(IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr());
+        virtual IServiceNamespaceGrantSessionWaitPtr obtainWaitToProceed(IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionWaitDelegatePtr());
 
-        virtual IServiceNamespaceGrantSessionForServicesQueryPtr query(
-                                                                       IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+        virtual IServiceNamespaceGrantSessionQueryPtr query(
+                                                                       IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                                                        const NamespaceGrantChallengeInfo &challengeInfo,
                                                                        const NamespaceInfoMap &namespaces
                                                                        );
@@ -343,7 +345,7 @@ namespace openpeer
         #pragma mark
 
       public:
-        class Wait : public IServiceNamespaceGrantSessionForServicesWait
+        class Wait : public IServiceNamespaceGrantSessionWait
         {
         public:
           friend class ServiceNamespaceGrantSession;
@@ -357,7 +359,7 @@ namespace openpeer
         protected:
           //---------------------------------------------------------------------
           #pragma mark
-          #pragma mark ServiceNamespaceGrantSession::Wait => IServiceNamespaceGrantSessionForServicesWait
+          #pragma mark ServiceNamespaceGrantSession::Wait => IServiceNamespaceGrantSessionWait
           #pragma mark
 
           virtual PUID getID() const {return mID;}
@@ -386,7 +388,7 @@ namespace openpeer
         #pragma mark
 
       public:
-        class Query : public IServiceNamespaceGrantSessionForServicesQuery
+        class Query : public IServiceNamespaceGrantSessionQuery
         {
         public:
           friend class ServiceNamespaceGrantSession;
@@ -394,7 +396,7 @@ namespace openpeer
         protected:
           Query(
                 ServiceNamespaceGrantSessionPtr outer,
-                IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+                IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                 const NamespaceGrantChallengeInfo &challengeInfo,
                 const NamespaceInfoMap &namespaces
                 );
@@ -405,7 +407,7 @@ namespace openpeer
         protected:
           //---------------------------------------------------------------------
           #pragma mark
-          #pragma mark ServiceNamespaceGrantSession::Query => IServiceNamespaceGrantSessionForServicesQuery
+          #pragma mark ServiceNamespaceGrantSession::Query => IServiceNamespaceGrantSessionQuery
           #pragma mark
 
           virtual PUID getID() const {return mID;}
@@ -423,7 +425,7 @@ namespace openpeer
 
           static QueryPtr create(
                                  ServiceNamespaceGrantSessionPtr outer,
-                                 IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+                                 IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                  const NamespaceGrantChallengeInfo &challengeInfo,
                                  const NamespaceInfoMap &namespaces
                                  );
@@ -451,7 +453,7 @@ namespace openpeer
           QueryWeakPtr mThisWeak;
           ServiceNamespaceGrantSessionWeakPtr mOuter;
 
-          IServiceNamespaceGrantSessionForServicesQueryDelegatePtr mDelegate;
+          IServiceNamespaceGrantSessionQueryDelegatePtr mDelegate;
 
           NamespaceGrantChallengeInfo mChallengeInfo;
           NamespaceInfoMap mNamespaces;
@@ -526,13 +528,13 @@ namespace openpeer
   }
 }
 
-ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate)
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServiceNamespaceGrantSessionWaitDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServiceNamespaceGrantSessionPtr, IServiceNamespaceGrantSessionPtr)
 ZS_DECLARE_PROXY_METHOD_1(onServiceNamespaceGrantSessionForServicesWaitComplete, IServiceNamespaceGrantSessionPtr)
 ZS_DECLARE_PROXY_END()
 
-ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServiceNamespaceGrantSessionForServicesQueryDelegate)
-ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::internal::IServiceNamespaceGrantSessionForServicesQueryPtr, IServiceNamespaceGrantSessionForServicesQueryPtr)
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServiceNamespaceGrantSessionQueryDelegate)
+ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::internal::IServiceNamespaceGrantSessionQueryPtr, IServiceNamespaceGrantSessionQueryPtr)
 ZS_DECLARE_PROXY_TYPEDEF(zsLib::XML::ElementPtr, ElementPtr)
-ZS_DECLARE_PROXY_METHOD_2(onServiceNamespaceGrantSessionForServicesQueryComplete, IServiceNamespaceGrantSessionForServicesQueryPtr, ElementPtr)
+ZS_DECLARE_PROXY_METHOD_2(onServiceNamespaceGrantSessionForServicesQueryComplete, IServiceNamespaceGrantSessionQueryPtr, ElementPtr)
 ZS_DECLARE_PROXY_END()

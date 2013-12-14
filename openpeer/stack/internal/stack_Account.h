@@ -67,6 +67,8 @@ namespace openpeer
       interaction IAccountPeerLocationForAccount;
       interaction IBootstrappedNetworkForAccount;
       interaction IMessageIncomingForAccount;
+      interaction IPublicationRepositoryForAccount;
+      interaction IServiceLockboxSessionForAccount;
 
       using message::peer_finder::PeerLocationFindResult;
       using message::peer_finder::PeerLocationFindResultPtr;
@@ -348,6 +350,14 @@ namespace openpeer
         typedef IMessageIncomingForAccount UseMessageIncoming;
         typedef shared_ptr<UseMessageIncoming> UseMessageIncomingPtr;
         typedef weak_ptr<UseMessageIncoming> UseMessageIncomingWeakPtr;
+
+        typedef IPublicationRepositoryForAccount UsePublicationRepository;
+        typedef shared_ptr<UsePublicationRepository> UsePublicationRepositoryPtr;
+        typedef weak_ptr<UsePublicationRepository> UsePublicationRepositoryWeakPtr;
+
+        typedef IServiceLockboxSessionForAccount UseServiceLockboxSession;
+        typedef shared_ptr<UseServiceLockboxSession> UseServiceLockboxSessionPtr;
+        typedef weak_ptr<UseServiceLockboxSession> UseServiceLockboxSessionWeakPtr;
 
         typedef IAccount::AccountStates AccountStates;
 
@@ -813,7 +823,7 @@ namespace openpeer
         Time mLastTimerFired;
         Time mBlockLocationShutdownsUntil;
 
-        ServiceLockboxSessionPtr mLockboxSession;
+        UseServiceLockboxSessionPtr mLockboxSession;
         Service::MethodListPtr mTURN;
         Service::MethodListPtr mSTUN;
 
@@ -824,7 +834,7 @@ namespace openpeer
         UseLocationPtr mSelfLocation;
         UseLocationPtr mFinderLocation;
 
-        PublicationRepositoryPtr mRepository;
+        UsePublicationRepositoryPtr mRepository;
 
         DHKeyPairTemplates mDHKeyPairTemplates;
 

@@ -74,6 +74,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IPublicationMetaDataForPublicationRepository::toDebug(ForPublicationRepositoryPtr metaData)
+      {
+        return PublicationMetaData::toDebug(PublicationMetaData::convert(metaData));
+      }
+
+      //-----------------------------------------------------------------------
       ForPublicationRepositoryPtr IPublicationMetaDataForPublicationRepository::create(
                                                                                        ULONG version,
                                                                                        ULONG baseVersion,

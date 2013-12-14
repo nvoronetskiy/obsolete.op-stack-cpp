@@ -88,6 +88,10 @@ namespace openpeer
 
     namespace internal
     {
+      typedef stack::internal::IStackForInternal UseStack;
+
+      typedef IServiceIdentitySessionForServiceLockbox::ForLockboxPtr ForLockboxPtr;
+
       using services::IHelper;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
@@ -277,13 +281,19 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ServiceIdentitySessionPtr IServiceIdentitySessionForServiceLockbox::reload(
-                                                                                 BootstrappedNetworkPtr provider,
-                                                                                 IServiceNamespaceGrantSessionPtr grantSession,
-                                                                                 IServiceLockboxSessionPtr existingLockbox,
-                                                                                 const char *identityURI,
-                                                                                 const char *reloginKey
-                                                                                 )
+      ElementPtr IServiceIdentitySessionForServiceLockbox::toDebug(ForLockboxPtr session)
+      {
+        return IServiceIdentitySession::toDebug(ServiceIdentitySession::convert(session));
+      }
+
+      //-----------------------------------------------------------------------
+      ForLockboxPtr IServiceIdentitySessionForServiceLockbox::reload(
+                                                                     BootstrappedNetworkPtr provider,
+                                                                     IServiceNamespaceGrantSessionPtr grantSession,
+                                                                     IServiceLockboxSessionPtr existingLockbox,
+                                                                     const char *identityURI,
+                                                                     const char *reloginKey
+                                                                     )
       {
         return IServiceIdentitySessionFactory::singleton().reload(provider, grantSession, existingLockbox, identityURI, reloginKey);
         return ServiceIdentitySessionPtr();
@@ -304,11 +314,11 @@ namespace openpeer
                                                      UseBootstrappedNetworkPtr providerNetwork,
                                                      UseBootstrappedNetworkPtr identityNetwork,
                                                      ServiceNamespaceGrantSessionPtr grantSession,
-                                                     ServiceLockboxSessionPtr existingLockbox,
+                                                     UseServiceLockboxSessionPtr existingLockbox,
                                                      const char *outerFrameURLUponReload
                                                      ) :
         zsLib::MessageQueueAssociator(queue),
-        mDelegate(delegate ? IServiceIdentitySessionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate) : IServiceIdentitySessionDelegatePtr()),
+        mDelegate(delegate ? IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceIdentitySessionDelegatePtr()),
         mAssociatedLockbox(existingLockbox),
         mProviderBootstrappedNetwork(providerNetwork),
         mIdentityBootstrappedNetwork(identityNetwork),
@@ -348,9 +358,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ServiceIdentitySessionPtr ServiceIdentitySession::convert(IServiceIdentitySessionPtr query)
+      ServiceIdentitySessionPtr ServiceIdentitySession::convert(IServiceIdentitySessionPtr object)
       {
-        return boost::dynamic_pointer_cast<ServiceIdentitySession>(query);
+        return boost::dynamic_pointer_cast<ServiceIdentitySession>(object);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceIdentitySessionPtr ServiceIdentitySession::convert(ForLockboxPtr object)
+      {
+        return boost::dynamic_pointer_cast<ServiceIdentitySession>(object);
       }
 
       //-----------------------------------------------------------------------
@@ -412,7 +428,7 @@ namespace openpeer
           }
         }
 
-        ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(IStackForInternal::queueStack(), delegate, providerNetwork, identityNetwork, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(existingLockbox), outerFrameURLUponReload));
+        ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(UseStack::queueStack(), delegate, providerNetwork, identityNetwork, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(existingLockbox), outerFrameURLUponReload));
         pThis->mThisWeak = pThis;
         if (identityURI_or_identityBaseURI) {
           if (IServiceIdentity::isValidBase(identityURI_or_identityBaseURI)) {
@@ -467,7 +483,7 @@ namespace openpeer
           }
         }
 
-        ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(IStackForInternal::queueStack(), delegate, providerNetwork, identityNetwork, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(existingLockbox), NULL));
+        ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(UseStack::queueStack(), delegate, providerNetwork, identityNetwork, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(existingLockbox), NULL));
         pThis->mThisWeak = pThis;
         pThis->mIdentityInfo.mURI = identityURI;
         pThis->mIdentityInfo.mAccessToken = String(identityAccessToken);
@@ -519,7 +535,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate);
+        mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
         mOuterFrameURLUponReload = (outerFrameURLUponReload ? String(outerFrameURLUponReload) : String());
 
         try {
@@ -553,7 +569,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate);
+        mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
 
         mIdentityInfo.mAccessToken = String(identityAccessToken);
         mIdentityInfo.mAccessSecret = String(identityAccessSecret);
@@ -915,7 +931,7 @@ namespace openpeer
         }
 
         ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(
-                                                                   IStackForInternal::queueStack(),
+                                                                   UseStack::queueStack(),
                                                                    IServiceIdentitySessionDelegatePtr(),
                                                                    provider,
                                                                    identityNetwork,
@@ -1073,7 +1089,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate
+      #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionWaitDelegate
       #pragma mark
 
       //-----------------------------------------------------------------------
@@ -1090,12 +1106,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionForServicesQueryDelegate
+      #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionQueryDelegate
       #pragma mark
 
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::onServiceNamespaceGrantSessionForServicesQueryComplete(
-                                                                                          IServiceNamespaceGrantSessionForServicesQueryPtr query,
+                                                                                          IServiceNamespaceGrantSessionQueryPtr query,
                                                                                           ElementPtr namespaceGrantChallengeBundleEl
                                                                                           )
       {
@@ -1411,7 +1427,7 @@ namespace openpeer
           // a namespace grant challenge was issue
           NamespaceInfoMap namespaces;
           getNamespaces(namespaces);
-          mGrantQuery = mGrantSession->forServices().query(mThisWeak.lock(), challengeInfo, namespaces);
+          mGrantQuery = mGrantSession->query(mThisWeak.lock(), challengeInfo, namespaces);
         }
 
         step();
@@ -1621,10 +1637,10 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
         IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
         IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "provider", IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mProviderBootstrappedNetwork)));
-        IHelper::debugAppend(resultEl, "identity", IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mIdentityBootstrappedNetwork)));
+        IHelper::debugAppend(resultEl, "provider", UseBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "identity", UseBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
         IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
-        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->forServices().getID() : 0);
+        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
         IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? string(mGrantWait->getID()) : String());
         IHelper::debugAppend(resultEl, "identity access lockbox update monitor", (bool)mIdentityAccessLockboxUpdateMonitor);
@@ -1788,7 +1804,7 @@ namespace openpeer
           return true;
         }
 
-        mGrantWait = mGrantSession->forServices().obtainWaitToProceed(mThisWeak.lock());
+        mGrantWait = mGrantSession->obtainWaitToProceed(mThisWeak.lock());
 
         if (!mGrantWait) {
           ZS_LOG_TRACE(log("waiting to obtain grant wait lock"))
@@ -1981,7 +1997,7 @@ namespace openpeer
         request->domain(mActiveBootstrappedNetwork->getDomain());
         request->rolodexInfo(mRolodexInfo);
         request->identityInfo(mIdentityInfo);
-        request->grantID(mGrantSession->forServices().getGrantID());
+        request->grantID(mGrantSession->getGrantID());
 
         ZS_LOG_DEBUG(log("accessing rolodex (continuing to next step so other steps can run in parallel)"))
 
@@ -2068,20 +2084,20 @@ namespace openpeer
           return true;
         }
         
-        ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
         if (!lockbox) {
           return stepLockboxAssociation();
         }
 
         WORD errorCode = 0;
         String reason;
-        IServiceLockboxSession::SessionStates state = lockbox->forServiceIdentity().getState(&errorCode, &reason);
+        IServiceLockboxSession::SessionStates state = lockbox->getState(&errorCode, &reason);
 
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
 
-            LockboxInfo lockboxInfo = lockbox->forServiceIdentity().getLockboxInfo();
+            LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
             if (lockboxInfo.mAccessToken.hasData()) {
               ZS_LOG_TRACE(log("lockbox is still pending but safe to proceed because lockbox has been granted access"))
               return true;
@@ -2144,14 +2160,14 @@ namespace openpeer
           return false;
         }
 
-        ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
         if (!lockbox) {
           return stepLockboxAssociation();
         }
 
         setState(SessionState_Pending);
 
-        LockboxInfo lockboxInfo = lockbox->forServiceIdentity().getLockboxInfo();
+        LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
 
         bool equalKeys = (((bool)lockboxInfo.mKey) == ((bool)mLockboxInfo.mKey));
         bool hasKeys = (((bool)lockboxInfo.mKey) && ((bool)mLockboxInfo.mKey));
@@ -2272,7 +2288,7 @@ namespace openpeer
         {
           NamespaceInfo &namespaceInfo = (*iter).second;
 
-          if (!mGrantSession->forServices().isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
+          if (!mGrantSession->isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
             ZS_LOG_WARNING(Detail, log("rolodex was not granted required namespace") + ZS_PARAM("namespace", namespaceInfo.mURL))
             setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access rolodex");
             cancel();
@@ -2305,14 +2321,14 @@ namespace openpeer
           return true;
         }
 
-        ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
         if (!lockbox) {
           return stepLockboxAssociation();
         }
 
         WORD errorCode = 0;
         String reason;
-        IServiceLockboxSession::SessionStates state = lockbox->forServiceIdentity().getState(&errorCode, &reason);
+        IServiceLockboxSession::SessionStates state = lockbox->getState(&errorCode, &reason);
 
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
@@ -2361,10 +2377,10 @@ namespace openpeer
           mIdentityInfo.mPriority = 0;
           mIdentityInfo.mWeight = 0;
 
-          ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+          UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
 
           if (lockbox) {
-            LockboxInfo lockboxInfo = lockbox->forServiceIdentity().getLockboxInfo();
+            LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
             mLockboxInfo.mergeFrom(lockboxInfo, true);
           }
 
@@ -2384,7 +2400,7 @@ namespace openpeer
           return false;
         }
 
-        ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
         if (!lockbox) {
           return stepLockboxAssociation();
         }
@@ -2392,7 +2408,7 @@ namespace openpeer
         setState(SessionState_Pending);
 
         IPeerFilesPtr peerFiles;
-        IdentityInfo identityInfo = lockbox->forServiceIdentity().getIdentityInfoForIdentity(mThisWeak.lock(), &peerFiles);
+        IdentityInfo identityInfo = lockbox->getIdentityInfoForIdentity(mThisWeak.lock(), &peerFiles);
         mIdentityInfo.mergeFrom(identityInfo, true);
 
         if ((identityInfo.mStableID == mPreviousLookupInfo.mStableID) &&
@@ -2407,7 +2423,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("updating identity lookup information (but not preventing other requests from continuing)") + ZS_PARAM("lockbox", mLockboxInfo.toDebug()) + ZS_PARAM("identity info", mIdentityInfo.toDebug()))
 
-        LockboxInfo lockboxInfo = lockbox->forServiceIdentity().getLockboxInfo();
+        LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
         mLockboxInfo.mergeFrom(lockboxInfo, true);
 
         IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
@@ -2537,11 +2553,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::notifyLockboxStateChanged()
       {
-        ServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
         if (!lockbox) return;
 
         ZS_LOG_DEBUG(log("notifying lockbox of state change"))
-        lockbox->forServiceIdentity().notifyStateChanged();
+        lockbox->notifyStateChanged();
       }
 
       //-----------------------------------------------------------------------
@@ -2595,7 +2611,7 @@ namespace openpeer
           MessageQueueAssociator(queue),
           mID(zsLib::createPUID()),
           mIdentityProofBundleEl(identityProofBundleEl->clone()->toElement()),
-          mDelegate(IServiceIdentityProofBundleQueryDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate)),
+          mDelegate(IServiceIdentityProofBundleQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
           mIdentityURI(identityURI),
           mErrorCode(0)
         {
@@ -2641,7 +2657,7 @@ namespace openpeer
           ZS_THROW_INVALID_ARGUMENT_IF(!identityProofBundleEl)
           ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-          IdentityProofBundleQueryPtr pThis = IdentityProofBundleQueryPtr(new IdentityProofBundleQuery(IStackForInternal::queueStack(), identityProofBundleEl, delegate, identityURI));
+          IdentityProofBundleQueryPtr pThis = IdentityProofBundleQueryPtr(new IdentityProofBundleQuery(UseStack::queueStack(), identityProofBundleEl, delegate, identityURI));
           pThis->mThisWeak = pThis;
           pThis->mErrorCode = failedErrorCode;
           pThis->mErrorReason = failedReason;

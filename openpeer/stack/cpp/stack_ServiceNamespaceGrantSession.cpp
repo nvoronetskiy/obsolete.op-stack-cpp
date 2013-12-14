@@ -57,6 +57,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
@@ -95,7 +97,7 @@ namespace openpeer
                                                                  ) :
         zsLib::MessageQueueAssociator(queue),
         mID(zsLib::createPUID()),
-        mDelegate(delegate ? IServiceNamespaceGrantSessionDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate) : IServiceNamespaceGrantSessionDelegatePtr()),
+        mDelegate(delegate ? IServiceNamespaceGrantSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceNamespaceGrantSessionDelegatePtr()),
         mCurrentState(SessionState_Pending),
         mLastError(0),
         mOuterFrameURLUponReload(outerFrameURLUponReload),
@@ -133,6 +135,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      ServiceNamespaceGrantSessionPtr ServiceNamespaceGrantSession::convert(ForServicesPtr session)
+      {
+        return boost::dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -158,7 +166,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!outerFrameURLUponReload)
         ZS_THROW_INVALID_ARGUMENT_IF(!grantID)
 
-        ServiceNamespaceGrantSessionPtr pThis(new ServiceNamespaceGrantSession(IStackForInternal::queueStack(), delegate, outerFrameURLUponReload, grantID));
+        ServiceNamespaceGrantSessionPtr pThis(new ServiceNamespaceGrantSession(UseStack::queueStack(), delegate, outerFrameURLUponReload, grantID));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -399,7 +407,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      IServiceNamespaceGrantSessionForServicesWaitPtr ServiceNamespaceGrantSession::obtainWaitToProceed(IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr waitForWaitUponFailingToObtainDelegate)
+      IServiceNamespaceGrantSessionWaitPtr ServiceNamespaceGrantSession::obtainWaitToProceed(IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate)
       {
         AutoRecursiveLock lock(getLock());
 
@@ -432,15 +440,15 @@ namespace openpeer
 
         if (waitForWaitUponFailingToObtainDelegate) {
           ZS_LOG_DEBUG(log("will inform delegate when it can try to obtain another wait lock again"))
-          mWaitingDelegates.push_back(IServiceNamespaceGrantSessionForServicesWaitForWaitDelegateProxy::createWeak(IStackForInternal::queueDelegate(), waitForWaitUponFailingToObtainDelegate));
+          mWaitingDelegates.push_back(IServiceNamespaceGrantSessionWaitDelegateProxy::createWeak(UseStack::queueDelegate(), waitForWaitUponFailingToObtainDelegate));
         }
 
-        return IServiceNamespaceGrantSessionForServicesWaitPtr();
+        return IServiceNamespaceGrantSessionWaitPtr();
       }
 
       //-----------------------------------------------------------------------
-      IServiceNamespaceGrantSessionForServicesQueryPtr ServiceNamespaceGrantSession::query(
-                                                                                           IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+      IServiceNamespaceGrantSessionQueryPtr ServiceNamespaceGrantSession::query(
+                                                                                           IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                                                                            const NamespaceGrantChallengeInfo &challengeInfo,
                                                                                            const NamespaceInfoMap &namespaces
                                                                                            )
@@ -448,7 +456,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
         AutoRecursiveLock lock(getLock());
-        QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionForServicesQueryDelegateProxy::createWeak(IStackForInternal::queueDelegate(), delegate), challengeInfo, namespaces);
+        QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate), challengeInfo, namespaces);
 
         if (isShutdown()) {
           query->notifyComplete(ElementPtr());
@@ -587,9 +595,9 @@ namespace openpeer
           for (WaitingDelegateList::iterator iter = mWaitingDelegates.begin(); iter != mWaitingDelegates.end(); ++iter)
           {
             try {
-              IServiceNamespaceGrantSessionForServicesWaitForWaitDelegatePtr delegate = (*iter);
+              IServiceNamespaceGrantSessionWaitDelegatePtr delegate = (*iter);
               delegate->onServiceNamespaceGrantSessionForServicesWaitComplete(pThis);
-            } catch (IServiceNamespaceGrantSessionForServicesQueryDelegateProxy::Exceptions::DelegateGone &) {
+            } catch (IServiceNamespaceGrantSessionQueryDelegateProxy::Exceptions::DelegateGone &) {
               ZS_LOG_WARNING(Detail, log("delegate gone"))
             }
           }
@@ -637,7 +645,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
-        IHelper::debugAppend(resultEl, IBootstrappedNetwork::toDebug(BootstrappedNetwork::convert(mBootstrappedNetwork)));
+        IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
         IHelper::debugAppend(resultEl, "namespace grant validate", (bool)mNamespaceGrantValidateMonitor);
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
         IHelper::debugAppend(resultEl, "error code", mLastError);
@@ -1073,7 +1081,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServiceNamespaceGrantSession::Wait => IServiceNamespaceGrantSessionForServicesWait
+      #pragma mark ServiceNamespaceGrantSession::Wait => IServiceNamespaceGrantSessionWait
       #pragma mark
 
       //-----------------------------------------------------------------------
@@ -1118,7 +1126,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSession::Query::Query(
                                                  ServiceNamespaceGrantSessionPtr outer,
-                                                 IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+                                                 IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                                  const NamespaceGrantChallengeInfo &challengeInfo,
                                                  const NamespaceInfoMap &namespaces
                                                  ) :
@@ -1187,7 +1195,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSession::QueryPtr ServiceNamespaceGrantSession::Query::create(
                                                                                          ServiceNamespaceGrantSessionPtr outer,
-                                                                                         IServiceNamespaceGrantSessionForServicesQueryDelegatePtr delegate,
+                                                                                         IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
                                                                                          const NamespaceGrantChallengeInfo &challengeInfo,
                                                                                          const NamespaceInfoMap &namespaces
                                                                                          )
@@ -1211,7 +1219,7 @@ namespace openpeer
 
         try {
           mDelegate->onServiceNamespaceGrantSessionForServicesQueryComplete(pThis, bundleEl);
-        } catch(IServiceNamespaceGrantSessionForServicesQueryDelegateProxy::Exceptions::DelegateGone &) {
+        } catch(IServiceNamespaceGrantSessionQueryDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
 

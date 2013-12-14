@@ -61,6 +61,7 @@ namespace openpeer
     namespace internal
     {
       interaction IBootstrappedNetworkForServices;
+      interaction IServiceLockboxSessionForServiceIdentity;
 
       using message::identity::IdentityAccessLockboxUpdateResult;
       using message::identity::IdentityAccessLockboxUpdateResultPtr;
@@ -87,18 +88,21 @@ namespace openpeer
 
       interaction IServiceIdentitySessionForServiceLockbox
       {
+        typedef IServiceIdentitySessionForServiceLockbox ForLockbox;
+        typedef shared_ptr<ForLockbox> ForLockboxPtr;
+        typedef weak_ptr<ForLockbox> ForLockboxWeakPtr;
+
         typedef IServiceIdentitySession::SessionStates SessionStates;
 
-        IServiceIdentitySessionForServiceLockbox &forLockbox() {return *this;}
-        const IServiceIdentitySessionForServiceLockbox &forLockbox() const {return *this;}
+        static ElementPtr toDebug(ForLockboxPtr session);
 
-        static ServiceIdentitySessionPtr reload(
-                                                BootstrappedNetworkPtr provider,
-                                                IServiceNamespaceGrantSessionPtr grantSession,
-                                                IServiceLockboxSessionPtr existingLockbox,
-                                                const char *identityURI,
-                                                const char *reloginKey
-                                                );
+        static ForLockboxPtr reload(
+                                    BootstrappedNetworkPtr provider,
+                                    IServiceNamespaceGrantSessionPtr grantSession,
+                                    IServiceLockboxSessionPtr existingLockbox,
+                                    const char *identityURI,
+                                    const char *reloginKey
+                                    );
 
         virtual PUID getID() const = 0;
 
@@ -137,8 +141,8 @@ namespace openpeer
                                      public IWakeDelegate,
                                      public IBootstrappedNetworkDelegate,
                                      public zsLib::ITimerDelegate,
-                                     public IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate,
-                                     public IServiceNamespaceGrantSessionForServicesQueryDelegate,
+                                     public IServiceNamespaceGrantSessionWaitDelegate,
+                                     public IServiceNamespaceGrantSessionQueryDelegate,
                                      public IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>,
                                      public IMessageMonitorResultDelegate<IdentityLookupUpdateResult>,
                                      public IMessageMonitorResultDelegate<IdentityAccessRolodexCredentialsGetResult>,
@@ -155,6 +159,14 @@ namespace openpeer
         typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
         typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
 
+        typedef IServiceLockboxSessionForServiceIdentity UseServiceLockboxSession;
+        typedef shared_ptr<UseServiceLockboxSession> UseServiceLockboxSessionPtr;
+        typedef weak_ptr<UseServiceLockboxSession> UseServiceLockboxSessionWeakPtr;
+
+        typedef IServiceNamespaceGrantSessionForServices UseServiceNamespaceGrantSession;
+        typedef shared_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionPtr;
+        typedef weak_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionWeakPtr;
+
         typedef IServiceNamespaceGrantSession::SessionStates GrantSessionStates;
         typedef IServiceIdentitySession::SessionStates SessionStates;
 
@@ -168,7 +180,7 @@ namespace openpeer
                                UseBootstrappedNetworkPtr providerNetwork,
                                UseBootstrappedNetworkPtr identityNetwork,
                                ServiceNamespaceGrantSessionPtr grantSession,
-                               ServiceLockboxSessionPtr existingLockbox,
+                               UseServiceLockboxSessionPtr existingLockbox,
                                const char *outerFrameURLUponReload
                                );
 
@@ -179,7 +191,9 @@ namespace openpeer
       public:
         ~ServiceIdentitySession();
 
-        static ServiceIdentitySessionPtr convert(IServiceIdentitySessionPtr query);
+        static ServiceIdentitySessionPtr convert(IServiceIdentitySessionPtr object);
+        static ServiceIdentitySessionPtr convert(ForLockboxPtr object);
+
 
       protected:
         //---------------------------------------------------------------------
@@ -315,18 +329,18 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionForServicesWaitForWaitDelegate
+        #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionWaitDelegate
         #pragma mark
 
         virtual void onServiceNamespaceGrantSessionForServicesWaitComplete(IServiceNamespaceGrantSessionPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionForServicesQueryDelegate
+        #pragma mark ServiceIdentitySession => IServiceNamespaceGrantSessionQueryDelegate
         #pragma mark
 
         virtual void onServiceNamespaceGrantSessionForServicesQueryComplete(
-                                                                            IServiceNamespaceGrantSessionForServicesQueryPtr query,
+                                                                            IServiceNamespaceGrantSessionQueryPtr query,
                                                                             ElementPtr namespaceGrantChallengeBundleEl
                                                                             );
 
@@ -499,7 +513,7 @@ namespace openpeer
         String mLastErrorReason;
         
         IServiceIdentitySessionDelegatePtr mDelegate;
-        ServiceLockboxSessionWeakPtr mAssociatedLockbox;
+        UseServiceLockboxSessionWeakPtr mAssociatedLockbox;
         AutoBool mKillAssociation;
 
         IdentityInfo mIdentityInfo;
@@ -508,9 +522,9 @@ namespace openpeer
         UseBootstrappedNetworkPtr mIdentityBootstrappedNetwork;
         UseBootstrappedNetworkPtr mActiveBootstrappedNetwork;
 
-        ServiceNamespaceGrantSessionPtr mGrantSession;
-        IServiceNamespaceGrantSessionForServicesQueryPtr mGrantQuery;
-        IServiceNamespaceGrantSessionForServicesWaitPtr mGrantWait;
+        UseServiceNamespaceGrantSessionPtr mGrantSession;
+        IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
+        IServiceNamespaceGrantSessionWaitPtr mGrantWait;
 
         IMessageMonitorPtr mIdentityAccessLockboxUpdateMonitor;
         IMessageMonitorPtr mIdentityLookupUpdateMonitor;

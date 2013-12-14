@@ -212,7 +212,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("PeerFiles");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(PeerFilePublic::convert(mPublic)));
+        IHelper::debugAppend(resultEl, UsePeerFilePublic::toDebug(mPublic));
 
         return resultEl;
       }

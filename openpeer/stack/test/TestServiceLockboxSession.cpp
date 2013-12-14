@@ -60,6 +60,8 @@ namespace hookflash
   {
     namespace test
     {
+      typedef stack::internal::IStackForInternal UseStack;
+
 //#pragma mark
 //#pragma mark XML helpers
 //#pragma mark
@@ -433,7 +435,7 @@ namespace hookflash
                                                  IBootstrappedNetworkDelegatePtr delegate
                                                  )
       {
-        TestBootstrappedNetworkForPeerContactPtr pThis(new TestBootstrappedNetworkForPeerContact(IStackForInternal::queueStack()));
+        TestBootstrappedNetworkForPeerContactPtr pThis(new TestBootstrappedNetworkForPeerContact(UseStack::queueStack()));
         
         BootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
         ZS_THROW_BAD_STATE_IF(!manager)

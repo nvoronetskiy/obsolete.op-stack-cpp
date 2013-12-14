@@ -61,6 +61,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IMessageIncomingForAccount::toDebug(ForAccountPtr messageIncoming)
+      {
+        return MessageIncoming::toDebug(MessageIncoming::convert(messageIncoming));
+      }
+
+      //-----------------------------------------------------------------------
       IMessageIncomingForAccount::ForAccountPtr IMessageIncomingForAccount::create(
                                                                                    AccountPtr account,
                                                                                    LocationPtr location,

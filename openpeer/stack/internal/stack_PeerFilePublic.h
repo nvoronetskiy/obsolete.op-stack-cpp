@@ -55,6 +55,8 @@ namespace openpeer
         typedef shared_ptr<ForPeerFiles> ForPeerFilesPtr;
         typedef weak_ptr<ForPeerFiles> ForPeerFilesWeakPtr;
 
+        static ElementPtr toDebug(ForPeerFilesPtr peerFilePublic);
+
         virtual ElementPtr toDebug() const = 0;
       };
 
@@ -71,6 +73,8 @@ namespace openpeer
         typedef IPeerFilePublicForPeerFilePrivate ForPeerFilePrivate;
         typedef shared_ptr<ForPeerFilePrivate> ForPeerFilePrivatePtr;
         typedef weak_ptr<ForPeerFilePrivate> ForPeerFilePrivateWeakPtr;
+
+        static ElementPtr toDebug(ForPeerFilePrivatePtr peerFilePublic);
 
         static PeerFilePublicPtr createFromPublicKey(
                                                      PeerFilesPtr peerFiles,
@@ -105,6 +109,8 @@ namespace openpeer
       public:
         friend interaction IPeerFilePublicFactory;
         friend interaction IPeerFilePublic;
+        friend interaction IPeerFilePublicForPeerFiles;
+        friend interaction IPeerFilePublicForPeerFilePrivate;
 
       protected:
         PeerFilePublic();

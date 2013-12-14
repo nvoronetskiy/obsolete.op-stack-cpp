@@ -84,6 +84,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
       using services::IWakeDelegateProxy;
 
@@ -113,6 +115,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      ElementPtr IAccountFinderForAccount::toDebug(ForAccountPtr object)
+      {
+        return AccountFinder::toDebug(AccountFinder::convert(object));
+      }
+
+      //-----------------------------------------------------------------------
       ForAccountPtr IAccountFinderForAccount::create(
                                                      IAccountFinderDelegatePtr delegate,
                                                      AccountPtr outer
@@ -137,7 +145,7 @@ namespace openpeer
                                    AccountPtr outer
                                    ) :
         MessageQueueAssociator(queue),
-        mDelegate(IAccountFinderDelegateProxy::createWeak(IStackForInternal::queueStack(), delegate)),
+        mDelegate(IAccountFinderDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
         mCurrentState(IAccount::AccountState_Pending)
       {
@@ -187,7 +195,7 @@ namespace openpeer
                                                          AccountPtr outer
                                                          )
       {
-        AccountFinderPtr pThis(new AccountFinder(IStackForInternal::queueStack(), delegate, outer));
+        AccountFinderPtr pThis(new AccountFinder(UseStack::queueStack(), delegate, outer));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;

@@ -84,6 +84,8 @@ namespace openpeer
   {
     namespace internal
     {
+      typedef IStackForInternal UseStack;
+
       using services::IHelper;
       using services::IMessageLayerSecurityChannel;
 
@@ -104,6 +106,12 @@ namespace openpeer
       #pragma mark
       #pragma mark IAccountPeerLocationForAccount
       #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IAccountPeerLocationForAccount::toDebug(ForAccountPtr peerLocation)
+      {
+        return AccountPeerLocation::toDebug(AccountPeerLocation::convert(peerLocation));
+      }
 
       //-----------------------------------------------------------------------
       ForAccountPtr IAccountPeerLocationForAccount::createFromIncomingPeerLocationFind(
@@ -157,7 +165,7 @@ namespace openpeer
                                                IDHPublicKeyPtr localPublicKey
                                                ) :
         MessageQueueAssociator(queue),
-        mDelegate(IAccountPeerLocationDelegateProxy::createWeak(IStackForInternal::queueStack(), delegate)),
+        mDelegate(IAccountPeerLocationDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
 
         mCreatedReason(CreatedFromReason_IncomingFind),
@@ -197,7 +205,7 @@ namespace openpeer
                                                LocationInfoPtr locationInfo
                                                ) :
         MessageQueueAssociator(queue),
-        mDelegate(IAccountPeerLocationDelegateProxy::createWeak(IStackForInternal::queueStack(), delegate)),
+        mDelegate(IAccountPeerLocationDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
 
         mCreatedReason(CreatedFromReason_OutgoingFind),
@@ -279,7 +287,7 @@ namespace openpeer
                                                                                                  IDHPublicKeyPtr localPublicKey
                                                                                                  )
       {
-        AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, request, localPrivateKey, localPublicKey));
+        AccountPeerLocationPtr pThis(new AccountPeerLocation(UseStack::queueStack(), delegate, outer, request, localPrivateKey, localPublicKey));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -293,7 +301,7 @@ namespace openpeer
                                                                                                LocationInfoPtr locationInfo
                                                                                                )
       {
-        AccountPeerLocationPtr pThis(new AccountPeerLocation(IStackForInternal::queueStack(), delegate, outer, request, locationInfo));
+        AccountPeerLocationPtr pThis(new AccountPeerLocation(UseStack::queueStack(), delegate, outer, request, locationInfo));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -723,7 +731,7 @@ namespace openpeer
           ITransportStreamPtr receiveStream = ITransportStream::create();
           ITransportStreamPtr sendStream = ITransportStream::create();
 
-          IRUDPMessagingPtr messaging = IRUDPMessaging::acceptChannel(IStackForInternal::queueServices(), mRUDPSocketSession, mThisWeak.lock(), receiveStream, sendStream);
+          IRUDPMessagingPtr messaging = IRUDPMessaging::acceptChannel(UseStack::queueServices(), mRUDPSocketSession, mThisWeak.lock(), receiveStream, sendStream);
           if (!messaging) return;
 
           messaging->shutdown();
@@ -739,7 +747,7 @@ namespace openpeer
 
           // no messaging present, accept this incoming channel
           mMessaging = IRUDPMessaging::acceptChannel(
-                                                     IStackForInternal::queueServices(),
+                                                     UseStack::queueServices(),
                                                      mRUDPSocketSession,
                                                      mThisWeak.lock(),
                                                      receiveStream,
@@ -1617,7 +1625,7 @@ namespace openpeer
         ITransportStreamPtr sendStream = ITransportStream::create();
 
         mMessaging = IRUDPMessaging::openChannel(
-                                                 IStackForInternal::queueServices(),
+                                                 UseStack::queueServices(),
                                                  mRUDPSocketSession,
                                                  mThisWeak.lock(),
                                                  OPENPEER_STACK_PEER_TO_PEER_RUDP_CONNECTION_INFO,
@@ -2299,7 +2307,7 @@ namespace openpeer
               ZS_LOG_TRACE(log("listing for incoming RUDP channels on location that received the find request"))
 
               mRUDPSocketSession = IRUDPICESocketSession::listen(
-                                                                 IStackForInternal::queueServices(),
+                                                                 UseStack::queueServices(),
                                                                  mSocketSession,
                                                                  mThisWeak.lock()
                                                                  );

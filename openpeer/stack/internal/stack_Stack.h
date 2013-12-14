@@ -50,9 +50,6 @@ namespace openpeer
 
       interaction IStackForInternal
       {
-        IStackForInternal &forInternal() {return *this;}
-        const IStackForInternal &forInternal() const {return *this;}
-
         static const String &appID();
         static const String &appName();
         static const String &appImageURL();
