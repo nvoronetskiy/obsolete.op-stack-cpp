@@ -63,14 +63,10 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-      using message::namespace_grant::NamespaceGrantWindowRequest;
-      using message::namespace_grant::NamespaceGrantWindowRequestPtr;
-      using message::namespace_grant::NamespaceGrantWindowResult;
-      using message::namespace_grant::NamespaceGrantWindowResultPtr;
-      using message::namespace_grant::NamespaceGrantStartNotify;
-      using message::namespace_grant::NamespaceGrantStartNotifyPtr;
-      using message::namespace_grant::NamespaceGrantCompleteNotify;
-      using message::namespace_grant::NamespaceGrantCompleteNotifyPtr;
+      ZS_DECLARE_USING_PTR(message::namespace_grant, NamespaceGrantWindowRequest)
+      ZS_DECLARE_USING_PTR(message::namespace_grant, NamespaceGrantWindowResult)
+      ZS_DECLARE_USING_PTR(message::namespace_grant, NamespaceGrantStartNotify)
+      ZS_DECLARE_USING_PTR(message::namespace_grant, NamespaceGrantCompleteNotify)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -131,13 +127,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSessionPtr ServiceNamespaceGrantSession::convert(IServiceNamespaceGrantSessionPtr session)
       {
-        return boost::dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
+        return dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
       }
 
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSessionPtr ServiceNamespaceGrantSession::convert(ForServicesPtr session)
       {
-        return boost::dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
+        return dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
       }
 
       //-----------------------------------------------------------------------

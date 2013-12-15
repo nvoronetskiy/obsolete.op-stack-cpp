@@ -58,8 +58,7 @@ namespace openpeer
 
       //      typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-      using message::peer_salt::SignedSaltGetRequest;
-      using message::peer_salt::SignedSaltGetRequestPtr;
+      ZS_DECLARE_USING_PTR(message::peer_salt, SignedSaltGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -105,7 +104,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceSaltFetchSignedSaltQueryPtr ServiceSaltFetchSignedSaltQuery::convert(IServiceSaltFetchSignedSaltQueryPtr query)
       {
-        return boost::dynamic_pointer_cast<ServiceSaltFetchSignedSaltQuery>(query);
+        return dynamic_pointer_cast<ServiceSaltFetchSignedSaltQuery>(query);
       }
 
       //-----------------------------------------------------------------------

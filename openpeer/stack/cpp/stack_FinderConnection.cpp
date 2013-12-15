@@ -228,7 +228,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderConnectionPtr FinderConnection::convert(IFinderConnectionPtr connection)
       {
-        return boost::dynamic_pointer_cast<FinderConnection>(connection);
+        return dynamic_pointer_cast<FinderConnection>(connection);
       }
 
       //-----------------------------------------------------------------------
@@ -1333,7 +1333,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderConnection::ChannelPtr FinderConnection::Channel::convert(IFinderConnectionRelayChannelPtr channel)
       {
-        return boost::dynamic_pointer_cast<Channel>(channel);
+        return dynamic_pointer_cast<Channel>(channel);
       }
 
       //-----------------------------------------------------------------------

@@ -54,9 +54,7 @@ namespace openpeer
 
       interaction ILocationForAccount
       {
-        typedef ILocationForAccount ForAccount;
-        typedef shared_ptr<ILocationForAccount> ForAccountPtr;
-        typedef weak_ptr<ILocationForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, ForAccount)
 
         static ElementPtr toDebug(ForAccountPtr location);
 
@@ -92,9 +90,7 @@ namespace openpeer
 
       interaction ILocationForMessages
       {
-        typedef ILocationForMessages ForMessages;
-        typedef shared_ptr<ForMessages> ForMessagesPtr;
-        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForMessages, ForMessages)
 
         static ForMessagesPtr convert(IMessageSourcePtr messageSource);
 
@@ -127,9 +123,7 @@ namespace openpeer
 
       interaction ILocationForPeerSubscription
       {
-        typedef ILocationForPeerSubscription ForPeerSubscription;
-        typedef shared_ptr<ForPeerSubscription> ForPeerSubscriptionPtr;
-        typedef weak_ptr<ForPeerSubscription> ForPeerSubscriptionWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForPeerSubscription, ForPeerSubscription)
 
         virtual PeerPtr getPeer(bool internal = true) const = 0;
 
@@ -165,9 +159,7 @@ namespace openpeer
 
       interaction ILocationForPublicationRepository
       {
-        typedef ILocationForPublicationRepository ForPublicationRepository;
-        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
-        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForPublicationRepository, ForPublicationRepository)
 
         typedef ILocation::LocationTypes LocationTypes;
 
@@ -208,13 +200,8 @@ namespace openpeer
         friend interaction ILocation;
         friend interaction ILocationForMessages;
 
-        typedef IAccountForLocation UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
-
-        typedef IPeerForLocation UsePeer;
-        typedef shared_ptr<UsePeer> UsePeerPtr;
-        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForLocation, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForLocation, UsePeer)
 
         typedef ILocation::LocationTypes LocationTypes;
 

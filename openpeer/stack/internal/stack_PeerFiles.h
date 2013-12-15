@@ -58,13 +58,8 @@ namespace openpeer
         friend interaction IPeerFilesFactory;
         friend interaction IPeerFiles;
 
-        typedef IPeerFilePrivateForPeerFiles UsePeerFilePrivate;
-        typedef shared_ptr<UsePeerFilePrivate> UsePeerFilePrivatePtr;
-        typedef weak_ptr<UsePeerFilePrivate> UsePeerFilePrivateWeakPtr;
-
-        typedef IPeerFilePublicForPeerFiles UsePeerFilePublic;
-        typedef shared_ptr<UsePeerFilePublic> UsePeerFilePublicPtr;
-        typedef weak_ptr<UsePeerFilePublic> UsePeerFilePublicWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePrivateForPeerFiles, UsePeerFilePrivate)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePublicForPeerFiles, UsePeerFilePublic)
 
       protected:
         PeerFiles();
@@ -124,7 +119,7 @@ namespace openpeer
         #pragma mark PeerFiles => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
         mutable RecursiveLock mLock;
         PeerFilesWeakPtr mThisWeak;
 

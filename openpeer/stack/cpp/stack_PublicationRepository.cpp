@@ -178,13 +178,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr PublicationRepository::convert(IPublicationRepositoryPtr repository)
       {
-        return boost::dynamic_pointer_cast<PublicationRepository>(repository);
+        return dynamic_pointer_cast<PublicationRepository>(repository);
       }
 
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr PublicationRepository::convert(ForAccountPtr repository)
       {
-        return boost::dynamic_pointer_cast<PublicationRepository>(repository);
+        return dynamic_pointer_cast<PublicationRepository>(repository);
       }
 
       //-----------------------------------------------------------------------
@@ -1812,7 +1812,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerCachePtr PublicationRepository::PeerCache::convert(IPublicationRepositoryPeerCachePtr cache)
       {
-        return boost::dynamic_pointer_cast<PeerCache>(cache);
+        return dynamic_pointer_cast<PeerCache>(cache);
       }
 
       //-----------------------------------------------------------------------
@@ -2074,7 +2074,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublisherPtr PublicationRepository::Publisher::convert(IPublicationPublisherPtr publisher)
       {
-        return boost::dynamic_pointer_cast<Publisher>(publisher);
+        return dynamic_pointer_cast<Publisher>(publisher);
       }
 
       //-----------------------------------------------------------------------
@@ -2357,7 +2357,7 @@ namespace openpeer
 
       FetcherPtr PublicationRepository::Fetcher::convert(IPublicationFetcherPtr fetcher)
       {
-        return boost::dynamic_pointer_cast<Fetcher>(fetcher);
+        return dynamic_pointer_cast<Fetcher>(fetcher);
       }
 
       //-----------------------------------------------------------------------
@@ -2640,7 +2640,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RemoverPtr PublicationRepository::Remover::convert(IPublicationRemoverPtr remover)
       {
-        return boost::dynamic_pointer_cast<Remover>(remover);
+        return dynamic_pointer_cast<Remover>(remover);
       }
 
       //-----------------------------------------------------------------------
@@ -2996,7 +2996,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SubscriptionLocalPtr PublicationRepository::SubscriptionLocal::convert(IPublicationSubscriptionPtr subscription)
       {
-        return boost::dynamic_pointer_cast<SubscriptionLocal>(subscription);
+        return dynamic_pointer_cast<SubscriptionLocal>(subscription);
       }
 
       //-----------------------------------------------------------------------
@@ -3557,7 +3557,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerSubscriptionOutgoingPtr PublicationRepository::PeerSubscriptionOutgoing::convert(IPublicationSubscriptionPtr subscription)
       {
-        return boost::dynamic_pointer_cast<PeerSubscriptionOutgoing>(subscription);
+        return dynamic_pointer_cast<PeerSubscriptionOutgoing>(subscription);
       }
 
       //-----------------------------------------------------------------------

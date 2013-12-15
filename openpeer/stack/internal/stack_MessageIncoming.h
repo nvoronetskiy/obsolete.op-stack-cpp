@@ -52,9 +52,7 @@ namespace openpeer
 
       interaction IMessageIncomingForAccount
       {
-        typedef IMessageIncomingForAccount ForAccount;
-        typedef shared_ptr<ForAccount> ForAccountPtr;
-        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForAccount, ForAccount)
 
         static ElementPtr toDebug(ForAccountPtr messageIncoming);
 
@@ -88,9 +86,7 @@ namespace openpeer
         friend interaction IMessageIncoming;
         friend interaction IMessageIncomingForAccount;
 
-        typedef IAccountForMessageIncoming UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForMessageIncoming, UseAccount)
 
       protected:
         MessageIncoming(

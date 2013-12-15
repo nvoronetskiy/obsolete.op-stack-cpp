@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SessionDeleteResultPtr SessionDeleteResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<SessionDeleteResult>(message);
+          return dynamic_pointer_cast<SessionDeleteResult>(message);
         }
 
         //---------------------------------------------------------------------

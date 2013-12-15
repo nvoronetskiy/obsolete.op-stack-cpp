@@ -50,7 +50,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerIdentifyResultPtr PeerIdentifyResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerIdentifyResult>(message);
+          return dynamic_pointer_cast<PeerIdentifyResult>(message);
         }
 
         //---------------------------------------------------------------------

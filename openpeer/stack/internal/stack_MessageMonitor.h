@@ -127,9 +127,7 @@ namespace openpeer
         friend interaction IMessageMonitorFactory;
         friend interaction IMessageMonitor;
 
-        typedef IMessageMonitorManagerForMessageMonitor UseMessageMonitorManager;
-        typedef shared_ptr<UseMessageMonitorManager> UseMessageMonitorManagerPtr;
-        typedef weak_ptr<UseMessageMonitorManager> UseMessageMonitorManagerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor, UseMessageMonitorManager)
 
       protected:
         MessageMonitor(IMessageQueuePtr queue);

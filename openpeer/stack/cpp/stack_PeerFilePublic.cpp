@@ -119,8 +119,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PeerFilePublic::PeerFilePublic() :
-        mID(zsLib::createPUID())
+      PeerFilePublic::PeerFilePublic()
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -142,19 +141,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(IPeerFilePublicPtr peerFilePublic)
       {
-        return boost::dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
       }
 
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilesPtr peerFilePublic)
       {
-        return boost::dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
       }
 
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilePrivatePtr peerFilePublic)
       {
-        return boost::dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
       }
 
       //-----------------------------------------------------------------------

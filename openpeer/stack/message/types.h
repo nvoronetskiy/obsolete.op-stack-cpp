@@ -52,8 +52,6 @@ namespace openpeer
       using zsLib::XML::Attribute;
       using zsLib::XML::AttributePtr;
 
-      using boost::shared_ptr;
-      using boost::weak_ptr;
       using boost::dynamic_pointer_cast;
 
       using services::IICESocket;
@@ -74,6 +72,12 @@ namespace openpeer
       typedef stack::LocationInfo LocationInfo;
       typedef stack::LocationInfoList LocationInfoList;
 
+      ZS_DECLARE_STRUCT_PTR(Service)
+      ZS_DECLARE_STRUCT_PTR(IdentityInfo)
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<IdentityInfo>, IdentityInfoList)
+
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -84,9 +88,16 @@ namespace openpeer
 
       struct Service
       {
+        ZS_DECLARE_STRUCT_PTR(Method)
+        ZS_DECLARE_TYPEDEF_PTR(std::list<MethodPtr>, MethodList)
+
+        typedef String ServiceID;
+        typedef String Type;
+
         struct Method
         {
           typedef String MethodName;
+
           MethodName mName;
           String mURI;
           String mUsername;
@@ -95,14 +106,7 @@ namespace openpeer
           bool hasData() const;
           ElementPtr toDebug() const;
         };
-        typedef boost::shared_ptr<Method> MethodPtr;
-        typedef boost::weak_ptr<Method> MethodWeakPtr;
         typedef std::map<Method::MethodName, Method> MethodMap;
-        typedef std::list<MethodPtr> MethodList;
-        typedef boost::shared_ptr<MethodList> MethodListPtr;
-        typedef boost::weak_ptr<MethodList> MethodListWeakPtr;
-        typedef String ServiceID;
-        typedef String Type;
 
         ServiceID mID;
         String mType;
@@ -113,8 +117,6 @@ namespace openpeer
         bool hasData() const;
         ElementPtr toDebug() const;
       };
-      typedef boost::shared_ptr<Service> ServicePtr;
-      typedef boost::weak_ptr<Service> ServiceWeakPtr;
       typedef std::map<Service::ServiceID, Service> ServiceMap;
       typedef std::map<Service::Type, ServiceMap> ServiceTypeMap;
 
@@ -250,9 +252,6 @@ namespace openpeer
                        bool overwriteExisting = true
                        );
       };
-      typedef std::list<IdentityInfo> IdentityInfoList;
-      typedef boost::shared_ptr<IdentityInfoList> IdentityInfoListPtr;
-      typedef boost::weak_ptr<IdentityInfoList> IdentityInfoListWeakPtr;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -407,418 +406,155 @@ namespace openpeer
       #pragma mark (forwards)
       #pragma mark
 
-      class Message;
-      typedef boost::shared_ptr<Message> MessagePtr;
-      typedef boost::weak_ptr<Message> MessageWeakPtr;
+      ZS_DECLARE_CLASS_PTR(Message)
+      ZS_DECLARE_CLASS_PTR(MessageRequest)
+      ZS_DECLARE_CLASS_PTR(MessageResult)
+      ZS_DECLARE_CLASS_PTR(MessageNotify)
 
-      interaction IMessageHelper;
-      typedef boost::shared_ptr<IMessageHelper> IMessageHelperPtr;
-      typedef boost::weak_ptr<IMessageHelper> IMessageHelperWeakPtr;
+      ZS_DECLARE_INTERACTION_PTR(IMessageHelper)
+      ZS_DECLARE_INTERACTION_PTR(IMessageFactory)
 
-      interaction IMessageFactory;
-      typedef boost::shared_ptr<IMessageFactory> IMessageFactoryPtr;
-      typedef boost::weak_ptr<IMessageFactory> IMessageFactoryWeakPtr;
-
-      class MessageRequest;
-      typedef boost::shared_ptr<MessageRequest> MessageRequestPtr;
-      typedef boost::weak_ptr<MessageRequest> MessageRequestWeakPtr;
-
-      class MessageResult;
-      typedef boost::shared_ptr<MessageResult> MessageResultPtr;
-      typedef boost::weak_ptr<MessageResult> MessageResultWeakPtr;
-
-      class MessageNotify;
-      typedef boost::shared_ptr<MessageNotify> MessageNotifyPtr;
-      typedef boost::weak_ptr<MessageNotify> MessageNotifyWeakPtr;
 
       namespace bootstrapper
       {
-        class MessageFactoryBootstrapper;
-        typedef boost::shared_ptr<MessageFactoryBootstrapper> MessageFactoryBootstrapperPtr;
-        typedef boost::weak_ptr<MessageFactoryBootstrapper> MessageFactoryBootstrapperWeakPtr;
-
-        class ServicesGetRequest;
-        typedef boost::shared_ptr<ServicesGetRequest> ServicesGetRequestPtr;
-        typedef boost::weak_ptr<ServicesGetRequest> ServicesGetRequestWeakPtr;
-
-        class ServicesGetResult;
-        typedef boost::shared_ptr<ServicesGetResult> ServicesGetResultPtr;
-        typedef boost::weak_ptr<ServicesGetResult> ServicesGetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryBootstrapper)
+        ZS_DECLARE_CLASS_PTR(ServicesGetRequest)
+        ZS_DECLARE_CLASS_PTR(ServicesGetResult)
       }
 
       namespace bootstrapped_finder
       {
-        class MessageFactoryBootstrappedFinder;
-        typedef boost::shared_ptr<MessageFactoryBootstrappedFinder> MessageFactoryBootstrappedFinderPtr;
-        typedef boost::weak_ptr<MessageFactoryBootstrappedFinder> MessageFactoryBootstrappedFinderWeakPtr;
-
-        class FindersGetRequest;
-        typedef boost::shared_ptr<FindersGetRequest> FindersGetRequestPtr;
-        typedef boost::weak_ptr<FindersGetRequest> FindersGetRequestWeakPtr;
-
-        class FindersGetResult;
-        typedef boost::shared_ptr<FindersGetResult> FindersGetResultPtr;
-        typedef boost::weak_ptr<FindersGetResult> FindersGetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryBootstrappedFinder)
+        ZS_DECLARE_CLASS_PTR(FindersGetRequest)
+        ZS_DECLARE_CLASS_PTR(FindersGetResult)
       }
 
       namespace certificates
       {
-        class MessageFactoryCertificates;
-        typedef boost::shared_ptr<MessageFactoryCertificates> MessageFactoryCertificatesPtr;
-        typedef boost::weak_ptr<MessageFactoryCertificates> MessageFactoryCertificatesWeakPtr;
-
-        class CertificatesGetRequest;
-        typedef boost::shared_ptr<CertificatesGetRequest> CertificatesGetRequestPtr;
-        typedef boost::weak_ptr<CertificatesGetRequest> CertificatesGetRequestWeakPtr;
-
-        class CertificatesGetResult;
-        typedef boost::shared_ptr<CertificatesGetResult> CertificatesGetResultPtr;
-        typedef boost::weak_ptr<CertificatesGetResult> CertificatesGetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryCertificates)
+        ZS_DECLARE_CLASS_PTR(CertificatesGetRequest)
+        ZS_DECLARE_CLASS_PTR(CertificatesGetResult)
       }
 
       namespace identity
       {
-        class MessageFactoryIdentity;
-        typedef boost::shared_ptr<MessageFactoryIdentity> MessageFactoryIdentityPtr;
-        typedef boost::weak_ptr<MessageFactoryIdentity> MessageFactoryIdentityWeakPtr;
-
-        class IdentityAccessWindowRequest;
-        typedef boost::shared_ptr<IdentityAccessWindowRequest> IdentityAccessWindowRequestPtr;
-        typedef boost::weak_ptr<IdentityAccessWindowRequest> IdentityAccessWindowRequestWeakPtr;
-        
-        class IdentityAccessWindowResult;
-        typedef boost::shared_ptr<IdentityAccessWindowResult> IdentityAccessWindowResultPtr;
-        typedef boost::weak_ptr<IdentityAccessWindowResult> IdentityAccessWindowResultWeakPtr;
-
-        class IdentityAccessStartNotify;
-        typedef boost::shared_ptr<IdentityAccessStartNotify> IdentityAccessStartNotifyPtr;
-        typedef boost::weak_ptr<IdentityAccessStartNotify> IdentityAccessStartNotifyWeakPtr;
-
-        class IdentityAccessCompleteNotify;
-        typedef boost::shared_ptr<IdentityAccessCompleteNotify> IdentityAccessCompleteNotifyPtr;
-        typedef boost::weak_ptr<IdentityAccessCompleteNotify> IdentityAccessCompleteNotifyWeakPtr;
-
-        class IdentityAccessLockboxUpdateRequest;
-        typedef boost::shared_ptr<IdentityAccessLockboxUpdateRequest> IdentityAccessLockboxUpdateRequestPtr;
-        typedef boost::weak_ptr<IdentityAccessLockboxUpdateRequest> IdentityAccessLockboxUpdateRequestWeakPtr;
-
-        class IdentityAccessLockboxUpdateResult;
-        typedef boost::shared_ptr<IdentityAccessLockboxUpdateResult> IdentityAccessLockboxUpdateResultPtr;
-        typedef boost::weak_ptr<IdentityAccessLockboxUpdateResult> IdentityAccessLockboxUpdateResultWeakPtr;
-        
-        class IdentityAccessRolodexCredentialsGetRequest;
-        typedef boost::shared_ptr<IdentityAccessRolodexCredentialsGetRequest> IdentityAccessRolodexCredentialsGetRequestPtr;
-        typedef boost::weak_ptr<IdentityAccessRolodexCredentialsGetRequest> IdentityAccessRolodexCredentialsGetRequestWeakPtr;
-
-        class IdentityAccessRolodexCredentialsGetResult;
-        typedef boost::shared_ptr<IdentityAccessRolodexCredentialsGetResult> IdentityAccessRolodexCredentialsGetResultPtr;
-        typedef boost::weak_ptr<IdentityAccessRolodexCredentialsGetResult> IdentityAccessRolodexCredentialsGetResultWeakPtr;
-
-        class IdentityAccessValidateRequest;
-        typedef boost::shared_ptr<IdentityAccessValidateRequest> IdentityAccessValidateRequestPtr;
-        typedef boost::weak_ptr<IdentityAccessValidateRequest> IdentityAccessValidateRequestWeakPtr;
-
-        class IdentityAccessValidateResult;
-        typedef boost::shared_ptr<IdentityAccessValidateResult> IdentityAccessValidateResultPtr;
-        typedef boost::weak_ptr<IdentityAccessValidateResult> IdentityAccessValidateResultWeakPtr;
-        
-        class IdentityLookupUpdateRequest;
-        typedef boost::shared_ptr<IdentityLookupUpdateRequest> IdentityLookupUpdateRequestPtr;
-        typedef boost::weak_ptr<IdentityLookupUpdateRequest> IdentityLookupUpdateRequestWeakPtr;
-
-        class IdentityLookupUpdateResult;
-        typedef boost::shared_ptr<IdentityLookupUpdateResult> IdentityLookupUpdateResultPtr;
-        typedef boost::weak_ptr<IdentityLookupUpdateResult> IdentityLookupUpdateResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryIdentity)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessWindowRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessWindowResult)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessStartNotify)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessCompleteNotify)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessLockboxUpdateRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessLockboxUpdateResult)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessRolodexCredentialsGetRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessRolodexCredentialsGetResult)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessValidateRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessValidateResult)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupUpdateRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupUpdateResult)
       }
 
       namespace identity_lockbox
       {
-        class MessageFactoryIdentityLockbox;
-        typedef boost::shared_ptr<MessageFactoryIdentityLockbox> MessageFactoryIdentityLockboxPtr;
-        typedef boost::weak_ptr<MessageFactoryIdentityLockbox> MessageFactoryIdentityLockboxWeakPtr;
-
-        class LockboxAccessRequest;
-        typedef boost::shared_ptr<LockboxAccessRequest> LockboxAccessRequestPtr;
-        typedef boost::weak_ptr<LockboxAccessRequest> LockboxAccessRequestWeakPtr;
-
-        class LockboxAccessResult;
-        typedef boost::shared_ptr<LockboxAccessResult> LockboxAccessResultPtr;
-        typedef boost::weak_ptr<LockboxAccessResult> LockboxAccessResultWeakPtr;
-
-        class LockboxAccessValidateRequest;
-        typedef boost::shared_ptr<LockboxAccessValidateRequest> LockboxAccessValidateRequestPtr;
-        typedef boost::weak_ptr<LockboxAccessValidateRequest> LockboxAccessValidateRequestWeakPtr;
-
-        class LockboxAccessValidateResult;
-        typedef boost::shared_ptr<LockboxAccessValidateResult> LockboxAccessValidateResultPtr;
-        typedef boost::weak_ptr<LockboxAccessValidateResult> LockboxAccessValidateResultWeakPtr;
-
-        class LockboxNamespaceGrantChallengeValidateRequest;
-        typedef boost::shared_ptr<LockboxNamespaceGrantChallengeValidateRequest> LockboxNamespaceGrantChallengeValidateRequestPtr;
-        typedef boost::weak_ptr<LockboxNamespaceGrantChallengeValidateRequest> LockboxNamespaceGrantChallengeValidateRequestWeakPtr;
-
-        class LockboxNamespaceGrantChallengeValidateResult;
-        typedef boost::shared_ptr<LockboxNamespaceGrantChallengeValidateResult> LockboxNamespaceGrantChallengeValidateResultPtr;
-        typedef boost::weak_ptr<LockboxNamespaceGrantChallengeValidateResult> LockboxNamespaceGrantChallengeValidateResultWeakPtr;
-        
-        class LockboxIdentitiesUpdateRequest;
-        typedef boost::shared_ptr<LockboxIdentitiesUpdateRequest> LockboxIdentitiesUpdateRequestPtr;
-        typedef boost::weak_ptr<LockboxIdentitiesUpdateRequest> LockboxIdentitiesUpdateRequestWeakPtr;
-
-        class LockboxIdentitiesUpdateResult;
-        typedef boost::shared_ptr<LockboxIdentitiesUpdateResult> LockboxIdentitiesUpdateResultPtr;
-        typedef boost::weak_ptr<LockboxIdentitiesUpdateResult> LockboxIdentitiesUpdateResultWeakPtr;
-
-        class LockboxContentGetRequest;
-        typedef boost::shared_ptr<LockboxContentGetRequest> LockboxContentGetRequestPtr;
-        typedef boost::weak_ptr<LockboxContentGetRequest> LockboxContentGetRequestWeakPtr;
-        
-        class LockboxContentGetResult;
-        typedef boost::shared_ptr<LockboxContentGetResult> LockboxContentGetResultPtr;
-        typedef boost::weak_ptr<LockboxContentGetResult> LockboxContentGetResultWeakPtr;
-        
-        class LockboxContentSetRequest;
-        typedef boost::shared_ptr<LockboxContentSetRequest> LockboxContentSetRequestPtr;
-        typedef boost::weak_ptr<LockboxContentSetRequest> LockboxContentSetRequestWeakPtr;
-
-        class LockboxContentSetResult;
-        typedef boost::shared_ptr<LockboxContentSetResult> LockboxContentSetResultPtr;
-        typedef boost::weak_ptr<LockboxContentSetResult> LockboxContentSetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryIdentityLockbox)
+        ZS_DECLARE_CLASS_PTR(LockboxAccessRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxAccessResult)
+        ZS_DECLARE_CLASS_PTR(LockboxAccessValidateRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxAccessValidateResult)
+        ZS_DECLARE_CLASS_PTR(LockboxNamespaceGrantChallengeValidateRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxNamespaceGrantChallengeValidateResult)
+        ZS_DECLARE_CLASS_PTR(LockboxIdentitiesUpdateRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxIdentitiesUpdateResult)
+        ZS_DECLARE_CLASS_PTR(LockboxContentGetRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxContentGetResult)
+        ZS_DECLARE_CLASS_PTR(LockboxContentSetRequest)
+        ZS_DECLARE_CLASS_PTR(LockboxContentSetResult)
       }
 
       namespace identity_lookup
       {
-        class MessageFactoryIdentityLookup;
-        typedef boost::shared_ptr<MessageFactoryIdentityLookup> MessageFactoryIdentityLookupPtr;
-        typedef boost::weak_ptr<MessageFactoryIdentityLookup> MessageFactoryIdentityLookupWeakPtr;
-
-        class IdentityLookupCheckRequest;
-        typedef boost::shared_ptr<IdentityLookupCheckRequest> IdentityLookupCheckRequestPtr;
-        typedef boost::weak_ptr<IdentityLookupCheckRequest> IdentityLookupCheckRequestWeakPtr;
-        
-        class IdentityLookupCheckResult;
-        typedef boost::shared_ptr<IdentityLookupCheckResult> IdentityLookupCheckResultPtr;
-        typedef boost::weak_ptr<IdentityLookupCheckResult> IdentityLookupCheckResultWeakPtr;
-
-        class IdentityLookupRequest;
-        typedef boost::shared_ptr<IdentityLookupRequest> IdentityLookupRequestPtr;
-        typedef boost::weak_ptr<IdentityLookupRequest> IdentityLookupRequestWeakPtr;
-
-        class IdentityLookupResult;
-        typedef boost::shared_ptr<IdentityLookupResult> IdentityLookupResultPtr;
-        typedef boost::weak_ptr<IdentityLookupResult> IdentityLookupResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryIdentityLookup)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupCheckRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupCheckResult)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityLookupResult)
       }
 
       namespace namespace_grant
       {
-        class MessageFactoryNamespaceGrant;
-        typedef boost::shared_ptr<MessageFactoryNamespaceGrant> MessageFactoryNamespaceGrantPtr;
-        typedef boost::weak_ptr<MessageFactoryNamespaceGrant> MessageFactoryNamespaceGrantWeakPtr;
-
-        class NamespaceGrantWindowRequest;
-        typedef boost::shared_ptr<NamespaceGrantWindowRequest> NamespaceGrantWindowRequestPtr;
-        typedef boost::weak_ptr<NamespaceGrantWindowRequest> NamespaceGrantWindowRequestWeakPtr;
-
-        class NamespaceGrantWindowResult;
-        typedef boost::shared_ptr<NamespaceGrantWindowResult> NamespaceGrantWindowResultPtr;
-        typedef boost::weak_ptr<NamespaceGrantWindowResult> NamespaceGrantWindowResultWeakPtr;
-
-        class NamespaceGrantStartNotify;
-        typedef boost::shared_ptr<NamespaceGrantStartNotify> NamespaceGrantStartNotifyPtr;
-        typedef boost::weak_ptr<NamespaceGrantStartNotify> NamespaceGrantStartNotifyWeakPtr;
-
-        class NamespaceGrantCompleteNotify;
-        typedef boost::shared_ptr<NamespaceGrantCompleteNotify> NamespaceGrantCompleteNotifyPtr;
-        typedef boost::weak_ptr<NamespaceGrantCompleteNotify> NamespaceGrantCompleteNotifyWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryNamespaceGrant)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantWindowRequest)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantWindowResult)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantStartNotify)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantCompleteNotify)
       }
       
       namespace rolodex
       {
-        class MessageFactoryRolodex;
-        typedef boost::shared_ptr<MessageFactoryRolodex> MessageFactoryRolodexPtr;
-        typedef boost::weak_ptr<MessageFactoryRolodex> MessageFactoryRolodexWeakPtr;
-
-        class RolodexAccessRequest;
-        typedef boost::shared_ptr<RolodexAccessRequest> RolodexAccessRequestPtr;
-        typedef boost::weak_ptr<RolodexAccessRequest> RolodexAccessRequestWeakPtr;
-
-        class RolodexAccessResult;
-        typedef boost::shared_ptr<RolodexAccessResult> RolodexAccessResultPtr;
-        typedef boost::weak_ptr<RolodexAccessResult> RolodexAccessResultWeakPtr;
-
-        class RolodexNamespaceGrantChallengeValidateRequest;
-        typedef boost::shared_ptr<RolodexNamespaceGrantChallengeValidateRequest> RolodexNamespaceGrantChallengeValidateRequestPtr;
-        typedef boost::weak_ptr<RolodexNamespaceGrantChallengeValidateRequest> RolodexNamespaceGrantChallengeValidateRequestWeakPtr;
-
-        class RolodexNamespaceGrantChallengeValidateResult;
-        typedef boost::shared_ptr<RolodexNamespaceGrantChallengeValidateResult> RolodexNamespaceGrantChallengeValidateResultPtr;
-        typedef boost::weak_ptr<RolodexNamespaceGrantChallengeValidateResult> RolodexNamespaceGrantChallengeValidateResultWeakPtr;
-
-        class RolodexContactsGetRequest;
-        typedef boost::shared_ptr<RolodexContactsGetRequest> RolodexContactsGetRequestPtr;
-        typedef boost::weak_ptr<RolodexContactsGetRequest> RolodexContactsGetRequestWeakPtr;
-
-        class RolodexContactsGetResult;
-        typedef boost::shared_ptr<RolodexContactsGetResult> RolodexContactsGetResultPtr;
-        typedef boost::weak_ptr<RolodexContactsGetResult> RolodexContactsGetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryRolodex)
+        ZS_DECLARE_CLASS_PTR(RolodexAccessRequest)
+        ZS_DECLARE_CLASS_PTR(RolodexAccessResult)
+        ZS_DECLARE_CLASS_PTR(RolodexNamespaceGrantChallengeValidateRequest)
+        ZS_DECLARE_CLASS_PTR(RolodexNamespaceGrantChallengeValidateResult)
+        ZS_DECLARE_CLASS_PTR(RolodexContactsGetRequest)
+        ZS_DECLARE_CLASS_PTR(RolodexContactsGetResult)
       }
 
       namespace peer
       {
-        class MessageFactoryPeer;
-        typedef boost::shared_ptr<MessageFactoryPeer> MessageFactoryPeerPtr;
-        typedef boost::weak_ptr<MessageFactoryPeer> MessageFactoryPeerWeakPtr;
-
-        class PeerServicesGetRequest;
-        typedef boost::shared_ptr<PeerServicesGetRequest> PeerServicesGetRequestPtr;
-        typedef boost::weak_ptr<PeerServicesGetRequest> PeerServicesGetRequestWeakPtr;
-        
-        class PeerServicesGetResult;
-        typedef boost::shared_ptr<PeerServicesGetResult> PeerServicesGetResultPtr;
-        typedef boost::weak_ptr<PeerServicesGetResult> PeerServicesGetResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPeer)
+        ZS_DECLARE_CLASS_PTR(PeerServicesGetRequest)
+        ZS_DECLARE_CLASS_PTR(PeerServicesGetResult)
       }
 
       namespace peer_common
       {
-        class MessageFactoryPeerCommon;
-        typedef boost::shared_ptr<MessageFactoryPeerCommon> MessageFactoryPeerCommonPtr;
-        typedef boost::weak_ptr<MessageFactoryPeerCommon> MessageFactoryPeerCommonWeakPtr;
-
-        class PeerPublishRequest;
-        typedef boost::shared_ptr<PeerPublishRequest> PeerPublishRequestPtr;
-        typedef boost::weak_ptr<PeerPublishRequest> PeerPublishRequestWeakPtr;
-
-        class PeerPublishResult;
-        typedef boost::shared_ptr<PeerPublishResult> PeerPublishResultPtr;
-        typedef boost::weak_ptr<PeerPublishResult> PeerPublishResultWeakPtr;
-
-        class PeerGetRequest;
-        typedef boost::shared_ptr<PeerGetRequest> PeerGetRequestPtr;
-        typedef boost::weak_ptr<PeerGetRequest> PeerGetRequestWeakPtr;
-
-        class PeerGetResult;
-        typedef boost::shared_ptr<PeerGetResult> PeerGetResultPtr;
-        typedef boost::weak_ptr<PeerGetResult> PeerGetResultWeakPtr;
-
-        class PeerDeleteRequest;
-        typedef boost::shared_ptr<PeerDeleteRequest> PeerDeleteRequestPtr;
-        typedef boost::weak_ptr<PeerDeleteRequest> PeerDeleteRequestWeakPtr;
-
-        class PeerDeleteResult;
-        typedef boost::shared_ptr<PeerDeleteResult> PeerDeleteResultPtr;
-        typedef boost::weak_ptr<PeerDeleteResult> PeerDeleteResultWeakPtr;
-
-        class PeerSubscribeRequest;
-        typedef boost::shared_ptr<PeerSubscribeRequest> PeerSubscribeRequestPtr;
-        typedef boost::weak_ptr<PeerSubscribeRequest> PeerSubscribeRequestWeakPtr;
-
-        class PeerSubscribeResult;
-        typedef boost::shared_ptr<PeerSubscribeResult> PeerSubscribeResultPtr;
-        typedef boost::weak_ptr<PeerSubscribeResult> PeerSubscribeResultWeakPtr;
-
-        class PeerPublishNotifyRequest;
-        typedef boost::shared_ptr<PeerPublishNotifyRequest> PeerPublishNotifyRequestPtr;
-        typedef boost::weak_ptr<PeerPublishNotifyRequest> PeerPublishNotifyRequestWeakPtr;
-
-        class PeerPublishNotifyResult;
-        typedef boost::shared_ptr<PeerPublishNotifyResult> PeerPublishNotifyResultPtr;
-        typedef boost::weak_ptr<PeerPublishNotifyResult> PeerPublishNotifyResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPeerCommon)
+        ZS_DECLARE_CLASS_PTR(PeerPublishRequest)
+        ZS_DECLARE_CLASS_PTR(PeerPublishResult)
+        ZS_DECLARE_CLASS_PTR(PeerGetRequest)
+        ZS_DECLARE_CLASS_PTR(PeerGetResult)
+        ZS_DECLARE_CLASS_PTR(PeerDeleteRequest)
+        ZS_DECLARE_CLASS_PTR(PeerDeleteResult)
+        ZS_DECLARE_CLASS_PTR(PeerSubscribeRequest)
+        ZS_DECLARE_CLASS_PTR(PeerSubscribeResult)
+        ZS_DECLARE_CLASS_PTR(PeerPublishNotifyRequest)
+        ZS_DECLARE_CLASS_PTR(PeerPublishNotifyResult)
       }
 
       namespace peer_finder
       {
-        class MessageFactoryPeerFinder;
-        typedef boost::shared_ptr<MessageFactoryPeerFinder> MessageFactoryPeerFinderPtr;
-        typedef boost::weak_ptr<MessageFactoryPeerFinder> MessageFactoryPeerFinderWeakPtr;
-
-        class ChannelMapRequest;
-        typedef boost::shared_ptr<ChannelMapRequest> ChannelMapRequestPtr;
-        typedef boost::weak_ptr<ChannelMapRequest> ChannelMapRequestWeakPtr;
-
-        class ChannelMapResult;
-        typedef boost::shared_ptr<ChannelMapResult> ChannelMapResultPtr;
-        typedef boost::weak_ptr<ChannelMapResult> ChannelMapResultWeakPtr;
-
-        class ChannelMapNotify;
-        typedef boost::shared_ptr<ChannelMapNotify> ChannelMapNotifyPtr;
-        typedef boost::weak_ptr<ChannelMapNotify> ChannelMapNotifyWeakPtr;
-
-        class PeerLocationFindRequest;
-        typedef boost::shared_ptr<PeerLocationFindRequest> PeerLocationFindRequestPtr;
-        typedef boost::weak_ptr<PeerLocationFindRequest> PeerLocationFindRequestWeakPtr;
-
-        class PeerLocationFindResult;
-        typedef boost::shared_ptr<PeerLocationFindResult> PeerLocationFindResultPtr;
-        typedef boost::weak_ptr<PeerLocationFindResult> PeerLocationFindResultWeakPtr;
-
-        class PeerLocationFindNotify;
-        typedef boost::shared_ptr<PeerLocationFindNotify> PeerLocationFindNotifyPtr;
-        typedef boost::weak_ptr<PeerLocationFindNotify> PeerLocationFindNotifyWeakPtr;
-
-        class SessionCreateRequest;
-        typedef boost::shared_ptr<SessionCreateRequest> SessionCreateRequestPtr;
-        typedef boost::weak_ptr<SessionCreateRequest> SessionCreateRequestWeakPtr;
-
-        class SessionCreateResult;
-        typedef boost::shared_ptr<SessionCreateResult> SessionCreateResultPtr;
-        typedef boost::weak_ptr<SessionCreateResult> SessionCreateResultWeakPtr;
-
-        class SessionDeleteRequest;
-        typedef boost::shared_ptr<SessionDeleteRequest> SessionDeleteRequestPtr;
-        typedef boost::weak_ptr<SessionDeleteRequest> SessionDeleteRequestWeakPtr;
-
-        class SessionDeleteResult;
-        typedef boost::shared_ptr<SessionDeleteResult> SessionDeleteResultPtr;
-        typedef boost::weak_ptr<SessionDeleteResult> SessionDeleteResultWeakPtr;
-
-        class SessionKeepAliveRequest;
-        typedef boost::shared_ptr<SessionKeepAliveRequest> SessionKeepAliveRequestPtr;
-        typedef boost::weak_ptr<SessionKeepAliveRequest> SessionKeepAliveRequestWeakPtr;
-
-        class SessionKeepAliveResult;
-        typedef boost::shared_ptr<SessionKeepAliveResult> SessionKeepAliveResultPtr;
-        typedef boost::weak_ptr<SessionKeepAliveResult> SessionKeepAliveResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPeerFinder)
+        ZS_DECLARE_CLASS_PTR(ChannelMapRequest)
+        ZS_DECLARE_CLASS_PTR(ChannelMapResult)
+        ZS_DECLARE_CLASS_PTR(ChannelMapNotify)
+        ZS_DECLARE_CLASS_PTR(PeerLocationFindRequest)
+        ZS_DECLARE_CLASS_PTR(PeerLocationFindResult)
+        ZS_DECLARE_CLASS_PTR(PeerLocationFindNotify)
+        ZS_DECLARE_CLASS_PTR(SessionCreateRequest)
+        ZS_DECLARE_CLASS_PTR(SessionCreateResult)
+        ZS_DECLARE_CLASS_PTR(SessionDeleteRequest)
+        ZS_DECLARE_CLASS_PTR(SessionDeleteResult)
+        ZS_DECLARE_CLASS_PTR(SessionKeepAliveRequest)
+        ZS_DECLARE_CLASS_PTR(SessionKeepAliveResult)
       }
 
       namespace peer_salt
       {
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPeerSalt)
+        ZS_DECLARE_CLASS_PTR(SignedSaltGetRequest)
+        ZS_DECLARE_CLASS_PTR(SignedSaltGetResult)
+
         typedef ElementPtr SignedSaltElementPtr;
         typedef std::list<SignedSaltElementPtr> SaltBundleList;
-
-        class MessageFactoryPeerSalt;
-        typedef boost::shared_ptr<MessageFactoryPeerSalt> MessageFactoryPeerSaltPtr;
-        typedef boost::weak_ptr<MessageFactoryPeerSalt> MessageFactoryPeerSaltWeakPtr;
-
-        class SignedSaltGetRequest;
-        typedef boost::shared_ptr<SignedSaltGetRequest> SignedSaltGetRequestPtr;
-        typedef boost::weak_ptr<SignedSaltGetRequest> SignedSaltGetRequestWeakPtr;
-
-        class SignedSaltGetResult;
-        typedef boost::shared_ptr<SignedSaltGetResult> SignedSaltGetResultPtr;
-        typedef boost::weak_ptr<SignedSaltGetResult> SignedSaltGetResultWeakPtr;
       }
 
       namespace peer_to_peer
       {
-        class MessageFactoryPeerToPeer;
-        typedef boost::shared_ptr<MessageFactoryPeerToPeer> MessageFactoryPeerToPeerPtr;
-        typedef boost::weak_ptr<MessageFactoryPeerToPeer> MessageFactoryPeerToPeerWeakPtr;
-
-        class PeerIdentifyRequest;
-        typedef boost::shared_ptr<PeerIdentifyRequest> PeerIdentifyRequestPtr;
-        typedef boost::weak_ptr<PeerIdentifyRequest> PeerIdentifyRequestWeakPtr;
-
-        class PeerIdentifyResult;
-        typedef boost::shared_ptr<PeerIdentifyResult> PeerIdentifyResultPtr;
-        typedef boost::weak_ptr<PeerIdentifyResult> PeerIdentifyResultWeakPtr;
-
-        class PeerKeepAliveRequest;
-        typedef boost::shared_ptr<PeerKeepAliveRequest> PeerKeepAliveRequestPtr;
-        typedef boost::weak_ptr<PeerKeepAliveRequest> PeerKeepAliveRequestWeakPtr;
-
-        class PeerKeepAliveResult;
-        typedef boost::shared_ptr<PeerKeepAliveResult> PeerKeepAliveResultPtr;
-        typedef boost::weak_ptr<PeerKeepAliveResult> PeerKeepAliveResultWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPeerToPeer)
+        ZS_DECLARE_CLASS_PTR(PeerIdentifyRequest)
+        ZS_DECLARE_CLASS_PTR(PeerIdentifyResult)
+        ZS_DECLARE_CLASS_PTR(PeerKeepAliveRequest)
+        ZS_DECLARE_CLASS_PTR(PeerKeepAliveResult)
       }
     }
   }

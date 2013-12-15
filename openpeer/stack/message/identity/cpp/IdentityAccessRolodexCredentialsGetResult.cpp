@@ -48,7 +48,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessRolodexCredentialsGetResultPtr IdentityAccessRolodexCredentialsGetResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<IdentityAccessRolodexCredentialsGetResult>(message);
+          return dynamic_pointer_cast<IdentityAccessRolodexCredentialsGetResult>(message);
         }
 
         //---------------------------------------------------------------------

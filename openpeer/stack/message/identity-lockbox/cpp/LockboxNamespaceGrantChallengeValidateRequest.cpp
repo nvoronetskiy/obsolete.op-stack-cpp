@@ -59,7 +59,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         LockboxNamespaceGrantChallengeValidateRequestPtr LockboxNamespaceGrantChallengeValidateRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<LockboxNamespaceGrantChallengeValidateRequest>(message);
+          return dynamic_pointer_cast<LockboxNamespaceGrantChallengeValidateRequest>(message);
         }
 
         //---------------------------------------------------------------------

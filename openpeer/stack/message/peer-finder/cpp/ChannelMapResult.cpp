@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ChannelMapResultPtr ChannelMapResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<ChannelMapResult>(message);
+          return dynamic_pointer_cast<ChannelMapResult>(message);
         }
 
         //---------------------------------------------------------------------

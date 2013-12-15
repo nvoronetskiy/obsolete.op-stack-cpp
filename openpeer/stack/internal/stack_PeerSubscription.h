@@ -55,9 +55,7 @@ namespace openpeer
 
       interaction IPeerSubscriptionForAccount
       {
-        typedef IPeerSubscriptionForAccount ForAccount;
-        typedef shared_ptr<ForAccount> ForAccountPtr;
-        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerSubscriptionForAccount, ForAccount)
 
         typedef IPeer::PeerFindStates PeerFindStates;
         typedef ILocation::LocationConnectionStates LocationConnectionStates;
@@ -101,17 +99,9 @@ namespace openpeer
         friend interaction IPeerSubscriptionFactory;
         friend interaction IPeerSubscription;
 
-        typedef IAccountForPeerSubscription UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
-
-        typedef ILocationForPeerSubscription UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef shared_ptr<UseLocation> UseLocationWeakPtr;
-
-        typedef IPeerForPeerSubscription UsePeer;
-        typedef shared_ptr<UsePeer> UsePeerPtr;
-        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPeerSubscription, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForPeerSubscription, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForPeerSubscription, UsePeer)
 
       protected:
         PeerSubscription(

@@ -230,13 +230,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationMetaDataPtr PublicationMetaData::convert(IPublicationMetaDataPtr publication)
       {
-        return boost::dynamic_pointer_cast<PublicationMetaData>(publication);
+        return dynamic_pointer_cast<PublicationMetaData>(publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationMetaDataPtr PublicationMetaData::convert(ForMessagesPtr publication)
       {
-        return boost::dynamic_pointer_cast<PublicationMetaData>(publication);
+        return dynamic_pointer_cast<PublicationMetaData>(publication);
       }
 
       //-----------------------------------------------------------------------

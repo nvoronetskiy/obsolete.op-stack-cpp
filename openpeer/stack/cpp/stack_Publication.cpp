@@ -103,9 +103,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      class Publication_UniqueLineage;
-      typedef boost::shared_ptr<Publication_UniqueLineage> Publication_UniqueLineagePtr;
-      typedef boost::weak_ptr<Publication_UniqueLineage> Publication_UniqueLineageWeakPtr;
+      ZS_DECLARE_CLASS_PTR(Publication_UniqueLineage)
 
       class Publication_UniqueLineage
       {
@@ -240,25 +238,25 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(IPublicationPtr publication)
       {
-        return boost::dynamic_pointer_cast<Publication>(publication);
+        return dynamic_pointer_cast<Publication>(publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForPublicationMetaDataPtr publication)
       {
-        return boost::dynamic_pointer_cast<Publication>(publication);
+        return dynamic_pointer_cast<Publication>(publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForPublicationRepositoryPtr publication)
       {
-        return boost::dynamic_pointer_cast<Publication>(publication);
+        return dynamic_pointer_cast<Publication>(publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForMessagesPtr publication)
       {
-        return boost::dynamic_pointer_cast<Publication>(publication);
+        return dynamic_pointer_cast<Publication>(publication);
       }
 
       //-----------------------------------------------------------------------

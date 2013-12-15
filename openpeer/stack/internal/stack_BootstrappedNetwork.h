@@ -95,9 +95,7 @@ namespace openpeer
 
       interaction IBootstrappedNetworkForServices
       {
-        typedef IBootstrappedNetworkForServices ForServices;
-        typedef shared_ptr<ForServices> ForServicesPtr;
-        typedef weak_ptr<ForServices> ForServicesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, ForServices)
 
         static ElementPtr toDebug(ForServicesPtr network);
 
@@ -151,9 +149,7 @@ namespace openpeer
 
       interaction IBootstrappedNetworkForBootstrappedNetworkManager
       {
-        typedef IBootstrappedNetworkForBootstrappedNetworkManager ForBootstrappedNetworkManager;
-        typedef shared_ptr<ForBootstrappedNetworkManager> ForBootstrappedNetworkManagerPtr;
-        typedef weak_ptr<ForBootstrappedNetworkManager> ForBootstrappedNetworkManagerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForBootstrappedNetworkManager, ForBootstrappedNetworkManager)
 
         virtual PUID getID() const = 0;
 
@@ -194,13 +190,8 @@ namespace openpeer
         friend interaction IServiceLockbox;
         friend interaction IServiceSalt;
 
-        typedef IBootstrappedNetworkManagerForBootstrappedNetwork UseBootstrappedNetworkManager;
-        typedef shared_ptr<UseBootstrappedNetworkManager> UseBootstrappedNetworkManagerPtr;
-        typedef weak_ptr<UseBootstrappedNetworkManager> UseBootstrappedNetworkManagerWeakPtr;
-
-        typedef ICacheForServices UseCache;
-        typedef shared_ptr<UseCache> UseCachePtr;
-        typedef weak_ptr<UseCache> UseCacheWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkManagerForBootstrappedNetwork, UseBootstrappedNetworkManager)
+        ZS_DECLARE_TYPEDEF_PTR(ICacheForServices, UseCache)
 
         typedef zsLib::IMessageQueuePtr IMessageQueuePtr;
         typedef message::ServiceMap ServiceMap;

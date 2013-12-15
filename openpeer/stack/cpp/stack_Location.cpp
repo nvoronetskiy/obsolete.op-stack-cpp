@@ -396,7 +396,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(IMessageSourcePtr messageSource)
       {
-        return boost::dynamic_pointer_cast<Location>(messageSource);
+        return dynamic_pointer_cast<Location>(messageSource);
       }
 
       //-----------------------------------------------------------------------

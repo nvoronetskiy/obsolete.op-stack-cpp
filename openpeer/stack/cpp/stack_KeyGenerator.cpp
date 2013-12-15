@@ -97,7 +97,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       KeyGeneratorPtr KeyGenerator::convert(IKeyGeneratorPtr monitor)
       {
-        return boost::dynamic_pointer_cast<KeyGenerator>(monitor);
+        return dynamic_pointer_cast<KeyGenerator>(monitor);
       }
 
       //-----------------------------------------------------------------------

@@ -84,18 +84,13 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-      using message::identity_lockbox::LockboxAccessRequest;
-      using message::identity_lockbox::LockboxAccessRequestPtr;
-      using message::identity_lockbox::LockboxNamespaceGrantChallengeValidateRequest;
-      using message::identity_lockbox::LockboxNamespaceGrantChallengeValidateRequestPtr;
-      using message::identity_lockbox::LockboxIdentitiesUpdateRequest;
-      using message::identity_lockbox::LockboxIdentitiesUpdateRequestPtr;
-      using message::identity_lockbox::LockboxContentGetRequest;
-      using message::identity_lockbox::LockboxContentGetRequestPtr;
-      using message::identity_lockbox::LockboxContentSetRequest;
-      using message::identity_lockbox::LockboxContentSetRequestPtr;
-      using message::peer::PeerServicesGetRequest;
-      using message::peer::PeerServicesGetRequestPtr;
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxAccessRequest)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxNamespaceGrantChallengeValidateRequest)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxIdentitiesUpdateRequest)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentGetRequest)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentSetRequest)
+
+      ZS_DECLARE_USING_PTR(message::peer, PeerServicesGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -167,19 +162,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(IServiceLockboxSessionPtr session)
       {
-        return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return dynamic_pointer_cast<ServiceLockboxSession>(session);
       }
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForAccountPtr session)
       {
-        return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return dynamic_pointer_cast<ServiceLockboxSession>(session);
       }
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForServiceIdentityPtr session)
       {
-        return boost::dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return dynamic_pointer_cast<ServiceLockboxSession>(session);
       }
 
       //-----------------------------------------------------------------------

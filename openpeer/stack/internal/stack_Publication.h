@@ -58,9 +58,7 @@ namespace openpeer
 
       interaction IPublicationForPublicationMetaData
       {
-        typedef IPublicationForPublicationMetaData ForPublicationMetaData;
-        typedef shared_ptr<ForPublicationMetaData> ForPublicationMetaDataPtr;
-        typedef weak_ptr<ForPublicationMetaData> ForPublicationMetaDataWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForPublicationMetaData, ForPublicationMetaData)
 
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
         typedef IPublicationMetaData::Encodings Encodings;
@@ -95,9 +93,7 @@ namespace openpeer
 
       interaction IPublicationForPublicationRepository : public IPublicationMetaDataForPublicationRepository
       {
-        typedef IPublicationForPublicationRepository ForPublicationRepository;
-        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
-        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForPublicationRepository, ForPublicationRepository)
 
         struct Exceptions
         {
@@ -182,9 +178,7 @@ namespace openpeer
 
       interaction IPublicationForMessages : public IPublicationMetaDataForMessages
       {
-        typedef IPublicationForMessages ForMessages;
-        typedef shared_ptr<ForMessages> ForMessagesPtr;
-        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForMessages, ForMessages)
 
         typedef IPublicationMetaData::Encodings Encodings;
         typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
@@ -234,25 +228,15 @@ namespace openpeer
         friend interaction IPublication;
         friend interaction IPublicationForPublicationRepository;
 
-        typedef ILocationForPublication UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForPublicationRepository::ForPublicationRepository, ForPublicationRepository)
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForMessages::ForMessages, ForMessages)
 
-        typedef IPublicationMetaDataForPublication UsePublicationMetaData;
-        typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
-        typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForPublication, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationMetaDataForPublication, UsePublicationMetaData)
 
         typedef IPublication::Encodings Encodings;
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
         typedef IPublication::PublishToRelationshipsMap PublishToRelationshipsMap;
-
-        typedef IPublicationForPublicationRepository::ForPublicationRepository ForPublicationRepository;
-        typedef IPublicationForPublicationRepository::ForPublicationRepositoryPtr ForPublicationRepositoryPtr;
-        typedef IPublicationForPublicationRepository::ForPublicationRepositoryWeakPtr ForPublicationRepositoryWeakPtr;
-
-        typedef IPublicationForMessages::ForMessages ForMessages;
-        typedef IPublicationForMessages::ForMessagesPtr ForMessagesPtr;
-        typedef IPublicationForMessages::ForMessagesWeakPtr ForMessagesWeakPtr;
 
         typedef ULONG VersionNumber;
         typedef DocumentPtr DiffDocument;

@@ -44,7 +44,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerKeepAliveRequestPtr PeerKeepAliveRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerKeepAliveRequest>(message);
+          return dynamic_pointer_cast<PeerKeepAliveRequest>(message);
         }
 
         //---------------------------------------------------------------------

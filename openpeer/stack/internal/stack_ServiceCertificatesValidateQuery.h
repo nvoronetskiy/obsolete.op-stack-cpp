@@ -62,9 +62,7 @@ namespace openpeer
         friend interaction IServiceCertificatesValidateQueryFactory;
         friend interaction IServiceCertificatesValidateQuery;
 
-        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
 
       protected:
         ServiceCertificatesValidateQuery(

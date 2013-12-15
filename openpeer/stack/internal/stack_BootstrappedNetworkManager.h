@@ -53,11 +53,7 @@ namespace openpeer
 
       interaction IBootstrappedNetworkManagerForBootstrappedNetwork
       {
-        typedef IBootstrappedNetworkManagerForBootstrappedNetwork ForBootstrappedNetwork;
-        typedef shared_ptr<ForBootstrappedNetwork> ForBootstrappedNetworkPtr;
-        typedef weak_ptr<ForBootstrappedNetwork> ForBootstrappedNetworkWeakPtr;
-
-        typedef zsLib::RecursiveLock RecursiveLock;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkManagerForBootstrappedNetwork, ForBootstrappedNetwork)
 
         static ForBootstrappedNetworkPtr singleton();
 
@@ -88,9 +84,7 @@ namespace openpeer
         friend interaction IBootstrappedNetworkManagerFactory;
         friend interaction IBootstrappedNetworkManagerForBootstrappedNetwork;
 
-        typedef IBootstrappedNetworkForBootstrappedNetworkManager UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForBootstrappedNetworkManager, UseBootstrappedNetwork)
 
         typedef String Domain;
         typedef std::map<Domain, UseBootstrappedNetworkPtr> BootstrappedNetworkMap;

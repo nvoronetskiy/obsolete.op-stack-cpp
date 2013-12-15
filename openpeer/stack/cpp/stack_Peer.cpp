@@ -198,31 +198,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(IPeerPtr peer)
       {
-        return boost::dynamic_pointer_cast<Peer>(peer);
+        return dynamic_pointer_cast<Peer>(peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForAccountPtr peer)
       {
-        return boost::dynamic_pointer_cast<Peer>(peer);
+        return dynamic_pointer_cast<Peer>(peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForMessagesPtr peer)
       {
-        return boost::dynamic_pointer_cast<Peer>(peer);
+        return dynamic_pointer_cast<Peer>(peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForLocationPtr peer)
       {
-        return boost::dynamic_pointer_cast<Peer>(peer);
+        return dynamic_pointer_cast<Peer>(peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForPeerSubscriptionPtr peer)
       {
-        return boost::dynamic_pointer_cast<Peer>(peer);
+        return dynamic_pointer_cast<Peer>(peer);
       }
 
       //-----------------------------------------------------------------------

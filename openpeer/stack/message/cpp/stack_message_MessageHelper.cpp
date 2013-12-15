@@ -75,13 +75,8 @@ namespace openpeer
 
       typedef stack::IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
 
-      typedef stack::internal::IPublicationForMessages UsePublication;
-      typedef shared_ptr<UsePublication> UsePublicationPtr;
-      typedef weak_ptr<UsePublication> UsePublicationWeakPtr;
-
-      typedef stack::internal::IPublicationMetaDataForMessages UsePublicationMetaData;
-      typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
-      typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
+      ZS_DECLARE_TYPEDEF_PTR(stack::internal::IPublicationForMessages, UsePublication)
+      ZS_DECLARE_TYPEDEF_PTR(stack::internal::IPublicationMetaDataForMessages, UsePublicationMetaData)
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 

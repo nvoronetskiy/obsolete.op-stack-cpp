@@ -58,9 +58,7 @@ namespace openpeer
 
       interaction IFinderRelayChannelForFinderConnection
       {
-        typedef IFinderRelayChannelForFinderConnection ForFinderConnection;
-        typedef shared_ptr<ForFinderConnection> ForFinderConnectionPtr;
-        typedef weak_ptr<ForFinderConnection> ForFinderConnectionWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IFinderRelayChannelForFinderConnection, ForFinderConnection)
 
         static ForFinderConnectionPtr createIncoming(
                                                      IFinderRelayChannelDelegatePtr delegate, // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
@@ -95,9 +93,7 @@ namespace openpeer
         friend interaction IFinderRelayChannelFactory;
         friend interaction IFinderRelayChannel;
 
-        typedef IAccountForFinderRelayChannel UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForFinderRelayChannel, UseAccount)
 
         typedef IFinderRelayChannel::SessionStates SessionStates;
 

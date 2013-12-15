@@ -44,7 +44,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerPublishNotifyResultPtr PeerPublishNotifyResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerPublishNotifyResult>(message);
+          return dynamic_pointer_cast<PeerPublishNotifyResult>(message);
         }
 
         //---------------------------------------------------------------------

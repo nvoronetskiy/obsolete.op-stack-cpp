@@ -52,9 +52,7 @@ namespace openpeer
 
       interaction IPeerForAccount
       {
-        typedef IPeerForAccount ForAccount;
-        typedef shared_ptr<IPeerForAccount> ForAccountPtr;
-        typedef weak_ptr<IPeerForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForAccount, ForAccount)
 
         static ElementPtr toDebug(ForAccountPtr peer);
 
@@ -82,9 +80,7 @@ namespace openpeer
 
       interaction IPeerForLocation
       {
-        typedef IPeerForLocation ForLocation;
-        typedef shared_ptr<ForLocation> ForLocationPtr;
-        typedef weak_ptr<ForLocation> ForLocationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForLocation, ForLocation)
 
         static ElementPtr toDebug(ForLocationPtr peer);
 
@@ -112,9 +108,7 @@ namespace openpeer
 
       interaction IPeerForMessages
       {
-        typedef IPeerForMessages ForMessages;
-        typedef shared_ptr<ForMessages> ForMessagesPtr;
-        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForMessages, ForMessages)
 
         static ElementPtr toDebug(ForMessagesPtr peer);
 
@@ -147,9 +141,7 @@ namespace openpeer
 
       interaction IPeerForPeerSubscription
       {
-        typedef IPeerForPeerSubscription ForPeerSubscription;
-        typedef shared_ptr<ForPeerSubscription> ForPeerSubscriptionPtr;
-        typedef weak_ptr<ForPeerSubscription> ForPeerSubscriptionWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForPeerSubscription, ForPeerSubscription)
 
         static ElementPtr toDebug(ForPeerSubscriptionPtr peer);
 
@@ -198,9 +190,7 @@ namespace openpeer
         friend interaction IPeer;
         friend interaction IPeerForLocation;
 
-        typedef IAccountForPeer UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPeer, UseAccount)
 
       protected:
         Peer(

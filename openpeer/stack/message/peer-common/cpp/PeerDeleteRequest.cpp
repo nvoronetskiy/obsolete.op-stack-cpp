@@ -44,7 +44,7 @@ namespace openpeer
         //-----------------------------------------------------------------------
         PeerDeleteRequestPtr PeerDeleteRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerDeleteRequest>(message);
+          return dynamic_pointer_cast<PeerDeleteRequest>(message);
         }
 
         //-----------------------------------------------------------------------

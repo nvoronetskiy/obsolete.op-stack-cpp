@@ -148,7 +148,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceCertificatesValidateQueryPtr ServiceCertificatesValidateQuery::convert(IServiceCertificatesValidateQueryPtr query)
       {
-        return boost::dynamic_pointer_cast<ServiceCertificatesValidateQuery>(query);
+        return dynamic_pointer_cast<ServiceCertificatesValidateQuery>(query);
       }
 
       //-----------------------------------------------------------------------

@@ -67,7 +67,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryUnknownPtr MessageFactoryUnknown::convert(IMessageFactoryPtr factory)
         {
-          return boost::dynamic_pointer_cast<MessageFactoryUnknown>(factory);
+          return dynamic_pointer_cast<MessageFactoryUnknown>(factory);
         }
 
         //---------------------------------------------------------------------

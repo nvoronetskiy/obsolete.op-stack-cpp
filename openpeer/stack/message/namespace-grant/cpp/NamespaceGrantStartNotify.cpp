@@ -76,7 +76,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         NamespaceGrantStartNotifyPtr NamespaceGrantStartNotify::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<NamespaceGrantStartNotify>(message);
+          return dynamic_pointer_cast<NamespaceGrantStartNotify>(message);
         }
 
         //---------------------------------------------------------------------

@@ -51,9 +51,7 @@ namespace openpeer
 
       interaction IPeerFilePublicForPeerFiles
       {
-        typedef IPeerFilePublicForPeerFiles ForPeerFiles;
-        typedef shared_ptr<ForPeerFiles> ForPeerFilesPtr;
-        typedef weak_ptr<ForPeerFiles> ForPeerFilesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePublicForPeerFiles, ForPeerFiles)
 
         static ElementPtr toDebug(ForPeerFilesPtr peerFilePublic);
 
@@ -70,9 +68,7 @@ namespace openpeer
 
       interaction IPeerFilePublicForPeerFilePrivate
       {
-        typedef IPeerFilePublicForPeerFilePrivate ForPeerFilePrivate;
-        typedef shared_ptr<ForPeerFilePrivate> ForPeerFilePrivatePtr;
-        typedef weak_ptr<ForPeerFilePrivate> ForPeerFilePrivateWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePublicForPeerFilePrivate, ForPeerFilePrivate)
 
         static ElementPtr toDebug(ForPeerFilePrivatePtr peerFilePublic);
 
@@ -203,7 +199,7 @@ namespace openpeer
         #pragma mark PeerFilePublic => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
 
         PeerFilePublicPtr mThisWeak;
         PeerFilesWeakPtr mOuter;

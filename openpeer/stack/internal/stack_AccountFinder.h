@@ -77,9 +77,7 @@ namespace openpeer
 
       interaction IAccountFinderForAccount
       {
-        typedef IAccountFinderForAccount ForAccount;
-        typedef shared_ptr<ForAccount> ForAccountPtr;
-        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountFinderForAccount, ForAccount)
 
         typedef IAccount::AccountStates AccountStates;
 
@@ -139,17 +137,9 @@ namespace openpeer
         friend interaction IAccountFinderFactory;
         friend interaction IAccountFinderForAccount;
 
-        typedef ILocationForAccount UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
-
-        typedef IAccountForAccountFinder UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
-
-        typedef IMessageMonitorForAccountFinder UseMessageMonitor;
-        typedef shared_ptr<UseMessageMonitor> UseMessageMonitorPtr;
-        typedef weak_ptr<UseMessageMonitor> UseMessageMonitorWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountFinder, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForAccountFinder, UseMessageMonitor)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 

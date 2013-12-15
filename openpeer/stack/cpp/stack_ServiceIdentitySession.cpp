@@ -96,28 +96,19 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-      using message::identity::IdentityAccessWindowRequest;
-      using message::identity::IdentityAccessWindowRequestPtr;
-      using message::identity::IdentityAccessWindowResult;
-      using message::identity::IdentityAccessWindowResultPtr;
-      using message::identity::IdentityAccessStartNotify;
-      using message::identity::IdentityAccessStartNotifyPtr;
-      using message::identity::IdentityAccessCompleteNotify;
-      using message::identity::IdentityAccessCompleteNotifyPtr;
-      using message::identity::IdentityAccessLockboxUpdateRequest;
-      using message::identity::IdentityAccessLockboxUpdateRequestPtr;
-      using message::identity::IdentityLookupUpdateRequest;
-      using message::identity::IdentityLookupUpdateRequestPtr;
-      using message::identity::IdentityAccessRolodexCredentialsGetRequest;
-      using message::identity::IdentityAccessRolodexCredentialsGetRequestPtr;
-      using message::identity_lookup::IdentityLookupRequest;
-      using message::identity_lookup::IdentityLookupRequestPtr;
-      using message::rolodex::RolodexAccessRequest;
-      using message::rolodex::RolodexAccessRequestPtr;
-      using message::rolodex::RolodexNamespaceGrantChallengeValidateRequest;
-      using message::rolodex::RolodexNamespaceGrantChallengeValidateRequestPtr;
-      using message::rolodex::RolodexContactsGetRequest;
-      using message::rolodex::RolodexContactsGetRequestPtr;
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessWindowRequest)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessWindowResult)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessStartNotify)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessCompleteNotify)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessLockboxUpdateRequest)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityLookupUpdateRequest)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessRolodexCredentialsGetRequest)
+
+      ZS_DECLARE_USING_PTR(message::identity_lookup, IdentityLookupRequest)
+
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexAccessRequest)
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexNamespaceGrantChallengeValidateRequest)
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexContactsGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -360,13 +351,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceIdentitySessionPtr ServiceIdentitySession::convert(IServiceIdentitySessionPtr object)
       {
-        return boost::dynamic_pointer_cast<ServiceIdentitySession>(object);
+        return dynamic_pointer_cast<ServiceIdentitySession>(object);
       }
 
       //-----------------------------------------------------------------------
       ServiceIdentitySessionPtr ServiceIdentitySession::convert(ForLockboxPtr object)
       {
-        return boost::dynamic_pointer_cast<ServiceIdentitySession>(object);
+        return dynamic_pointer_cast<ServiceIdentitySession>(object);
       }
 
       //-----------------------------------------------------------------------
@@ -2592,9 +2583,7 @@ namespace openpeer
       #pragma mark IdentityProofBundleQuery
       #pragma mark
 
-      class IdentityProofBundleQuery;
-      typedef boost::shared_ptr<IdentityProofBundleQuery> IdentityProofBundleQueryPtr;
-      typedef boost::weak_ptr<IdentityProofBundleQuery> IdentityProofBundleQueryWeakPtr;
+      ZS_DECLARE_CLASS_PTR(IdentityProofBundleQuery)
 
       class IdentityProofBundleQuery : public MessageQueueAssociator,
                                        public IServiceIdentityProofBundleQuery,

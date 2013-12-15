@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         CertificatesGetRequestPtr CertificatesGetRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<CertificatesGetRequest>(message);
+          return dynamic_pointer_cast<CertificatesGetRequest>(message);
         }
 
         //---------------------------------------------------------------------

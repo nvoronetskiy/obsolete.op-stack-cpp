@@ -138,13 +138,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilePrivatePtr PeerFilePrivate::convert(IPeerFilePrivatePtr peerFilePrivate)
       {
-        return boost::dynamic_pointer_cast<PeerFilePrivate>(peerFilePrivate);
+        return dynamic_pointer_cast<PeerFilePrivate>(peerFilePrivate);
       }
 
       //-----------------------------------------------------------------------
       PeerFilePrivatePtr PeerFilePrivate::convert(ForPeerFilesPtr peerFilePrivate)
       {
-        return boost::dynamic_pointer_cast<PeerFilePrivate>(peerFilePrivate);
+        return dynamic_pointer_cast<PeerFilePrivate>(peerFilePrivate);
       }
 
       //-----------------------------------------------------------------------

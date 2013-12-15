@@ -43,11 +43,6 @@
 
 namespace openpeer
 {
-  namespace services
-  {
-    interaction IHTTP;
-  }
-
   namespace stack
   {
     using zsLib::PUID;
@@ -60,35 +55,35 @@ namespace openpeer
     using zsLib::String;
     using zsLib::AutoBool;
     using zsLib::RecursiveLock;
-    using zsLib::AutoRecursiveLock;
-    typedef boost::shared_ptr<AutoRecursiveLock> AutoRecursiveLockPtr;
     using zsLib::IPAddress;
-    using zsLib::IMessageQueuePtr;
-    using zsLib::XML::ElementPtr;
-    using zsLib::XML::DocumentPtr;
-    using zsLib::XML::NodePtr;
     using zsLib::Log;
 
-    using boost::shared_ptr;
-    using boost::weak_ptr;
     using boost::dynamic_pointer_cast;
 
-    using services::IHTTP;
-    using services::IICESocket;
-    using services::IRSAPrivateKey;
-    using services::IRSAPrivateKeyPtr;
-    using services::IRSAPublicKey;
-    using services::IRSAPublicKeyPtr;
-    using services::IDHKeyDomain;
-    using services::IDHKeyDomainPtr;
+    ZS_DECLARE_TYPEDEF_PTR(zsLib::AutoRecursiveLock, AutoRecursiveLock)
 
-    typedef services::SecureByteBlock SecureByteBlock;
-    typedef boost::shared_ptr<SecureByteBlock> SecureByteBlockPtr;
-    typedef boost::weak_ptr<SecureByteBlock> SecureByteBlockWeakPtr;
+    ZS_DECLARE_USING_PTR(zsLib, IMessageQueue)
 
-    interaction ILocation;
-    typedef boost::shared_ptr<ILocation> ILocationPtr;
-    typedef boost::weak_ptr<ILocation> ILocationWeakPtr;
+    ZS_DECLARE_USING_PTR(zsLib::XML, Element)
+    ZS_DECLARE_USING_PTR(zsLib::XML, Document)
+    ZS_DECLARE_USING_PTR(zsLib::XML, Node)
+
+    ZS_DECLARE_USING_PTR(services, IHTTP)
+    ZS_DECLARE_USING_PTR(services, IICESocket)
+    ZS_DECLARE_USING_PTR(services, IRSAPrivateKey)
+    ZS_DECLARE_USING_PTR(services, IRSAPublicKey)
+    ZS_DECLARE_USING_PTR(services, IDHKeyDomain)
+
+    ZS_DECLARE_TYPEDEF_PTR(services::SecureByteBlock, SecureByteBlock)
+
+    ZS_DECLARE_INTERACTION_PTR(ILocation)
+
+    ZS_DECLARE_STRUCT_PTR(Candidate)
+    ZS_DECLARE_STRUCT_PTR(LocationInfo)
+
+    ZS_DECLARE_TYPEDEF_PTR(std::list<Candidate>, CandidateList)
+    ZS_DECLARE_TYPEDEF_PTR(std::list<LocationInfoPtr>, LocationInfoList)
+    ZS_DECLARE_TYPEDEF_PTR(std::list<ElementPtr>, IdentityBundleElementList)
 
     //-----------------------------------------------------------------------
     //-----------------------------------------------------------------------
@@ -112,9 +107,6 @@ namespace openpeer
       bool hasData() const;
       ElementPtr toDebug() const;
     };
-    typedef boost::shared_ptr<Candidate> CandidatePtr;
-    typedef boost::weak_ptr<Candidate> CandidateWeakPtr;
-    typedef std::list<Candidate> CandidateList;
 
     //-----------------------------------------------------------------------
     //-----------------------------------------------------------------------
@@ -123,10 +115,6 @@ namespace openpeer
     #pragma mark
     #pragma mark LocationInfo
     #pragma mark
-
-    struct LocationInfo;
-    typedef boost::shared_ptr<LocationInfo> LocationInfoPtr;
-    typedef boost::weak_ptr<LocationInfo> LocationInfoWeakPtr;
 
     struct LocationInfo
     {
@@ -153,245 +141,61 @@ namespace openpeer
       LocationInfo(const LocationInfo &info) {} // not legal
     };
 
-    typedef std::list<LocationInfoPtr> LocationInfoList;
-    typedef boost::shared_ptr<LocationInfoList> LocationInfoListPtr;
-    typedef boost::weak_ptr<LocationInfoList> LocationInfoListWeakPtr;
+    ZS_DECLARE_INTERACTION_PTR(IAccount)
+    ZS_DECLARE_INTERACTION_PTR(IBootstrappedNetwork)
+    ZS_DECLARE_INTERACTION_PTR(ICache)
+    ZS_DECLARE_INTERACTION_PTR(ICacheDelegate)
+    ZS_DECLARE_INTERACTION_PTR(IDiff)
+    ZS_DECLARE_INTERACTION_PTR(IHelper)
+    ZS_DECLARE_INTERACTION_PTR(IKeyGenerator)
+    ZS_DECLARE_INTERACTION_PTR(IMessageIncoming)
+    ZS_DECLARE_INTERACTION_PTR(IMessageMonitor)
+    ZS_DECLARE_INTERACTION_PTR(IMessageSource)
+    ZS_DECLARE_INTERACTION_PTR(ILocation)
+    ZS_DECLARE_INTERACTION_PTR(IPeerFiles)
+    ZS_DECLARE_INTERACTION_PTR(IPeerFilePublic)
+    ZS_DECLARE_INTERACTION_PTR(IPeerFilePrivate)
+    ZS_DECLARE_INTERACTION_PTR(IPeer)
+    ZS_DECLARE_INTERACTION_PTR(IPeerSubscription)
+    ZS_DECLARE_INTERACTION_PTR(IPublication)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationMetaData)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationPublisher)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationFetcher)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationRemover)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationRepository)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationRepositoryPeerCache)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationSubscription)
+    ZS_DECLARE_INTERACTION_PTR(IStack)
+    ZS_DECLARE_INTERACTION_PTR(IServiceCertificates)
+    ZS_DECLARE_INTERACTION_PTR(IServiceCertificatesValidateQuery)
+    ZS_DECLARE_INTERACTION_PTR(IServiceSalt)
+    ZS_DECLARE_INTERACTION_PTR(IServiceSaltFetchSignedSaltQuery)
+    ZS_DECLARE_INTERACTION_PTR(IServiceIdentity)
+    ZS_DECLARE_INTERACTION_PTR(IServiceIdentitySession)
+    ZS_DECLARE_INTERACTION_PTR(IServiceIdentityProofBundleQuery)
+    ZS_DECLARE_INTERACTION_PTR(IServiceLockbox)
+    ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSession)
+    ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSession)
 
-    typedef std::list<ElementPtr> IdentityBundleElementList;
-    typedef boost::shared_ptr<IdentityBundleElementList> IdentityBundleElementListPtr;
-    typedef boost::weak_ptr<IdentityBundleElementList> IdentityBundleElementListWeakPtr;
+    ZS_DECLARE_INTERACTION_PROXY(IAccountDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IBootstrappedNetworkDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IKeyGeneratorDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IMessageMonitorDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IPeerSubscriptionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IPublicationPublisherDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IPublicationFetcherDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IPublicationRemoverDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IPublicationSubscriptionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceCertificatesValidateQueryDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceSaltFetchSignedSaltQueryDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceIdentitySessionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceIdentityProofBundleQueryDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceLockboxSessionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionDelegate)
 
-    interaction IAccount;
-    typedef boost::shared_ptr<IAccount> IAccountPtr;
-    typedef boost::weak_ptr<IAccount> IAccountWeakPtr;
+    ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IKeyGeneratorSubscription, IKeyGeneratorDelegate)
 
-    interaction IAccountDelegate;
-    typedef boost::shared_ptr<IAccountDelegate> IAccountDelegatePtr;
-    typedef boost::weak_ptr<IAccountDelegate> IAccountDelegateWeakPtr;
-    typedef zsLib::Proxy<IAccountDelegate> IAccountDelegateProxy;
-
-    interaction IBootstrappedNetwork;
-    typedef boost::shared_ptr<IBootstrappedNetwork> IBootstrappedNetworkPtr;
-    typedef boost::weak_ptr<IBootstrappedNetwork> IBootstrappedNetworkWeakPtr;
-
-    interaction IBootstrappedNetworkDelegate;
-    typedef boost::shared_ptr<IBootstrappedNetworkDelegate> IBootstrappedNetworkDelegatePtr;
-    typedef boost::weak_ptr<IBootstrappedNetworkDelegate> IBootstrappedNetworkDelegateWeakPtr;
-    typedef zsLib::Proxy<IBootstrappedNetworkDelegate> IBootstrappedNetworkDelegateProxy;
-
-    interaction ICache;
-    typedef boost::shared_ptr<ICache> ICachePtr;
-    typedef boost::weak_ptr<ICache> ICacheWeakPtr;
-
-    interaction ICacheDelegate;
-    typedef boost::shared_ptr<ICacheDelegate> ICacheDelegatePtr;
-    typedef boost::weak_ptr<ICacheDelegate> ICacheDelegateWeakPtr;
-
-    interaction IDiff;
-    typedef boost::shared_ptr<IDiff> IDiffPtr;
-    typedef boost::weak_ptr<IDiff> IDiffWeakPtr;
-
-    interaction IHelper;
-    typedef boost::shared_ptr<IHelper> IHelperPtr;
-    typedef boost::weak_ptr<IHelper> IHelperWeakPtr;
-
-    interaction IKeyGenerator;
-    typedef boost::shared_ptr<IKeyGenerator> IKeyGeneratorPtr;
-    typedef boost::weak_ptr<IKeyGenerator> IKeyGeneratorWeakPtr;
-
-    interaction IKeyGeneratorDelegate;
-    typedef boost::shared_ptr<IKeyGeneratorDelegate> IKeyGeneratorDelegatePtr;
-    typedef boost::weak_ptr<IKeyGeneratorDelegate> IKeyGeneratorDelegateWeakPtr;
-    typedef zsLib::Proxy<IKeyGeneratorDelegate> IKeyGeneratorDelegateProxy;
-
-    interaction IKeyGeneratorSubscription;
-    typedef boost::shared_ptr<IKeyGeneratorSubscription> IKeyGeneratorSubscriptionPtr;
-    typedef boost::weak_ptr<IKeyGeneratorSubscription> IKeyGeneratorSubscriptionWeakPtr;
-    typedef zsLib::ProxySubscriptions<IKeyGeneratorDelegate, IKeyGeneratorSubscription> IKeyGeneratorDelegateSubscriptions;
-
-    interaction IMessageIncoming;
-    typedef boost::shared_ptr<IMessageIncoming> IMessageIncomingPtr;
-    typedef boost::weak_ptr<IMessageIncoming> IMessageIncomingWeakPtr;
-
-    interaction IMessageMonitor;
-    typedef boost::shared_ptr<IMessageMonitor> IMessageMonitorPtr;
-    typedef boost::weak_ptr<IMessageMonitor> IMessageMonitorWeakPtr;
-
-    interaction IMessageMonitorDelegate;
-    typedef boost::shared_ptr<IMessageMonitorDelegate> IMessageMonitorDelegatePtr;
-    typedef boost::weak_ptr<IMessageMonitorDelegate> IMessageMonitorDelegateWeakPtr;
-    typedef zsLib::Proxy<IMessageMonitorDelegate> IMessageMonitorDelegateProxy;
-
-    interaction IMessageSource;
-    typedef boost::shared_ptr<IMessageSource> IMessageSourcePtr;
-    typedef boost::weak_ptr<IMessageSource> IMessageSourceWeakPtr;
-
-    interaction ILocation;
-    typedef boost::shared_ptr<ILocation> ILocationPtr;
-    typedef boost::weak_ptr<ILocation> ILocationWeakPtr;
-
-    typedef std::list<ILocationPtr> LocationList;
-    typedef boost::shared_ptr<LocationList> LocationListPtr;
-    typedef boost::weak_ptr<LocationList> LocationListWeakPtr;
-
-    interaction IPeerContactProfile;
-    typedef boost::shared_ptr<IPeerContactProfile> IPeerContactProfilePtr;
-    typedef boost::weak_ptr<IPeerContactProfile> IPeerContactProfileWeakPtr;
-
-    interaction IPeerFiles;
-    typedef boost::shared_ptr<IPeerFiles> IPeerFilesPtr;
-    typedef boost::weak_ptr<IPeerFiles> IPeerFilesWeakPtr;
-
-    interaction IPeerFilePublic;
-    typedef boost::shared_ptr<IPeerFilePublic> IPeerFilePublicPtr;
-    typedef boost::weak_ptr<IPeerFilePublic> IPeerFilePublicWeakPtr;
-
-    interaction IPeerFilePrivate;
-    typedef boost::shared_ptr<IPeerFilePrivate> IPeerFilePrivatePtr;
-    typedef boost::weak_ptr<IPeerFilePrivate> IPeerFilePrivateWeakPtr;
-
-    interaction IPeer;
-    typedef boost::shared_ptr<IPeer> IPeerPtr;
-    typedef boost::weak_ptr<IPeer> IPeerWeakPtr;
-
-    interaction IPeerSubscription;
-    typedef boost::shared_ptr<IPeerSubscription> IPeerSubscriptionPtr;
-    typedef boost::weak_ptr<IPeerSubscription> IPeerSubscriptionWeakPtr;
-
-    interaction IPeerSubscriptionDelegate;
-    typedef boost::shared_ptr<IPeerSubscriptionDelegate> IPeerSubscriptionDelegatePtr;
-    typedef boost::weak_ptr<IPeerSubscriptionDelegate> IPeerSubscriptionDelegateWeakPtr;
-    typedef zsLib::Proxy<IPeerSubscriptionDelegate> IPeerSubscriptionDelegateProxy;
-
-    interaction IPublication;
-    typedef boost::shared_ptr<IPublication> IPublicationPtr;
-    typedef boost::weak_ptr<IPublication> IPublicationWeakPtr;
-
-    interaction IPublicationMetaData;
-    typedef boost::shared_ptr<IPublicationMetaData> IPublicationMetaDataPtr;
-    typedef boost::weak_ptr<IPublicationMetaData> IPublicationMetaDataWeakPtr;
-
-    interaction IPublicationPublisher;
-    typedef boost::shared_ptr<IPublicationPublisher> IPublicationPublisherPtr;
-    typedef boost::weak_ptr<IPublicationPublisher> IPublicationPublisherWeakPtr;
-
-    interaction IPublicationPublisherDelegate;
-    typedef boost::shared_ptr<IPublicationPublisherDelegate> IPublicationPublisherDelegatePtr;
-    typedef boost::weak_ptr<IPublicationPublisherDelegate> IPublicationPublisherDelegateWeakPtr;
-    typedef zsLib::Proxy<IPublicationPublisherDelegate> IPublicationPublisherDelegateProxy;
-
-    interaction IPublicationFetcher;
-    typedef boost::shared_ptr<IPublicationFetcher> IPublicationFetcherPtr;
-    typedef boost::weak_ptr<IPublicationFetcher> IPublicationFetcherWeakPtr;
-
-    interaction IPublicationFetcherDelegate;
-    typedef boost::shared_ptr<IPublicationFetcherDelegate> IPublicationFetcherDelegatePtr;
-    typedef boost::weak_ptr<IPublicationFetcherDelegate> IPublicationFetcherDelegateWeakPtr;
-    typedef zsLib::Proxy<IPublicationFetcherDelegate> IPublicationFetcherDelegateProxy;
-
-    interaction IPublicationRemover;
-    typedef boost::shared_ptr<IPublicationRemover> IPublicationRemoverPtr;
-    typedef boost::weak_ptr<IPublicationRemover> IPublicationRemoverWeakPtr;
-
-    interaction IPublicationRemoverDelegate;
-    typedef boost::shared_ptr<IPublicationRemoverDelegate> IPublicationRemoverDelegatePtr;
-    typedef boost::weak_ptr<IPublicationRemoverDelegate> IPublicationRemoverDelegateWeakPtr;
-    typedef zsLib::Proxy<IPublicationRemoverDelegate> IPublicationRemoverDelegateProxy;
-
-    interaction IPublicationRepository;
-    typedef boost::shared_ptr<IPublicationRepository> IPublicationRepositoryPtr;
-    typedef boost::weak_ptr<IPublicationRepository> IPublicationRepositoryWeakPtr;
-
-    interaction IPublicationRepositoryPeerCache;
-    typedef boost::shared_ptr<IPublicationRepositoryPeerCache> IPublicationRepositoryPeerCachePtr;
-    typedef boost::weak_ptr<IPublicationRepositoryPeerCache> IPublicationRepositoryPeerCacheWeakPtr;
-
-    interaction IPublicationSubscription;
-    typedef boost::shared_ptr<IPublicationSubscription> IPublicationSubscriptionPtr;
-    typedef boost::weak_ptr<IPublicationSubscription> IPublicationSubscriptionWeakPtr;
-
-    interaction IPublicationSubscriptionDelegate;
-    typedef boost::shared_ptr<IPublicationSubscriptionDelegate> IPublicationSubscriptionDelegatePtr;
-    typedef boost::weak_ptr<IPublicationSubscriptionDelegate> IPublicationSubscriptionDelegateWeakPtr;
-    typedef zsLib::Proxy<IPublicationSubscriptionDelegate> IPublicationSubscriptionDelegateProxy;
-
-    interaction IStack;
-    typedef boost::shared_ptr<IStack> IStackPtr;
-    typedef boost::weak_ptr<IStack> IStackWeakPtr;
-
-    interaction IServiceCertificates;
-    typedef boost::shared_ptr<IServiceCertificates> IServiceCertificatesPtr;
-    typedef boost::weak_ptr<IServiceCertificates> IServiceCertificatesWeakPtr;
-
-    interaction IServiceCertificatesValidateQuery;
-    typedef boost::shared_ptr<IServiceCertificatesValidateQuery> IServiceCertificatesValidateQueryPtr;
-    typedef boost::weak_ptr<IServiceCertificatesValidateQuery> IServiceCertificatesValidateQueryWeakPtr;
-
-    interaction IServiceCertificatesValidateQueryDelegate;
-    typedef boost::shared_ptr<IServiceCertificatesValidateQueryDelegate> IServiceCertificatesValidateQueryDelegatePtr;
-    typedef boost::weak_ptr<IServiceCertificatesValidateQueryDelegate> IServiceCertificatesValidateQueryDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceCertificatesValidateQueryDelegate> IServiceCertificatesValidateQueryDelegateProxy;
-
-    interaction IServiceSalt;
-    typedef boost::shared_ptr<IServiceSalt> IServiceSaltPtr;
-    typedef boost::weak_ptr<IServiceSalt> IServiceSaltWeakPtr;
-
-    interaction IServiceSaltFetchSignedSaltQuery;
-    typedef boost::shared_ptr<IServiceSaltFetchSignedSaltQuery> IServiceSaltFetchSignedSaltQueryPtr;
-    typedef boost::weak_ptr<IServiceSaltFetchSignedSaltQuery> IServiceSaltFetchSignedSaltQueryWeakPtr;
-
-    interaction IServiceSaltFetchSignedSaltQueryDelegate;
-    typedef boost::shared_ptr<IServiceSaltFetchSignedSaltQueryDelegate> IServiceSaltFetchSignedSaltQueryDelegatePtr;
-    typedef boost::weak_ptr<IServiceSaltFetchSignedSaltQueryDelegate> IServiceSaltFetchSignedSaltQueryDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceSaltFetchSignedSaltQueryDelegate> IServiceSaltFetchSignedSaltQueryDelegateProxy;
-
-    interaction IServiceIdentity;
-    typedef boost::shared_ptr<IServiceIdentity> IServiceIdentityPtr;
-    typedef boost::weak_ptr<IServiceIdentity> IServiceIdentityWeakPtr;
-
-    interaction IServiceIdentitySession;
-    typedef boost::shared_ptr<IServiceIdentitySession> IServiceIdentitySessionPtr;
-    typedef boost::weak_ptr<IServiceIdentitySession> IServiceIdentitySessionWeakPtr;
-
-    interaction IServiceIdentitySessionDelegate;
-    typedef boost::shared_ptr<IServiceIdentitySessionDelegate> IServiceIdentitySessionDelegatePtr;
-    typedef boost::weak_ptr<IServiceIdentitySessionDelegate> IServiceIdentitySessionDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceIdentitySessionDelegate> IServiceIdentitySessionDelegateProxy;
-
-    interaction IServiceIdentityProofBundleQuery;
-    typedef boost::shared_ptr<IServiceIdentityProofBundleQuery> IServiceIdentityProofBundleQueryPtr;
-    typedef boost::weak_ptr<IServiceIdentityProofBundleQuery> IServiceIdentityProofBundleQueryWeakPtr;
-
-    interaction IServiceIdentityProofBundleQueryDelegate;
-    typedef boost::shared_ptr<IServiceIdentityProofBundleQueryDelegate> IServiceIdentityProofBundleQueryDelegatePtr;
-    typedef boost::weak_ptr<IServiceIdentityProofBundleQueryDelegate> IServiceIdentityProofBundleQueryDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceIdentityProofBundleQueryDelegate> IServiceIdentityProofBundleQueryDelegateProxy;
-
-    typedef std::list<IServiceIdentitySessionPtr> ServiceIdentitySessionList;
-    typedef boost::shared_ptr<ServiceIdentitySessionList> ServiceIdentitySessionListPtr;
-    typedef boost::weak_ptr<ServiceIdentitySessionList> ServiceIdentitySessionListWeakPtr;
-
-    interaction IServiceLockbox;
-    typedef boost::shared_ptr<IServiceLockbox> IServiceLockboxPtr;
-    typedef boost::weak_ptr<IServiceLockbox> IServiceLockboxWeakPtr;
-
-    interaction IServiceLockboxSession;
-    typedef boost::shared_ptr<IServiceLockboxSession> IServiceLockboxSessionPtr;
-    typedef boost::weak_ptr<IServiceLockboxSession> IServiceLockboxSessionWeakPtr;
-
-    interaction IServiceLockboxSessionDelegate;
-    typedef boost::shared_ptr<IServiceLockboxSessionDelegate> IServiceLockboxSessionDelegatePtr;
-    typedef boost::weak_ptr<IServiceLockboxSessionDelegate> IServiceLockboxSessionDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceLockboxSessionDelegate> IServiceLockboxSessionDelegateProxy;
-    
-    interaction IServiceNamespaceGrantSession;
-    typedef boost::shared_ptr<IServiceNamespaceGrantSession> IServiceNamespaceGrantSessionPtr;
-    typedef boost::weak_ptr<IServiceNamespaceGrantSession> IServiceNamespaceGrantSessionWeakPtr;
-
-    interaction IServiceNamespaceGrantSessionDelegate;
-    typedef boost::shared_ptr<IServiceNamespaceGrantSessionDelegate> IServiceNamespaceGrantSessionDelegatePtr;
-    typedef boost::weak_ptr<IServiceNamespaceGrantSessionDelegate> IServiceNamespaceGrantSessionDelegateWeakPtr;
-    typedef zsLib::Proxy<IServiceNamespaceGrantSessionDelegate> IServiceNamespaceGrantSessionDelegateProxy;
-
+    ZS_DECLARE_TYPEDEF_PTR(std::list<ILocationPtr>, LocationList)
+    ZS_DECLARE_TYPEDEF_PTR(std::list<IServiceIdentitySessionPtr>, ServiceIdentitySessionList)
   }
 }

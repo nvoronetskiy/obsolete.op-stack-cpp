@@ -56,9 +56,7 @@ namespace openpeer
 
       interaction IPeerFilePrivateForPeerFiles
       {
-        typedef IPeerFilePrivateForPeerFiles ForPeerFiles;
-        typedef shared_ptr<ForPeerFiles> ForPeerFilesPtr;
-        typedef weak_ptr<ForPeerFiles> ForPeerFilesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePrivateForPeerFiles, ForPeerFiles)
 
         static bool generate(
                              PeerFilesPtr peerFiles,
@@ -104,9 +102,7 @@ namespace openpeer
       public:
         friend interaction IPeerFilePrivateFactory;
 
-        typedef IPeerFilePublicForPeerFilePrivate UsePeerFilePublic;
-        typedef shared_ptr<UsePeerFilePublic> UsePeerFilePublicPtr;
-        typedef weak_ptr<UsePeerFilePublic> UsePeerFilePublicWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPeerFilePublicForPeerFilePrivate, UsePeerFilePublic)
 
       protected:
         PeerFilePrivate(PeerFilesPtr peerFiles);

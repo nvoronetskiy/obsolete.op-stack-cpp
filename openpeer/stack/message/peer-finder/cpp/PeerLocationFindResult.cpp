@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerLocationFindResultPtr PeerLocationFindResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerLocationFindResult>(message);
+          return dynamic_pointer_cast<PeerLocationFindResult>(message);
         }
 
         //---------------------------------------------------------------------

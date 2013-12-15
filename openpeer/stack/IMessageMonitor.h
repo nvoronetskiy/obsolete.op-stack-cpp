@@ -161,11 +161,11 @@ namespace openpeer
                                                        message::MessagePtr message
                                                        )
       {
-        MessageResultTypePtr response = boost::dynamic_pointer_cast<MessageResultType>(message);
+        MessageResultTypePtr response = dynamic_pointer_cast<MessageResultType>(message);
         if (response) {
           return handleMessageMonitorResultReceived(monitor, response);
         }
-        message::MessageResultPtr result = boost::dynamic_pointer_cast<message::MessageResult>(message);
+        message::MessageResultPtr result = dynamic_pointer_cast<message::MessageResult>(message);
         if (result) {
           if (result->hasError()) {
             return handleMessageMonitorErrorResultReceived(monitor, MessageResultTypePtr(), result);

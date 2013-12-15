@@ -48,7 +48,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessLockboxUpdateResultPtr IdentityAccessLockboxUpdateResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<IdentityAccessLockboxUpdateResult>(message);
+          return dynamic_pointer_cast<IdentityAccessLockboxUpdateResult>(message);
         }
 
         //---------------------------------------------------------------------

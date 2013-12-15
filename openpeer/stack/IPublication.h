@@ -51,9 +51,8 @@ namespace openpeer
     interaction IPublication : public IPublicationMetaData
     {
       typedef String PeerURI;
-      typedef std::list<PeerURI> RelationshipList;
-      typedef boost::shared_ptr<RelationshipList> RelationshipListPtr;
-      typedef boost::weak_ptr<RelationshipList> RelationshipListWeakPtr;
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PeerURI>, RelationshipList)
 
       static ElementPtr toDebug(IPublicationPtr publication);
 

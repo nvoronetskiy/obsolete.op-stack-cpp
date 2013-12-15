@@ -63,20 +63,15 @@ namespace openpeer
       interaction IBootstrappedNetworkForServices;
       interaction IServiceLockboxSessionForServiceIdentity;
 
-      using message::identity::IdentityAccessLockboxUpdateResult;
-      using message::identity::IdentityAccessLockboxUpdateResultPtr;
-      using message::identity::IdentityLookupUpdateResult;
-      using message::identity::IdentityLookupUpdateResultPtr;
-      using message::identity::IdentityAccessRolodexCredentialsGetResult;
-      using message::identity::IdentityAccessRolodexCredentialsGetResultPtr;
-      using message::identity_lookup::IdentityLookupResult;
-      using message::identity_lookup::IdentityLookupResultPtr;
-      using message::rolodex::RolodexAccessResult;
-      using message::rolodex::RolodexAccessResultPtr;
-      using message::rolodex::RolodexNamespaceGrantChallengeValidateResult;
-      using message::rolodex::RolodexNamespaceGrantChallengeValidateResultPtr;
-      using message::rolodex::RolodexContactsGetResult;
-      using message::rolodex::RolodexContactsGetResultPtr;
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessLockboxUpdateResult)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityLookupUpdateResult)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessRolodexCredentialsGetResult)
+
+      ZS_DECLARE_USING_PTR(message::identity_lookup, IdentityLookupResult)
+      
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexAccessResult)
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexNamespaceGrantChallengeValidateResult)
+      ZS_DECLARE_USING_PTR(message::rolodex, RolodexContactsGetResult)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -88,9 +83,7 @@ namespace openpeer
 
       interaction IServiceIdentitySessionForServiceLockbox
       {
-        typedef IServiceIdentitySessionForServiceLockbox ForLockbox;
-        typedef shared_ptr<ForLockbox> ForLockboxPtr;
-        typedef weak_ptr<ForLockbox> ForLockboxWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IServiceIdentitySessionForServiceLockbox, ForLockbox)
 
         typedef IServiceIdentitySession::SessionStates SessionStates;
 
@@ -155,17 +148,9 @@ namespace openpeer
         friend interaction IServiceIdentitySessionFactory;
         friend interaction IServiceIdentitySession;
 
-        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
-
-        typedef IServiceLockboxSessionForServiceIdentity UseServiceLockboxSession;
-        typedef shared_ptr<UseServiceLockboxSession> UseServiceLockboxSessionPtr;
-        typedef weak_ptr<UseServiceLockboxSession> UseServiceLockboxSessionWeakPtr;
-
-        typedef IServiceNamespaceGrantSessionForServices UseServiceNamespaceGrantSession;
-        typedef shared_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionPtr;
-        typedef weak_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServiceIdentity, UseServiceLockboxSession)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
 
         typedef IServiceNamespaceGrantSession::SessionStates GrantSessionStates;
         typedef IServiceIdentitySession::SessionStates SessionStates;

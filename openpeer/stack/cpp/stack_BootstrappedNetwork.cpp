@@ -138,9 +138,7 @@ namespace openpeer
       #pragma mark FakeHTTPQuery
       #pragma mark
 
-      class FakeHTTPQuery;
-      typedef boost::shared_ptr<FakeHTTPQuery> FakeHTTPQueryPtr;
-      typedef boost::weak_ptr<FakeHTTPQuery> FakeHTTPQueryWeakPtr;
+      ZS_DECLARE_CLASS_PTR(FakeHTTPQuery)
 
       class FakeHTTPQuery : public IHTTPQuery
       {
@@ -153,7 +151,7 @@ namespace openpeer
         static FakeHTTPQueryPtr create() {return FakeHTTPQueryPtr(new FakeHTTPQuery);}
         static FakeHTTPQueryPtr convert(IHTTPQueryPtr query)
         {
-          return boost::dynamic_pointer_cast<FakeHTTPQuery>(query);
+          return dynamic_pointer_cast<FakeHTTPQuery>(query);
         }
 
         MessagePtr result() const               {return mResult;}
@@ -279,43 +277,43 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IBootstrappedNetworkPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceCertificatesPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceIdentityPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceLockboxPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceSaltPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(ForServicesPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(ForBootstrappedNetworkManagerPtr network)
       {
-        return boost::dynamic_pointer_cast<BootstrappedNetwork>(network);
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
       }
 
       //-----------------------------------------------------------------------

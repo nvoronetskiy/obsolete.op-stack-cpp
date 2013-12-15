@@ -64,18 +64,13 @@ namespace openpeer
       interaction IBootstrappedNetworkForServices;
       interaction IServiceIdentitySessionForServiceLockbox;
 
-      using message::identity_lockbox::LockboxAccessResult;
-      using message::identity_lockbox::LockboxAccessResultPtr;
-      using message::identity_lockbox::LockboxNamespaceGrantChallengeValidateResult;
-      using message::identity_lockbox::LockboxNamespaceGrantChallengeValidateResultPtr;
-      using message::identity_lockbox::LockboxIdentitiesUpdateResult;
-      using message::identity_lockbox::LockboxIdentitiesUpdateResultPtr;
-      using message::identity_lockbox::LockboxContentGetResult;
-      using message::identity_lockbox::LockboxContentGetResultPtr;
-      using message::identity_lockbox::LockboxContentSetResult;
-      using message::identity_lockbox::LockboxContentSetResultPtr;
-      using message::peer::PeerServicesGetResult;
-      using message::peer::PeerServicesGetResultPtr;
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxAccessResult)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxNamespaceGrantChallengeValidateResult)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxIdentitiesUpdateResult)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentGetResult)
+      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentSetResult)
+
+      ZS_DECLARE_USING_PTR(message::peer, PeerServicesGetResult)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -87,9 +82,7 @@ namespace openpeer
 
       interaction IServiceLockboxSessionForAccount
       {
-        typedef IServiceLockboxSessionForAccount ForAccount;
-        typedef shared_ptr<ForAccount> ForAccountPtr;
-        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForAccount, ForAccount)
 
         virtual IServiceLockboxSession::SessionStates getState(
                                                                WORD *lastErrorCode = NULL,
@@ -120,9 +113,7 @@ namespace openpeer
 
       interaction IServiceLockboxSessionForServiceIdentity
       {
-        typedef IServiceLockboxSessionForServiceIdentity ForServiceIdentity;
-        typedef shared_ptr<ForServiceIdentity> ForServiceIdentityPtr;
-        typedef weak_ptr<ForServiceIdentity> ForServiceIdentityWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServiceIdentity, ForServiceIdentity)
 
         virtual IServiceLockboxSession::SessionStates getState(
                                                                WORD *lastErrorCode = NULL,
@@ -171,21 +162,10 @@ namespace openpeer
         friend interaction IServiceLockboxSessionFactory;
         friend interaction IServiceLockboxSession;
 
-        typedef IAccountForServiceLockboxSession UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
-
-        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
-
-        typedef IServiceIdentitySessionForServiceLockbox UseServiceIdentitySession;
-        typedef shared_ptr<UseServiceIdentitySession> UseServiceIdentitySessionPtr;
-        typedef weak_ptr<UseServiceIdentitySession> UseServiceIdentitySessionWeakPtr;
-
-        typedef IServiceNamespaceGrantSessionForServices UseServiceNamespaceGrantSession;
-        typedef shared_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionPtr;
-        typedef weak_ptr<UseServiceNamespaceGrantSession> UseServiceNamespaceGrantSessionWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForServiceLockboxSession, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceIdentitySessionForServiceLockbox, UseServiceIdentitySession)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
 
         typedef IServiceLockboxSession::SessionStates SessionStates;
 

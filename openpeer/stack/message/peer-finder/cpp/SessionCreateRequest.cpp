@@ -70,7 +70,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SessionCreateRequestPtr SessionCreateRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<SessionCreateRequest>(message);
+          return dynamic_pointer_cast<SessionCreateRequest>(message);
         }
 
         //---------------------------------------------------------------------

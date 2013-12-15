@@ -61,7 +61,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         RolodexAccessRequestPtr RolodexAccessRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<RolodexAccessRequest>(message);
+          return dynamic_pointer_cast<RolodexAccessRequest>(message);
         }
 
         //---------------------------------------------------------------------

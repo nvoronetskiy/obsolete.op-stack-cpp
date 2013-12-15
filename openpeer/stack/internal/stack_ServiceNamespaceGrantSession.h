@@ -63,9 +63,7 @@ namespace openpeer
 
       interaction IServiceNamespaceGrantSessionForServices
       {
-        typedef IServiceNamespaceGrantSessionForServices ForServices;
-        typedef shared_ptr<ForServices> ForServicesPtr;
-        typedef weak_ptr<ForServices> ForServicesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, ForServices)
 
         typedef IServiceNamespaceGrantSession::SessionStates SessionStates;
 
@@ -171,20 +169,14 @@ namespace openpeer
         friend interaction IServiceNamespaceGrantSessionFactory;
         friend interaction IServiceNamespaceGrantSession;
 
-        typedef IBootstrappedNetworkForServices UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
 
         typedef IServiceNamespaceGrantSession::SessionStates SessionStates;
 
-        class Wait;
-        typedef boost::shared_ptr<Wait> WaitPtr;
-        typedef boost::weak_ptr<Wait> WaitWeakPtr;
-        friend class Wait;
+        ZS_DECLARE_CLASS_PTR(Wait)
+        ZS_DECLARE_CLASS_PTR(Query)
 
-        class Query;
-        typedef boost::shared_ptr<Query> QueryPtr;
-        typedef boost::weak_ptr<Query> QueryWeakPtr;
+        friend class Wait;
         friend class Query;
 
         typedef PUID QueryID;

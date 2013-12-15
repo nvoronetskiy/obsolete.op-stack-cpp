@@ -48,7 +48,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         LockboxContentSetResultPtr LockboxContentSetResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<LockboxContentSetResult>(message);
+          return dynamic_pointer_cast<LockboxContentSetResult>(message);
         }
 
         //---------------------------------------------------------------------

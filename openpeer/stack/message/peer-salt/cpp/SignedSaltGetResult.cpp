@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SignedSaltGetResultPtr SignedSaltGetResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<SignedSaltGetResult>(message);
+          return dynamic_pointer_cast<SignedSaltGetResult>(message);
         }
 
         //---------------------------------------------------------------------

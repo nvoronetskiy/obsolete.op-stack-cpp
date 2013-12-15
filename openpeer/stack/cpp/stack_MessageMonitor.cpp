@@ -119,7 +119,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorPtr MessageMonitor::convert(IMessageMonitorPtr monitor)
       {
-        return boost::dynamic_pointer_cast<MessageMonitor>(monitor);
+        return dynamic_pointer_cast<MessageMonitor>(monitor);
       }
 
       //-----------------------------------------------------------------------

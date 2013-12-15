@@ -43,21 +43,10 @@ namespace openpeer
       {
         using services::IHTTP;
 
-        class MessageFactoryManager;
-        typedef boost::shared_ptr<MessageFactoryManager> MessageFactoryManagerPtr;
-        typedef boost::weak_ptr<MessageFactoryManager> MessageFactoryManagerWeakPtr;
-
-        class MessageFactoryUnknown;
-        typedef boost::shared_ptr<MessageFactoryUnknown> MessageFactoryUnknownPtr;
-        typedef boost::weak_ptr<MessageFactoryUnknown> MessageFactoryUnknownWeakPtr;
-
-        class MessageRequestUnknown;
-        typedef boost::shared_ptr<MessageRequestUnknown> MessageRequestUnknownPtr;
-        typedef boost::weak_ptr<MessageRequestUnknown> MessageRequestUnknownWeakPtr;
-
-        class MessageNotifyUnknown;
-        typedef boost::shared_ptr<MessageNotifyUnknown> MessageNotifyUnknownPtr;
-        typedef boost::weak_ptr<MessageNotifyUnknown> MessageNotifyUnknownWeakPtr;
+        ZS_DECLARE_CLASS_PTR(MessageFactoryManager)
+        ZS_DECLARE_CLASS_PTR(MessageFactoryUnknown)
+        ZS_DECLARE_CLASS_PTR(MessageRequestUnknown)
+        ZS_DECLARE_CLASS_PTR(MessageNotifyUnknown)
       }
     }
   }

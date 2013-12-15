@@ -47,7 +47,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ServicesGetResultPtr ServicesGetResult::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<ServicesGetResult>(message);
+          return dynamic_pointer_cast<ServicesGetResult>(message);
         }
 
         //---------------------------------------------------------------------

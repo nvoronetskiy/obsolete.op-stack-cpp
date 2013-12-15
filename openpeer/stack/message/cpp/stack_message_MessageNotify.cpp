@@ -39,7 +39,7 @@ namespace openpeer
     {
       MessageNotifyPtr MessageNotify::convert(MessagePtr message)
       {
-        return boost::dynamic_pointer_cast<MessageNotify>(message);
+        return dynamic_pointer_cast<MessageNotify>(message);
       }
     }
   }

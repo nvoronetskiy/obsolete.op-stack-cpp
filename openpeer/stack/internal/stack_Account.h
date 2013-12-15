@@ -86,9 +86,7 @@ namespace openpeer
 
       interaction IAccountForAccountFinder
       {
-        typedef IAccountForAccountFinder ForAccountFinder;
-        typedef shared_ptr<ForAccountFinder> ForAccountFinderPtr;
-        typedef weak_ptr<ForAccountFinder> ForAccountFinderWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountFinder, ForAccountFinder)
 
         virtual RecursiveLock &getLock() const = 0;
 
@@ -112,9 +110,7 @@ namespace openpeer
 
       interaction IAccountForFinderRelayChannel
       {
-        typedef IAccountForFinderRelayChannel ForRelayChannel;
-        typedef shared_ptr<ForRelayChannel> ForRelayChannelPtr;
-        typedef weak_ptr<ForRelayChannel> ForRelayChannelWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForFinderRelayChannel, ForRelayChannel)
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
       };
@@ -129,9 +125,7 @@ namespace openpeer
 
       interaction IAccountForAccountPeerLocation
       {
-        typedef IAccountForAccountPeerLocation ForAccountPeerLocation;
-        typedef shared_ptr<ForAccountPeerLocation> ForAccountPeerLocationPtr;
-        typedef weak_ptr<ForAccountPeerLocation> ForAccountPeerLocationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountPeerLocation, ForAccountPeerLocation)
 
         virtual RecursiveLock &getLock() const = 0;
 
@@ -152,9 +146,7 @@ namespace openpeer
 
       interaction IAccountForLocation
       {
-        typedef IAccountForLocation ForLocation;
-        typedef shared_ptr<ForLocation> ForLocationPtr;
-        typedef weak_ptr<ForLocation> ForLocationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForLocation, ForLocation)
 
         virtual LocationPtr findExistingOrUse(LocationPtr location) = 0;
         virtual LocationPtr getLocationForLocal() const = 0;
@@ -186,6 +178,8 @@ namespace openpeer
 
       interaction IAccountForMessageIncoming
       {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForMessageIncoming, ForMessageIncoming)
+
         virtual RecursiveLock &getLock() const = 0;
 
         virtual bool send(
@@ -205,9 +199,7 @@ namespace openpeer
 
       interaction IAccountForMessages
       {
-        typedef IAccountForMessages ForMessages;
-        typedef shared_ptr<ForMessages> ForMessagesPtr;
-        typedef weak_ptr<ForMessages> ForMessagesWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForMessages, ForMessages)
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
       };
@@ -222,9 +214,7 @@ namespace openpeer
 
       interaction IAccountForPeer
       {
-        typedef IAccountForPeer ForPeer;
-        typedef shared_ptr<ForPeer> ForPeerPtr;
-        typedef weak_ptr<ForPeer> ForPeerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPeer, ForPeer)
 
         virtual PeerPtr findExistingOrUse(PeerPtr peer) = 0;
         virtual void notifyDestroyed(Peer &peer) = 0;
@@ -248,6 +238,8 @@ namespace openpeer
 
       interaction IAccountForPeerSubscription
       {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPeerSubscription, ForPeerSubscription)
+
         virtual void subscribe(PeerSubscriptionPtr subscription) = 0;
         virtual void notifyDestroyed(PeerSubscription &subscription) = 0;
 
@@ -264,9 +256,7 @@ namespace openpeer
 
       interaction IAccountForPublicationRepository
       {
-        typedef IAccountForPublicationRepository ForPublicationRepository;
-        typedef shared_ptr<ForPublicationRepository> ForPublicationRepositoryPtr;
-        typedef weak_ptr<ForPublicationRepository> ForPublicationRepositoryWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPublicationRepository, ForPublicationRepository)
 
         virtual PublicationRepositoryPtr getRepository() const = 0;
 
@@ -283,6 +273,8 @@ namespace openpeer
 
       interaction IAccountForServiceLockboxSession
       {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForServiceLockboxSession, ForServiceLockboxSession)
+
         virtual void notifyServiceLockboxSessionStateChanged() = 0;
 
         virtual IKeyGeneratorPtr takeOverRSAGeyGeneration() = 0;
@@ -323,50 +315,23 @@ namespace openpeer
         friend interaction IAccountFactory;
         friend interaction IAccount;
 
-        typedef ILocationForAccount UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForAccount, UsePeer)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerSubscriptionForAccount, UsePeerSubscription)
+        ZS_DECLARE_TYPEDEF_PTR(IAccountFinderForAccount, UseAccountFinder)
+        ZS_DECLARE_TYPEDEF_PTR(IAccountPeerLocationForAccount, UseAccountPeerLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForAccount, UseBootstrappedNetwork)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForAccount, UseMessageIncoming)
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationRepositoryForAccount, UsePublicationRepository)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForAccount, UseServiceLockboxSession)
 
-        typedef IPeerForAccount UsePeer;
-        typedef shared_ptr<UsePeer> UsePeerPtr;
-        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+        ZS_DECLARE_STRUCT_PTR(PeerInfo)
 
-        typedef IPeerSubscriptionForAccount UsePeerSubscription;
-        typedef shared_ptr<UsePeerSubscription> UsePeerSubscriptionPtr;
-        typedef weak_ptr<UsePeerSubscription> UsePeerSubscriptionWeakPtr;
-
-        typedef IAccountFinderForAccount UseAccountFinder;
-        typedef shared_ptr<UseAccountFinder> UseAccountFinderPtr;
-        typedef weak_ptr<UseAccountFinder> UseAccountFinderWeakPtr;
-
-        typedef IAccountPeerLocationForAccount UseAccountPeerLocation;
-        typedef shared_ptr<UseAccountPeerLocation> UseAccountPeerLocationPtr;
-        typedef weak_ptr<UseAccountPeerLocation> UseAccountPeerLocationWeakPtr;
-
-        typedef IBootstrappedNetworkForAccount UseBootstrappedNetwork;
-        typedef shared_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkPtr;
-        typedef weak_ptr<UseBootstrappedNetwork> UseBootstrappedNetworkWeakPtr;
-
-        typedef IMessageIncomingForAccount UseMessageIncoming;
-        typedef shared_ptr<UseMessageIncoming> UseMessageIncomingPtr;
-        typedef weak_ptr<UseMessageIncoming> UseMessageIncomingWeakPtr;
-
-        typedef IPublicationRepositoryForAccount UsePublicationRepository;
-        typedef shared_ptr<UsePublicationRepository> UsePublicationRepositoryPtr;
-        typedef weak_ptr<UsePublicationRepository> UsePublicationRepositoryWeakPtr;
-
-        typedef IServiceLockboxSessionForAccount UseServiceLockboxSession;
-        typedef shared_ptr<UseServiceLockboxSession> UseServiceLockboxSessionPtr;
-        typedef weak_ptr<UseServiceLockboxSession> UseServiceLockboxSessionWeakPtr;
+        friend struct PeerInfo;
 
         typedef IAccount::AccountStates AccountStates;
 
         typedef ULONG ChannelNumber;
-
-        struct PeerInfo;
-        friend struct PeerInfo;
-        typedef boost::shared_ptr<PeerInfo> PeerInfoPtr;
-        typedef boost::weak_ptr<PeerInfo> PeerInfoWeakPtr;
 
         typedef String PeerURI;
         typedef String LocationID;

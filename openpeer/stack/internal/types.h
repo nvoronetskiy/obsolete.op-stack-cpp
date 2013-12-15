@@ -61,277 +61,100 @@ namespace openpeer
       using zsLib::AutoWORD;
       using zsLib::AutoULONG;
       using zsLib::AutoPUID;
-      using zsLib::XML::Element;
-      using zsLib::XML::Document;
-      using zsLib::XML::DocumentPtr;
-      using zsLib::XML::NodePtr;
-      using zsLib::XML::Text;
-      using zsLib::XML::TextPtr;
-      using zsLib::XML::Element;
-      using zsLib::XML::AttributePtr;
-      using zsLib::XML::Generator;
-      using zsLib::XML::GeneratorPtr;
 
-      using boost::shared_ptr;
-      using boost::weak_ptr;
+      ZS_DECLARE_USING_PTR(zsLib::XML, Element)
+      ZS_DECLARE_USING_PTR(zsLib::XML, Document)
+      ZS_DECLARE_USING_PTR(zsLib::XML, Node)
+      ZS_DECLARE_USING_PTR(zsLib::XML, Text)
+      ZS_DECLARE_USING_PTR(zsLib::XML, Attribute)
+      ZS_DECLARE_USING_PTR(zsLib::XML, Generator)
+
       using boost::dynamic_pointer_cast;
 
-      using services::IDHKeyDomain;
-      using services::IDHKeyDomainPtr;
-      using services::IDHPrivateKey;
-      using services::IDHPrivateKeyPtr;
-      using services::IDHPublicKey;
-      using services::IDHPublicKeyPtr;
-      using services::IDNS;
-      using services::IICESocket;
-      using services::IICESocketPtr;
-      using services::IICESocketDelegate;
-      using services::IICESocketDelegatePtr;
-      using services::IICESocketSession;
-      using services::IICESocketSessionPtr;
-      using services::IICESocketSessionDelegate;
-      using services::IICESocketSessionDelegatePtr;
-      using services::IICESocketSessionSubscriptionPtr;
-      using services::IICESocketSubscriptionPtr;
-      using services::IRUDPICESocketSession;
-      using services::IRUDPICESocketSessionDelegate;
-      using services::IRUDPICESocketSessionSubscriptionPtr;
-      using services::IRUDPMessaging;
-      using services::IRUDPMessagingDelegate;
-      using services::IDNSDelegate;
-      using services::IDNSQuery;
-      using services::IDNSQueryPtr;
-      using services::IHTTP;
-      using services::IHTTPQueryPtr;
-      using services::IHTTPQueryDelegate;
+      ZS_DECLARE_USING_PTR(services, IDHKeyDomain)
+      ZS_DECLARE_USING_PTR(services, IDHPrivateKey)
+      ZS_DECLARE_USING_PTR(services, IDHPublicKey)
+      ZS_DECLARE_USING_PTR(services, IDNS)
+      ZS_DECLARE_USING_PTR(services, IDNSDelegate)
+      ZS_DECLARE_USING_PTR(services, IDNSQuery)
+      ZS_DECLARE_USING_PTR(services, IICESocket)
+      ZS_DECLARE_USING_PTR(services, IICESocketDelegate)
+      ZS_DECLARE_USING_PTR(services, IICESocketSubscription)
+      ZS_DECLARE_USING_PTR(services, IICESocketSession)
+      ZS_DECLARE_USING_PTR(services, IICESocketSessionDelegate)
+      ZS_DECLARE_USING_PTR(services, IICESocketSessionSubscription)
+      ZS_DECLARE_USING_PTR(services, IRUDPICESocketSession)
+      ZS_DECLARE_USING_PTR(services, IRUDPICESocketSessionDelegate)
+      ZS_DECLARE_USING_PTR(services, IRUDPICESocketSessionSubscription)
+      ZS_DECLARE_USING_PTR(services, IRUDPMessaging)
+      ZS_DECLARE_USING_PTR(services, IRUDPMessagingDelegate)
+      ZS_DECLARE_USING_PTR(services, IHTTP)
+      ZS_DECLARE_USING_PTR(services, IHTTPQuery)
+      ZS_DECLARE_USING_PTR(services, IHTTPQueryDelegate)
+      ZS_DECLARE_USING_PTR(services, ITransportStream)
+      ZS_DECLARE_USING_PTR(services, ITCPMessaging)
+      ZS_DECLARE_USING_PTR(services, ITCPMessagingDelegate)
+      ZS_DECLARE_USING_PTR(services, ITCPMessagingSubscription)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamReader)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamReaderDelegate)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamReaderSubscription)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamWriter)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamWriterDelegate)
+      ZS_DECLARE_USING_PTR(services, ITransportStreamWriterSubscription)
 
-      using services::ITransportStream;
-      using services::ITransportStreamPtr;
-
-      using services::ITCPMessaging;
-      using services::ITCPMessagingPtr;
-      using services::ITCPMessagingDelegate;
-      using services::ITCPMessagingDelegatePtr;
-      using services::ITCPMessagingSubscription;
-      using services::ITCPMessagingSubscriptionPtr;
-
-      using services::ITransportStreamReader;
-      using services::ITransportStreamReaderPtr;
-      using services::ITransportStreamWriter;
-      using services::ITransportStreamWriterPtr;
-      using services::ITransportStreamReaderDelegate;
-      using services::ITransportStreamReaderDelegatePtr;
-      using services::ITransportStreamWriterDelegate;
-      using services::ITransportStreamWriterDelegatePtr;
-      using services::ITransportStreamReaderSubscription;
-      using services::ITransportStreamReaderSubscriptionPtr;
-      using services::ITransportStreamWriterSubscription;
-      using services::ITransportStreamWriterSubscriptionPtr;
-
-      using services::IWakeDelegate;
-      using services::IWakeDelegatePtr;
-      using services::IWakeDelegateWeakPtr;
-      using services::IWakeDelegateProxy;
+      ZS_DECLARE_USING_PROXY(services, IWakeDelegate)
 
       using namespace message;
 
-      class Account;
-      typedef boost::shared_ptr<Account> AccountPtr;
-      typedef boost::weak_ptr<Account> AccountWeakPtr;
+      ZS_DECLARE_CLASS_PTR(Account)
+      ZS_DECLARE_CLASS_PTR(AccountFinder)
+      ZS_DECLARE_CLASS_PTR(AccountPeerLocation)
+      ZS_DECLARE_CLASS_PTR(BootstrappedNetwork)
+      ZS_DECLARE_CLASS_PTR(BootstrappedNetworkManager)
+      ZS_DECLARE_CLASS_PTR(ServiceCertificatesValidateQuery)
+      ZS_DECLARE_CLASS_PTR(Cache)
+      ZS_DECLARE_CLASS_PTR(Diff)
+      ZS_DECLARE_CLASS_PTR(Factory)
+      ZS_DECLARE_CLASS_PTR(FinderRelayChannel)
+      ZS_DECLARE_CLASS_PTR(FinderConnection)
+      ZS_DECLARE_CLASS_PTR(FinderConnectionManager)
+      ZS_DECLARE_CLASS_PTR(Helper)
+      ZS_DECLARE_CLASS_PTR(KeyGenerator)
+      ZS_DECLARE_CLASS_PTR(MessageIncoming)
+      ZS_DECLARE_CLASS_PTR(Location)
+      ZS_DECLARE_CLASS_PTR(Peer)
+      ZS_DECLARE_CLASS_PTR(Publication)
+      ZS_DECLARE_CLASS_PTR(PublicationMetaData)
+      ZS_DECLARE_CLASS_PTR(PublicationRepository)
+      ZS_DECLARE_CLASS_PTR(MessageMonitor)
+      ZS_DECLARE_CLASS_PTR(MessageMonitorManager)
+      ZS_DECLARE_CLASS_PTR(PeerFiles)
+      ZS_DECLARE_CLASS_PTR(PeerFilePublic)
+      ZS_DECLARE_CLASS_PTR(PeerFilePrivate)
+      ZS_DECLARE_CLASS_PTR(PeerSubscription)
+      ZS_DECLARE_CLASS_PTR(ServiceIdentitySession)
+      ZS_DECLARE_CLASS_PTR(ServiceLockboxSession)
+      ZS_DECLARE_CLASS_PTR(ServiceNamespaceGrantSession)
+      ZS_DECLARE_CLASS_PTR(ServiceSaltFetchSignedSaltQuery)
+      ZS_DECLARE_CLASS_PTR(Stack)
 
-      class AccountFinder;
-      typedef boost::shared_ptr<AccountFinder> AccountFinderPtr;
-      typedef boost::weak_ptr<AccountFinder> AccountFinderWeakPtr;
+      ZS_DECLARE_INTERACTION_PTR(IFinderRelayChannel)
+      ZS_DECLARE_INTERACTION_PTR(IFinderConnection)
+      ZS_DECLARE_INTERACTION_PTR(IFinderConnectionRelayChannel)
+      ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSessionQuery)
+      ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSessionWait)
 
-      interaction IAccountFinderDelegate;
-      typedef boost::shared_ptr<IAccountFinderDelegate> IAccountFinderDelegatePtr;
-      typedef boost::weak_ptr<IAccountFinderDelegate> IAccountFinderDelegateWeakPtr;
-      typedef zsLib::Proxy<IAccountFinderDelegate> IAccountFinderDelegateProxy;
+      ZS_DECLARE_INTERACTION_PROXY(IAccountFinderDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IAccountPeerLocationDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IFinderRelayChannelDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IFinderConnectionDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IFinderConnectionRelayChannelDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IMessageMonitorAsyncDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionQueryDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionWaitDelegate)
 
-      class AccountPeerLocation;
-      typedef boost::shared_ptr<AccountPeerLocation> AccountPeerLocationPtr;
-      typedef boost::weak_ptr<AccountPeerLocation> AccountPeerLocationWeakPtr;
-
-      interaction IAccountPeerLocationDelegate;
-      typedef boost::shared_ptr<IAccountPeerLocationDelegate> IAccountPeerLocationDelegatePtr;
-      typedef boost::weak_ptr<IAccountPeerLocationDelegate> IAccountPeerLocationDelegateWeakPtr;
-      typedef zsLib::Proxy<IAccountPeerLocationDelegate> IAccountPeerLocationDelegateProxy;
-
-      class BootstrappedNetwork;
-      typedef boost::shared_ptr<BootstrappedNetwork> BootstrappedNetworkPtr;
-      typedef boost::weak_ptr<BootstrappedNetwork> BootstrappedNetworkWeakPtr;
-
-      class BootstrappedNetworkManager;
-      typedef boost::shared_ptr<BootstrappedNetworkManager> BootstrappedNetworkManagerPtr;
-      typedef boost::weak_ptr<BootstrappedNetworkManager> BootstrappedNetworkManagerWeakPtr;
-
-      class ServiceCertificatesValidateQuery;
-      typedef boost::shared_ptr<ServiceCertificatesValidateQuery> ServiceCertificatesValidateQueryPtr;
-      typedef boost::weak_ptr<ServiceCertificatesValidateQuery> ServiceCertificatesValidateQueryWeakPtr;
-
-      class Cache;
-      typedef boost::shared_ptr<Cache> CachePtr;
-      typedef boost::weak_ptr<Cache> CacheWeakPtr;
-
-      class Diff;
-      typedef boost::shared_ptr<Diff> DiffPtr;
-      typedef boost::weak_ptr<Diff> DiffWeakPtr;
-
-      class Factory;
-      typedef boost::shared_ptr<Factory> FactoryPtr;
-      typedef boost::weak_ptr<Factory> FactoryWeakPtr;
-
-      interaction IFinderRelayChannel;
-      typedef boost::shared_ptr<IFinderRelayChannel> IFinderRelayChannelPtr;
-      typedef boost::weak_ptr<IFinderRelayChannel> IFinderRelayChannelWeakPtr;
-
-      interaction IFinderRelayChannelDelegate;
-      typedef boost::shared_ptr<IFinderRelayChannelDelegate> IFinderRelayChannelDelegatePtr;
-      typedef boost::weak_ptr<IFinderRelayChannelDelegate> IFinderRelayChannelDelegateWeakPtr;
-      typedef zsLib::Proxy<IFinderRelayChannelDelegate> IFinderRelayChannelDelegateProxy;
-
-      interaction IFinderRelayChannelSubscription;
-      typedef boost::shared_ptr<IFinderRelayChannelSubscription> IFinderRelayChannelSubscriptionPtr;
-      typedef boost::weak_ptr<IFinderRelayChannelSubscription> IFinderRelayChannelSubscriptionWeakPtr;
-      typedef zsLib::ProxySubscriptions<IFinderRelayChannelDelegate, IFinderRelayChannelSubscription> IFinderRelayChannelDelegateSubscriptions;
-
-      interaction FinderRelayChannel;
-      typedef boost::shared_ptr<FinderRelayChannel> FinderRelayChannelPtr;
-      typedef boost::weak_ptr<FinderRelayChannel> FinderRelayChannelWeakPtr;
-
-      interaction IFinderConnection;
-      typedef boost::shared_ptr<IFinderConnection> IFinderConnectionPtr;
-      typedef boost::weak_ptr<IFinderConnection> IFinderConnectionWeakPtr;
-
-      interaction IFinderConnectionDelegate;
-      typedef boost::shared_ptr<IFinderConnectionDelegate> IFinderConnectionDelegatePtr;
-      typedef boost::weak_ptr<IFinderConnectionDelegate> IFinderConnectionDelegateWeakPtr;
-      typedef zsLib::Proxy<IFinderConnectionDelegate> IFinderConnectionDelegateProxy;
-
-      interaction IFinderConnectionSubscription;
-      typedef boost::shared_ptr<IFinderConnectionSubscription> IFinderConnectionSubscriptionPtr;
-      typedef boost::weak_ptr<IFinderConnectionSubscription> IFinderConnectionSubscriptionWeakPtr;
-      typedef zsLib::ProxySubscriptions<IFinderConnectionDelegate, IFinderConnectionSubscription> IFinderConnectionDelegateSubscriptions;
-
-      interaction IFinderConnectionRelayChannel;
-      typedef boost::shared_ptr<IFinderConnectionRelayChannel> IFinderConnectionRelayChannelPtr;
-      typedef boost::weak_ptr<IFinderConnectionRelayChannel> IFinderConnectionRelayChannelWeakPtr;
-
-      interaction IFinderConnectionRelayChannelDelegate;
-      typedef boost::shared_ptr<IFinderConnectionRelayChannelDelegate> IFinderConnectionRelayChannelDelegatePtr;
-      typedef boost::weak_ptr<IFinderConnectionRelayChannelDelegate> IFinderConnectionRelayChannelDelegateWeakPtr;
-      typedef zsLib::Proxy<IFinderConnectionRelayChannelDelegate> IFinderConnectionRelayChannelDelegateProxy;
-
-      class FinderConnection;
-      typedef boost::shared_ptr<FinderConnection> FinderConnectionPtr;
-      typedef boost::weak_ptr<FinderConnection> FinderConnectionWeakPtr;
-
-      class FinderConnectionManager;
-      typedef boost::shared_ptr<FinderConnectionManager> FinderConnectionManagerPtr;
-      typedef boost::weak_ptr<FinderConnectionManager> FinderConnectionManagerWeakPtr;
-
-      class Helper;
-      typedef boost::shared_ptr<Helper> HelperPtr;
-      typedef boost::weak_ptr<Helper> HelperWeakPtr;
-
-      class KeyGenerator;
-      typedef boost::shared_ptr<KeyGenerator> KeyGeneratorPtr;
-      typedef boost::weak_ptr<KeyGenerator> KeyGeneratorWeakPtr;
-
-      class MessageIncoming;
-      typedef boost::shared_ptr<MessageIncoming> MessageIncomingPtr;
-      typedef boost::weak_ptr<MessageIncoming> MessageIncomingWeakPtr;
-
-      class Location;
-      typedef boost::shared_ptr<Location> LocationPtr;
-      typedef boost::weak_ptr<Location> LocationWeakPtr;
-
-      class Peer;
-      typedef boost::shared_ptr<Peer> PeerPtr;
-      typedef boost::weak_ptr<Peer> PeerWeakPtr;
-
-      interaction Publication;
-      typedef boost::shared_ptr<Publication> PublicationPtr;
-      typedef boost::weak_ptr<Publication> PublicationWeakPtr;
-
-      interaction PublicationMetaData;
-      typedef boost::shared_ptr<PublicationMetaData> PublicationMetaDataPtr;
-      typedef boost::weak_ptr<PublicationMetaData> PublicationMetaDataWeakPtr;
-
-      interaction IPublicationMetaDataForPublicationRepository;
-      typedef boost::shared_ptr<IPublicationMetaDataForPublicationRepository> IPublicationMetaDataForPublicationRepositoryPtr;
-      typedef boost::weak_ptr<IPublicationMetaDataForPublicationRepository> IPublicationMetaDataForPublicationRepositoryWeakPtr;
-
-      interaction PublicationRepository;
-      typedef boost::shared_ptr<PublicationRepository> PublicationRepositoryPtr;
-      typedef boost::weak_ptr<PublicationRepository> PublicationRepositoryWeakPtr;
-
-      class MessageMonitor;
-      typedef boost::shared_ptr<MessageMonitor> MessageMonitorPtr;
-      typedef boost::weak_ptr<MessageMonitor> MessageMonitorWeakPtr;
-
-      interaction IMessageMonitorAsyncDelegate;
-      typedef boost::shared_ptr<IMessageMonitorAsyncDelegate> IMessageMonitorAsyncDelegatePtr;
-      typedef boost::weak_ptr<IMessageMonitorAsyncDelegate> IMessageMonitorAsyncDelegateWeakPtr;
-      typedef zsLib::Proxy<IMessageMonitorAsyncDelegate> IMessageMonitorAsyncDelegateProxy;
-
-      class MessageMonitorManager;
-      typedef boost::shared_ptr<MessageMonitorManager> MessageMonitorManagerPtr;
-      typedef boost::weak_ptr<MessageMonitorManager> MessageMonitorManagerWeakPtr;
-
-      class PeerFiles;
-      typedef boost::shared_ptr<PeerFiles> PeerFilesPtr;
-      typedef boost::weak_ptr<PeerFiles> PeerFilesWeakPtr;
-
-      class PeerFilePublic;
-      typedef boost::shared_ptr<PeerFilePublic> PeerFilePublicPtr;
-      typedef boost::weak_ptr<PeerFilePublic> PeerFilePublicWeakPtr;
-
-      class PeerFilePrivate;
-      typedef boost::shared_ptr<PeerFilePrivate> PeerFilePrivatePtr;
-      typedef boost::weak_ptr<PeerFilePrivate> PeerFilePrivateWeakPtr;
-
-      class PeerSubscription;
-      typedef boost::shared_ptr<PeerSubscription> PeerSubscriptionPtr;
-      typedef boost::weak_ptr<PeerSubscription> PeerSubscriptionWeakPtr;
-
-      class ServiceIdentitySession;
-      typedef boost::shared_ptr<ServiceIdentitySession> ServiceIdentitySessionPtr;
-      typedef boost::weak_ptr<ServiceIdentitySession> ServiceIdentitySessionWeakPtr;
-
-      class ServiceLockboxSession;
-      typedef boost::shared_ptr<ServiceLockboxSession> ServiceLockboxSessionPtr;
-      typedef boost::weak_ptr<ServiceLockboxSession> ServiceLockboxSessionWeakPtr;
-
-      class ServiceNamespaceGrantSession;
-      typedef boost::shared_ptr<ServiceNamespaceGrantSession> ServiceNamespaceGrantSessionPtr;
-      typedef boost::weak_ptr<ServiceNamespaceGrantSession> ServiceNamespaceGrantSessionWeakPtr;
-
-      interaction IServiceNamespaceGrantSessionQuery;
-      typedef boost::shared_ptr<IServiceNamespaceGrantSessionQuery> IServiceNamespaceGrantSessionQueryPtr;
-      typedef boost::weak_ptr<IServiceNamespaceGrantSessionQuery> IServiceNamespaceGrantSessionQueryWeakPtr;
-
-      interaction IServiceNamespaceGrantSessionQueryDelegate;
-      typedef boost::shared_ptr<IServiceNamespaceGrantSessionQueryDelegate> IServiceNamespaceGrantSessionQueryDelegatePtr;
-      typedef boost::weak_ptr<IServiceNamespaceGrantSessionQueryDelegate> IServiceNamespaceGrantSessionQueryDelegateWeakPtr;
-      typedef zsLib::Proxy<IServiceNamespaceGrantSessionQueryDelegate> IServiceNamespaceGrantSessionQueryDelegateProxy;
-
-      interaction IServiceNamespaceGrantSessionWait;
-      typedef boost::shared_ptr<IServiceNamespaceGrantSessionWait> IServiceNamespaceGrantSessionWaitPtr;
-      typedef boost::weak_ptr<IServiceNamespaceGrantSessionWait> IServiceNamespaceGrantSessionWaitWeakPtr;
-
-      interaction IServiceNamespaceGrantSessionWaitDelegate;
-      typedef boost::shared_ptr<IServiceNamespaceGrantSessionWaitDelegate> IServiceNamespaceGrantSessionWaitDelegatePtr;
-      typedef boost::weak_ptr<IServiceNamespaceGrantSessionWaitDelegate> IServiceNamespaceGrantSessionWaitDelegateWeakPtr;
-      typedef zsLib::Proxy<IServiceNamespaceGrantSessionWaitDelegate> IServiceNamespaceGrantSessionWaitDelegateProxy;
-
-      class ServiceSaltFetchSignedSaltQuery;
-      typedef boost::shared_ptr<ServiceSaltFetchSignedSaltQuery> ServiceSaltFetchSignedSaltQueryPtr;
-      typedef boost::weak_ptr<ServiceSaltFetchSignedSaltQuery> ServiceSaltFetchSignedSaltQueryWeakPtr;
-
-      class Stack;
-      typedef boost::shared_ptr<Stack> StackPtr;
-      typedef boost::weak_ptr<Stack> StackWeakPtr;
+      ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderRelayChannelSubscription, IFinderRelayChannelDelegate)
+      ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderConnectionSubscription, IFinderConnectionDelegate)
     }
   }
 }

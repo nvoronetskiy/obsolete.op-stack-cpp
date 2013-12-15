@@ -52,13 +52,8 @@ namespace openpeer
     {
       namespace peer_finder
       {
-        typedef stack::internal::ILocationForMessages UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
-
-        typedef stack::internal::IPeerForMessages UsePeer;
-        typedef shared_ptr<UsePeer> UsePeerPtr;
-        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(stack::internal::ILocationForMessages, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(stack::internal::IPeerForMessages, UsePeer)
 
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
@@ -76,7 +71,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerLocationFindNotifyPtr PeerLocationFindNotify::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerLocationFindNotify>(message);
+          return dynamic_pointer_cast<PeerLocationFindNotify>(message);
         }
 
         //---------------------------------------------------------------------

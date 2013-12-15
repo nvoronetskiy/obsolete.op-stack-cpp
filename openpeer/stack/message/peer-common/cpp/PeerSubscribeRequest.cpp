@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerSubscribeRequestPtr PeerSubscribeRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerSubscribeRequest>(message);
+          return dynamic_pointer_cast<PeerSubscribeRequest>(message);
         }
 
         //---------------------------------------------------------------------

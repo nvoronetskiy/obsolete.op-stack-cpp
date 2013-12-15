@@ -46,7 +46,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         FindersGetRequestPtr FindersGetRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<FindersGetRequest>(message);
+          return dynamic_pointer_cast<FindersGetRequest>(message);
         }
 
         //---------------------------------------------------------------------

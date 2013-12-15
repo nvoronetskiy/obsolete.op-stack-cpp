@@ -53,9 +53,7 @@ namespace openpeer
 
       interaction IMessageMonitorManagerForMessageMonitor
       {
-        typedef IMessageMonitorManagerForMessageMonitor ForMessageMonitor;
-        typedef shared_ptr<ForMessageMonitor> ForMessageMonitorPtr;
-        typedef weak_ptr<ForMessageMonitor> ForMessageMonitorWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor, ForMessageMonitor)
 
         static ForMessageMonitorPtr singleton();
 
@@ -83,9 +81,7 @@ namespace openpeer
         friend interaction IMessageMonitorManagerFactory;
         friend interaction IMessageMonitorManagerForMessageMonitor;
 
-        typedef IMessageMonitorForMessageMonitorManager UseMessageMonitor;
-        typedef shared_ptr<UseMessageMonitor> UseMessageMonitorPtr;
-        typedef weak_ptr<UseMessageMonitor> UseMessageMonitorWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForMessageMonitorManager, UseMessageMonitor)
 
       protected:
         MessageMonitorManager();
@@ -135,7 +131,8 @@ namespace openpeer
 
         typedef PUID MonitorID;
         typedef std::map<MonitorID, UseMessageMonitorWeakPtr> MonitorMap;
-        typedef boost::shared_ptr<MonitorMap> MonitorMapPtr;
+
+        ZS_DECLARE_PTR(MonitorMap)
 
         typedef String MessageID;
         typedef std::map<MessageID, MonitorMapPtr> MonitorsMap;

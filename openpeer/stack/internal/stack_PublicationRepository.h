@@ -62,9 +62,7 @@ namespace openpeer
 
       interaction IPublicationRepositoryForAccount
       {
-        typedef IPublicationRepositoryForAccount ForAccount;
-        typedef shared_ptr<ForAccount> ForAccountPtr;
-        typedef weak_ptr<ForAccount> ForAccountWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationRepositoryForAccount, ForAccount)
 
         static ForAccountPtr create(AccountPtr account);
 
@@ -92,25 +90,11 @@ namespace openpeer
         friend interaction IPublicationRepositoryFactory;
         friend interaction IPublicationRepository;
 
-        typedef IAccountForPublicationRepository UseAccount;
-        typedef shared_ptr<UseAccount> UseAccountPtr;
-        typedef weak_ptr<UseAccount> UseAccountWeakPtr;
-
-        typedef ILocationForPublicationRepository UseLocation;
-        typedef shared_ptr<UseLocation> UseLocationPtr;
-        typedef weak_ptr<UseLocation> UseLocationWeakPtr;
-
-        typedef IPeerForPeerPublicationRepository UsePeer;
-        typedef shared_ptr<UsePeer> UsePeerPtr;
-        typedef weak_ptr<UsePeer> UsePeerWeakPtr;
-
-        typedef IPublicationMetaDataForPublicationRepository UsePublicationMetaData;
-        typedef shared_ptr<UsePublicationMetaData> UsePublicationMetaDataPtr;
-        typedef weak_ptr<UsePublicationMetaData> UsePublicationMetaDataWeakPtr;
-
-        typedef IPublicationForPublicationRepository UsePublication;
-        typedef shared_ptr<UsePublication> UsePublicationPtr;
-        typedef weak_ptr<UsePublication> UsePublicationWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForPublicationRepository, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForPublicationRepository, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForPeerPublicationRepository, UsePeer)
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationMetaDataForPublicationRepository, UsePublicationMetaData)
+        ZS_DECLARE_TYPEDEF_PTR(IPublicationForPublicationRepository, UsePublication)
 
         struct CacheCompare
         {
@@ -148,42 +132,23 @@ namespace openpeer
         typedef message::peer_common::PeerPublishNotifyResult PeerPublishNotifyResult;
         typedef message::peer_common::PeerPublishNotifyResultPtr PeerPublishNotifyResultPtr;
 
-        class PeerCache;
-        typedef boost::shared_ptr<PeerCache> PeerCachePtr;
-        typedef boost::weak_ptr<PeerCache> PeerCacheWeakPtr;
+        ZS_DECLARE_CLASS_PTR(PeerCache)
+        ZS_DECLARE_CLASS_PTR(Publisher)
+        ZS_DECLARE_CLASS_PTR(Fetcher)
+        ZS_DECLARE_CLASS_PTR(Remover)
+        ZS_DECLARE_CLASS_PTR(SubscriptionLocal)
+        ZS_DECLARE_CLASS_PTR(PeerSubscriptionIncoming)
+        ZS_DECLARE_CLASS_PTR(PeerSubscriptionOutgoing)
+
         friend class PeerCache;
+        friend class Publisher;
+        friend class Fetcher;
+        friend class Remover;
+        friend class SubscriptionLocal;
+        friend class PeerSubscriptionIncoming;
+        friend class PeerSubscriptionOutgoing;
 
         typedef std::map<PeerSourcePtr, PeerCachePtr, CacheCompare> CachedPeerSourceMap;
-
-        class Publisher;
-        typedef boost::shared_ptr<Publisher> PublisherPtr;
-        typedef boost::weak_ptr<Publisher> PublisherWeakPtr;
-        friend class Publisher;
-
-        class Fetcher;
-        typedef boost::shared_ptr<Fetcher> FetcherPtr;
-        typedef boost::weak_ptr<Fetcher> FetcherWeakPtr;
-        friend class Fetcher;
-
-        class Remover;
-        typedef boost::shared_ptr<Remover> RemoverPtr;
-        typedef boost::weak_ptr<Remover> RemoverWeakPtr;
-        friend class Remover;
-
-        class SubscriptionLocal;
-        typedef boost::shared_ptr<SubscriptionLocal> SubscriptionLocalPtr;
-        typedef boost::weak_ptr<SubscriptionLocal> SubscriptionLocalWeakPtr;
-        friend class SubscriptionLocal;
-
-        class PeerSubscriptionIncoming;
-        typedef boost::shared_ptr<PeerSubscriptionIncoming> PeerSubscriptionIncomingPtr;
-        typedef boost::weak_ptr<PeerSubscriptionIncoming> PeerSubscriptionIncomingWeakPtr;
-        friend class PeerSubscriptionIncoming;
-
-        class PeerSubscriptionOutgoing;
-        typedef boost::shared_ptr<PeerSubscriptionOutgoing> PeerSubscriptionOutgoingPtr;
-        typedef boost::weak_ptr<PeerSubscriptionOutgoing> PeerSubscriptionOutgoingWeakPtr;
-        friend class PeerSubscriptionOutgoing;
 
         typedef PUID SubscriptionLocationID;
         typedef std::map<SubscriptionLocationID, SubscriptionLocalPtr> SubscriptionLocalMap;

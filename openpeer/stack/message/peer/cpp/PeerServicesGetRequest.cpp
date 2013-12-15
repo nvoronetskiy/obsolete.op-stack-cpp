@@ -60,7 +60,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerServicesGetRequestPtr PeerServicesGetRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<PeerServicesGetRequest>(message);
+          return dynamic_pointer_cast<PeerServicesGetRequest>(message);
         }
 
         //---------------------------------------------------------------------

@@ -90,13 +90,9 @@ namespace openpeer
         friend class FinderConnectionManager;
         friend class Channel;
 
-        typedef IFinderRelayChannelForFinderConnection UseFinderRelayChannel;
-        typedef shared_ptr<UseFinderRelayChannel> UseFinderRelayChannelPtr;
-        typedef weak_ptr<UseFinderRelayChannel> UseFinderRelayChannelWeakPtr;
+        ZS_DECLARE_TYPEDEF_PTR(IFinderRelayChannelForFinderConnection, UseFinderRelayChannel)
 
-        class Channel;
-        typedef boost::shared_ptr<Channel> ChannelPtr;
-        typedef boost::weak_ptr<Channel> ChannelWeakPtr;
+        ZS_DECLARE_CLASS_PTR(Channel)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
         typedef std::map<ChannelNumber, ChannelPtr> ChannelMap;

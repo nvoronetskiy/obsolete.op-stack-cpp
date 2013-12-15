@@ -109,13 +109,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::convert(IPeerSubscriptionPtr subscription)
       {
-        return boost::dynamic_pointer_cast<PeerSubscription>(subscription);
+        return dynamic_pointer_cast<PeerSubscription>(subscription);
       }
 
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::convert(ForAccountPtr subscription)
       {
-        return boost::dynamic_pointer_cast<PeerSubscription>(subscription);
+        return dynamic_pointer_cast<PeerSubscription>(subscription);
       }
 
       //-----------------------------------------------------------------------

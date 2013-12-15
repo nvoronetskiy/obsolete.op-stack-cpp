@@ -178,13 +178,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderRelayChannelPtr FinderRelayChannel::convert(IFinderRelayChannelPtr channel)
       {
-        return boost::dynamic_pointer_cast<FinderRelayChannel>(channel);
+        return dynamic_pointer_cast<FinderRelayChannel>(channel);
       }
 
       //-----------------------------------------------------------------------
       FinderRelayChannelPtr FinderRelayChannel::convert(ForFinderConnectionPtr channel)
       {
-        return boost::dynamic_pointer_cast<FinderRelayChannel>(channel);
+        return dynamic_pointer_cast<FinderRelayChannel>(channel);
       }
 
       //-----------------------------------------------------------------------

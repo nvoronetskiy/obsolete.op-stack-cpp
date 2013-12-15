@@ -51,7 +51,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         NamespaceGrantWindowRequestPtr NamespaceGrantWindowRequest::convert(MessagePtr message)
         {
-          return boost::dynamic_pointer_cast<NamespaceGrantWindowRequest>(message);
+          return dynamic_pointer_cast<NamespaceGrantWindowRequest>(message);
         }
 
         //---------------------------------------------------------------------

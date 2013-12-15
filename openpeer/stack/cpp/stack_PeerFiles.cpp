@@ -60,8 +60,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      PeerFiles::PeerFiles() :
-        mID(zsLib::createPUID())
+      PeerFiles::PeerFiles()
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -78,7 +77,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilesPtr PeerFiles::convert(IPeerFilesPtr object)
       {
-        return boost::dynamic_pointer_cast<PeerFiles>(object);
+        return dynamic_pointer_cast<PeerFiles>(object);
       }
 
       //-----------------------------------------------------------------------

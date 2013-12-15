@@ -201,7 +201,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       StackPtr Stack::convert(IStackPtr stack)
       {
-        return boost::dynamic_pointer_cast<Stack>(stack);
+        return dynamic_pointer_cast<Stack>(stack);
       }
 
       //-----------------------------------------------------------------------
