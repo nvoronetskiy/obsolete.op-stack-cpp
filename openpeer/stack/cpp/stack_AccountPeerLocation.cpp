@@ -2351,10 +2351,10 @@ namespace openpeer
           ZS_LOG_TRACE(log("listing for incoming RUDP channels"))
 
           mRUDPSocketSession = IRUDPTransport::listen(
-                                                             UseStack::queueServices(),
-                                                             mSocketSession,
-                                                             mThisWeak.lock()
-                                                             );
+                                                      UseStack::queueServices(),
+                                                      mSocketSession,
+                                                      mThisWeak.lock()
+                                                      );
         }
 
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();
