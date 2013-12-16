@@ -38,7 +38,7 @@
 #include <openpeer/stack/IAccount.h>
 #include <openpeer/stack/ILocation.h>
 
-#include <openpeer/services/IRUDPICESocketSession.h>
+#include <openpeer/services/IRUDPTransport.h>
 #include <openpeer/services/IRUDPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
 
@@ -167,7 +167,7 @@ namespace openpeer
                                   public IWakeDelegate,
                                   public IFinderRelayChannelDelegate,
                                   public IICESocketDelegate,
-                                  public IRUDPICESocketSessionDelegate,
+                                  public IRUDPTransportDelegate,
                                   public services::IRUDPMessagingDelegate,
                                   public services::ITransportStreamWriterDelegate,
                                   public services::ITransportStreamReaderDelegate,
@@ -317,15 +317,15 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark AccountPeerLocation => IRUDPICESocketSessionDelegate
+        #pragma mark AccountPeerLocation => IRUDPTransportDelegate
         #pragma mark
 
-        virtual void onRUDPICESocketSessionStateChanged(
-                                                        IRUDPICESocketSessionPtr session,
-                                                        RUDPICESocketSessionStates state
-                                                        );
+        virtual void onRUDPTransportStateChanged(
+                                                 IRUDPTransportPtr session,
+                                                 RUDPTransportStates state
+                                                 );
 
-        virtual void onRUDPICESocketSessionChannelWaiting(IRUDPICESocketSessionPtr session);
+        virtual void onRUDPTransportChannelWaiting(IRUDPTransportPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -488,8 +488,8 @@ namespace openpeer
 
         IICESocketSubscriptionPtr mSocketSubscription;
         IICESocketSessionPtr mSocketSession;   // this will only become valid when a connection is establishing
-        IRUDPICESocketSessionPtr mRUDPSocketSession;
-        IRUDPICESocketSessionSubscriptionPtr mRUDPSocketSessionSubscription; // REMOVE
+        IRUDPTransportPtr mRUDPSocketSession;
+        IRUDPTransportSubscriptionPtr mRUDPSocketSessionSubscription; // REMOVE
         IRUDPMessagingPtr mMessaging;
         ITransportStreamReaderPtr mMessagingReceiveStream;
         ITransportStreamWriterPtr mMessagingSendStream;

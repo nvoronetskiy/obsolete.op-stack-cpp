@@ -700,23 +700,23 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark AccountPeerLocation => IRUDPICESocketSessionDelegate
+      #pragma mark AccountPeerLocation => IRUDPTransportDelegate
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void AccountPeerLocation::onRUDPICESocketSessionStateChanged(
-                                                                   IRUDPICESocketSessionPtr session,
-                                                                   RUDPICESocketSessionStates state
-                                                                   )
+      void AccountPeerLocation::onRUDPTransportStateChanged(
+                                                            IRUDPTransportPtr session,
+                                                            RUDPTransportStates state
+                                                            )
       {
-        ZS_LOG_DEBUG(log("on RUDP ICE socket session state changed") + ZS_PARAM("session", session->getID()) + ZS_PARAM("state", IRUDPICESocketSession::toString(state)))
+        ZS_LOG_DEBUG(log("on RUDP ICE socket session state changed") + ZS_PARAM("session", session->getID()) + ZS_PARAM("state", IRUDPTransport::toString(state)))
 
         AutoRecursiveLock lock(getLock());
         step();
       }
 
       //---------------------------------------------------------------------
-      void AccountPeerLocation::onRUDPICESocketSessionChannelWaiting(IRUDPICESocketSessionPtr session)
+      void AccountPeerLocation::onRUDPTransportChannelWaiting(IRUDPTransportPtr session)
       {
         ZS_LOG_DEBUG(log("received RUDP channel waiting") + ZS_PARAM("sessionID", session->getID()))
 
@@ -1309,7 +1309,7 @@ namespace openpeer
             ZS_LOG_DEBUG(log("requesting RUDP socket session shutdown"))
             mRUDPSocketSession->shutdown();
 
-            if (IRUDPICESocketSession::RUDPICESocketSessionState_Shutdown != mRUDPSocketSession->getState()) {
+            if (IRUDPTransport::RUDPTransportState_Shutdown != mRUDPSocketSession->getState()) {
               ZS_LOG_DEBUG(log("waiting for RUDP ICE socket session to shutdown"))
               return;
             }
@@ -1622,7 +1622,7 @@ namespace openpeer
           return false;
         }
 
-        if (IRUDPICESocketSession::RUDPICESocketSessionState_Ready != mRUDPSocketSession->getState()) {
+        if (IRUDPTransport::RUDPTransportState_Ready != mRUDPSocketSession->getState()) {
           ZS_LOG_TRACE(log("waiting for RUDP ICE socket session to complete"))
           return false;
         }
@@ -1898,20 +1898,20 @@ namespace openpeer
 
         if (mRUDPSocketSession) {
           switch (mRUDPSocketSession->getState(&error, &reason)) {
-            case IRUDPICESocketSession::RUDPICESocketSessionState_Pending:
+            case IRUDPTransport::RUDPTransportState_Pending:
             {
               ZS_LOG_TRACE(log("RUDP socket session may become ready yet"))
               foundPeer = true;
               break;
             }
-            case IRUDPICESocketSession::RUDPICESocketSessionState_Ready:
+            case IRUDPTransport::RUDPTransportState_Ready:
             {
               ZS_LOG_TRACE(log("RUDP socket session is ready (but have to check if messaging is ready)"))
               foundPeer = true;
               break;
             }
-            case IRUDPICESocketSession::RUDPICESocketSessionState_ShuttingDown:
-            case IRUDPICESocketSession::RUDPICESocketSessionState_Shutdown:
+            case IRUDPTransport::RUDPTransportState_ShuttingDown:
+            case IRUDPTransport::RUDPTransportState_Shutdown:
             {
               ZS_LOG_WARNING(Trace, log("rudp socket session is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               peerFailed = true;
@@ -2350,7 +2350,7 @@ namespace openpeer
             (!mRUDPSocketSession)) {
           ZS_LOG_TRACE(log("listing for incoming RUDP channels"))
 
-          mRUDPSocketSession = IRUDPICESocketSession::listen(
+          mRUDPSocketSession = IRUDPTransport::listen(
                                                              UseStack::queueServices(),
                                                              mSocketSession,
                                                              mThisWeak.lock()
