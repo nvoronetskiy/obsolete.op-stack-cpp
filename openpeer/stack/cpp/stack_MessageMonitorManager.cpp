@@ -152,24 +152,30 @@ namespace openpeer
         PUID monitorID = monitor.getID();
         String requestID = monitor.getMonitoredMessageID();
 
-        ZS_LOG_TRACE(log("remove monitoring of request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("request id", requestID))
+        ZS_LOG_TRACE(log("remove monitoring of request ID") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("message id", requestID))
 
         MonitorsMap::iterator found = mMonitors.find(requestID);
-        ZS_THROW_INVALID_ASSUMPTION_IF(found == mMonitors.end())
+        if (found == mMonitors.end()) {
+          ZS_LOG_TRACE(log("already removed all monitors for this message id"))
+          return;
+        }
 
         MonitorMapPtr monitors = (*found).second;
         MonitorMap::iterator foundMonitor = monitors->find(monitorID);
 
-        ZS_THROW_INVALID_ASSUMPTION_IF(foundMonitor == monitors->end())
+        if (foundMonitor == monitors->end()) {
+          ZS_LOG_TRACE(log("already removed monitor for this message"))
+          return;
+        }
 
         monitors->erase(foundMonitor);
 
         if (monitors->size() > 0) {
-          ZS_LOG_TRACE(log("still more monitors active - continue to monitor request ID"))
+          ZS_LOG_TRACE(log("still more monitors active - continue to monitor request ID") + ZS_PARAM("size", monitors->size()))
           return;
         }
 
-        ZS_LOG_TRACE(log("still more monitors active - continue to monitor request ID"))
+        ZS_LOG_TRACE(log("no more monitors active (stop monitoring this message id)"))
         mMonitors.erase(found);
       }
 
@@ -196,7 +202,10 @@ namespace openpeer
 
         String id = message->messageID();
         MonitorsMap::iterator found = mMonitors.find(id);
-        if (found == mMonitors.end()) return false;
+        if (found == mMonitors.end()) {
+          ZS_LOG_TRACE(log("no monitors watching this message") + ZS_PARAM("message id", id))
+          return false;
+        }
 
         MonitorMapPtr monitors = (*found).second;
 
@@ -206,16 +215,28 @@ namespace openpeer
         {
           MonitorMap::iterator current = iter; ++iter;
 
+          MonitorID monitorID = (*current).first;
           UseMessageMonitorPtr monitor = (*current).second.lock();
           if (!monitor) {
+            ZS_LOG_WARNING(Debug, log("monitor is gone") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("message id", id))
             monitors->erase(current);
             continue;
           }
 
-          handled = handled || monitor->handleMessage(message);
+          bool monitorDidHandle = monitor->handleMessage(message);
+          handled = handled || monitorDidHandle;
+
+          if (!monitorDidHandle) {
+            ZS_LOG_TRACE(log("monitor did not handle request") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("message id", id))
+            continue;
+          }
+
+          ZS_LOG_TRACE(log("monitor handled request") + ZS_PARAM("monitor id", monitorID) + ZS_PARAM("message id", id))
+          monitors->erase(current);
         }
 
         if (monitors->size() < 1) {
+          ZS_LOG_TRACE(log("all monitors have completed monitoring this message") + ZS_PARAM("message id", id))
           mMonitors.erase(found);
         }
 

@@ -128,7 +128,7 @@ namespace openpeer
         //          information arrives, it's not possible to know which
         //          Diffie-Hellman key was used in the key agreement.
         virtual void setIncomingContext(
-                                        const char *contextID,
+                                        const char *localContextID,
                                         IDHPrivateKeyPtr localPrivateKey,
                                         IDHPublicKeyPtr localPublicKey,
                                         IPeerPtr remotePeer

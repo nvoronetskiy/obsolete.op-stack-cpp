@@ -1267,7 +1267,7 @@ namespace openpeer
                 ZS_LOG_TRACE(log("this location is not responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
               }
 
-              ZS_LOG_DEBUG(log("this location is responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
+              ZS_LOG_DEBUG(log("found location is responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
               peerLocation->notifyIncomingRelayChannel(relayChannel, receiveStream, sendStream);
               return;
             }
@@ -1313,8 +1313,6 @@ namespace openpeer
 
         ZS_LOG_DETAIL(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountPeerLocation::toDebug(peerLocation))
 
-        Time tick = zsLib::now();
-
         UseLocationPtr location = peerLocation->getLocation();
 
         ZS_LOG_DEBUG(log("notified about peer location") + UseLocation::toDebug(location))
@@ -1341,11 +1339,6 @@ namespace openpeer
         notifySubscriptions(location, toLocationConnectionState(state));
 
         switch (state) {
-          case IAccount::AccountState_Ready:
-          {
-            peerInfo->mPreventCrazyRefindNextTime = false;
-            break;
-          }
           case IAccount::AccountState_Shutdown:
           {
             bool findAgain = peerLocation->shouldRefindNow();
@@ -1357,19 +1350,7 @@ namespace openpeer
             if (findAgain) {
               ZS_LOG_DETAIL(log("need to refind peer at next opportunity") + PeerInfo::toDebug(peerInfo) + UseLocation::toDebug(location))
               peerInfo->mFindAtNextPossibleMoment = true;
-            }
-
-            if (peerInfo->mLocations.size() < 1) {
-              if (peerInfo->mPreventCrazyRefindNextTime) {
-                // prevent the peer from going into a crazy finding/connecting/remote side closed/find again loop
-                if (peerInfo->mNextScheduledFind < tick) {
-                  ZS_LOG_WARNING(Detail, log("preventing crazy finding/connecting/remote side refused/find again loop for peer"))
-                  peerInfo->findTimeScheduleNext();
-                }
-              } else {
-                ZS_LOG_DETAIL(log("will prevent crazy finding/connecting/remote side refused/find again loop for peer next time"))
-                peerInfo->mPreventCrazyRefindNextTime = true;
-              }
+              peerInfo->findTimeReset();
             }
             break;
           }
@@ -1886,8 +1867,8 @@ namespace openpeer
             PeerInfoPtr &peerInfo = (*iter).second;
 
             if (peerInfo->mPeerFindMonitor) {
-              setFindState(*(peerInfo.get()), IPeer::PeerFindState_Completed);
-              setFindState(*(peerInfo.get()), IPeer::PeerFindState_Idle);
+              setFindState(*peerInfo, IPeer::PeerFindState_Completed);
+              setFindState(*peerInfo, IPeer::PeerFindState_Idle);
             }
 
             // after this point all subscriptions are considered "dead" and no new ones are allowed to be created
@@ -2602,7 +2583,7 @@ namespace openpeer
         }
 
         if (peerInfo->mTotalSubscribers > 0) {
-          ZS_LOG_DEBUG(log("peer has subscriptions thus no need to shutdown") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("peer has subscriptions thus no need to shutdown") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -2665,7 +2646,7 @@ namespace openpeer
 
         Time tick = zsLib::now();
 
-        ZS_LOG_DEBUG(log("checking to see which locations should fire a keep alive timer") + PeerInfo::toDebug(peerInfo))
+        ZS_LOG_TRACE(log("checking to see which locations should fire a keep alive timer") + PeerInfo::toDebug(peerInfo))
 
         for (PeerInfo::PeerLocationMap::iterator locationIter = peerInfo->mLocations.begin(); locationIter != peerInfo->mLocations.end(); ) {
           PeerInfo::PeerLocationMap::iterator locationCurrentIter = locationIter;
@@ -2755,8 +2736,9 @@ namespace openpeer
         request->peerFiles(peerFiles);
 
         peerInfo->mPeerFindMonitor = mFinder->sendRequest(IMessageMonitorResultDelegate<PeerLocationFindResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS));
+        peerInfo->findTimeScheduleNext(); // schedule the next find after this one (in case this find fails)
 
-        setFindState(*(peerInfo.get()), IPeer::PeerFindState_Finding);
+        setFindState(*peerInfo, IPeer::PeerFindState_Finding);
       }
 
       //-----------------------------------------------------------------------
@@ -2775,29 +2757,8 @@ namespace openpeer
           peerInfo->mPeerFindMonitor.reset();
           peerInfo->mPeerFindBecauseOfLocations.clear();  // all hints are effectively destroyed now since we've completed the search
 
-          setFindState(*(peerInfo.get()), IPeer::PeerFindState_Completed);
-          setFindState(*(peerInfo.get()), IPeer::PeerFindState_Idle);
-
-          bool foundValid = false;
-
-          // scope: check to see which of these has not received candidate information and close the location since we could not contact to this location
-          {
-            for (PeerInfo::PeerLocationMap::iterator iterLocation = peerInfo->mLocations.begin(); iterLocation != peerInfo->mLocations.end(); ++iterLocation) {
-              UseAccountPeerLocationPtr &peerLocation = (*iterLocation).second;
-              if (!peerLocation->hasReceivedCandidateInformation()) {
-                ZS_LOG_DEBUG(log("shutting down peer location as did not receive ICE candidates") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
-                peerLocation->shutdown();
-              } else {
-                ZS_LOG_DEBUG(log("find location is valid") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
-                foundValid = true;
-                peerInfo->findTimeReset();
-              }
-            }
-          }
-
-          if (!foundValid) {
-            peerInfo->findTimeScheduleNext();
-          }
+          setFindState(*peerInfo, IPeer::PeerFindState_Completed);
+          setFindState(*peerInfo, IPeer::PeerFindState_Idle);
         }
       }
 
@@ -2908,7 +2869,6 @@ namespace openpeer
         pThis->findTimeReset();
         pThis->mCurrentFindState = IPeer::PeerFindState_Idle;
         pThis->mTotalSubscribers = 0;
-        pThis->mPreventCrazyRefindNextTime = false;
         return pThis;
       }
 
@@ -2957,7 +2917,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "subscribers", mTotalSubscribers);
         IHelper::debugAppend(resultEl, "next find", mNextScheduledFind);
         IHelper::debugAppend(resultEl, "last duration", mLastScheduleFindDuration.total_milliseconds());
-        IHelper::debugAppend(resultEl, "prevent crazy refind", mPreventCrazyRefindNextTime);
 
         return resultEl;
       }

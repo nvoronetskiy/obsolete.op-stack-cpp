@@ -75,6 +75,8 @@
 
 #define OPENPEER_STACK_ACCOUNT_PEER_LOCATION_BACKGROUNDING_TIMEOUT_IN_SECONDS (OPENPEER_STACK_ACCOUNT_PEER_LOCATION_EXPECT_SESSION_DATA_IN_SECONDS + 40)
 
+#define OPENPEER_STACK_ACCOUNT_PEER_LOCATION_MIN_CONNECTION_TIME_NEEDED_TO_REFIND_IN_SECONDS (60)
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 
@@ -172,8 +174,8 @@ namespace openpeer
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
 
-        mLocalContext(UseLocation::getForLocal(outer)->getLocationID()), // must be set to "our" location ID
-        mRemoteContext(request->context()),                                                   // whatever the remote party claims is the context
+        mLocalContext(UseLocation::getForLocal(outer)->getLocationID()),  // must be set to "our" location ID
+        mRemoteContext(request->context()),                               // whatever the remote party claims is the context
 
         mDHLocalPrivateKey(localPrivateKey),
         mDHLocalPublicKey(localPublicKey),
@@ -339,6 +341,22 @@ namespace openpeer
       bool AccountPeerLocation::shouldRefindNow() const
       {
         AutoRecursiveLock lock(getLock());
+
+        if ((mHadConnection) &&
+            (Time() != mIdentifyTime)) {
+          Time tick = zsLib::now();
+
+          Duration timeConnected;
+          if (tick > mIdentifyTime) {
+            timeConnected = tick - mIdentifyTime;
+          }
+
+          if (timeConnected > Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_MIN_CONNECTION_TIME_NEEDED_TO_REFIND_IN_SECONDS)) {
+            ZS_LOG_DEBUG(log("allowing auto-refind now because connection time exceeded minimum connection time before refind is allowed") + ZS_PARAM("connected time", mIdentifyTime) + ZS_PARAM("now", tick) + ZS_PARAM("connected time (s)", timeConnected))
+            return true;
+          }
+          ZS_LOG_WARNING(Detail, log("connected but it did not exceed time needed before auto-refind would be allowed") + ZS_PARAM("connected time", mIdentifyTime) + ZS_PARAM("now", tick) + ZS_PARAM("connected time (s)", timeConnected))
+        }
         return mShouldRefindNow;
       }
 
@@ -599,6 +617,10 @@ namespace openpeer
 
         mIncomingRelaySendStream = sendStream->getWriter();
         mIncomingRelaySendStreamSubscription = mIncomingRelaySendStream->subscribe(mThisWeak.lock());
+
+        mIncomingRelayReceiveStream->notifyReaderReadyToRead();
+
+        mIncomingRelayChannel->setIncomingContext(mLocalContext, mDHLocalPrivateKey, mDHLocalPublicKey, Peer::convert(mPeer));
 
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();
       }
@@ -909,7 +931,7 @@ namespace openpeer
                                                                    PeerLocationFindNotifyPtr notify
                                                                    )
       {
-        ZS_LOG_DEBUG(log("handing peer location find notify") + ZS_PARAM("monitor", monitor->getID()))
+        ZS_LOG_DEBUG(log("handing peer location find notify") + ZS_PARAM("monitor", monitor ? monitor->getID() : 0))
 
         AutoRecursiveLock lock(getLock());
 
@@ -993,6 +1015,12 @@ namespace openpeer
         ZS_LOG_DEBUG(log("handing peer location find notify time out") + ZS_PARAM("monitor", monitor->getID()))
 
         AutoRecursiveLock lock(getLock());
+
+        if (!mHadConnection) {
+          ZS_LOG_WARNING(Detail, log("failed to establish any kind of connection in a reasonable time frame so going to shutdown peer location"))
+          cancel();
+          return;
+        }
 
         if (!mSocketSession) {
           ZS_LOG_WARNING(Detail, log("issued find request and received a result but do not have a socket session yet (thus time to give up on this location and shutdown)"))
@@ -1220,7 +1248,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "incoming relay channel receive stream subscription", (bool)mIncomingRelayReceiveStreamSubscription);
         IHelper::debugAppend(resultEl, "incoming relay channel send stream subscription", (bool)mIncomingRelaySendStreamSubscription);
 
-        IHelper::debugAppend(resultEl, "had connection", mHadConnection);
+        IHelper::debugAppend(resultEl, "had any connection", mHadConnection);
+        IHelper::debugAppend(resultEl, "had peer connection", mHadPeerConnection);
 
         IHelper::debugAppend(resultEl, "identify time", mIdentifyTime);
 
@@ -1457,7 +1486,7 @@ namespace openpeer
       bool AccountPeerLocation::stepOutgoingRelayChannel()
       {
         if (!isCreatedFromIncomingFind()) {
-          ZS_LOG_TRACE(log("only an location receiving find request will open an outgoing relay channel"))
+          ZS_LOG_TRACE(log("only a location receiving find request will open an outgoing relay channel"))
           return true;
         }
 
@@ -1834,8 +1863,6 @@ namespace openpeer
           }
         }
 
-        // we are now completely reliant upon the RUDP channel's success
-
         if (mSocketSession) {
           switch (mSocketSession->getState(&error, &reason)) {
             case IICESocketSession::ICESocketSessionState_Pending:
@@ -1925,8 +1952,9 @@ namespace openpeer
               break;
             }
             case IMessageLayerSecurityChannel::SessionState_Connected:  {
-              foundPeer = ready = true;
               ZS_LOG_TRACE(log("MLS channel is ready thus communication channel is available"))
+              foundPeer = ready = true;
+              get(mHadPeerConnection) = true;
               break;
             }
             case IMessageLayerSecurityChannel::SessionState_Shutdown: {
@@ -1937,35 +1965,45 @@ namespace openpeer
           }
         }
 
-        if (peerFailed) {
-          ZS_LOG_WARNING(Detail, log("something went wrong in peer connection thus must shutdown (not going to continue to work via relay even if it is available)"))
-          cancel();
-          return false;
-        }
-
         if (ready) {
           ZS_LOG_TRACE(log("at least one mechanism is ready to send"))
           get(mHadConnection) = true;
           return true;
         }
 
+        if (mHadPeerConnection) {
+          if (peerFailed) {
+            ZS_LOG_WARNING(Detail, log("something went wrong in peer connection thus must shutdown (not going to continue via relay even if it is an option)"))
+            cancel();
+            return false;
+          }
+        }
+
         if (foundPeer) {
-          ZS_LOG_TRACE(log("found a peer connection but it's not ready so give it time to see if it will connect"))
-          return false;
+          if (!peerFailed) {
+            ZS_LOG_TRACE(log("found a peer connection but it's not ready so give it time to see if it will connect"))
+            return false;
+          }
         }
 
         if (foundRelay) {
+          if ((incomingRelayFailed) || (outgoingRelayFailed)) {
+            ZS_LOG_WARNING(Detail, log("did not find any relay or peer connection available and a failure is one of the relay channels (thus must shutdown)"))
+            cancel();
+            return false;
+          }
+          
           ZS_LOG_TRACE(log("found a relay connection thus give it time to see if it will connect"))
           return false;
         }
 
-        if ((incomingRelayFailed) || (outgoingRelayFailed)) {
-          ZS_LOG_WARNING(Detail, log("did not find any relay or peer connection available and a failure is one of the relay channels (thus must shutdown)"))
+        if (peerFailed) {
+          ZS_LOG_WARNING(Detail, log("something went wrong in peer connection thus must shutdown (no relay available to continue the connection)"))
           cancel();
           return false;
         }
 
-        ZS_LOG_TRACE(log("did not find a relay channel not peer connection so give it time to see if relay channel will arrive"))
+        ZS_LOG_TRACE(log("did not find a relay channel nor a peer connection so give it time to see if relay channel will arrive"))
         return false;
       }
 
@@ -1981,6 +2019,7 @@ namespace openpeer
 
         if (candidatesVersion == mLastCandidateVersionSent) {
           ZS_LOG_TRACE(log("candidates have not changed - nothing to notify at this time"))
+          return true;
         }
 
         ZS_LOG_DEBUG(log("candidates have changed since last reported (thus notify another peer location find)") + ZS_PARAM("candidates version", candidatesVersion) + ZS_PARAM("last send version", mLastCandidateVersionSent))
@@ -2020,6 +2059,7 @@ namespace openpeer
         notify->final(selfLocationInfo->mCandidatesFinal);
         notify->locationInfo(selfLocationInfo);
         notify->peerFiles(outer->getPeerFiles());
+        notify->validated(mFindRequest->didVerifySignature());
 
         mLastCandidateVersionSent = selfLocationInfo->mCandidatesVersion;
 
@@ -2068,6 +2108,11 @@ namespace openpeer
 
         if (Time() != mIdentifyTime) {
           ZS_LOG_TRACE(log("identify already sent (or remote party validated this peer already)"))
+          return true;
+        }
+
+        if (!mSocketSession) {
+          ZS_LOG_TRACE(log("only identify self after received incoming peer-location find notification"))
           return true;
         }
 
@@ -2301,18 +2346,15 @@ namespace openpeer
           }
         }
 
-        if (isCreatedFromIncomingFind()) {
-          if (!mRUDPSocketSession) {
-            if (mSocketSession) {
-              ZS_LOG_TRACE(log("listing for incoming RUDP channels on location that received the find request"))
+        if ((mSocketSession) &&
+            (!mRUDPSocketSession)) {
+          ZS_LOG_TRACE(log("listing for incoming RUDP channels"))
 
-              mRUDPSocketSession = IRUDPICESocketSession::listen(
-                                                                 UseStack::queueServices(),
-                                                                 mSocketSession,
-                                                                 mThisWeak.lock()
-                                                                 );
-            }
-          }
+          mRUDPSocketSession = IRUDPICESocketSession::listen(
+                                                             UseStack::queueServices(),
+                                                             mSocketSession,
+                                                             mThisWeak.lock()
+                                                             );
         }
 
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();

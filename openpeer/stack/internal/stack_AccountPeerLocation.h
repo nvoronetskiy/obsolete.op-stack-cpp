@@ -489,7 +489,7 @@ namespace openpeer
         IICESocketSubscriptionPtr mSocketSubscription;
         IICESocketSessionPtr mSocketSession;   // this will only become valid when a connection is establishing
         IRUDPICESocketSessionPtr mRUDPSocketSession;
-        IRUDPICESocketSessionSubscriptionPtr mRUDPSocketSessionSubscription;
+        IRUDPICESocketSessionSubscriptionPtr mRUDPSocketSessionSubscription; // REMOVE
         IRUDPMessagingPtr mMessaging;
         ITransportStreamReaderPtr mMessagingReceiveStream;
         ITransportStreamWriterPtr mMessagingSendStream;
@@ -522,6 +522,7 @@ namespace openpeer
         ITransportStreamWriterSubscriptionPtr mIncomingRelaySendStreamSubscription;
 
         AutoBool mHadConnection;
+        AutoBool mHadPeerConnection;
 
         Time mIdentifyTime;
 

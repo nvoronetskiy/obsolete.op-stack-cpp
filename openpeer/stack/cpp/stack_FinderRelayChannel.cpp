@@ -158,9 +158,9 @@ namespace openpeer
           //       do not know the local public key so we must include those
           //       details in the keying material sent out.
           mMLSChannel->setSendKeyingEncoding(
-                                             mConnectInfo.mLocalPrivateKey,
-                                             mConnectInfo.mRemotePublicKey,
-                                             mConnectInfo.mLocalPublicKey
+                                             mConnectInfo.mDHLocalPrivateKey,
+                                             mConnectInfo.mDHRemotePublicKey,
+                                             mConnectInfo.mDHLocalPublicKey
                                              );
         }
 
@@ -242,9 +242,9 @@ namespace openpeer
         pThis->mConnectInfo.mRelayDomain = String(relayDomain);
         pThis->mConnectInfo.mRelayAccessToken = String(relayAccessToken);
         pThis->mConnectInfo.mRelayAccessSecretProof = String(relayAccessSecretProof);
-        pThis->mConnectInfo.mLocalPrivateKey = localPrivateKey;
-        pThis->mConnectInfo.mLocalPublicKey = localPublicKey;
-        pThis->mConnectInfo.mRemotePublicKey = remotePublicKey;
+        pThis->mConnectInfo.mDHLocalPrivateKey = localPrivateKey;
+        pThis->mConnectInfo.mDHLocalPublicKey = localPublicKey;
+        pThis->mConnectInfo.mDHRemotePublicKey = remotePublicKey;
 
         pThis->init();
 
@@ -330,18 +330,18 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void FinderRelayChannel::setIncomingContext(
-                                                  const char *contextID,
+                                                  const char *localContextID,
                                                   IDHPrivateKeyPtr localPrivateKey,
                                                   IDHPublicKeyPtr localPublicKey,
                                                   IPeerPtr remotePeer
                                                   )
       {
-        ZS_THROW_INVALID_ARGUMENT_IF(!contextID)
+        ZS_THROW_INVALID_ARGUMENT_IF(!localContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!localPrivateKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!localPublicKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!remotePeer)
 
-        ZS_LOG_DEBUG(log("set incoming context") + ZS_PARAM("context id", contextID) + ZS_PARAM("local private key", localPrivateKey->getID()) + ZS_PARAM("local public key", localPublicKey->getID()) + ZS_PARAM("remote peer", IPeer::toDebug(remotePeer)))
+        ZS_LOG_DEBUG(log("set incoming context") + ZS_PARAM("context id", localContextID) + ZS_PARAM("local private key", localPrivateKey->getID()) + ZS_PARAM("local public key", localPublicKey->getID()) + ZS_PARAM("remote peer", IPeer::toDebug(remotePeer)))
 
         AutoRecursiveLock lock(getLock());
 
@@ -350,15 +350,15 @@ namespace openpeer
           return;
         }
 
-        mMLSChannel->setLocalContextID(contextID);
+        mMLSChannel->setLocalContextID(localContextID);
 
         // NOTE: we don't know the remote public key yet in this case
         mMLSChannel->setReceiveKeyingDecoding(localPrivateKey, localPublicKey);
 
-        IPeerFilePublicPtr peerFilePublic = remotePeer->getPeerFilePublic();
-        ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
-
-        mMLSChannel->setSendKeyingEncoding(peerFilePublic->getPublicKey());
+        mIncomingInfo.mLocalContextID = String(localContextID);
+        mIncomingInfo.mDHLocalPrivateKey = localPrivateKey;
+        mIncomingInfo.mDHLocalPublicKey = localPublicKey;
+        mIncomingInfo.mRemotePeer = remotePeer;
 
         step();
       }
@@ -496,90 +496,9 @@ namespace openpeer
           return;
         }
 
-        ZS_THROW_BAD_STATE_IF(channel != mMLSChannel)
-
-        UseAccountPtr account = mAccount.lock();
-        if (!account) {
-          ZS_LOG_WARNING(Detail, log("account is gone"))
+        if (channel != mMLSChannel) {
+          ZS_LOG_WARNING(Detail, log("notified state change on obsolete MLS channel") + ZS_PARAM("mls channel ID", channel->getID()) + ZS_PARAM("state", IMessageLayerSecurityChannel::toString(state)))
           return;
-        }
-
-        IPeerFilesPtr peerFiles = account->getPeerFiles();
-        if (!peerFiles) {
-          ZS_LOG_WARNING(Detail, log("peer files are missing"))
-          return;
-        }
-
-        IPeerFilePrivatePtr peerFilePrivate = peerFiles->getPeerFilePrivate();
-        IPeerFilePublicPtr peerFilePublic = peerFiles->getPeerFilePublic();
-
-        ZS_THROW_INVALID_ASSUMPTION_IF(!peerFilePrivate)
-        ZS_THROW_INVALID_ASSUMPTION_IF(!peerFilePublic)
-
-        if (IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation == state) {
-          if (!mNotifiedNeedsContext) {
-            ZS_LOG_DEBUG(log("have not notified needs context"))
-            if ((mMLSChannel->getRemoteContextID().hasData()) ||
-                (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey())) {
-
-              // have remote context ID, but have we set local context ID?
-              ZS_LOG_DEBUG(log("have remote context or receive keying material needs to be signed") + ZS_PARAM("remote context", mMLSChannel->getRemoteContextID()))
-
-              if (mMLSChannel->getLocalContextID().isEmpty()) {
-                ZS_LOG_DEBUG(log("missing local context"))
-
-                mSubscriptions.delegate()->onFinderRelayChannelNeedsContext(mThisWeak.lock());
-                get(mNotifiedNeedsContext) = true;
-              }
-            }
-          }
-
-          if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
-            ZS_LOG_DEBUG(log("needs receive keying decoding private key") + IPeerFiles::toDebug(peerFiles))
-
-            mMLSChannel->setReceiveKeyingDecoding(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
-          }
-
-          if (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) {
-            ZS_LOG_DEBUG(log("needs receive keying signing public key") + IPeerFiles::toDebug(peerFiles))
-
-            ElementPtr receiveSignedEl = mMLSChannel->getSignedReceivingKeyingMaterial();
-            String peerURI;
-            String fullPublicKey;
-            stack::IHelper::getSignatureInfo(receiveSignedEl, NULL, &peerURI, NULL, NULL, NULL, &fullPublicKey);
-
-            if (peerURI.hasData()) {
-              mRemotePeer = IPeer::create(Account::convert(account), peerURI);
-              if (mRemotePeer) {
-                IPeerFilePublicPtr remotePeerFilePublic = mRemotePeer->getPeerFilePublic();
-                if (remotePeerFilePublic) {
-                  mRemotePublicKey = remotePeerFilePublic->getPublicKey();
-                }
-              }
-            }
-
-            if (fullPublicKey.hasData()) {
-              ZS_LOG_DEBUG(log("found full public key") + ZS_PARAM("full public key", fullPublicKey))
-              mRemotePublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(fullPublicKey));
-            }
-
-            if (mRemotePublicKey) {
-              mMLSChannel->setReceiveKeyingMaterialSigningPublicKey(mRemotePublicKey);
-            }
-          }
-
-          if (mMLSChannel->needsSendKeyingMaterialToeBeSigned()) {
-            ZS_LOG_DEBUG(log("need send keying material to be signed"))
-
-            DocumentPtr doc;
-            ElementPtr signEl;
-            mMLSChannel->getSendKeyingMaterialNeedingToBeSigned(doc, signEl);
-
-            if (signEl) {
-              peerFilePrivate->signElement(signEl, mIncoming ? IPeerFilePrivate::SignatureType_FullPublicKey : IPeerFilePrivate::SignatureType_PeerURI);
-              mMLSChannel->notifySendKeyingMaterialSigned();
-            }
-          }
         }
 
         step();
@@ -639,16 +558,22 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "connect info relay domain", mConnectInfo.mRelayDomain);
         IHelper::debugAppend(resultEl, "connect info relay access token", mConnectInfo.mRelayAccessToken);
         IHelper::debugAppend(resultEl, "connect info relay access secret proof", mConnectInfo.mRelayAccessSecretProof);
-        IHelper::debugAppend(resultEl, "connect info local private key", mConnectInfo.mLocalPrivateKey ? mConnectInfo.mLocalPrivateKey->getID() : 0);
-        IHelper::debugAppend(resultEl, "connect info local public key", mConnectInfo.mLocalPublicKey ? mConnectInfo.mLocalPublicKey->getID() : 0);
-        IHelper::debugAppend(resultEl, "connect info remote public key", mConnectInfo.mRemotePublicKey ? mConnectInfo.mRemotePublicKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "connect info DH local private key", mConnectInfo.mDHLocalPrivateKey ? mConnectInfo.mDHLocalPrivateKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "connect info DH local public key", mConnectInfo.mDHLocalPublicKey ? mConnectInfo.mDHLocalPublicKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "connect info DH remote public key", mConnectInfo.mDHRemotePublicKey ? mConnectInfo.mDHRemotePublicKey->getID() : 0);
         IHelper::debugAppend(resultEl, "connection relay channel", mConnectionRelayChannel ? mConnectionRelayChannel->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "incoming info local context id", mIncomingInfo.mLocalContextID);
+        IHelper::debugAppend(resultEl, "incoming info DH local private key", mIncomingInfo.mDHLocalPrivateKey ? mIncomingInfo.mDHLocalPrivateKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "incoming info DH local public key", mIncomingInfo.mDHLocalPublicKey ? mIncomingInfo.mDHLocalPublicKey->getID() : 0);
+        IHelper::debugAppend(resultEl, "incoming info remote peer", mIncomingInfo.mRemotePeer ? mIncomingInfo.mRemotePeer->getPeerURI() : String());
 
         IHelper::debugAppend(resultEl, IMessageLayerSecurityChannel::toDebug(mMLSChannel));
 
         IHelper::debugAppend(resultEl, "notified needs context", mNotifiedNeedsContext);
         IHelper::debugAppend(resultEl, IPeer::toDebug(mRemotePeer));
         IHelper::debugAppend(resultEl, "remote public key", (bool)mRemotePublicKey);
+
 
         IHelper::debugAppend(resultEl, "outer recv stream", ITransportStream::toDebug(mOuterReceiveStream));
         IHelper::debugAppend(resultEl, "outer send stream", ITransportStream::toDebug(mOuterSendStream));
@@ -715,12 +640,12 @@ namespace openpeer
         String reason;
         switch (mMLSChannel->getState(&error, &reason)) {
           case IMessageLayerSecurityChannel::SessionState_Pending:
-          case IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation:
           {
-            ZS_LOG_DEBUG(log("waiting for MLS to connect"))
+            ZS_LOG_TRACE(log("waiting for MLS to connect"))
             return false;
           }
-          case IMessageLayerSecurityChannel::SessionState_Connected:   break;
+          case IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation:  goto mls_needs_information;
+          case IMessageLayerSecurityChannel::SessionState_Connected:                    goto mls_ready;
           case IMessageLayerSecurityChannel::SessionState_Shutdown:  {
             ZS_LOG_WARNING(Detail, log("MLS channel shutdown") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
             setError(error, reason);
@@ -729,7 +654,131 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_DEBUG(log("MLS ready"))
+      mls_needs_information:
+        {
+          ZS_LOG_TRACE(log("MLS is needing missing information"))
+          UseAccountPtr account = mAccount.lock();
+          if (!account) {
+            ZS_LOG_WARNING(Detail, log("account is gone"))
+            cancel();
+            return false;
+          }
+
+          IPeerFilesPtr peerFiles = account->getPeerFiles();
+          if (!peerFiles) {
+            ZS_LOG_WARNING(Detail, log("peer files are missing"))
+            cancel();
+            return false;
+          }
+
+          IPeerFilePrivatePtr peerFilePrivate = peerFiles->getPeerFilePrivate();
+          IPeerFilePublicPtr peerFilePublic = peerFiles->getPeerFilePublic();
+
+          ZS_THROW_INVALID_ASSUMPTION_IF(!peerFilePrivate)
+          ZS_THROW_INVALID_ASSUMPTION_IF(!peerFilePublic)
+
+          if (!mNotifiedNeedsContext) {
+            ZS_LOG_DEBUG(log("have not notified needs context"))
+            if ((mMLSChannel->getRemoteContextID().hasData()) ||
+                (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey())) {
+
+              // have remote context ID, but have we set local context ID?
+              ZS_LOG_DEBUG(log("have remote context or receive keying material needs to be signed") + ZS_PARAM("remote context", mMLSChannel->getRemoteContextID()))
+
+              if (mMLSChannel->getLocalContextID().isEmpty()) {
+                ZS_LOG_DEBUG(log("missing local context"))
+
+                mSubscriptions.delegate()->onFinderRelayChannelNeedsContext(mThisWeak.lock());
+                get(mNotifiedNeedsContext) = true;
+              }
+            }
+          }
+
+          if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
+            ZS_LOG_TRACE(log("needs receive keying decoding private key") + IPeerFiles::toDebug(peerFiles))
+
+            if (mConnectInfo.mDHLocalPrivateKey) {
+              mMLSChannel->setReceiveKeyingDecoding(mConnectInfo.mDHLocalPrivateKey, mConnectInfo.mDHLocalPublicKey);
+            }
+            if (mIncomingInfo.mDHLocalPrivateKey) {
+              mMLSChannel->setReceiveKeyingDecoding(mIncomingInfo.mDHLocalPrivateKey, mIncomingInfo.mDHLocalPublicKey);
+            }
+          }
+
+          if ((mIncoming) &&
+              (mIncomingInfo.mDHLocalPrivateKey)) {
+            if (mMLSChannel->needsSendKeyingEncodingMaterial()) {
+              IDHPublicKeyPtr remotePublicKey = mMLSChannel->getDHRemotePublicKey();
+              if (remotePublicKey) {
+                ZS_LOG_DEBUG(log("setting sending keying encoding"))
+                mMLSChannel->setSendKeyingEncoding(mIncomingInfo.mDHLocalPrivateKey, remotePublicKey);
+              }
+            }
+          }
+
+          if (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) {
+            ZS_LOG_DEBUG(log("needs receive keying signing public key") + IPeerFiles::toDebug(peerFiles))
+
+            ElementPtr receiveSignedEl = mMLSChannel->getSignedReceivingKeyingMaterial();
+            String peerURI;
+            String fullPublicKey;
+            stack::IHelper::getSignatureInfo(receiveSignedEl, NULL, &peerURI, NULL, NULL, NULL, &fullPublicKey);
+
+            if (mIncomingInfo.mRemotePeer) {
+              mRemotePeer = mIncomingInfo.mRemotePeer;
+            }
+
+            if (peerURI.hasData()) {
+              IPeerPtr remotePeer = IPeer::create(Account::convert(account), peerURI);
+              if (remotePeer) {
+                if (mRemotePeer) {
+                  if (remotePeer->getPeerURI() != mRemotePeer->getPeerURI()) {
+                    ZS_LOG_ERROR(Detail, log("signing peer has changed and thus is rejected") + ZS_PARAM("remote peer", remotePeer->getPeerURI()) + ZS_PARAM("expecting", mRemotePeer->getPeerURI()))
+                    setError(IHTTP::HTTPStatusCode_Forbidden, "signing peer has changed and thus is rejected");
+                    cancel();
+                    return false;
+                  }
+                  mRemotePeer = remotePeer;
+                }
+
+                if (mRemotePeer) {
+                  IPeerFilePublicPtr remotePeerFilePublic = mRemotePeer->getPeerFilePublic();
+                  if (remotePeerFilePublic) {
+                    mRemotePublicKey = remotePeerFilePublic->getPublicKey();
+                  }
+                }
+              }
+            }
+
+            if (fullPublicKey.hasData()) {
+              ZS_LOG_DEBUG(log("found full public key") + ZS_PARAM("full public key", fullPublicKey))
+              mRemotePublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(fullPublicKey));
+            }
+
+            if (mRemotePublicKey) {
+              mMLSChannel->setReceiveKeyingMaterialSigningPublicKey(mRemotePublicKey);
+            }
+          }
+
+          if (mMLSChannel->needsSendKeyingMaterialToeBeSigned()) {
+            ZS_LOG_DEBUG(log("need send keying material to be signed"))
+
+            DocumentPtr doc;
+            ElementPtr signEl;
+            mMLSChannel->getSendKeyingMaterialNeedingToBeSigned(doc, signEl);
+
+            if (signEl) {
+              peerFilePrivate->signElement(signEl, mIncoming ? IPeerFilePrivate::SignatureType_FullPublicKey : IPeerFilePrivate::SignatureType_PeerURI);
+              mMLSChannel->notifySendKeyingMaterialSigned();
+            }
+          }
+          return false;
+        }
+
+      mls_ready:
+        {
+          ZS_LOG_TRACE(log("MLS ready"))
+        }
         return true;
       }
 

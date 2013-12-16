@@ -105,9 +105,17 @@ namespace openpeer
           String mRelayDomain;
           String mRelayAccessToken;
           String mRelayAccessSecretProof;
-          IDHPrivateKeyPtr mLocalPrivateKey;
-          IDHPublicKeyPtr mLocalPublicKey;
-          IDHPublicKeyPtr mRemotePublicKey;
+          IDHPrivateKeyPtr mDHLocalPrivateKey;
+          IDHPublicKeyPtr mDHLocalPublicKey;
+          IDHPublicKeyPtr mDHRemotePublicKey;
+        };
+
+        struct IncomingContext
+        {
+          String mLocalContextID;
+          IDHPrivateKeyPtr mDHLocalPrivateKey;
+          IDHPublicKeyPtr mDHLocalPublicKey;
+          IPeerPtr mRemotePeer;
         };
 
       protected:
@@ -167,7 +175,7 @@ namespace openpeer
                                        ) const;
 
         virtual void setIncomingContext(
-                                        const char *contextID,
+                                        const char *localContextID,
                                         IDHPrivateKeyPtr localPrivateKey,
                                         IDHPublicKeyPtr localPublicKey,
                                         IPeerPtr remotePeer
@@ -265,6 +273,7 @@ namespace openpeer
 
         AutoBool mIncoming;
         ConnectInfo mConnectInfo;
+        IncomingContext mIncomingInfo;
         IFinderConnectionRelayChannelPtr mConnectionRelayChannel;
 
         IMessageLayerSecurityChannelPtr mMLSChannel;

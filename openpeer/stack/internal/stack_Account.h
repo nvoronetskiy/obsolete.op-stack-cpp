@@ -760,8 +760,6 @@ namespace openpeer
           // NOTE: Presence can also give us a hint to when we should redo the search.
           Time mNextScheduledFind;                                 // if peer was not found, schedule finds to try again
           Duration mLastScheduleFindDuration;                      // how long was the duration between finds (used because it will double each time a search is completed)
-
-          bool mPreventCrazyRefindNextTime;
         };
 
       protected:

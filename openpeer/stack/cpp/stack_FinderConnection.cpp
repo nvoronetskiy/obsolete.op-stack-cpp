@@ -1049,10 +1049,11 @@ namespace openpeer
         }
 
         if (!mSendStreamNotifiedReady) {
-          ZS_LOG_DEBUG(log("waiting for TCP messaging send stream to be notified as ready"))
+          ZS_LOG_TRACE(log("waiting for TCP messaging send stream to be notified as ready"))
           return false;
         }
 
+        ZS_LOG_TRACE("TCP messaging notified write ready")
         return true;
       }
 
