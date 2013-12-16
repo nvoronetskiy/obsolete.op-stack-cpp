@@ -670,6 +670,13 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      PeerFilePublicPtr IPeerFilePublicFactory::loadFromCache(const char *peerURI)
+      {
+        if (this) {}
+        return PeerFilePublic::loadFromCache(peerURI);
+      }
+
+      //-----------------------------------------------------------------------
       PeerFilePublicPtr IPeerFilePublicFactory::createFromPublicKey(
                                                                     PeerFilesPtr peerFiles,
                                                                     DocumentPtr publicDoc,

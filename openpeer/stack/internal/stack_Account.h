@@ -216,6 +216,7 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForPeer, ForPeer)
 
+        virtual PeerPtr findExisting(const String &peerUR) const = 0;
         virtual PeerPtr findExistingOrUse(PeerPtr peer) = 0;
         virtual void notifyDestroyed(Peer &peer) = 0;
 
@@ -486,6 +487,7 @@ namespace openpeer
         #pragma mark Account => IAccountForPeer
         #pragma mark
 
+        virtual PeerPtr findExisting(const String &peerUR) const;
         virtual PeerPtr findExistingOrUse(PeerPtr peer);
         virtual void notifyDestroyed(Peer &peer);
 

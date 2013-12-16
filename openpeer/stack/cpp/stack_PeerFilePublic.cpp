@@ -33,6 +33,8 @@
 #include <openpeer/stack/internal/stack_PeerFilePublic.h>
 #include <openpeer/stack/internal/stack_PeerFilePrivate.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+#include <openpeer/stack/internal/stack_Cache.h>
+
 #include <openpeer/stack/IPeer.h>
 
 #include <openpeer/services/IHelper.h>
@@ -45,6 +47,9 @@
 
 #include <cryptopp/sha.h>
 
+#define OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_DURATION_IN_HOURS ((24)*365)
+#define OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_NAMESPACE "https://meta.openpeer.org/caching/peer-file-public/"
+
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -55,12 +60,46 @@ namespace openpeer
   {
     namespace internal
     {
+      ZS_DECLARE_TYPEDEF_PTR(ICacheForServices, UseCache)
+
       using services::IHelper;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       typedef CryptoPP::SHA256 SHA256;
 
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark (helpers)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "PeerFilePublic");
+      }
+
+      //-----------------------------------------------------------------------
+      static String getCookieName(const String &peerURI)
+      {
+        if (!peerURI.hasData()) return String();
+
+        String domain;
+        String contactID;
+        if (!IPeer::splitURI(peerURI, domain, contactID)) {
+          ZS_LOG_WARNING(Detail, slog("invalid peer URI") + ZS_PARAM("uri", peerURI))
+          return String();
+        }
+
+        String domainHashed = IHelper::convertToHex(*IHelper::hash(domain));
+
+        String cookieName = OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_NAMESPACE + domainHashed + "/" + contactID;
+        return cookieName;
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -190,6 +229,43 @@ namespace openpeer
         return pThis;
       }
 
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr PeerFilePublic::loadFromCache(const char *inPeerURI)
+      {
+        String peerURI(inPeerURI);
+
+        String cookieName = getCookieName(peerURI);
+        if (!cookieName.hasData()) return PeerFilePublicPtr();
+
+        String peerFilePublicStr = UseCache::fetch(cookieName);
+
+        if (!peerFilePublicStr.hasData()) {
+          ZS_LOG_TRACE(slog("peer file was not cached") + ZS_PARAM("uri", peerURI))
+          return PeerFilePublicPtr();
+        }
+
+        ElementPtr rootEl = IHelper::toJSON(peerFilePublicStr);
+        if (!rootEl) {
+          ZS_LOG_TRACE(slog("peer file previously cached was not valid") + ZS_PARAM("uri", peerURI))
+          UseCache::clear(cookieName);
+          return PeerFilePublicPtr();
+        }
+
+        PeerFilePublicPtr pThis(new PeerFilePublic);
+        pThis->mThisWeak = pThis;
+        pThis->mDocument = Document::create();
+        pThis->mDocument->adoptAsFirstChild(rootEl);
+        pThis->init();
+
+        if (!pThis->load()) {
+          ZS_LOG_WARNING(Detail, pThis->log("failed to load public peer file"))
+          UseCache::clear(cookieName);
+          return PeerFilePublicPtr();
+        }
+
+        return pThis;
+      }
+      
       //-----------------------------------------------------------------------
       ElementPtr PeerFilePublic::saveToElement() const
       {
@@ -448,7 +524,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool PeerFilePublic::load()
+      bool PeerFilePublic::load(bool loadedFromCache)
       {
         ElementPtr sectionAEl = findSection("A");
         if (!sectionAEl) {
@@ -548,6 +624,20 @@ namespace openpeer
           ZS_LOG_ERROR(Detail, log("unable to parse the public peer file"))
           return false;
         }
+
+        if (!loadedFromCache) {
+          String publicFile = IHelper::toString(mDocument->getFirstChildElement());
+
+          if (publicFile.hasData()) {
+            // successfully loaded so cache it immediately
+            String cookieName = getCookieName(mPeerURI);
+            if (cookieName.hasData()) {
+              ZS_LOG_TRACE(log("storing peer file public in cache") + ZS_PARAM("uri", mPeerURI))
+              UseCache::store(getCookieName(mPeerURI), zsLib::now() + Hours(OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_DURATION_IN_HOURS), publicFile);
+            }
+          }
+        }
+
         return true;
       }
 
@@ -590,6 +680,11 @@ namespace openpeer
     IPeerFilePublicPtr IPeerFilePublic::loadFromElement(ElementPtr publicPeerRootElement)
     {
       return internal::IPeerFilePublicFactory::singleton().loadFromElement(publicPeerRootElement);
+    }
+    //-------------------------------------------------------------------------
+    IPeerFilePublicPtr IPeerFilePublic::loadFromCache(const char *peerURI)
+    {
+      return internal::IPeerFilePublicFactory::singleton().loadFromCache(peerURI);
     }
   }
 }

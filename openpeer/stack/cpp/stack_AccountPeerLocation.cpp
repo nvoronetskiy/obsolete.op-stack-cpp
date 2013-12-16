@@ -2112,8 +2112,8 @@ namespace openpeer
         }
 
         if (!mSocketSession) {
-          ZS_LOG_TRACE(log("only identify self after received incoming peer-location find notification"))
-          return true;
+          ZS_LOG_TRACE(log("waiting to know if should identify self after receiving incoming peer-location find notification"))
+          return false;
         }
 
         UseAccountPtr outer = mOuter.lock();

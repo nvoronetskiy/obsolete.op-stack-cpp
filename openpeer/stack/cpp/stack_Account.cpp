@@ -800,6 +800,28 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      PeerPtr Account::findExisting(const String &peerURI) const
+      {
+        AutoRecursiveLock lock(getLock());
+
+        PeerMap::const_iterator found = mPeers.find(peerURI);
+
+        if (found == mPeers.end()) {
+          ZS_LOG_TRACE(log("did not find existing peer") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        UsePeerPtr existingPeer = (*found).second.lock();
+        if (!existingPeer) {
+          ZS_LOG_WARNING(Debug, log("existing peer object was destroyed") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        ZS_LOG_DEBUG(log("found existing peer") + UsePeer::toDebug(existingPeer))
+        return Peer::convert(existingPeer);
+      }
+
+      //-----------------------------------------------------------------------
       PeerPtr Account::findExistingOrUse(PeerPtr inPeer)
       {
         UsePeerPtr peer = inPeer;

@@ -179,6 +179,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Peer::init()
       {
+        if (!mPeerFilePublic) {
+          ZS_LOG_TRACE(log("attempting to load peer file public from cache") + ZS_PARAM("uri", mPeerURI))
+          mPeerFilePublic = IPeerFilePublic::loadFromCache(mPeerURI);
+          if (mPeerFilePublic) {
+            ZS_LOG_TRACE(log("loaded peer file public from cache") + ZS_PARAM("uri", mPeerURI))
+          }
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -492,17 +499,24 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Peer::create(
                            AccountPtr inAccount,
-                           const char *peerURI
+                           const char *inPeerURI
                            )
       {
+        String peerURI(inPeerURI);
         UseAccountPtr account = inAccount;
 
         if (!account) return PeerPtr();
         if (!peerURI) return PeerPtr();
 
         if (!isValid(peerURI)) {
-          ZS_LOG_DEBUG(slog("cannot create peer as URI is not valid") + ZS_PARAM("peer uri", peerURI))
+          ZS_LOG_DEBUG(slog("cannot create peer as URI is not valid") + ZS_PARAM("uri", peerURI))
           return PeerPtr();
+        }
+
+        PeerPtr existing = account->findExisting(peerURI);
+        if (existing) {
+          ZS_LOG_TRACE(existing->log("found existing peer object to re-use") + ZS_PARAM("uri", peerURI))
+          return existing;
         }
 
         PeerPtr pThis(new Peer(account, IPeerFilePublicPtr(), peerURI));

@@ -52,6 +52,7 @@ namespace openpeer
       static ElementPtr toDebug(IPeerFilePublicPtr peerFilePublic);
 
       static IPeerFilePublicPtr loadFromElement(ElementPtr publicPeerRootElement);
+      static IPeerFilePublicPtr loadFromCache(const char *peerURI);
 
       virtual PUID getID() const = 0;
 

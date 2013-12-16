@@ -131,6 +131,7 @@ namespace openpeer
         static ElementPtr toDebug(IPeerFilePublicPtr peerFilePublic);
 
         static PeerFilePublicPtr loadFromElement(ElementPtr publicPeerRootElement);
+        static PeerFilePublicPtr loadFromCache(const char *peerURI);
 
         virtual PUID getID() const {return mID;}
 
@@ -189,7 +190,7 @@ namespace openpeer
 
         Log::Params log(const char *message) const;
 
-        bool load();
+        bool load(bool loadedFromCache = false);
 
         ElementPtr findSection(const char *sectionID) const;
 
@@ -223,6 +224,7 @@ namespace openpeer
         static IPeerFilePublicFactory &singleton();
 
         virtual PeerFilePublicPtr loadFromElement(ElementPtr publicPeerRootElement);
+        virtual PeerFilePublicPtr loadFromCache(const char *peerURI);
 
         virtual PeerFilePublicPtr createFromPublicKey(
                                                       PeerFilesPtr peerFiles,
@@ -236,7 +238,7 @@ namespace openpeer
                                                   DocumentPtr publicDoc
                                                   );
       };
-      
+
     }
   }
 }
