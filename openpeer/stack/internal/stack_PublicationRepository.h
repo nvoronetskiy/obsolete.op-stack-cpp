@@ -52,6 +52,12 @@ namespace openpeer
       interaction IPublicationForPublicationRepository;
       interaction IPublicationMetaDataForPublicationRepository;
 
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerPublishRequest)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerGetRequest)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerDeleteRequest)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerSubscribeRequest)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerPublishNotify)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -110,27 +116,6 @@ namespace openpeer
         typedef std::map<PublicationName, UsePublicationPtr> CachedPublicationPermissionMap;
         typedef UsePublicationMetaDataPtr PeerSourcePtr;
         typedef std::map<UsePublicationMetaDataPtr, UsePublicationMetaDataPtr, CacheCompare> CachedPeerPublicationMap;
-        typedef message::peer_common::MessageFactoryPeerCommon MessageFactoryPeerCommon;
-        typedef message::peer_common::PeerPublishRequest PeerPublishRequest;
-        typedef message::peer_common::PeerPublishRequestPtr PeerPublishRequestPtr;
-        typedef message::peer_common::PeerPublishResult PeerPublishResult;
-        typedef message::peer_common::PeerPublishResultPtr PeerPublishResultPtr;
-        typedef message::peer_common::PeerGetRequest PeerGetRequest;
-        typedef message::peer_common::PeerGetRequestPtr PeerGetRequestPtr;
-        typedef message::peer_common::PeerGetResult PeerGetResult;
-        typedef message::peer_common::PeerGetResultPtr PeerGetResultPtr;
-        typedef message::peer_common::PeerDeleteRequest PeerDeleteRequest;
-        typedef message::peer_common::PeerDeleteRequestPtr PeerDeleteRequestPtr;
-        typedef message::peer_common::PeerDeleteResult PeerDeleteResult;
-        typedef message::peer_common::PeerDeleteResultPtr PeerDeleteResultPtr;
-        typedef message::peer_common::PeerSubscribeRequest PeerSubscribeRequest;
-        typedef message::peer_common::PeerSubscribeRequestPtr PeerSubscribeRequestPtr;
-        typedef message::peer_common::PeerSubscribeResult PeerSubscribeResult;
-        typedef message::peer_common::PeerSubscribeResultPtr PeerSubscribeResultPtr;
-        typedef message::peer_common::PeerPublishNotifyRequest PeerPublishNotifyRequest;
-        typedef message::peer_common::PeerPublishNotifyRequestPtr PeerPublishNotifyRequestPtr;
-        typedef message::peer_common::PeerPublishNotifyResult PeerPublishNotifyResult;
-        typedef message::peer_common::PeerPublishNotifyResultPtr PeerPublishNotifyResultPtr;
 
         ZS_DECLARE_CLASS_PTR(PeerCache)
         ZS_DECLARE_CLASS_PTR(Publisher)
@@ -388,7 +373,7 @@ namespace openpeer
 
         void onMessageIncoming(
                                IMessageIncomingPtr messageIncoming,
-                               PeerPublishNotifyRequestPtr request
+                               PeerPublishNotifyPtr request
                                );
 
         void cancel();
@@ -937,8 +922,7 @@ namespace openpeer
         #pragma mark PublicationRepository::PeerSubscriptionIncoming
         #pragma mark
 
-        class PeerSubscriptionIncoming : public MessageQueueAssociator,
-                                         public IMessageMonitorDelegate
+        class PeerSubscriptionIncoming : public MessageQueueAssociator
         {
         public:
           typedef IPublicationMetaData::SubscribeToRelationshipsMap SubscribeToRelationshipsMap;
@@ -984,19 +968,6 @@ namespace openpeer
 
           void cancel();
 
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionIncoming => IMessageMonitorDelegate
-          #pragma mark
-
-          virtual bool handleMessageMonitorMessageReceived(
-                                                           IMessageMonitorPtr monitor,
-                                                           message::MessagePtr message
-                                                           );
-
-          virtual void onMessageMonitorTimedOut(IMessageMonitorPtr monitor);
-
         private:
           //-------------------------------------------------------------------
           #pragma mark
@@ -1023,9 +994,6 @@ namespace openpeer
 
           PeerSourcePtr mPeerSource;
           UsePublicationMetaDataPtr mSubscriptionInfo;
-
-          typedef std::list<IMessageMonitorPtr> NotificationMonitorList;
-          NotificationMonitorList mNotificationMonitors;
         };
 
         //---------------------------------------------------------------------

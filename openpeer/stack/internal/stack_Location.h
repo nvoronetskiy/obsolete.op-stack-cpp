@@ -176,6 +176,8 @@ namespace openpeer
         virtual PeerPtr getPeer(bool internal = true) const = 0;
 
         virtual ElementPtr toDebug() const = 0;
+
+        virtual bool sendMessage(message::MessagePtr message) const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -325,6 +327,8 @@ namespace openpeer
         // (duplicate) virtual PeerPtr getPeer(bool) const;
 
         // (duplicate) virtual ElementPtr toDebug() const;
+
+        // (duplicate) virtual bool sendMessage(message::MessagePtr message) const
 
         //---------------------------------------------------------------------
         #pragma mark

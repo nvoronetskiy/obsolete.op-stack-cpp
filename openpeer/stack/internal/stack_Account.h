@@ -743,7 +743,6 @@ namespace openpeer
           ElementPtr toDebug() const;
 
           AutoPUID mID;
-          bool mFindAtNextPossibleMoment;
 
           UsePeerPtr mPeer;
           PeerLocationMap mLocations;                                 // list of connecting/connected peer locations

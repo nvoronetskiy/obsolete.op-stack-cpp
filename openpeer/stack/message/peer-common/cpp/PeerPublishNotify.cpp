@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyRequest.h>
+#include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -45,30 +45,30 @@ namespace openpeer
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         //---------------------------------------------------------------------
-        PeerPublishNotifyRequestPtr PeerPublishNotifyRequest::convert(MessagePtr message)
+        PeerPublishNotifyPtr PeerPublishNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerPublishNotifyRequest>(message);
+          return dynamic_pointer_cast<PeerPublishNotify>(message);
         }
 
         //---------------------------------------------------------------------
-        PeerPublishNotifyRequest::PeerPublishNotifyRequest()
+        PeerPublishNotify::PeerPublishNotify()
         {
         }
 
         //---------------------------------------------------------------------
-        PeerPublishNotifyRequestPtr PeerPublishNotifyRequest::create()
+        PeerPublishNotifyPtr PeerPublishNotify::create()
         {
-          PeerPublishNotifyRequestPtr ret(new PeerPublishNotifyRequest);
+          PeerPublishNotifyPtr ret(new PeerPublishNotify);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        PeerPublishNotifyRequestPtr PeerPublishNotifyRequest::create(
-                                                                     ElementPtr rootEl,
-                                                                     IMessageSourcePtr messageSource
-                                                                     )
+        PeerPublishNotifyPtr PeerPublishNotify::create(
+                                                       ElementPtr rootEl,
+                                                       IMessageSourcePtr messageSource
+                                                       )
         {
-          PeerPublishNotifyRequestPtr ret(new PeerPublishNotifyRequest);
+          PeerPublishNotifyPtr ret(new PeerPublishNotify);
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
           try {
@@ -100,12 +100,12 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr PeerPublishNotifyRequest::encode()
+        DocumentPtr PeerPublishNotify::encode()
         {
           ULONG maxDataSize = OPENPEER_STACK_MESSAGE_PEER_PUBLISH_NOTIFY_MAX_DOCUMENT_PUBLICATION_SIZE_IN_BYTES;
 
           DocumentPtr current;
-          for (PeerPublishNotifyRequest::PublicationList::iterator iter = mPublicationList.begin(); iter != mPublicationList.end(); ++iter)
+          for (PeerPublishNotify::PublicationList::iterator iter = mPublicationList.begin(); iter != mPublicationList.end(); ++iter)
           {
             IPublicationMetaDataPtr metaData = (*iter);
 
@@ -139,14 +139,14 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        bool PeerPublishNotifyRequest::hasAttribute(AttributeTypes type) const
+        bool PeerPublishNotify::hasAttribute(AttributeTypes type) const
         {
           switch (type) {
             case AttributeType_PublicationList: return (mPublicationList.size() > 0);
           }
           return false;
         }
-
+        
       }
     }
   }

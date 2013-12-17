@@ -43,8 +43,7 @@
 #include <openpeer/stack/message/peer-common/PeerDeleteResult.h>
 #include <openpeer/stack/message/peer-common/PeerSubscribeRequest.h>
 #include <openpeer/stack/message/peer-common/PeerSubscribeResult.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyRequest.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyResult.h>
+#include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -162,7 +161,7 @@ namespace openpeer
                 case Method_PeerGet:                          return PeerGetResult::create(root, messageSource);
                 case Method_PeerDelete:                       return PeerDeleteResult::create(root, messageSource);
                 case Method_PeerSubscribe:                    return PeerSubscribeResult::create(root, messageSource);
-                case Method_PeerPublishNotify:                return PeerPublishNotifyResult::create(root, messageSource);
+                case Method_PeerPublishNotify:                return MessagePtr();
               }
               break;
             }
@@ -175,7 +174,7 @@ namespace openpeer
                 case Method_PeerGet:                          return MessagePtr();
                 case Method_PeerDelete:                       return MessagePtr();
                 case Method_PeerSubscribe:                    return MessagePtr();
-                case Method_PeerPublishNotify:                return PeerPublishNotifyRequest::create(root, messageSource);
+                case Method_PeerPublishNotify:                return PeerPublishNotify::create(root, messageSource);
               }
               break;
             }

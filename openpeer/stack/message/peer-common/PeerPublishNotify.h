@@ -44,11 +44,9 @@ namespace openpeer
     {
       namespace peer_common
       {
-        class PeerPublishNotifyRequest : public MessageNotify
+        class PeerPublishNotify : public MessageNotify
         {
         public:
-          friend class PeerPublishNotifyResult;
-
           typedef std::list<IPublicationMetaDataPtr> PublicationList;
 
           enum AttributeTypes
@@ -57,14 +55,14 @@ namespace openpeer
           };
 
         public:
-          static PeerPublishNotifyRequestPtr convert(MessagePtr message);
+          static PeerPublishNotifyPtr convert(MessagePtr message);
 
-          static PeerPublishNotifyRequestPtr create();
+          static PeerPublishNotifyPtr create();
 
-          static PeerPublishNotifyRequestPtr create(
-                                                    ElementPtr root,
-                                                    IMessageSourcePtr messageSource
-                                                    );
+          static PeerPublishNotifyPtr create(
+                                             ElementPtr root,
+                                             IMessageSourcePtr messageSource
+                                             );
 
           virtual DocumentPtr encode();
 
@@ -81,7 +79,7 @@ namespace openpeer
           void peerCache(IPublicationRepositoryPeerCachePtr value)  {mPeerCache = value;}
 
         protected:
-          PeerPublishNotifyRequest();
+          PeerPublishNotify();
 
           PublicationList mPublicationList;
           IPublicationRepositoryPeerCachePtr mPeerCache;

@@ -79,8 +79,7 @@
 #include <openpeer/stack/message/peer-common/PeerDeleteResult.h>
 #include <openpeer/stack/message/peer-common/PeerGetRequest.h>
 #include <openpeer/stack/message/peer-common/PeerGetResult.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyRequest.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyResult.h>
+#include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 #include <openpeer/stack/message/peer-common/PeerPublishRequest.h>
 #include <openpeer/stack/message/peer-common/PeerPublishResult.h>
 #include <openpeer/stack/message/peer-common/PeerSubscribeRequest.h>

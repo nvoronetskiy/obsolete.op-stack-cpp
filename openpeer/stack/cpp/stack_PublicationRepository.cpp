@@ -49,8 +49,7 @@
 #include <openpeer/stack/message/peer-common/PeerDeleteResult.h>
 #include <openpeer/stack/message/peer-common/PeerSubscribeRequest.h>
 #include <openpeer/stack/message/peer-common/PeerSubscribeResult.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyRequest.h>
-#include <openpeer/stack/message/peer-common/PeerPublishNotifyResult.h>
+#include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 
 #include <openpeer/stack/message/MessageResult.h>
 
@@ -86,15 +85,21 @@ namespace openpeer
 
       using services::IHelper;
 
-      typedef PublicationRepository::PublisherPtr PublisherPtr;
-      typedef PublicationRepository::FetcherPtr FetcherPtr;
-      typedef PublicationRepository::RemoverPtr RemoverPtr;
-      typedef PublicationRepository::SubscriptionLocalPtr SubscriptionLocalPtr;
-      typedef PublicationRepository::PeerSubscriptionIncomingPtr PeerSubscriptionIncomingPtr;
-      typedef PublicationRepository::PeerSubscriptionOutgoingPtr PeerSubscriptionOutgoingPtr;
-      typedef PublicationRepository::PeerCachePtr PeerCachePtr;
+      ZS_DECLARE_USING_PTR(message::peer_common, MessageFactoryPeerCommon)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerPublishResult)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerGetResult)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerDeleteResult)
+      ZS_DECLARE_USING_PTR(message::peer_common, PeerSubscribeResult)
 
-      typedef IPublicationRepositoryForAccount::ForAccountPtr ForAccountPtr;
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::Publisher, Publisher)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::Fetcher, Fetcher)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::Remover, Remover)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::SubscriptionLocal, SubscriptionLocal)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::PeerSubscriptionIncoming, PeerSubscriptionIncoming)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::PeerSubscriptionOutgoing, PeerSubscriptionOutgoing)
+      ZS_DECLARE_TYPEDEF_PTR(PublicationRepository::PeerCache, PeerCache)
+
+      ZS_DECLARE_TYPEDEF_PTR(IPublicationRepositoryForAccount::ForAccount, ForAccount)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -714,7 +719,7 @@ namespace openpeer
           case MessageFactoryPeerCommon::Method_PeerGet:            onMessageIncoming(messageIncoming, PeerGetRequest::convert(message)); break;
           case MessageFactoryPeerCommon::Method_PeerDelete:         onMessageIncoming(messageIncoming, PeerDeleteRequest::convert(message)); break;
           case MessageFactoryPeerCommon::Method_PeerSubscribe:      onMessageIncoming(messageIncoming, PeerSubscribeRequest::convert(message)); break;
-          case MessageFactoryPeerCommon::Method_PeerPublishNotify:  onMessageIncoming(messageIncoming, PeerPublishNotifyRequest::convert(message)); break;
+          case MessageFactoryPeerCommon::Method_PeerPublishNotify:  onMessageIncoming(messageIncoming, PeerPublishNotify::convert(message)); break;
           default:                                          {
             ZS_LOG_TRACE(log("method was not understood (thus ignoring)"))
             break;
@@ -1587,7 +1592,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::onMessageIncoming(
                                                     IMessageIncomingPtr messageIncoming,
-                                                    PeerPublishNotifyRequestPtr request
+                                                    PeerPublishNotifyPtr request
                                                     )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!request)
@@ -1598,11 +1603,7 @@ namespace openpeer
           return;
         }
 
-        // send the reply now...
-        PeerPublishNotifyResultPtr reply = PeerPublishNotifyResult::create(request);
-        messageIncoming->sendResponse(reply);
-
-        typedef PeerPublishNotifyRequest::PublicationList PublicationList;
+        typedef PeerPublishNotify::PublicationList PublicationList;
 
         const PublicationList &publicationList = request->publicationList();
 
@@ -3195,7 +3196,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::PeerSubscriptionIncoming::notifyUpdated(const CachedPublicationMap &cachedPublications)
       {
-        typedef PeerPublishNotifyRequest::PublicationList PublicationList;
+        typedef PeerPublishNotify::PublicationList PublicationList;
 
         AutoRecursiveLock lock(getLock());
 
@@ -3254,20 +3255,20 @@ namespace openpeer
 
         ZS_LOG_TRACE(log("publications will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->toDebug())
 
-        PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
+        PeerPublishNotifyPtr request = PeerPublishNotify::create();
         request->domain(account->getDomain());
         request->publicationList(list);
         request->peerCache(PeerCache::find(mPeerSource, outer));
 
-        IMessageMonitorPtr monitor = IMessageMonitor::monitorAndSendToLocation(mThisWeak.lock(), mSubscriptionInfo->getCreatorLocation(), request, Seconds(OPENPEER_STACK_PUBLICATIONREPOSITORY_REQUEST_TIMEOUT_IN_SECONDS));
+        UseLocationPtr sendToLocation = mSubscriptionInfo->getCreatorLocation();
 
-        mNotificationMonitors.push_back(monitor);
+        sendToLocation->sendMessage(request);
       }
 
       //-----------------------------------------------------------------------
       void PublicationRepository::PeerSubscriptionIncoming::notifyGone(const CachedPublicationMap &cachedPublications)
       {
-        typedef PeerPublishNotifyRequest::PublicationList PublicationList;
+        typedef PeerPublishNotify::PublicationList PublicationList;
 
         AutoRecursiveLock lock(getLock());
 
@@ -3328,13 +3329,13 @@ namespace openpeer
 
         ZS_LOG_TRACE(log("'publications are gone' notification will be notified to this subscriber") + ZS_PARAM("total  publications", list.size()) + mSubscriptionInfo->toDebug())
 
-        PeerPublishNotifyRequestPtr request = PeerPublishNotifyRequest::create();
+        PeerPublishNotifyPtr request = PeerPublishNotify::create();
         request->domain(account->getDomain());
         request->publicationList(list);
 
-        IMessageMonitorPtr monitor = IMessageMonitor::monitorAndSendToLocation(mThisWeak.lock(), mSubscriptionInfo->getCreatorLocation(), request, Seconds(OPENPEER_STACK_PUBLICATIONREPOSITORY_REQUEST_TIMEOUT_IN_SECONDS));
+        UseLocationPtr sendToLocation = mSubscriptionInfo->getCreatorLocation();
 
-        mNotificationMonitors.push_back(monitor);
+        sendToLocation->sendMessage(request);
       }
 
       //-----------------------------------------------------------------------
@@ -3346,62 +3347,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::PeerSubscriptionIncoming::cancel()
       {
-        ZS_LOG_DEBUG(log("cancel called"))
-
-        for (NotificationMonitorList::iterator iter = mNotificationMonitors.begin(); iter != mNotificationMonitors.end(); ++iter)
-        {
-          IMessageMonitorPtr &notifyMonitor = (*iter);
-          notifyMonitor->cancel();
-        }
-        mNotificationMonitors.clear();
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark PublicationRepository::PeerSubscriptionIncoming => IMessageMonitorDelegate
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool PublicationRepository::PeerSubscriptionIncoming::handleMessageMonitorMessageReceived(
-                                                                                                IMessageMonitorPtr monitor,
-                                                                                                message::MessagePtr message
-                                                                                                )
-      {
-        ZS_LOG_DEBUG(log("received notification that notification was sent"))
-
-        for (NotificationMonitorList::iterator iter = mNotificationMonitors.begin(); iter != mNotificationMonitors.end(); ++iter)
-        {
-          IMessageMonitorPtr &notifyMonitor = (*iter);
-          if (notifyMonitor == monitor) {
-            ZS_LOG_TRACE(log("found monitor for subscription notification request"))
-            // doesn't matter if it was successful or not because there is nothing we can do either way...
-            mNotificationMonitors.erase(iter);
-            return true;
-          }
-        }
-        ZS_LOG_WARNING(Detail, log("unable to find monitor for subscription notification request"))
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      void PublicationRepository::PeerSubscriptionIncoming::onMessageMonitorTimedOut(IMessageMonitorPtr monitor)
-      {
-        ZS_LOG_DEBUG(log("subscription notification time out"))
-        for (NotificationMonitorList::iterator iter = mNotificationMonitors.begin(); iter != mNotificationMonitors.end(); ++iter)
-        {
-          IMessageMonitorPtr &notifyMonitor = (*iter);
-          if (notifyMonitor == monitor) {
-            ZS_LOG_DEBUG(log("subscription notification found thus removing"))
-
-            // doesn't matter if it was successful or not because there is nothing we can do either way...
-            mNotificationMonitors.erase(iter);
-            return;
-          }
-        }
-        ZS_LOG_DEBUG(log("unable to find monitor matching subscription notification request after time out"))
+        ZS_LOG_DEBUG(log("cancel"))
       }
 
       //-----------------------------------------------------------------------
@@ -3438,7 +3384,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "source", UsePublicationMetaData::toDebug(mPeerSource));
         IHelper::debugAppend(resultEl, "subscription info", UsePublicationMetaData::toDebug(mSubscriptionInfo));
-        IHelper::debugAppend(resultEl, "notification monitors", mNotificationMonitors.size());
 
         return resultEl;
       }

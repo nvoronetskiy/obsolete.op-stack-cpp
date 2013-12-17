@@ -517,8 +517,7 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(PeerDeleteResult)
         ZS_DECLARE_CLASS_PTR(PeerSubscribeRequest)
         ZS_DECLARE_CLASS_PTR(PeerSubscribeResult)
-        ZS_DECLARE_CLASS_PTR(PeerPublishNotifyRequest)
-        ZS_DECLARE_CLASS_PTR(PeerPublishNotifyResult)
+        ZS_DECLARE_CLASS_PTR(PeerPublishNotify)
       }
 
       namespace peer_finder

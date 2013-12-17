@@ -77,8 +77,7 @@
 		0063BBAA16CA92D000E6DB4D /* PeerDeleteResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BAB816CA92CF00E6DB4D /* PeerDeleteResult.cpp */; };
 		0063BBAB16CA92D000E6DB4D /* PeerGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BAB916CA92D000E6DB4D /* PeerGetRequest.cpp */; };
 		0063BBAC16CA92D000E6DB4D /* PeerGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABA16CA92D000E6DB4D /* PeerGetResult.cpp */; };
-		0063BBAD16CA92D000E6DB4D /* PeerPublishNotifyRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABB16CA92D000E6DB4D /* PeerPublishNotifyRequest.cpp */; };
-		0063BBAE16CA92D000E6DB4D /* PeerPublishNotifyResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABC16CA92D000E6DB4D /* PeerPublishNotifyResult.cpp */; };
+		0063BBAD16CA92D000E6DB4D /* PeerPublishNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABB16CA92D000E6DB4D /* PeerPublishNotify.cpp */; };
 		0063BBAF16CA92D000E6DB4D /* PeerPublishRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABD16CA92D000E6DB4D /* PeerPublishRequest.cpp */; };
 		0063BBB016CA92D000E6DB4D /* PeerPublishResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABE16CA92D000E6DB4D /* PeerPublishResult.cpp */; };
 		0063BBB116CA92D000E6DB4D /* PeerSubscribeRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BABF16CA92D000E6DB4D /* PeerSubscribeRequest.cpp */; };
@@ -311,8 +310,7 @@
 		0063BAB816CA92CF00E6DB4D /* PeerDeleteResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerDeleteResult.cpp; sourceTree = "<group>"; };
 		0063BAB916CA92D000E6DB4D /* PeerGetRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerGetRequest.cpp; sourceTree = "<group>"; };
 		0063BABA16CA92D000E6DB4D /* PeerGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerGetResult.cpp; sourceTree = "<group>"; };
-		0063BABB16CA92D000E6DB4D /* PeerPublishNotifyRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerPublishNotifyRequest.cpp; sourceTree = "<group>"; };
-		0063BABC16CA92D000E6DB4D /* PeerPublishNotifyResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerPublishNotifyResult.cpp; sourceTree = "<group>"; };
+		0063BABB16CA92D000E6DB4D /* PeerPublishNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerPublishNotify.cpp; sourceTree = "<group>"; };
 		0063BABD16CA92D000E6DB4D /* PeerPublishRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerPublishRequest.cpp; sourceTree = "<group>"; };
 		0063BABE16CA92D000E6DB4D /* PeerPublishResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerPublishResult.cpp; sourceTree = "<group>"; };
 		0063BABF16CA92D000E6DB4D /* PeerSubscribeRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerSubscribeRequest.cpp; sourceTree = "<group>"; };
@@ -322,8 +320,7 @@
 		0063BAC316CA92D000E6DB4D /* PeerDeleteResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerDeleteResult.h; sourceTree = "<group>"; };
 		0063BAC416CA92D000E6DB4D /* PeerGetRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerGetRequest.h; sourceTree = "<group>"; };
 		0063BAC516CA92D000E6DB4D /* PeerGetResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerGetResult.h; sourceTree = "<group>"; };
-		0063BAC616CA92D000E6DB4D /* PeerPublishNotifyRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerPublishNotifyRequest.h; sourceTree = "<group>"; };
-		0063BAC716CA92D000E6DB4D /* PeerPublishNotifyResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerPublishNotifyResult.h; sourceTree = "<group>"; };
+		0063BAC616CA92D000E6DB4D /* PeerPublishNotify.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerPublishNotify.h; sourceTree = "<group>"; };
 		0063BAC816CA92D000E6DB4D /* PeerPublishRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerPublishRequest.h; sourceTree = "<group>"; };
 		0063BAC916CA92D000E6DB4D /* PeerPublishResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerPublishResult.h; sourceTree = "<group>"; };
 		0063BACA16CA92D000E6DB4D /* PeerSubscribeRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerSubscribeRequest.h; sourceTree = "<group>"; };
@@ -838,8 +835,7 @@
 				0063BAC316CA92D000E6DB4D /* PeerDeleteResult.h */,
 				0063BAC416CA92D000E6DB4D /* PeerGetRequest.h */,
 				0063BAC516CA92D000E6DB4D /* PeerGetResult.h */,
-				0063BAC616CA92D000E6DB4D /* PeerPublishNotifyRequest.h */,
-				0063BAC716CA92D000E6DB4D /* PeerPublishNotifyResult.h */,
+				0063BAC616CA92D000E6DB4D /* PeerPublishNotify.h */,
 				0063BAC816CA92D000E6DB4D /* PeerPublishRequest.h */,
 				0063BAC916CA92D000E6DB4D /* PeerPublishResult.h */,
 				0063BACA16CA92D000E6DB4D /* PeerSubscribeRequest.h */,
@@ -856,8 +852,7 @@
 				0063BAB816CA92CF00E6DB4D /* PeerDeleteResult.cpp */,
 				0063BAB916CA92D000E6DB4D /* PeerGetRequest.cpp */,
 				0063BABA16CA92D000E6DB4D /* PeerGetResult.cpp */,
-				0063BABB16CA92D000E6DB4D /* PeerPublishNotifyRequest.cpp */,
-				0063BABC16CA92D000E6DB4D /* PeerPublishNotifyResult.cpp */,
+				0063BABB16CA92D000E6DB4D /* PeerPublishNotify.cpp */,
 				0063BABD16CA92D000E6DB4D /* PeerPublishRequest.cpp */,
 				0063BABE16CA92D000E6DB4D /* PeerPublishResult.cpp */,
 				0063BABF16CA92D000E6DB4D /* PeerSubscribeRequest.cpp */,
@@ -1115,8 +1110,7 @@
 				0063BBAA16CA92D000E6DB4D /* PeerDeleteResult.cpp in Sources */,
 				0063BBAB16CA92D000E6DB4D /* PeerGetRequest.cpp in Sources */,
 				0063BBAC16CA92D000E6DB4D /* PeerGetResult.cpp in Sources */,
-				0063BBAD16CA92D000E6DB4D /* PeerPublishNotifyRequest.cpp in Sources */,
-				0063BBAE16CA92D000E6DB4D /* PeerPublishNotifyResult.cpp in Sources */,
+				0063BBAD16CA92D000E6DB4D /* PeerPublishNotify.cpp in Sources */,
 				0063BBAF16CA92D000E6DB4D /* PeerPublishRequest.cpp in Sources */,
 				0063BBB016CA92D000E6DB4D /* PeerPublishResult.cpp in Sources */,
 				0063BBB116CA92D000E6DB4D /* PeerSubscribeRequest.cpp in Sources */,

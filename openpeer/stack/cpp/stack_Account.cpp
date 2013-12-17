@@ -761,6 +761,11 @@ namespace openpeer
         LocationPtr location = messageIncoming.getLocation();
         MessagePtr message = messageIncoming.getMessage();
 
+        if (message->isNotify()) {
+          ZS_LOG_TRACE(log("no auto-message response is needed for notifications") + ZS_PARAM("message id", message->messageID()))
+          return;
+        }
+
         MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_NotFound);
         if (!result) {
           ZS_LOG_WARNING(Detail, log("automatic reply to incoming message could not be created") + messageIncoming.toDebug())
@@ -1371,7 +1376,6 @@ namespace openpeer
 
             if (findAgain) {
               ZS_LOG_DETAIL(log("need to refind peer at next opportunity") + PeerInfo::toDebug(peerInfo) + UseLocation::toDebug(location))
-              peerInfo->mFindAtNextPossibleMoment = true;
               peerInfo->findTimeReset();
             }
             break;
@@ -2558,11 +2562,6 @@ namespace openpeer
           return false;
         }
 
-        if (peerInfo->mFindAtNextPossibleMoment) {
-          ZS_LOG_DEBUG(log("told to refind at next possible moment"))
-          return true;
-        }
-
         if (peerInfo->mTotalSubscribers < 1) {
           ZS_LOG_DEBUG(log("no subscribers required so no need to subscribe to this location"))
           return false;
@@ -2606,11 +2605,6 @@ namespace openpeer
 
         if (peerInfo->mTotalSubscribers > 0) {
           ZS_LOG_TRACE(log("peer has subscriptions thus no need to shutdown") + PeerInfo::toDebug(peerInfo))
-          return false;
-        }
-
-        if (peerInfo->mFindAtNextPossibleMoment) {
-          ZS_LOG_DEBUG(log("do not shutdown inactive as there is a desire to find at next possible moment") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -2887,7 +2881,6 @@ namespace openpeer
       Account::PeerInfoPtr Account::PeerInfo::create()
       {
         PeerInfoPtr pThis(new PeerInfo);
-        pThis->mFindAtNextPossibleMoment = false;
         pThis->findTimeReset();
         pThis->mCurrentFindState = IPeer::PeerFindState_Idle;
         pThis->mTotalSubscribers = 0;
@@ -2929,7 +2922,6 @@ namespace openpeer
         ElementPtr resultEl = Element::create("stack::Account::PeerInfo");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "find next moment", mFindAtNextPossibleMoment);
         IHelper::debugAppend(resultEl, UsePeer::toDebug(mPeer));
         IHelper::debugAppend(resultEl, "locations", mLocations.size());
         IHelper::debugAppend(resultEl, "find monitor", (bool)mPeerFindMonitor);
