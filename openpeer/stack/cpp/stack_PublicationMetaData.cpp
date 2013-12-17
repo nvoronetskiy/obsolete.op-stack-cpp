@@ -223,6 +223,7 @@ namespace openpeer
       PublicationMetaData::~PublicationMetaData()
       {
         if (isNoop()) return;
+
         mThisWeak.reset();
         ZS_LOG_DEBUG(debug("destroyed"))
       }

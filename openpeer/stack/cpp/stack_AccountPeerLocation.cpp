@@ -170,7 +170,7 @@ namespace openpeer
         mDelegate(IAccountPeerLocationDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
 
-        mCreatedReason(CreatedFromReason_IncomingFind),
+        mCreatedReason(CreatedFromReason_IncomingFind), // INCOMING
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
 
@@ -210,12 +210,12 @@ namespace openpeer
         mDelegate(IAccountPeerLocationDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
 
-        mCreatedReason(CreatedFromReason_OutgoingFind),
+        mCreatedReason(CreatedFromReason_OutgoingFind), // OUTGOING
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
 
-        mLocalContext(request->context()),                                                        // whatever was told to the remote party
-        mRemoteContext(UseLocationPtr(Location::convert(locationInfo->mLocation))->getLocationID()), // expecting the remote party to respond with it's location ID
+        mLocalContext(request->context()),                                                            // whatever was told to the remote party
+        mRemoteContext(UseLocationPtr(Location::convert(locationInfo->mLocation))->getLocationID()),  // expecting the remote party to respond with it's location ID
 
         mDHLocalPrivateKey(request->dhPrivateKey()),
         mDHLocalPublicKey(request->dhPublicKey()),

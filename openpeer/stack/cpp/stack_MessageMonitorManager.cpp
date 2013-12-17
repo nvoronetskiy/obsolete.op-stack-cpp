@@ -76,7 +76,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorManager::MessageMonitorManager()
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_DETAIL(log("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -94,9 +94,9 @@ namespace openpeer
         
         AutoRecursiveLock lock(mLock);
         mThisWeak.reset();
-        mMonitors.clear();
 
-        ZS_LOG_DEBUG(log("destoyed"))
+        ZS_LOG_DETAIL(log("destoyed"))
+        mMonitors.clear();
       }
 
       //-----------------------------------------------------------------------

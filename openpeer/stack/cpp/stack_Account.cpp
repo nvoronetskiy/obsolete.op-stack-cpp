@@ -430,6 +430,29 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      LocationPtr Account::findExisting(
+                                        const String &peerURI,
+                                        const String &locationID
+                                        ) const
+      {
+        AutoRecursiveLock lock(getLock());
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::const_iterator found = mLocations.find(index);
+
+        if (found == mLocations.end()) {
+          ZS_LOG_TRACE(log("did not find existing location") + ZS_PARAM("peer uri", peerURI) + ZS_PARAM("location id", locationID))
+          return LocationPtr();
+        }
+
+        UseLocationPtr location = (*found).second.lock();
+
+        ZS_LOG_TRACE(log("found existing location") + UseLocation::toDebug(location))
+        return Location::convert(location);
+      }
+
+      //-----------------------------------------------------------------------
       LocationPtr Account::findExistingOrUse(LocationPtr inLocation)
       {
         UseLocationPtr location = inLocation;
@@ -822,7 +845,7 @@ namespace openpeer
           return PeerPtr();
         }
 
-        ZS_LOG_DEBUG(log("found existing peer") + UsePeer::toDebug(existingPeer))
+        ZS_LOG_TRACE(log("found existing peer") + UsePeer::toDebug(existingPeer))
         return Peer::convert(existingPeer);
       }
 
@@ -1292,6 +1315,7 @@ namespace openpeer
               ChannelNumber peerChannelNumber = peerLocation->getIncomingRelayChannelNumber();
               if (peerChannelNumber != channelNumber) {
                 ZS_LOG_TRACE(log("this location is not responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
+                continue;
               }
 
               ZS_LOG_DEBUG(log("found location is responsible for this incoming channel") + ZS_PARAM("location", locationID) + ZS_PARAM("peer using channel", peerChannelNumber) + ZS_PARAM("incoming channel", channelNumber))
@@ -1338,7 +1362,7 @@ namespace openpeer
           return;
         }
 
-        ZS_LOG_DETAIL(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountPeerLocation::toDebug(peerLocation))
+        ZS_LOG_DEBUG(log("notified account peer location state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountPeerLocation::toDebug(peerLocation))
 
         UseLocationPtr location = peerLocation->getLocation();
 
@@ -2341,7 +2365,7 @@ namespace openpeer
             shutdownPeerLocationsNotNeeded(peerURI, peerInfo);
 
             if (peerInfo->mLocations.size() > 0) {
-              ZS_LOG_DEBUG(log("some location are still connected thus do not shutdown the peer yet") + PeerInfo::toDebug(peerInfo))
+              ZS_LOG_TRACE(log("some location are still connected thus do not shutdown the peer yet") + PeerInfo::toDebug(peerInfo))
               continue;
             }
 
@@ -2558,28 +2582,28 @@ namespace openpeer
         Time tick = zsLib::now();
 
         if (peerInfo->mPeerFindMonitor) {
-          ZS_LOG_DEBUG(log("peer has peer find in progress thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("peer has peer find in progress thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
         if (peerInfo->mTotalSubscribers < 1) {
-          ZS_LOG_DEBUG(log("no subscribers required so no need to subscribe to this location"))
+          ZS_LOG_TRACE(log("no subscribers required so no need to subscribe to this location"))
           return false;
         }
 
         if (peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("peer has hints of new locations thus search needs redoing") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("peer has hints of new locations thus search needs redoing") + PeerInfo::toDebug(peerInfo))
           return true;
         }
 
         if (peerInfo->mLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("peer has locations and no hints to suggest new locations thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("peer has locations and no hints to suggest new locations thus no need to conduct new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
         // we have subscriptions but no locations, see if it is okay to find again "now"...
         if (tick < peerInfo->mNextScheduledFind) {
-          ZS_LOG_DEBUG(log("not time yet to conduct a new search") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("not time yet to conduct a new search") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -2588,7 +2612,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("peer search should be conducted") + PeerInfo::toDebug(peerInfo))
+        ZS_LOG_TRACE(log("peer search should be conducted") + PeerInfo::toDebug(peerInfo))
         return true;
       }
 
@@ -2599,7 +2623,7 @@ namespace openpeer
                                                     ) const
       {
         if (peerInfo->mPeerFindMonitor) {
-          ZS_LOG_DEBUG(log("peer has peer active find in progress thus its location should not be shutdown") + ZS_PARAM("peer", peerInfo->mID) + ZS_PARAM("peer URI", peerURI))
+          ZS_LOG_TRACE(log("peer has peer active find in progress thus its location should not be shutdown") + ZS_PARAM("peer", peerInfo->mID) + ZS_PARAM("peer URI", peerURI))
           return false;
         }
 
@@ -2608,7 +2632,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_DEBUG(log("should shutdown this peer's location that are non-active") + PeerInfo::toDebug(peerInfo))
+        ZS_LOG_TRACE(log("should shutdown this peer's location that are non-active") + PeerInfo::toDebug(peerInfo))
         return true;
       }
 
@@ -2622,13 +2646,13 @@ namespace openpeer
 
         if (mBlockLocationShutdownsUntil > tick) {
           // prevent shutdowns immediately after backgrounding (to give time to see which will self-cancel due to timeout)
-          ZS_LOG_DEBUG(log("not allowing peer locations to shutdown"))
+          ZS_LOG_DEBUG(log("not allowing peer locations to shutdown (due to backgrounding)"))
           return;
         }
 
         // scope: the peer is not incoming and all subscriptions are gone therefor it is safe to shutdown the peer locations entirely
         if (peerInfo->mLocations.size() > 0) {
-          ZS_LOG_DEBUG(log("checking to see which locations for this peer should be shutdown due to inactivity") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("checking to see which locations for this peer should be shutdown due to inactivity") + PeerInfo::toDebug(peerInfo))
 
           for (PeerInfo::PeerLocationMap::iterator locationIter = peerInfo->mLocations.begin(); locationIter != peerInfo->mLocations.end(); ) {
             PeerInfo::PeerLocationMap::iterator locationCurrentIter = locationIter;
@@ -2640,7 +2664,7 @@ namespace openpeer
             Time lastActivityTime = peerLocation->getTimeOfLastActivity();
 
             if (lastActivityTime + Seconds(OPENPEER_STACK_PEER_LOCATION_INACTIVITY_TIMEOUT_IN_SECONDS) > tick) {
-              ZS_LOG_DEBUG(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
+              ZS_LOG_TRACE(log("peer location is still considered active at this time (thus keeping connection alive)") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
               continue;
             }
 
@@ -2693,13 +2717,13 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerFiles)
 
         if (!shouldFind(peerURI, peerInfo)) {
-          ZS_LOG_DEBUG(log("peer find should not be conducted at this time") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("peer find should not be conducted at this time") + PeerInfo::toDebug(peerInfo))
           return;
         }
 
         mSocket->wakeup();
         if (IICESocket::ICESocketState_Ready != mSocket->getState()) {
-          ZS_LOG_DEBUG(log("should issue find request but must wait until ICE candidates are fully ready") + PeerInfo::toDebug(peerInfo))
+          ZS_LOG_TRACE(log("should issue find request but must wait until ICE candidates are fully ready") + PeerInfo::toDebug(peerInfo))
           return;
         }
 

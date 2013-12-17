@@ -175,7 +175,8 @@ namespace openpeer
       Stack::Stack() :
         mID(zsLib::createPUID())
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_BASIC(log("created"))
+
         MessageFactoryBootstrappedFinder::singleton();
         MessageFactoryBootstrapper::singleton();
         MessageFactoryCertificates::singleton();
@@ -195,7 +196,7 @@ namespace openpeer
       Stack::~Stack()
       {
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed"))
+        ZS_LOG_BASIC(log("destroyed"))
       }
 
       //-----------------------------------------------------------------------

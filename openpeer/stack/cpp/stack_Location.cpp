@@ -371,14 +371,22 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::Location::getForPeer(
                                                  IPeerPtr inPeer,
-                                                 const char *locationID
+                                                 const char *inLocationID
                                                  )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!inPeer)
-        ZS_THROW_INVALID_ARGUMENT_IF(!locationID)
+        ZS_THROW_INVALID_ARGUMENT_IF(!inLocationID)
+
+        String locationID(inLocationID);
 
         UsePeerPtr peer = Peer::convert(inPeer);
         UseAccountPtr account = peer->getAccount();
+
+        LocationPtr existing = account->findExisting(peer->getPeerURI(), locationID);
+        if (existing) {
+          ZS_LOG_TRACE(existing->log("already have existing location for this peer") + ZS_PARAM("peer uri", peer->getPeerURI()) + ZS_PARAM("location", locationID))
+          return existing;
+        }
 
         LocationPtr pThis(new Location(account, LocationType_Peer, peer, locationID));
         pThis->mThisWeak = pThis;
@@ -386,7 +394,7 @@ namespace openpeer
 
         LocationPtr useThis = account->findExistingOrUse(pThis);
         if (useThis != pThis) {
-          // do not inform the account of destruction since it was not used
+          // small window outside lock in which object could have been created but instead re-using existing - do not inform the account of destruction since it was not used
           ZS_LOG_DEBUG(pThis->log("discarding object since one exists already"))
           pThis->mAccount.reset();
         }

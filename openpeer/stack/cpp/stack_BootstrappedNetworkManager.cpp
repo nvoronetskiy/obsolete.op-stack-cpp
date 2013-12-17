@@ -77,7 +77,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkManager::BootstrappedNetworkManager()
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_DETAIL(log("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -89,8 +89,9 @@ namespace openpeer
       BootstrappedNetworkManager::~BootstrappedNetworkManager()
       {
         if(isNoop()) return;
-        
-        ZS_LOG_DEBUG(log("destroyed"))
+
+        mThisWeak.reset();
+        ZS_LOG_DETAIL(log("destroyed"))
       }
 
       //-----------------------------------------------------------------------

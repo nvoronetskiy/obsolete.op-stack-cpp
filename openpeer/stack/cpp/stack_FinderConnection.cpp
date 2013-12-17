@@ -199,7 +199,7 @@ namespace openpeer
         mLastReceivedData(zsLib::now()),
         mLastTick(zsLib::now())
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_DETAIL(log("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -220,7 +220,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderConnection::~FinderConnection()
       {
-        ZS_LOG_DEBUG(log("destroyed"))
+        ZS_LOG_DETAIL(log("destroyed"))
         mThisWeak.reset();
         cancel();
       }
@@ -871,7 +871,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
+        ZS_LOG_DETAIL(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
 
         mCurrentState = state;
         FinderConnectionPtr pThis = mThisWeak.lock();
@@ -1632,7 +1632,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
+        ZS_LOG_DETAIL(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
 
         mCurrentState = state;
         ChannelPtr pThis = mThisWeak.lock();

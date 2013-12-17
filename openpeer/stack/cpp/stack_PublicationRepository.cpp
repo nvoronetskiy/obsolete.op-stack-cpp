@@ -155,7 +155,7 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mAccount(account)
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_DETAIL(log("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -176,7 +176,7 @@ namespace openpeer
         if(isNoop()) return;
         
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed"))
+        ZS_LOG_DETAIL(log("destroyed"))
         cancel();
       }
 
@@ -3081,7 +3081,7 @@ namespace openpeer
       {
         if (mCurrentState == state) return;
 
-        ZS_LOG_BASIC(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
+        ZS_LOG_DETAIL(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
 
         mCurrentState = state;
 
@@ -3669,7 +3669,7 @@ namespace openpeer
       {
         if (mCurrentState == state) return;
 
-        ZS_LOG_BASIC(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
+        ZS_LOG_DETAIL(log("state changed") + ZS_PARAM("old state", IPublicationSubscription::toString(mCurrentState)) + ZS_PARAM("new state", IPublicationSubscription::toString(state)))
 
         mCurrentState = state;
 

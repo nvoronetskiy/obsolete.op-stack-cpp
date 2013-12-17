@@ -118,7 +118,7 @@ namespace openpeer
         mOuterReceiveStream(receiveStream),
         mOuterSendStream(sendStream)
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_DETAIL(log("created"))
         if (delegate) {
           mDefaultSubscription = mSubscriptions.subscribe(delegate, UseStack::queueDelegate());
         }
@@ -170,8 +170,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderRelayChannel::~FinderRelayChannel()
       {
-        ZS_LOG_DEBUG(log("destroyed"))
         mThisWeak.reset();
+        ZS_LOG_DETAIL(log("destroyed"))
         cancel();
       }
 
@@ -588,7 +588,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
+        ZS_LOG_DETAIL(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
         FinderRelayChannelPtr pThis = mThisWeak.lock();
 

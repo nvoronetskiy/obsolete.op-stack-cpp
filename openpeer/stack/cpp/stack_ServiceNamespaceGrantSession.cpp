@@ -106,7 +106,7 @@ namespace openpeer
         mNamespaceGrantStartNotificationSent(false),
         mTotalWaits(0)
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_BASIC(log("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -115,7 +115,7 @@ namespace openpeer
         if(isNoop()) return;
         
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed"))
+        ZS_LOG_BASIC(log("destroyed"))
         cancel();
       }
 
@@ -994,7 +994,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
+        ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
 
         ServiceNamespaceGrantSessionPtr pThis = mThisWeak.lock();

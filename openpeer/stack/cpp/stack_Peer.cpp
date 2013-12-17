@@ -315,14 +315,30 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::create(
-                           IAccountPtr account,
+                           IAccountPtr inAccount,
                            IPeerFilePublicPtr peerFilePublic
                            )
       {
+        UseAccountPtr account = Account::convert(inAccount);
+
         ZS_THROW_INVALID_ARGUMENT_IF(!account)
         ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
 
-        PeerPtr pThis(new Peer(Account::convert(account), peerFilePublic, String()));
+        String peerURI = peerFilePublic->getPeerURI();
+
+        PeerPtr existing = account->findExisting(peerURI);
+        if (existing) {
+          AutoRecursiveLock lock(existing->getLock());
+
+          ZS_LOG_TRACE(existing->log("found existing peer object to re-use") + ZS_PARAM("uri", peerURI))
+          if (!existing->mPeerFilePublic) {
+            existing->mPeerFilePublic = peerFilePublic;
+          }
+
+          return existing;
+        }
+
+        PeerPtr pThis(new Peer(account, peerFilePublic, String()));
         pThis->mThisWeak = pThis;
         pThis->init();
 
@@ -336,7 +352,7 @@ namespace openpeer
         }
 
         if (pThis != useThis) {
-          // do not inform account of destruction since it was not used
+          // small window in which could have created new object outside of lock - do not inform account of destruction since it was not used
           ZS_LOG_DEBUG(pThis->log("discarding object since one exists already"))
           pThis->mAccount.reset();
         }
@@ -526,7 +542,7 @@ namespace openpeer
         // check if it already exists in the account
         PeerPtr useThis = account->findExistingOrUse(pThis);
         if (useThis != pThis) {
-          // do not inform account of destruction since it is not used
+          // small window in which could have created new object outside of lock - do not inform account of destruction since it was not used
           ZS_LOG_DEBUG(pThis->log("discarding object since one exists already"))
           pThis->mAccount.reset();
         }

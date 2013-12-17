@@ -148,6 +148,10 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForLocation, ForLocation)
 
+        virtual LocationPtr findExisting(
+                                         const String &peerURI,
+                                         const String &locationID
+                                         ) const = 0;
         virtual LocationPtr findExistingOrUse(LocationPtr location) = 0;
         virtual LocationPtr getLocationForLocal() const = 0;
         virtual LocationPtr getLocationForFinder() const = 0;
@@ -443,6 +447,10 @@ namespace openpeer
         #pragma mark Account => IAccountForLocation
         #pragma mark
 
+        virtual LocationPtr findExisting(
+                                         const String &peerURI,
+                                         const String &locationID
+                                         ) const;
         virtual LocationPtr findExistingOrUse(LocationPtr location);
         virtual LocationPtr getLocationForLocal() const;
         virtual LocationPtr getLocationForFinder() const;

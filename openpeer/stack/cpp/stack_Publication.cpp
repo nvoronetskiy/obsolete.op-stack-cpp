@@ -226,12 +226,13 @@ namespace openpeer
                             expires
                             )
       {
+        ZS_LOG_DEBUG(debug("created"))
       }
 
       //-----------------------------------------------------------------------
       void Publication::init()
       {
-        ZS_LOG_DEBUG(debug("created"))
+        ZS_LOG_DEBUG(debug("init"))
         logDocument();
       }
 
@@ -263,6 +264,7 @@ namespace openpeer
       Publication::~Publication()
       {
         if (isNoop()) return;
+
         mThisWeakPublication.reset();
         ZS_LOG_DEBUG(debug("destroyed"))
       }
@@ -453,7 +455,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
-          ZS_LOG_BASIC(log("Updating from JSON") + ZS_PARAM("json", internal::toString(updatedDocumentToBeAdopted)))
+          ZS_LOG_DEBUG(log("Updating from JSON") + ZS_PARAM("json", internal::toString(updatedDocumentToBeAdopted)))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
@@ -490,7 +492,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"))
-          ZS_LOG_BASIC(log("FINAL JSON") + ZS_PARAM("json", internal::toString(mDocument)))
+          ZS_LOG_DEBUG(log("FINAL JSON") + ZS_PARAM("json", internal::toString(mDocument)))
           ZS_LOG_DEBUG(log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))

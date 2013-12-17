@@ -320,7 +320,7 @@ namespace openpeer
         mFrozenVersion(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_DOWNLOAD_FROZEN_VALUE + IHelper::randomString(32)),
         mNextRetryAfterFailureTime(Seconds(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_ERROR_RETRY_TIME_IN_SECONDS))
       {
-        ZS_LOG_DEBUG(log("created"))
+        ZS_LOG_BASIC(log("created"))
         mRolodexInfo.mVersion = mFrozenVersion;
       }
 
@@ -330,7 +330,7 @@ namespace openpeer
         if(isNoop()) return;
 
         mThisWeak.reset();
-        ZS_LOG_DEBUG(log("destroyed"))
+        ZS_LOG_BASIC(log("destroyed"))
         cancel();
       }
 
@@ -2502,7 +2502,7 @@ namespace openpeer
       {
         if (state == mCurrentState) return;
 
-        ZS_LOG_DEBUG(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
+        ZS_LOG_BASIC(log("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
 
         notifyLockboxStateChanged();
