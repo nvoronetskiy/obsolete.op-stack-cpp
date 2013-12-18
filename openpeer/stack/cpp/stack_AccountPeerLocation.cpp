@@ -183,9 +183,6 @@ namespace openpeer
         mDHRemotePublicKey(request->dhPublicKey()),
 
         mCurrentState(IAccount::AccountState_Pending),
-
-        mFrozen(false),
-
         mLastActivity(zsLib::now()),
 
         mLocationInfo(request->locationInfo()),
@@ -226,9 +223,6 @@ namespace openpeer
         // mDHRemotePublicKey(...) - // obtain this from the incoming relay channel
 
         mCurrentState(IAccount::AccountState_Pending),
-
-        mFrozen(true),
-
         mLastActivity(zsLib::now()),
 
         mLocationInfo(locationInfo),
@@ -1240,8 +1234,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
         IHelper::debugAppend(resultEl, "refind", mShouldRefindNow);
 
-        IHelper::debugAppend(resultEl, "frozen", mFrozen);
-
         IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
         IHelper::debugAppend(resultEl, "location info", mLocationInfo->toDebug());
@@ -1453,11 +1445,6 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(debug("step"))
-
-        if (mFrozen) {
-          ZS_LOG_TRACE(log("waiting to be unfrozen"))
-          return;
-        }
 
         UseAccountPtr outer = mOuter.lock();
         if (!outer) {

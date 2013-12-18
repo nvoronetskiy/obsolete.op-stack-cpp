@@ -485,8 +485,6 @@ namespace openpeer
         AccountStates mCurrentState;
         AutoBool mShouldRefindNow;
 
-        bool mFrozen;
-
         mutable Time mLastActivity;
 
         // information about the location found

@@ -240,13 +240,13 @@ namespace openpeer
         String peerFilePublicStr = UseCache::fetch(cookieName);
 
         if (!peerFilePublicStr.hasData()) {
-          ZS_LOG_TRACE(slog("peer file was not cached") + ZS_PARAM("uri", peerURI))
+          ZS_LOG_TRACE(slog("peer file was not cached") + ZS_PARAM("cookie", cookieName) + ZS_PARAM("uri", peerURI))
           return PeerFilePublicPtr();
         }
 
         ElementPtr rootEl = IHelper::toJSON(peerFilePublicStr);
         if (!rootEl) {
-          ZS_LOG_TRACE(slog("peer file previously cached was not valid") + ZS_PARAM("uri", peerURI))
+          ZS_LOG_TRACE(slog("peer file previously cached was not valid") + ZS_PARAM("cookie", cookieName) + ZS_PARAM("uri", peerURI))
           UseCache::clear(cookieName);
           return PeerFilePublicPtr();
         }
@@ -632,7 +632,7 @@ namespace openpeer
             // successfully loaded so cache it immediately
             String cookieName = getCookieName(mPeerURI);
             if (cookieName.hasData()) {
-              ZS_LOG_TRACE(log("storing peer file public in cache") + ZS_PARAM("uri", mPeerURI))
+              ZS_LOG_TRACE(log("storing peer file public in cache") + ZS_PARAM("cookie", cookieName) + ZS_PARAM("uri", mPeerURI))
               UseCache::store(getCookieName(mPeerURI), zsLib::now() + Hours(OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_DURATION_IN_HOURS), publicFile);
             }
           }
