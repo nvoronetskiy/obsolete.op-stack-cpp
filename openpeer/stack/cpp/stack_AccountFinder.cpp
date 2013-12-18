@@ -34,9 +34,9 @@
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_Helper.h>
-#include <openpeer/stack/internal/stack_MessageMonitor.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
+#include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 
 #include <openpeer/stack/message/peer-finder/SessionDeleteRequest.h>
 #include <openpeer/stack/message/peer-finder/SessionCreateRequest.h>
@@ -48,6 +48,7 @@
 #include <openpeer/stack/message/MessageResult.h>
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePublic.h>
+#include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IHelper.h>
 
@@ -290,7 +291,7 @@ namespace openpeer
         bool result = send(requestMessage);
         if (!result) {
           // notify that the message requester failed to send the message...
-          UseMessageMonitorPtr(MessageMonitor::convert(monitor))->notifyMessageSendFailed();
+          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
           return monitor;
         }
 
@@ -948,7 +949,12 @@ namespace openpeer
         if (state == mCurrentState) return;
 
         ZS_LOG_BASIC(debug("current state changed") + ZS_PARAM("old state", IAccount::toString(mCurrentState)) + ZS_PARAM("new state", IAccount::toString(state)))
+
         mCurrentState = state;
+
+        if (isShutdown()) {
+          UseMessageMonitorManager::notifyMessageSenderObjectGone(mID);
+        }
 
         if (!mDelegate) return;
 

@@ -33,7 +33,8 @@
 #include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 #include <openpeer/stack/internal/stack_Helper.h>
-#include <openpeer/stack/ILocation.h>
+#include <openpeer/stack/internal/stack_Location.h>
+
 #include <openpeer/stack/IBootstrappedNetwork.h>
 #include <openpeer/stack/message/Message.h>
 
@@ -88,7 +89,8 @@ namespace openpeer
         MessageQueueAssociator(queue),
         mWasHandled(false),
         mTimeoutFired(false),
-        mPendingHandled(0)
+        mPendingHandled(0),
+        mSentViaObjectID(0)
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -98,10 +100,15 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
+        mExpires = zsLib::now() + timeout;
         mTimer = Timer::create(mThisWeak.lock(), timeout, false);
 
         UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
-        manager->monitorStart(mThisWeak.lock());
+        PUID sentViaObjectID = manager->monitorStart(mThisWeak.lock());
+        if (0 != sentViaObjectID) {
+          ZS_LOG_TRACE(log("message was sent via a known sender object ID") + ZS_PARAM("sent via object id", sentViaObjectID))
+          mSentViaObjectID = sentViaObjectID;
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -161,18 +168,29 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorPtr MessageMonitor::monitorAndSendToLocation(
                                                                  IMessageMonitorDelegatePtr delegate,
-                                                                 ILocationPtr peerLocation,
+                                                                 ILocationPtr inLocation,
                                                                  message::MessagePtr message,
                                                                  Duration timeout
                                                                  )
       {
         if (!message) return MessageMonitorPtr();
 
-        ZS_THROW_INVALID_ARGUMENT_IF(!peerLocation)
+        ZS_THROW_INVALID_ARGUMENT_IF(!inLocation)
+
+        UseLocationPtr location = Location::convert(inLocation);
 
         MessageMonitorPtr pThis = monitor(delegate, message, timeout);
-        if (!peerLocation->sendMessage(message)) {
-          pThis->notifyMessageSendFailed();
+
+        PUID sentViaObjectID = location->sendMessageFromMonitor(message);
+
+        if (0 != sentViaObjectID) {
+          AutoRecursiveLock lock(pThis->getLock());
+          pThis->mSentViaObjectID = sentViaObjectID;
+
+          UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+          manager->trackSentViaObjectID(message, sentViaObjectID);
+        } else {
+          pThis->notifySendMessageFailure(message);
         }
         return pThis;
       }
@@ -193,7 +211,7 @@ namespace openpeer
 
         MessageMonitorPtr pThis = monitor(delegate, message, timeout);
         if (!bootstrappedNetwork->sendServiceMessage(serviceType, serviceMethodName, message)) {
-          pThis->notifyMessageSendFailed();
+          pThis->notifySendMessageFailure(message);
         }
         return pThis;
       }
@@ -237,14 +255,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      message::MessagePtr MessageMonitor::getMonitoredMessage()
+      message::MessagePtr MessageMonitor::getMonitoredMessage() const
       {
         AutoRecursiveLock lock(getLock());
         return mOriginalMessage;
       }
 
       //-----------------------------------------------------------------------
-      String MessageMonitor::getMonitoredMessageID()
+      String MessageMonitor::getMonitoredMessageID() const
       {
         AutoRecursiveLock lock(getLock());
         return mOriginalMessage->messageID();
@@ -295,39 +313,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark MessageMonitor => IMessageMonitorForAccount
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      void MessageMonitor::notifyMessageSendFailed()
-      {
-        AutoRecursiveLock lock(getLock());
-        if (!mDelegate) {
-          ZS_LOG_WARNING(Detail, log("cannot notify of send failure as delegate is gone"))
-          return;
-        }
-
-        MessageResultPtr result = MessageResult::create(mOriginalMessage, IHTTP::HTTPStatusCode_Networkconnecttimeouterror);
-        if (result) {
-          // create a fake error result since the send failed
-          IMessageMonitorAsyncDelegateProxy::create(UseStack::queueStack(), mThisWeak.lock())->onAutoHandleFailureResult(result);
-          return;
-        }
-
-        try {
-          // could not create a result so treat it as a monitor timeout
-          mDelegate->onMessageMonitorTimedOut(mThisWeak.lock());
-        } catch (IMessageMonitorDelegateProxy::Exceptions::DelegateGone &) {
-        }
-
-        cancel();
-      }
-
-      //---------------------------------------------------------------------
       #pragma mark
       #pragma mark MessageMonitor => IMessageMonitorForMessageMonitorManager
       #pragma mark
@@ -351,6 +336,27 @@ namespace openpeer
         // NOTE:  Do not cancel the requester since it is possible to receive
         //        more than one request/notify/response for each message ID
         return true;
+      }
+
+      //-----------------------------------------------------------------------
+      void MessageMonitor::notifySendMessageFailure(message::MessagePtr message)
+      {
+        AutoRecursiveLock lock(getLock());
+        if (!message) return;
+        if (mMessageID != message->messageID()) return;
+
+        ZS_LOG_WARNING(Detail, debug("notifying of message send failure (because sender could not send message)") + message::Message::toDebug(message))
+        notifyWithError(IHTTP::HTTPStatusCode_Networkconnecttimeouterror);
+      }
+
+      //-----------------------------------------------------------------------
+      void MessageMonitor::notifySenderObjectGone(PUID senderObjectID)
+      {
+        AutoRecursiveLock lock(getLock());
+        if (senderObjectID != mSentViaObjectID) return;
+
+        ZS_LOG_WARNING(Detail, debug("notifying of message send failure (because object is gone)") + ZS_PARAM("message id", mMessageID))
+        notifyWithError(IHTTP::HTTPStatusCode_Gone);
       }
 
       //-----------------------------------------------------------------------
@@ -395,17 +401,32 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      Log::Params MessageMonitor::debug(const char *message) const
+      {
+        return Log::Params(message, toDebug());
+      }
+
+      //-----------------------------------------------------------------------
       ElementPtr MessageMonitor::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
         ElementPtr resultEl = Element::create("MessageMonitor");
 
         IHelper::debugAppend(resultEl, "id", mID);
+
         IHelper::debugAppend(resultEl, "message id", mMessageID);
+
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+
         IHelper::debugAppend(resultEl, "handled", mWasHandled);
         IHelper::debugAppend(resultEl, "timeout", mTimeoutFired);
-        IHelper::debugAppend(resultEl, "pending", mPendingHandled);
+        IHelper::debugAppend(resultEl, "pending handled", mPendingHandled);
+
         IHelper::debugAppend(resultEl, "timer", (bool)mTimer);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+        IHelper::debugAppend(resultEl, "original message", (bool)mOriginalMessage);
+
+        IHelper::debugAppend(resultEl, "sent via object id", mSentViaObjectID);
 
         return resultEl;
       }
@@ -416,6 +437,38 @@ namespace openpeer
         UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
         return manager->getLock();
       }
+
+      //-----------------------------------------------------------------------
+      void MessageMonitor::notifyWithError(IHTTP::HTTPStatusCodes code)
+      {
+        AutoRecursiveLock lock(getLock());
+        if (!mDelegate) {
+          ZS_LOG_WARNING(Detail, log("cannot notify of sent failure as delegate is gone"))
+          return;
+        }
+
+        ZS_LOG_WARNING(Detail, log("notifying of message send failure") + ZS_PARAM("message id", mMessageID) + ZS_PARAM("code", code) + message::Message::toDebug(mOriginalMessage))
+
+        MessageResultPtr result = MessageResult::create(mOriginalMessage, code);
+        if (result) {
+          // create a fake error result since the send failed
+          IMessageMonitorAsyncDelegateProxy::create(UseStack::queueStack(), mThisWeak.lock())->onAutoHandleFailureResult(result);
+          return;
+        }
+
+        try {
+          // could not create a result so treat it as a monitor timeout
+          mDelegate->onMessageMonitorTimedOut(mThisWeak.lock());
+        } catch (IMessageMonitorDelegateProxy::Exceptions::DelegateGone &) {
+        }
+
+        cancel();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

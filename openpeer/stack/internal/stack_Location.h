@@ -135,6 +135,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationForMessageMonitor
+      #pragma mark
+
+      interaction ILocationForMessageMonitor
+      {
+        typedef PUID SentViaObjectID;
+
+        virtual SentViaObjectID sendMessageFromMonitor(message::MessagePtr message) const = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ILocationForPublication
       #pragma mark
 
@@ -193,6 +208,7 @@ namespace openpeer
                        public ILocationForAccount,
                        public ILocationForMessages,
                        public ILocationForPeerSubscription,
+                       public ILocationForMessageMonitor,
                        public ILocationForPublication,
                        public ILocationForPublicationRepository,
                        public IMessageSource
@@ -309,6 +325,13 @@ namespace openpeer
         // (duplicate) virtual PeerPtr getPeer(bool) const;
 
         virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Location => ILocationForMessageMonitor
+        #pragma mark
+
+        virtual SentViaObjectID sendMessageFromMonitor(message::MessagePtr message) const;
 
         //---------------------------------------------------------------------
         #pragma mark

@@ -32,6 +32,7 @@
 #pragma once
 
 #include <openpeer/stack/internal/types.h>
+#include <openpeer/services/IWakeDelegate.h>
 
 #include <map>
 
@@ -48,6 +49,38 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IMessageMonitorManagerForAccountFinder
+      #pragma mark
+
+      interaction IMessageMonitorManagerForAccountFinder
+      {
+        static void notifyMessageSendFailed(message::MessagePtr message);
+        static void notifyMessageSenderObjectGone(PUID objectID);
+
+        virtual ~IMessageMonitorManagerForAccountFinder() {}  // need until virtual method added to make dynamic cast work
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageMonitorManagerForAccountPeerLocation
+      #pragma mark
+
+      interaction IMessageMonitorManagerForAccountPeerLocation
+      {
+        static void notifyMessageSendFailed(message::MessagePtr message);
+        static void notifyMessageSenderObjectGone(PUID objectID);
+
+        virtual ~IMessageMonitorManagerForAccountPeerLocation() {}  // need until virtual method added to make dynamic cast work
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IMessageMonitorManagerForMessageMonitor
       #pragma mark
 
@@ -55,13 +88,20 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor, ForMessageMonitor)
 
+        typedef PUID SentViaObjectID;
+
         static ForMessageMonitorPtr singleton();
 
-        virtual void monitorStart(MessageMonitorPtr requester) = 0;
+        virtual SentViaObjectID monitorStart(MessageMonitorPtr requester) = 0;
 
         virtual void monitorEnd(MessageMonitor &monitor) = 0;
 
         virtual bool handleMessage(message::MessagePtr message) = 0;
+
+        virtual void trackSentViaObjectID(
+                                          message::MessagePtr message,
+                                          SentViaObjectID sentViaObjectID
+                                          ) = 0;
 
         virtual RecursiveLock &getLock() const = 0;
       };
@@ -75,18 +115,40 @@ namespace openpeer
       #pragma mark
 
       class MessageMonitorManager : public Noop,
-                                    public IMessageMonitorManagerForMessageMonitor
+                                    public MessageQueueAssociator,
+                                    public IMessageMonitorManagerForMessageMonitor,
+                                    public IWakeDelegate,
+                                    public ITimerDelegate
       {
       public:
         friend interaction IMessageMonitorManagerFactory;
+        friend interaction IMessageMonitorManagerForAccountFinder;
+        friend interaction IMessageMonitorManagerForAccountPeerLocation;
         friend interaction IMessageMonitorManagerForMessageMonitor;
 
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForMessageMonitorManager, UseMessageMonitor)
 
+        typedef std::list<MessagePtr> PendingMessageSendFailureMessageList;
+        typedef std::list<SentViaObjectID> PendingSenderObjectGoneList;
+
+        typedef String MessageID;
+        typedef std::map<MessageID, SentViaObjectID> SentViaObjectMap;
+
+        typedef Time Expiry;
+        typedef std::pair<MessageID, Expiry> MessageExpiryPair;
+        typedef std::list<MessageExpiryPair> MessageExpiryList;
+
+        typedef PUID MonitorID;
+        typedef std::map<MonitorID, UseMessageMonitorWeakPtr> MonitorMap;
+
+        ZS_DECLARE_PTR(MonitorMap)
+
+        typedef std::map<MessageID, MonitorMapPtr> MonitorsMap;
+
       protected:
         MessageMonitorManager();
         
-        MessageMonitorManager(Noop) : Noop(true) {};
+        MessageMonitorManager(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
 
         static MessageMonitorManagerPtr create();
 
@@ -99,15 +161,54 @@ namespace openpeer
         #pragma mark MessageMonitorManager => IMessageMonitorManagerForMessageMonitor
         #pragma mark
 
-        static ForMessageMonitorPtr singleton();
+        static MessageMonitorManagerPtr singleton();
 
-        virtual void monitorStart(MessageMonitorPtr requester);
+        virtual SentViaObjectID monitorStart(MessageMonitorPtr requester);
 
         virtual void monitorEnd(MessageMonitor &monitor);
 
         virtual bool handleMessage(message::MessagePtr message);
 
+        virtual void trackSentViaObjectID(
+                                          message::MessagePtr message,
+                                          SentViaObjectID sentViaObjectID
+                                          );
+
         // (duplicate) virtual RecursiveLock &getLock() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitorManager => IMessageMonitorManagerForAccountFinder
+        #pragma mark
+
+        // (duplicate) static MessageMonitorManagerPtr singleton();
+
+        virtual void notifyMessageSendFailed(message::MessagePtr message);
+        virtual void notifyMessageSenderObjectGone(PUID objectID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitorManager => IMessageMonitorManagerForAccountPeerLocation
+        #pragma mark
+
+        // (duplicate) static MessageMonitorManagerPtr singleton();
+
+        // (duplicate) virtual void notifyMessageSendFailed(message::MessagePtr message);
+        // (duplicate) virtual void notifyMessageSenderObjectGone(PUID objectID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitorManager => IMessageMonitorManagerForMessageMonitor
+        #pragma mark
+
+        virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitorManager => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
 
       protected:
         //---------------------------------------------------------------------
@@ -129,15 +230,17 @@ namespace openpeer
         mutable RecursiveLock mLock;
         MessageMonitorManagerWeakPtr mThisWeak;
 
-        typedef PUID MonitorID;
-        typedef std::map<MonitorID, UseMessageMonitorWeakPtr> MonitorMap;
-
-        ZS_DECLARE_PTR(MonitorMap)
-
-        typedef String MessageID;
-        typedef std::map<MessageID, MonitorMapPtr> MonitorsMap;
-
         MonitorsMap mMonitors;
+
+        PendingMessageSendFailureMessageList mPendingFailures;
+        PendingSenderObjectGoneList mPendingGone;
+
+        MessageExpiryList mMessageExpiryList;
+
+        SentViaObjectMap mSentViaObjectIDs;
+        MessageExpiryList mExpiredSentViaObjectIDs;
+
+        TimerPtr mTimer;
       };
 
       //-----------------------------------------------------------------------

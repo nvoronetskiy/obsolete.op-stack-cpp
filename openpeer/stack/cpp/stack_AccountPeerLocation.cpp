@@ -32,7 +32,7 @@
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_AccountPeerLocation.h>
 #include <openpeer/stack/internal/stack_AccountFinder.h>
-#include <openpeer/stack/internal/stack_MessageMonitor.h>
+#include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_Peer.h>
@@ -42,6 +42,7 @@
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePrivate.h>
 #include <openpeer/stack/IPeerFilePublic.h>
+#include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/stack/message/peer-to-peer/PeerIdentifyRequest.h>
 #include <openpeer/stack/message/peer-to-peer/PeerKeepAliveRequest.h>
@@ -182,6 +183,9 @@ namespace openpeer
         mDHRemotePublicKey(request->dhPublicKey()),
 
         mCurrentState(IAccount::AccountState_Pending),
+
+        mFrozen(false),
+
         mLastActivity(zsLib::now()),
 
         mLocationInfo(request->locationInfo()),
@@ -222,6 +226,9 @@ namespace openpeer
         // mDHRemotePublicKey(...) - // obtain this from the incoming relay channel
 
         mCurrentState(IAccount::AccountState_Pending),
+
+        mFrozen(true),
+
         mLastActivity(zsLib::now()),
 
         mLocationInfo(locationInfo),
@@ -375,6 +382,20 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool AccountPeerLocation::wasCreatedFromIncomingFind() const
+      {
+        AutoRecursiveLock lock(getLock());
+        return CreatedFromReason_IncomingFind == mCreatedReason;
+      }
+
+      //-----------------------------------------------------------------------
+      Time AccountPeerLocation::getCreationFindRequestTimestamp() const
+      {
+        AutoRecursiveLock lock(getLock());
+        return mFindRequest->time();
+      }
+
+      //-----------------------------------------------------------------------
       bool AccountPeerLocation::hasReceivedCandidateInformation() const
       {
         AutoRecursiveLock lock(getLock());
@@ -422,6 +443,19 @@ namespace openpeer
         }
 
         DocumentPtr document = message->encode();
+        if (!document) {
+          ZS_LOG_WARNING(Detail, log("message failed to encode") + Message::toDebug(message))
+          return false;
+        }
+
+        ElementPtr rootEl = document->getFirstChildElement();
+        if (rootEl) {
+          AttributePtr appID = rootEl->findAttribute("appid");
+          if (appID) {
+            ZS_LOG_TRACE(log("stripping \"appid\" attribute from root element") + ZS_PARAM("appid", appID->getValue()))
+            appID->orphan();
+          }
+        }
 
         boost::shared_array<char> output;
         size_t length = 0;
@@ -486,7 +520,7 @@ namespace openpeer
         bool result = send(requestMessage);
         if (!result) {
           // notify that the message requester failed to send the message...
-          UseMessageMonitorPtr(MessageMonitor::convert(monitor))->notifyMessageSendFailed();
+          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
           return monitor;
         }
 
@@ -1206,6 +1240,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
         IHelper::debugAppend(resultEl, "refind", mShouldRefindNow);
 
+        IHelper::debugAppend(resultEl, "frozen", mFrozen);
+
         IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
         IHelper::debugAppend(resultEl, "location info", mLocationInfo->toDebug());
@@ -1417,6 +1453,11 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(debug("step"))
+
+        if (mFrozen) {
+          ZS_LOG_TRACE(log("waiting to be unfrozen"))
+          return;
+        }
 
         UseAccountPtr outer = mOuter.lock();
         if (!outer) {
@@ -2148,6 +2189,10 @@ namespace openpeer
         ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("old state", IAccount::toString(mCurrentState)) + ZS_PARAM("new state", IAccount::toString(state)))
 
         mCurrentState = state;
+
+        if (isShutdown()) {
+          UseMessageMonitorManager::notifyMessageSenderObjectGone(mID);
+        }
 
         if (!mDelegate) return;
 

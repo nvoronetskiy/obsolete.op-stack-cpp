@@ -529,7 +529,7 @@ namespace openpeer
       PeerPtr Account::getPeerForLocal() const
       {
         AutoRecursiveLock lock(getLock());
-        if (!mSelfLocation) {
+        if (!mSelfPeer) {
           ZS_LOG_WARNING(Detail, log("obtained peer for local before peer was ready"))
         }
         return Peer::convert(mSelfPeer);
@@ -667,10 +667,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::send(
                          LocationPtr inLocation,
-                         MessagePtr message
+                         MessagePtr message,
+                         PUID *outSentViaObjectID
                          ) const
       {
         UseLocationPtr location = inLocation;
+
+        if (outSentViaObjectID) *outSentViaObjectID = 0;
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
@@ -686,6 +689,8 @@ namespace openpeer
             ZS_LOG_WARNING(Detail, log("attempting to send to finder") + UseLocation::toDebug(location))
             return false;
           }
+
+          if (outSentViaObjectID) *outSentViaObjectID = mFinder->getID();
 
           return mFinder->send(message);
         }
@@ -705,6 +710,8 @@ namespace openpeer
         }
 
         UseAccountPeerLocationPtr accountPeerLocation = (*foundLocation).second;
+
+        if (outSentViaObjectID) *outSentViaObjectID = accountPeerLocation->getID();
 
         return accountPeerLocation->send(message);
       }
@@ -1148,91 +1155,10 @@ namespace openpeer
         PeerLocationFindRequestPtr peerLocationFindRequest = PeerLocationFindRequest::convert(message);
 
         if (peerLocationFindRequest) {
-          ZS_LOG_DEBUG(log("receiving incoming find peer location request"))
+          ZS_LOG_DEBUG(log("receiving incoming find peer location request (will respond later)"))
 
-          LocationInfoPtr fromLocationInfo = peerLocationFindRequest->locationInfo();
-          UseLocationPtr fromLocation;
-          if (fromLocationInfo->mLocation) {
-            fromLocation = Location::convert(fromLocationInfo->mLocation);
-          }
-
-          UsePeerPtr fromPeer;
-          if (fromLocation) {
-            fromPeer = fromLocation->getPeer();
-          }
-
-          if ((!fromLocation) ||
-              (!fromPeer)){
-            ZS_LOG_WARNING(Detail, log("invalid request received") + UseLocation::toDebug(fromLocation))
-            MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_BadRequest);
-            send(Location::convert(mFinderLocation), result);
-            return;
-          }
-
-          ZS_LOG_DEBUG(log("received incoming peer find request") + UseLocation::toDebug(fromLocation))
-
-          PeerInfoPtr peerInfo;
-
-          PeerInfoMap::iterator foundPeer = mPeerInfos.find(fromLocation->getPeerURI());
-          if (foundPeer != mPeerInfos.end()) {
-            peerInfo = (*foundPeer).second;
-            ZS_LOG_DEBUG(log("received incoming peer find request from known peer") + PeerInfo::toDebug(peerInfo))
-          } else {
-            peerInfo = PeerInfo::create();
-            peerInfo->mPeer = fromPeer;
-            mPeerInfos[fromPeer->getPeerURI()] = peerInfo;
-            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer") + PeerInfo::toDebug(peerInfo))
-          }
-
-          UseAccountPeerLocationPtr peerLocation;
-          PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(fromLocation->getLocationID());
-          if (foundLocation != peerInfo->mLocations.end()) {
-            ZS_LOG_WARNING(Detail, log("received incoming peer find request from existing peer location thus will shutdown this existing location in favour of new location") + PeerInfo::toDebug(peerInfo))
-
-            peerLocation = (*foundLocation).second;
-
-            peerInfo->mLocations.erase(foundLocation);
-            peerLocation->shutdown();
-
-            notifySubscriptions(fromLocation, ILocation::LocationConnectionState_Disconnected);
-
-            foundLocation = peerInfo->mLocations.end();
-            peerLocation.reset();
-          }
-
-          // we must create a DH private / public key pair for use with this location based upon the key domain of the remote public key
-
-          IDHKeyDomainPtr remoteKeyDomain = peerLocationFindRequest->dhKeyDomain();
-          IDHPublicKeyPtr remotePublicKey = peerLocationFindRequest->dhPublicKey();
-
-          if ((!remoteKeyDomain) ||
-              (!remotePublicKey)) {
-            ZS_LOG_ERROR(Detail, log("remote party did not include remote public key and key domain (thus ignoring incoming find request)"))
-            return;
-          }
-
-          DHKeyPair templateKeyPair = getDHKeyPairTemplate(remoteKeyDomain->getPrecompiledType());
-          if ((!templateKeyPair.first) ||
-              (!templateKeyPair.second)) {
-            ZS_LOG_ERROR(Detail, log("remote party's key domain does not have a precompiled domain key template (thus ignoring incoming find request)"))
-            return;
-          }
-
-          IDHPublicKeyPtr newPublicKey;
-          IDHPrivateKeyPtr newPrivateKey = IDHPrivateKey::loadAndGenerateNewEphemeral(templateKeyPair.first, templateKeyPair.second, newPublicKey);
-          ZS_THROW_INVALID_ASSUMPTION_IF(!newPrivateKey)
-          ZS_THROW_INVALID_ASSUMPTION_IF(!newPublicKey)
-
-          peerLocation = UseAccountPeerLocation::createFromIncomingPeerLocationFind(
-                                                                                    mThisWeak.lock(),
-                                                                                    mThisWeak.lock(),
-                                                                                    peerLocationFindRequest,
-                                                                                    newPrivateKey,
-                                                                                    newPublicKey
-                                                                                    );
-
-          peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
-          ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
+          mIncomingFindRequests.push_back(peerLocationFindRequest);
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return;
         }
 
@@ -1639,6 +1565,9 @@ namespace openpeer
         ZS_LOG_DEBUG(debug("peer location find result processed"))
 
         handleFindRequestComplete(monitor);
+
+        // process any pending incoming find requests that were waiting for the find to complete
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
       }
 
@@ -2055,6 +1984,7 @@ namespace openpeer
         if (!stepLockboxSession()) return;
         if (!stepLocations()) return;
         if (!stepSocket()) return;
+        if (!stepRespondToPeerLocationFindReqests()) return;
         if (!stepFinderDNS()) return;
         if (!stepFinder()) return;
 
@@ -2062,7 +1992,7 @@ namespace openpeer
 
         if (!stepPeers()) return;
 
-        ZS_LOG_DEBUG(debug("step complete"))
+        ZS_LOG_TRACE(debug("step complete"))
       }
 
       //-----------------------------------------------------------------------
@@ -2260,6 +2190,152 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool Account::stepRespondToPeerLocationFindReqests()
+      {
+        ZS_LOG_TRACE(log("responding to incoming find requests") + ZS_PARAM("size", mIncomingFindRequests.size()))
+
+        for (IncomingFindRequestList::iterator iter = mIncomingFindRequests.begin(); iter != mIncomingFindRequests.end(); )
+        {
+          IncomingFindRequestList::iterator current = iter; ++iter;
+
+          PeerLocationFindRequestPtr &peerLocationFindRequest = (*current);
+
+          LocationInfoPtr fromLocationInfo = peerLocationFindRequest->locationInfo();
+          UseLocationPtr fromLocation;
+          if (fromLocationInfo->mLocation) {
+            fromLocation = Location::convert(fromLocationInfo->mLocation);
+          }
+
+          UsePeerPtr fromPeer;
+          if (fromLocation) {
+            fromPeer = fromLocation->getPeer();
+          }
+
+          if ((!fromLocation) ||
+              (!fromPeer)){
+            ZS_LOG_WARNING(Detail, log("invalid request received") + UseLocation::toDebug(fromLocation))
+            MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_BadRequest);
+            send(Location::convert(mFinderLocation), result);
+
+            mIncomingFindRequests.erase(current);
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("received incoming peer find request") + UseLocation::toDebug(fromLocation))
+
+          PeerInfoPtr peerInfo;
+
+          PeerInfoMap::iterator foundPeer = mPeerInfos.find(fromLocation->getPeerURI());
+          if (foundPeer != mPeerInfos.end()) {
+            peerInfo = (*foundPeer).second;
+            ZS_LOG_DEBUG(log("received incoming peer find request from known peer") + PeerInfo::toDebug(peerInfo))
+
+            if (peerInfo->mPeerFindMonitor) {
+              ZS_LOG_TRACE(log("waiting for outgoing peer location find to complete before responding to incoming peer location find request"))
+              continue;
+            }
+
+          } else {
+            peerInfo = PeerInfo::create();
+            peerInfo->mPeer = fromPeer;
+            mPeerInfos[fromPeer->getPeerURI()] = peerInfo;
+            ZS_LOG_DEBUG(log("received incoming peer find request from unknown peer") + PeerInfo::toDebug(peerInfo))
+          }
+
+          UseAccountPeerLocationPtr peerLocation;
+          PeerInfo::PeerLocationMap::iterator foundLocation = peerInfo->mLocations.find(fromLocation->getLocationID());
+          if (foundLocation != peerInfo->mLocations.end()) {
+            ZS_LOG_WARNING(Detail, log("received incoming peer find request from existing peer location (will resolve conflict to which location should remain alive)") + PeerInfo::toDebug(peerInfo))
+
+            peerLocation = (*foundLocation).second;
+
+            bool resetExistingLocation = true;
+
+            if (!peerLocation->wasCreatedFromIncomingFind()) {
+              Time existingRequestTime = peerLocation->getCreationFindRequestTimestamp();
+              Time newRequestTime = peerLocationFindRequest->time();
+
+              if (existingRequestTime > newRequestTime) {
+                ZS_LOG_DEBUG(log("incoming find request is older than the find request that was issued (thus favouring existing location)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime))
+                resetExistingLocation = false;
+              } else if (existingRequestTime < newRequestTime) {
+                ZS_LOG_DEBUG(log("incoming find request is newer than the find request that was previously issued (thus favouring incoming find request)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime))
+                resetExistingLocation = true;
+              } else {
+                String incomingFindLocationID = fromLocation->getLocationID();
+
+                ZS_LOG_DEBUG(log("incoming find request is the same time as the new find reqest (will resolve conflict by location ID)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime) + ZS_PARAM("this location id", mLocationID) + ZS_PARAM("incoming find location id", incomingFindLocationID))
+
+                if (mLocationID > fromLocation->getLocationID()) {
+                  ZS_LOG_DEBUG(log("this location is favoured to the incoming find request"))
+                  resetExistingLocation = false;
+                } else {
+                  ZS_LOG_DEBUG(log("incoming find location is favoured vs this location"))
+                  resetExistingLocation = true;
+                }
+              }
+            }
+
+            if (!resetExistingLocation) {
+              ZS_LOG_WARNING(Detail, log("intentionally ignoring incoming find request because the existing location is favoured to the new location described in the incoming find request (this location won the conflict resolution)"))
+              mIncomingFindRequests.erase(current);
+              continue;
+            }
+
+            ZS_LOG_WARNING(Detail, log("shutting down existing account peer location in favour of new incoming find request (this location lost conflict resolution)"))
+
+            peerInfo->mLocations.erase(foundLocation);
+            peerLocation->shutdown();
+
+            notifySubscriptions(fromLocation, ILocation::LocationConnectionState_Disconnected);
+
+            foundLocation = peerInfo->mLocations.end();
+            peerLocation.reset();
+          }
+
+          // we must create a DH private / public key pair for use with this location based upon the key domain of the remote public key
+
+          IDHKeyDomainPtr remoteKeyDomain = peerLocationFindRequest->dhKeyDomain();
+          IDHPublicKeyPtr remotePublicKey = peerLocationFindRequest->dhPublicKey();
+
+          if ((!remoteKeyDomain) ||
+              (!remotePublicKey)) {
+            ZS_LOG_ERROR(Detail, log("remote party did not include remote public key and key domain (thus ignoring incoming find request)"))
+            mIncomingFindRequests.erase(current);
+            continue;
+          }
+
+          DHKeyPair templateKeyPair = getDHKeyPairTemplate(remoteKeyDomain->getPrecompiledType());
+          if ((!templateKeyPair.first) ||
+              (!templateKeyPair.second)) {
+            ZS_LOG_ERROR(Detail, log("remote party's key domain does not have a precompiled domain key template (thus ignoring incoming find request)"))
+            mIncomingFindRequests.erase(current);
+            continue;
+          }
+
+          IDHPublicKeyPtr newPublicKey;
+          IDHPrivateKeyPtr newPrivateKey = IDHPrivateKey::loadAndGenerateNewEphemeral(templateKeyPair.first, templateKeyPair.second, newPublicKey);
+          ZS_THROW_INVALID_ASSUMPTION_IF(!newPrivateKey)
+          ZS_THROW_INVALID_ASSUMPTION_IF(!newPublicKey)
+
+          peerLocation = UseAccountPeerLocation::createFromIncomingPeerLocationFind(
+                                                                                    mThisWeak.lock(),
+                                                                                    mThisWeak.lock(),
+                                                                                    peerLocationFindRequest,
+                                                                                    newPrivateKey,
+                                                                                    newPublicKey
+                                                                                    );
+
+          peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
+          ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
+
+          mIncomingFindRequests.erase(current);
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool Account::stepFinderDNS()
       {
         if (mFindersGetMonitor) {
@@ -2343,7 +2419,7 @@ namespace openpeer
         cancel();
         return false;
       }
-      
+
       //-----------------------------------------------------------------------
       bool Account::stepPeers()
       {

@@ -84,8 +84,8 @@ namespace openpeer
 
       virtual void cancel() = 0;
 
-      virtual String getMonitoredMessageID() = 0;
-      virtual message::MessagePtr getMonitoredMessage() = 0;
+      virtual String getMonitoredMessageID() const = 0;
+      virtual message::MessagePtr getMonitoredMessage() const = 0;
     };
 
     //-------------------------------------------------------------------------

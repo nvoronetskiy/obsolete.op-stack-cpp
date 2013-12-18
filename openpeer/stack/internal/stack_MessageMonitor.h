@@ -44,32 +44,7 @@ namespace openpeer
     namespace internal
     {
       interaction IMessageMonitorManagerForMessageMonitor;
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark IMessageMonitorForAccountFinder
-      #pragma mark
-
-      interaction IMessageMonitorForAccountFinder
-      {
-        virtual void notifyMessageSendFailed() = 0;
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark IMessageMontiorForAccountPeerLocation
-      #pragma mark
-
-      interaction IMessageMonitorForAccountPeerLocation
-      {
-        virtual void notifyMessageSendFailed() = 0;
-      };
+      interaction ILocationForMessageMonitor;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -83,9 +58,14 @@ namespace openpeer
       {
         virtual PUID getID() const = 0;
 
-        virtual String getMonitoredMessageID() = 0;
+        typedef PUID SentViaObjectID;
+
+        virtual String getMonitoredMessageID() const = 0;
 
         virtual bool handleMessage(message::MessagePtr message) = 0;
+
+        virtual void notifySendMessageFailure(message::MessagePtr message) = 0;
+        virtual void notifySenderObjectGone(PUID senderObjectID) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -118,8 +98,6 @@ namespace openpeer
                              public MessageQueueAssociator,
                              public IMessageMonitor,
                              public IMessageMonitorAsyncDelegate,
-                             public IMessageMonitorForAccountFinder,
-                             public IMessageMonitorForAccountPeerLocation,
                              public IMessageMonitorForMessageMonitorManager,
                              public ITimerDelegate
       {
@@ -128,6 +106,7 @@ namespace openpeer
         friend interaction IMessageMonitor;
 
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor, UseMessageMonitorManager)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForMessageMonitor, UseLocation)
 
       protected:
         MessageMonitor(IMessageQueuePtr queue);
@@ -180,8 +159,8 @@ namespace openpeer
 
         virtual void cancel();
 
-        virtual String getMonitoredMessageID();
-        virtual message::MessagePtr getMonitoredMessage();
+        virtual String getMonitoredMessageID() const;
+        virtual message::MessagePtr getMonitoredMessage() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -197,20 +176,6 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark MessageMonitor => IMessageMonitorForAccountFinder
-        #pragma mark
-
-        virtual void notifyMessageSendFailed();
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitor => IMessageMonitorForAccountPeerLocation
-        #pragma mark
-
-        // (duplicate) virtual void notifyMessageSendFailed();
-
-        //---------------------------------------------------------------------
-        #pragma mark
         #pragma mark MessageMonitor => IMessageMonitorForMessageMonitorManager
         #pragma mark
 
@@ -218,6 +183,9 @@ namespace openpeer
         // (duplicate) virtual String getMonitoredMessageID();
 
         virtual bool handleMessage(message::MessagePtr message);
+
+        virtual void notifySendMessageFailure(message::MessagePtr message);
+        virtual void notifySenderObjectGone(PUID senderObjectID);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -239,10 +207,14 @@ namespace openpeer
 
         RecursiveLock &getLock() const;
 
+        void notifyWithError(IHTTP::HTTPStatusCodes code);
+
       protected:
         AutoPUID mID;
         mutable RecursiveLock mBogusLock;
         MessageMonitorWeakPtr mThisWeak;
+
+        String mMessageID;
 
         IMessageMonitorDelegatePtr mDelegate;
 
@@ -251,8 +223,10 @@ namespace openpeer
         ULONG mPendingHandled;
 
         TimerPtr mTimer;
-        String mMessageID;
+        Time mExpires;
         message::MessagePtr mOriginalMessage;
+
+        SentViaObjectID mSentViaObjectID;
       };
 
       //-----------------------------------------------------------------------

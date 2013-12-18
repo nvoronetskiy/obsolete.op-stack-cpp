@@ -63,7 +63,7 @@ namespace openpeer
     {
       interaction IPeerForAccount;
       interaction IAccountForAccountPeerLocation;
-      interaction IMessageMonitorForAccountPeerLocation;
+      interaction IMessageMonitorManagerForAccountPeerLocation;
 
       using services::IICESocket;
 
@@ -126,6 +126,9 @@ namespace openpeer
         virtual bool isConnected() const = 0;
         virtual Time getTimeOfLastActivity() const = 0;
 
+        virtual bool wasCreatedFromIncomingFind() const = 0;
+        virtual Time getCreationFindRequestTimestamp() const = 0;
+
         virtual bool hasReceivedCandidateInformation() const = 0;
         virtual bool hasReceivedFinalCandidateInformation() const = 0;
 
@@ -183,7 +186,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountPeerLocation, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
         ZS_DECLARE_TYPEDEF_PTR(IPeerForAccount, UsePeer)
-        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForAccountPeerLocation, UseMessageMonitor)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForAccountPeerLocation, UseMessageMonitorManager)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
@@ -258,6 +261,9 @@ namespace openpeer
 
         virtual bool isConnected() const;
         virtual Time getTimeOfLastActivity() const;
+
+        virtual bool wasCreatedFromIncomingFind() const;
+        virtual Time getCreationFindRequestTimestamp() const;
 
         virtual bool hasReceivedCandidateInformation() const;
         virtual bool hasReceivedFinalCandidateInformation() const;
@@ -478,6 +484,8 @@ namespace openpeer
 
         AccountStates mCurrentState;
         AutoBool mShouldRefindNow;
+
+        bool mFrozen;
 
         mutable Time mLastActivity;
 

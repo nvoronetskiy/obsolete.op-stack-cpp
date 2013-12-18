@@ -58,7 +58,7 @@ namespace openpeer
     {
       interaction ILocationForAccount;
       interaction IAccountForAccountFinder;
-      interaction IMessageMonitorForAccountFinder;
+      interaction IMessageMonitorManagerForAccountFinder;
 
       using message::peer_finder::SessionCreateResult;
       using message::peer_finder::SessionCreateResultPtr;
@@ -139,7 +139,7 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountFinder, UseAccount)
-        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForAccountFinder, UseMessageMonitor)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForAccountFinder, UseMessageMonitorManager)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 

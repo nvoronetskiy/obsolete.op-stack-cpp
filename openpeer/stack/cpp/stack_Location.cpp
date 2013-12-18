@@ -578,6 +578,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark Location => ILocationForMessageMonitor
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Location::SentViaObjectID Location::sendMessageFromMonitor(message::MessagePtr message) const
+      {
+        UseAccountPtr account = mAccount.lock();
+        if (!account) {
+          ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
+          return false;
+        }
+
+        SentViaObjectID sentViaObjectID = 0;
+
+        bool result = account->send(mThisWeak.lock(), message, &sentViaObjectID);
+
+        return (result ? sentViaObjectID : 0);
+      }
+
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark Location => (internal)
       #pragma mark
 

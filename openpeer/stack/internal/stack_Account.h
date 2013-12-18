@@ -70,11 +70,9 @@ namespace openpeer
       interaction IPublicationRepositoryForAccount;
       interaction IServiceLockboxSessionForAccount;
 
-      using message::peer_finder::PeerLocationFindResult;
-      using message::peer_finder::PeerLocationFindResultPtr;
-
-      using message::bootstrapped_finder::FindersGetResult;
-      using message::bootstrapped_finder::FindersGetResultPtr;
+      ZS_DECLARE_USING_PTR(message::peer_finder, PeerLocationFindRequest)
+      ZS_DECLARE_USING_PTR(message::peer_finder, PeerLocationFindResult)
+      ZS_DECLARE_USING_PTR(message::bootstrapped_finder, FindersGetResult)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -166,7 +164,8 @@ namespace openpeer
 
         virtual bool send(
                           LocationPtr location,
-                          MessagePtr message
+                          MessagePtr message,
+                          PUID *outSentViaObjectID = NULL
                           ) const = 0;
 
         virtual void hintNowAvailable(LocationPtr location) = 0;
@@ -188,7 +187,8 @@ namespace openpeer
 
         virtual bool send(
                           LocationPtr location,
-                          MessagePtr response
+                          MessagePtr response,
+                          PUID *outSentViaObjectID = NULL
                           ) const = 0;
         virtual void notifyMessageIncomingResponseNotSent(MessageIncoming &messageIncoming) = 0;
       };
@@ -353,6 +353,8 @@ namespace openpeer
         typedef std::pair<IDHPrivateKeyPtr, IDHPublicKeyPtr> DHKeyPair;
         typedef std::map<IDHKeyDomain::KeyDomainPrecompiledTypes, DHKeyPair> DHKeyPairTemplates;
 
+        typedef std::list<PeerLocationFindRequestPtr> IncomingFindRequestList;
+
       protected:
         Account(
                 IMessageQueuePtr queue,
@@ -465,7 +467,8 @@ namespace openpeer
 
         virtual bool send(
                           LocationPtr location,
-                          MessagePtr message
+                          MessagePtr message,
+                          PUID *outSentViaObjectID = NULL
                           ) const;
 
         virtual void hintNowAvailable(LocationPtr location);
@@ -479,7 +482,8 @@ namespace openpeer
 
         // (duplicate) virtual bool send(
         //                              LocationPtr location,
-        //                              MessagePtr response
+        //                              MessagePtr response,
+        //                              PUID *outSentViaObjectID = NULL
         //                              ) const;
         virtual void notifyMessageIncomingResponseNotSent(MessageIncoming &messageIncoming);
 
@@ -670,6 +674,7 @@ namespace openpeer
         bool stepLockboxSession();
         bool stepLocations();
         bool stepSocket();
+        bool stepRespondToPeerLocationFindReqests();
         bool stepFinderDNS();
         bool stepFinder();
         bool stepPeers();
@@ -822,6 +827,8 @@ namespace openpeer
         IDNS::SRVResultPtr mAvailableFinderSRVResult;
         IMessageMonitorPtr mFindersGetMonitor;
         IDNSQueryPtr mFinderDNSLookup;
+
+        IncomingFindRequestList mIncomingFindRequests;
 
         PeerInfoMap mPeerInfos;
 
