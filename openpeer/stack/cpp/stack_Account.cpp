@@ -1325,7 +1325,7 @@ namespace openpeer
             ZS_LOG_DEBUG(log("peer location is shutdown") + PeerInfo::toDebug(peerInfo) + UseLocation::toDebug(location))
 
             if (findAgain) {
-              ZS_LOG_DETAIL(log("need to refind peer at next opportunity") + PeerInfo::toDebug(peerInfo) + UseLocation::toDebug(location))
+              ZS_LOG_DETAIL(log("allowed to refind peer at next opportunity") + PeerInfo::toDebug(peerInfo) + UseLocation::toDebug(location))
               peerInfo->findTimeReset();
             }
             break;

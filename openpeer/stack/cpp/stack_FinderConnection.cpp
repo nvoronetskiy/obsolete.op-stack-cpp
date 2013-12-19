@@ -1091,7 +1091,7 @@ namespace openpeer
           }
         }
 
-        ZS_LOG_DEBUG(log("master channel connected"))
+        ZS_LOG_TRACE(log("master channel connected"))
         return true;
       }
 

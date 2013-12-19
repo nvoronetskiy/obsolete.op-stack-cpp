@@ -1972,6 +1972,9 @@ namespace openpeer
         }
 
         if (mMLSChannel) {
+          if (peerFailed) {
+            mMLSChannel->cancel();
+          }
           switch (mMLSChannel->getState(&error, &reason)) {
             case IMessageLayerSecurityChannel::SessionState_Pending:
             case IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation: {
@@ -1993,18 +1996,18 @@ namespace openpeer
           }
         }
 
-        if (ready) {
-          ZS_LOG_TRACE(log("at least one mechanism is ready to send"))
-          get(mHadConnection) = true;
-          return true;
-        }
-
         if (mHadPeerConnection) {
           if (peerFailed) {
             ZS_LOG_WARNING(Detail, log("something went wrong in peer connection thus must shutdown (not going to continue via relay even if it is an option)"))
             cancel();
             return false;
           }
+        }
+
+        if (ready) {
+          ZS_LOG_TRACE(log("at least one mechanism is ready to send"))
+          get(mHadConnection) = true;
+          return true;
         }
 
         if (foundPeer) {
