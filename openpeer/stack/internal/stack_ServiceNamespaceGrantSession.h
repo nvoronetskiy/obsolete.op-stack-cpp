@@ -182,7 +182,8 @@ namespace openpeer
         typedef PUID QueryID;
         typedef std::map<QueryID, QueryPtr> QueryMap;
 
-        typedef std::list<DocumentPtr> DocumentList;
+        typedef std::pair<DocumentPtr, MessagePtr> DocumentMessagePair;
+        typedef std::list<DocumentMessagePair> DocumentList;
 
         typedef std::list<IServiceNamespaceGrantSessionWaitDelegatePtr> WaitingDelegateList;
 

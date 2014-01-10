@@ -192,13 +192,22 @@ namespace openpeer
       String ServiceNamespaceGrantSession::getInnerBrowserWindowFrameURL() const
       {
         AutoRecursiveLock lock(getLock());
-        if (!mBootstrappedNetwork) return String();
-        return mBootstrappedNetwork->getServiceURI("namespace-grant", "namespace-grant-inner-frame");
+        if (!mBootstrappedNetwork) {
+          ZS_LOG_WARNING(Debug, log("inner browser window frame url is not ready"))
+          return String();
+        }
+        String result = mBootstrappedNetwork->getServiceURI("namespace-grant", "namespace-grant-inner-frame");
+
+        ZS_LOG_TRACE(log("get inner browser window frame URL") + ZS_PARAM("url", result))
+
+        return result;
       }
 
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::notifyBrowserWindowVisible()
       {
+        ZS_LOG_TRACE(log("notified browser window made visible"))
+
         AutoRecursiveLock lock(getLock());
         mBrowserWindowVisible = true;
         step();
@@ -207,6 +216,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::notifyBrowserWindowClosed()
       {
+        ZS_LOG_TRACE(log("notified browser window closed"))
+
         AutoRecursiveLock lock(getLock());
         mBrowserWindowClosed = true;
         step();
@@ -216,10 +227,30 @@ namespace openpeer
       DocumentPtr ServiceNamespaceGrantSession::getNextMessageForInnerBrowerWindowFrame()
       {
         AutoRecursiveLock lock(getLock());
-        if (mPendingMessagesToDeliver.size() < 1) return DocumentPtr();
+        if (mPendingMessagesToDeliver.size() < 1) {
+          ZS_LOG_WARNING(Trace, log("no messages to deliver to inner browser window frame"))
+          return DocumentPtr();
+        }
 
-        DocumentPtr result = mPendingMessagesToDeliver.front();
+        DocumentMessagePair resultPair = mPendingMessagesToDeliver.front();
         mPendingMessagesToDeliver.pop_front();
+
+        DocumentPtr result = resultPair.first;
+        MessagePtr message = resultPair.second;
+
+        if (ZS_IS_LOGGING(Detail)) {
+          GeneratorPtr generator = Generator::createJSONGenerator();
+          boost::shared_array<char> jsonText = generator->write(result);
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("sending inner frame message") + ZS_PARAM("json out", (CSTR)(jsonText.get())))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  MESSAGE TO INNER FRAME (END)  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
 
         if (mDelegate) {
           if (mPendingMessagesToDeliver.size() > 0) {
@@ -239,6 +270,20 @@ namespace openpeer
       {
         typedef NamespaceGrantCompleteNotify::NamespaceGranthallengeBundleList NamespaceGranthallengeBundleList;
         MessagePtr message = Message::create(unparsedMessage, mThisWeak.lock());
+
+        if (ZS_IS_LOGGING(Detail)) {
+          GeneratorPtr generator = Generator::createJSONGenerator();
+          boost::shared_array<char> jsonText = generator->write(unparsedMessage);
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("handling message from inner frame") + ZS_PARAM("json in", (CSTR)(jsonText.get())))
+          ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<  MESSAGE FROM INNER FRAME (END)  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
+
         if (IMessageMonitor::handleMessageReceived(message)) {
           ZS_LOG_DEBUG(log("message handled via message monitor"))
           return;
@@ -347,6 +392,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::cancel()
       {
+        ZS_LOG_TRACE(log("cancel"))
+
         AutoRecursiveLock lock(getLock());
 
         if (isShutdown()) {
@@ -444,10 +491,10 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       IServiceNamespaceGrantSessionQueryPtr ServiceNamespaceGrantSession::query(
-                                                                                           IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                                                           const NamespaceGrantChallengeInfo &challengeInfo,
-                                                                                           const NamespaceInfoMap &namespaces
-                                                                                           )
+                                                                                IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
+                                                                                const NamespaceGrantChallengeInfo &challengeInfo,
+                                                                                const NamespaceInfoMap &namespaces
+                                                                                )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
@@ -455,9 +502,12 @@ namespace openpeer
         QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate), challengeInfo, namespaces);
 
         if (isShutdown()) {
+          ZS_LOG_WARNING(Detail, log("attempting to create grant query after shutdown") + ZS_PARAM("query id", query->getID()))
           query->notifyComplete(ElementPtr());
           return query;
         }
+
+        ZS_LOG_DEBUG(log("created query") + ZS_PARAM("query id", query->getID()))
 
         mPendingQueries[query->getID()] = query;
         return query;
@@ -511,8 +561,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::onWake()
       {
-        AutoRecursiveLock lock(getLock());
         ZS_LOG_DEBUG(log("on wake"))
+
+        AutoRecursiveLock lock(getLock());
         step();
       }
 
@@ -671,6 +722,8 @@ namespace openpeer
           return;
         }
 
+        ZS_LOG_DEBUG(debug("step"))
+
         if (!stepWaitForServices()) goto post_step;
         if (!stepPrepareQueries()) goto post_step;
         if (!stepBootstrapper()) goto post_step;
@@ -686,17 +739,19 @@ namespace openpeer
 
       post_step:
         postStep();
+
+        ZS_LOG_TRACE(debug("step"))
       }
 
       //-----------------------------------------------------------------------
       bool ServiceNamespaceGrantSession::stepWaitForServices()
       {
         if (0 == mTotalWaits) {
-          ZS_LOG_DEBUG(log("no services have asked for this session to wait"))
+          ZS_LOG_TRACE(log("no services have asked for this session to wait"))
           return true;
         }
 
-        ZS_LOG_DEBUG(log("waiting for all services to register their queries with the namespace grant service"))
+        ZS_LOG_TRACE(log("waiting for all services to register their queries with the namespace grant service"))
         return false;
       }
 
@@ -709,17 +764,17 @@ namespace openpeer
         typedef IHelper::SplitMap SplitMap;
 
         if (mQueriesInProcess.size() > 0) {
-          ZS_LOG_DEBUG(log("queries have already been prepared"))
+          ZS_LOG_TRACE(log("queries have already been prepared"))
           return true;
         }
 
         if (mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("cannot prepare queries while browser window is still active"))
+          ZS_LOG_TRACE(log("cannot prepare queries while browser window is still active"))
           return true;
         }
 
         if (mPendingQueries.size() < 1) {
-          ZS_LOG_DEBUG(log("no queries are pending so nothing to do"))
+          ZS_LOG_TRACE(log("no queries are pending so nothing to do"))
           return true;
         }
 
@@ -812,14 +867,14 @@ namespace openpeer
       bool ServiceNamespaceGrantSession::stepBootstrapper()
       {
         if (!mBootstrappedNetwork) {
-          ZS_LOG_DEBUG(log("no boostrapped network thus nothing to do"))
+          ZS_LOG_TRACE(log("no boostrapped network thus nothing to do"))
           return true;
         }
 
         if (!mBootstrappedNetwork->isPreparationComplete()) {
           setState(SessionState_Pending);
 
-          ZS_LOG_DEBUG(log("waiting for preparation of lockbox bootstrapper to complete"))
+          ZS_LOG_TRACE(log("waiting for preparation of lockbox bootstrapper to complete"))
           return false;
         }
 
@@ -827,7 +882,7 @@ namespace openpeer
         String reason;
 
         if (mBootstrappedNetwork->wasSuccessful(&errorCode, &reason)) {
-          ZS_LOG_DEBUG(log("lockbox bootstrapper was successful"))
+          ZS_LOG_TRACE(log("lockbox bootstrapper was successful"))
           return true;
         }
 
@@ -842,15 +897,16 @@ namespace openpeer
       bool ServiceNamespaceGrantSession::stepLoadGrantWindow()
       {
         if (!mBootstrappedNetwork) {
-          ZS_LOG_DEBUG(log("no boostrapped network thus nothing to do"))
+          ZS_LOG_TRACE(log("no boostrapped network thus nothing to do"))
           return true;
         }
 
         if (mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("grant window is ready"))
+          ZS_LOG_TRACE(log("grant window is ready"))
           return true;
         }
 
+        ZS_LOG_TRACE(log("waiting for grant window to be loaded"))
         setState(SessionState_WaitingForBrowserWindowToBeLoaded);
         return false;
       }
@@ -859,20 +915,21 @@ namespace openpeer
       bool ServiceNamespaceGrantSession::stepMakeGrantWindowVisible()
       {
         if (!mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("all required namespaces have been granted"))
+          ZS_LOG_TRACE(log("all required namespaces have been granted"))
           return true;
         }
 
         if (!mNeedsBrowserWindowVisible) {
-          ZS_LOG_DEBUG(log("browser window does not need to be visible"))
+          ZS_LOG_TRACE(log("browser window does not need to be visible"))
           return true;
         }
 
         if (mBrowserWindowVisible) {
-          ZS_LOG_DEBUG(log("grant window is visible"))
+          ZS_LOG_TRACE(log("grant window is visible"))
           return true;
         }
 
+        ZS_LOG_TRACE(log("waiting for grant window to be visible"))
         setState(SessionState_WaitingForBrowserWindowToBeMadeVisible);
         return false;
       }
@@ -884,12 +941,12 @@ namespace openpeer
         typedef NamespaceGrantStartNotify::NamespaceGrantChallengeInfoAndNamespaces NamespaceGrantChallengeInfoAndNamespaces;
 
         if (!mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("all required namespaces have been granted"))
+          ZS_LOG_TRACE(log("all required namespaces have been granted"))
           return true;
         }
 
         if (mNamespaceGrantStartNotificationSent) {
-          ZS_LOG_DEBUG(log("browser window namespace grant start notification already sent"))
+          ZS_LOG_TRACE(log("browser window namespace grant start notification already sent"))
           return true;
         }
 
@@ -921,6 +978,8 @@ namespace openpeer
 
         mNamespaceGrantStartNotificationSent = true;
 
+        ZS_LOG_DEBUG(log("start notification sent"))
+
         return false;
       }
 
@@ -928,16 +987,16 @@ namespace openpeer
       bool ServiceNamespaceGrantSession::stepWaitForPermission()
       {
         if (!mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("all required namespaces have been granted"))
+          ZS_LOG_TRACE(log("all required namespaces have been granted"))
           return true;
         }
 
         if (mReceivedNamespaceGrantCompleteNotify) {
-          ZS_LOG_DEBUG(log("received grant complete notification"))
+          ZS_LOG_TRACE(log("received grant complete notification"))
           return true;
         }
 
-        ZS_LOG_DEBUG(log("waiting for permission to be granted to the lockbox namespaces"))
+        ZS_LOG_TRACE(log("waiting for permission to be granted to the lockbox namespaces"))
         return false;
       }
 
@@ -945,12 +1004,12 @@ namespace openpeer
       bool ServiceNamespaceGrantSession::stepCloseBrowserWindow()
       {
         if (!mBrowserWindowReady) {
-          ZS_LOG_DEBUG(log("all required namespaces have been granted"))
+          ZS_LOG_TRACE(log("all required namespaces have been granted"))
           return true;
         }
 
         if (mBrowserWindowClosed) {
-          ZS_LOG_DEBUG(log("browser window has been closed"))
+          ZS_LOG_TRACE(log("browser window has been closed"))
           return true;
         }
 
@@ -963,7 +1022,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceNamespaceGrantSession::stepRestart()
       {
-        ZS_LOG_DEBUG(log("reseting namespace grant session to allow another query session to start"))
+        ZS_LOG_TRACE(log("reseting namespace grant session to allow another query session to start"))
 
         mBootstrappedNetwork.reset();
 
@@ -1031,7 +1090,7 @@ namespace openpeer
       void ServiceNamespaceGrantSession::sendInnerWindowMessage(MessagePtr message)
       {
         DocumentPtr doc = message->encode();
-        mPendingMessagesToDeliver.push_back(doc);
+        mPendingMessagesToDeliver.push_back(DocumentMessagePair(doc, message));
 
         if (1 != mPendingMessagesToDeliver.size()) {
           ZS_LOG_DEBUG(log("already had previous messages to deliver, no need to send another notification"))
@@ -1132,12 +1191,15 @@ namespace openpeer
         mChallengeInfo(challengeInfo),
         mNamespaces(namespaces)
       {
+        ZS_LOG_DEBUG(log("created"))
       }
 
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSession::Query::~Query()
       {
         mThisWeak.reset();
+
+        ZS_LOG_DEBUG(log("destroyed"))
         cancel();
       }
 
@@ -1152,6 +1214,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::Query::cancel()
       {
+        ZS_LOG_TRACE(log("cancel"))
+
         AutoRecursiveLock lock(getLock());
 
         notifyComplete(ElementPtr());
@@ -1204,6 +1268,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::Query::notifyComplete(ElementPtr bundleEl)
       {
+        ZS_LOG_DEBUG(log("notify complete") + ZS_PARAM("bundle", (bool)bundleEl))
+
         AutoRecursiveLock lock(getLock());
 
         mNamespaceGrantChallengeBundleEl = bundleEl;
