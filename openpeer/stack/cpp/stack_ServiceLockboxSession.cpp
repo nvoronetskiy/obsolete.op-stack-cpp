@@ -713,6 +713,10 @@ namespace openpeer
 
         step();
 
+        if (mLoginIdentity) {
+          mLoginIdentity->notifyStateChanged();
+        }
+
         return true;
       }
 

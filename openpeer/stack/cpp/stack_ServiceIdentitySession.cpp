@@ -2094,7 +2094,7 @@ namespace openpeer
               return true;
             }
 
-            ZS_LOG_TRACE(log("waiting for lockbox to ready"))
+            ZS_LOG_TRACE(log("waiting for lockbox to have access token"))
             return false;
           }
           case IServiceLockboxSession::SessionState_Ready: {
