@@ -55,4 +55,5 @@
 #include <openpeer/stack/IServiceLockbox.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 #include <openpeer/stack/IServiceSalt.h>
+#include <openpeer/stack/ISettings.h>
 #include <openpeer/stack/IStack.h>

@@ -49,6 +49,7 @@ namespace openpeer
     using zsLib::BYTE;
     using zsLib::WORD;
     using zsLib::UINT;
+    using zsLib::LONG;
     using zsLib::ULONG;
     using zsLib::Time;
     using zsLib::Duration;
@@ -165,7 +166,6 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IPublicationRepository)
     ZS_DECLARE_INTERACTION_PTR(IPublicationRepositoryPeerCache)
     ZS_DECLARE_INTERACTION_PTR(IPublicationSubscription)
-    ZS_DECLARE_INTERACTION_PTR(IStack)
     ZS_DECLARE_INTERACTION_PTR(IServiceCertificates)
     ZS_DECLARE_INTERACTION_PTR(IServiceCertificatesValidateQuery)
     ZS_DECLARE_INTERACTION_PTR(IServiceSalt)
@@ -176,6 +176,9 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IServiceLockbox)
     ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSession)
     ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSession)
+    ZS_DECLARE_INTERACTION_PTR(ISettings)
+    ZS_DECLARE_INTERACTION_PTR(ISettingsDelegate)
+    ZS_DECLARE_INTERACTION_PTR(IStack)
 
     ZS_DECLARE_INTERACTION_PROXY(IAccountDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IBootstrappedNetworkDelegate)
