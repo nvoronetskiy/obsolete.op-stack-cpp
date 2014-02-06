@@ -5,6 +5,7 @@ LOCAL_ARM_MODE := arm
 
 LOCAL_CFLAGS	:= -Wall \
 -W \
+-std=c++11 \
 -O2 \
 -pipe \
 -fPIC \
@@ -24,8 +25,8 @@ $(LOCAL_PATH)/.. \
 $(LOCAL_PATH)/../ortc-lib/libs/build/android/curl/include \
 $(LOCAL_PATH)/../ortc-lib/libs/udns \
 $(LOCAL_PATH)../ortc-lib/libs/build/android/boost/include/boost-1_53 \
-$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.4.3/include \
-$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.4.3/libs/armeabi/include \
+$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.7/include \
+$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.7/libs/armeabi/include \
 
 SOURCE_PATH := openpeer/stack/cpp
 MESSAGE_SOURCE_PATH := openpeer/stack/message
@@ -69,7 +70,6 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageHelper.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageNotify.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageNotifyUnknown.cpp \
-		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageReply.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageRequestUnknown.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageResult.cpp \
@@ -123,8 +123,7 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerDeleteResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerGetRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerGetResult.cpp \
-		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerPublishNotifyRequest.cpp \
-		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerPublishNotifyResult.cpp \
+		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerPublishNotify.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerPublishRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerPublishResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerSubscribeRequest.cpp \

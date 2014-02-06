@@ -102,14 +102,14 @@ namespace openpeer
         //---------------------------------------------------------------------
         DocumentPtr PeerPublishNotify::encode()
         {
-          ULONG maxDataSize = OPENPEER_STACK_MESSAGE_PEER_PUBLISH_NOTIFY_MAX_DOCUMENT_PUBLICATION_SIZE_IN_BYTES;
+          size_t maxDataSize = OPENPEER_STACK_MESSAGE_PEER_PUBLISH_NOTIFY_MAX_DOCUMENT_PUBLICATION_SIZE_IN_BYTES;
 
           DocumentPtr current;
           for (PeerPublishNotify::PublicationList::iterator iter = mPublicationList.begin(); iter != mPublicationList.end(); ++iter)
           {
             IPublicationMetaDataPtr metaData = (*iter);
 
-            ULONG filledSize = 0;
+            size_t filledSize = 0;
             DocumentPtr doc = internal::MessageHelper::createDocument(*this, metaData, &maxDataSize, mPeerCache);
             maxDataSize -= (filledSize < maxDataSize ? filledSize : maxDataSize);
             try {
