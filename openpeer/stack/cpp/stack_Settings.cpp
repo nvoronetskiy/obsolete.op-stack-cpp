@@ -104,6 +104,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Settings::applyDefaults()
       {
+        services::ISettings::applyDefaults();
+
+        setBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
+        setBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST, false);
       }
 
       //-----------------------------------------------------------------------
