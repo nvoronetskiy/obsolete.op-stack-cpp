@@ -15,6 +15,9 @@ LOCAL_CFLAGS	:= -Wall \
 
 LOCAL_MODULE    := hfstack_android
 
+LOCAL_EXPORT_C_INCLUDES:= $(LOCAL_PATH) \
+		
+
 LOCAL_C_INCLUDES:= $(LOCAL_PATH) \
 $(LOCAL_PATH)/openpeer/stack/internal \
 $(LOCAL_PATH)/../ortc-lib/libs/zsLib \
