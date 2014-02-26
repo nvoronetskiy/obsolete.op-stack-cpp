@@ -125,6 +125,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Settings::applyDefaults()
       {
+        {
+          AutoRecursiveLock lock(mLock);
+          get(mAppliedDefaults) = true;
+        }
+
         services::ISettings::applyDefaults();
 
         setBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
@@ -145,6 +150,8 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           if (mDelegate) return;
+
+          if (mAppliedDefaults) return;
         }
 
         ZS_LOG_WARNING(Detail, log("To prevent issues with missing settings, the default settings are being applied. Recommend installing a settings delegate to fetch settings required from a externally."))

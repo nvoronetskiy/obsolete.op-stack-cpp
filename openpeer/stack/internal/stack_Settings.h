@@ -160,6 +160,8 @@ namespace openpeer
         SettingsWeakPtr mThisWeak;
 
         ISettingsDelegatePtr mDelegate;
+
+        AutoBool mAppliedDefaults;
       };
     }
   }
