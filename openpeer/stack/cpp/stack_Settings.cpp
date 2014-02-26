@@ -50,6 +50,20 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ISettingsForStack
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ISettingsForStack::applyDefaultsIfNoDelegatePresent()
+      {
+        Settings::singleton()->applyDefaultsIfNoDelegatePresent();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark Settings
       #pragma mark
 
@@ -96,9 +110,16 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool Settings::apply(const char *jsonSettings)
+      void Settings::setup(ISettingsDelegatePtr delegate)
       {
-        return services::ISettings::apply(jsonSettings);
+        {
+          AutoRecursiveLock lock(mLock);
+          mDelegate = delegate;
+
+          ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
+        }
+
+        services::ISettings::setup(delegate ? mThisWeak.lock() : services::ISettingsDelegatePtr());
       }
 
       //-----------------------------------------------------------------------
@@ -115,19 +136,29 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Settings => ISettingsDelegate
+      #pragma mark Settings => ISettingsForStack
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Settings::setup(ISettingsDelegatePtr delegate)
+      void Settings::applyDefaultsIfNoDelegatePresent()
       {
-        AutoRecursiveLock lock(mLock);
-        mDelegate = delegate;
+        {
+          AutoRecursiveLock lock(mLock);
+          if (mDelegate) return;
+        }
 
-        ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
+        ZS_LOG_WARNING(Detail, log("To prevent issues with missing settings, the default settings are being applied. Recommend installing a settings delegate to fetch settings required from a externally."))
 
-        services::ISettings::setup(mThisWeak.lock());
+        applyDefaults();
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Settings => ISettingsDelegate
+      #pragma mark
 
       //-----------------------------------------------------------------------
       String Settings::getString(const char *key) const
@@ -349,9 +380,69 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
+    void ISettings::setString(
+                              const char *key,
+                              const char *value
+                              )
+    {
+      return services::ISettings::setString(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setInt(
+                           const char *key,
+                           LONG value
+                           )
+    {
+      return services::ISettings::setInt(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setUInt(
+                            const char *key,
+                            ULONG value
+                            )
+    {
+      return services::ISettings::setUInt(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setBool(
+                            const char *key,
+                            bool value
+                            )
+    {
+      return services::ISettings::setBool(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setFloat(
+                             const char *key,
+                             float value
+                             )
+    {
+      return services::ISettings::setFloat(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setDouble(
+                              const char *key,
+                              double value
+                              )
+    {
+      return services::ISettings::setDouble(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::clear(const char *key)
+    {
+      return services::ISettings::clear(key);
+    }
+    
+    //-------------------------------------------------------------------------
     bool ISettings::apply(const char *jsonSettings)
     {
-      return internal::Settings::singleton()->apply(jsonSettings);
+      return services::ISettings::apply(jsonSettings);
     }
 
     //-------------------------------------------------------------------------

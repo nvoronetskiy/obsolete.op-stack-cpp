@@ -41,6 +41,16 @@
 
 #include <openpeer/services/IICESocket.h>
 
+#define OPENPEER_COMMON_SETTING_APPLICATION_NAME              "openpeer/common/application-name"
+#define OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL         "openpeer/common/application-image-url"
+#define OPENPEER_COMMON_SETTING_APPLICATION_URL               "openpeer/common/application-url"
+
+#define OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID  "openpeer/calculated/authorizated-application-id"
+#define OPENPEER_COMMON_SETTING_USER_AGENT                    "openpeer/calculated/user-agent"
+#define OPENPEER_COMMON_SETTING_DEVICE_ID                     "openpeer/calculated/device-id"
+#define OPENPEER_COMMON_SETTING_OS                            "openpeer/calculated/os"
+#define OPENPEER_COMMON_SETTING_SYSTEM                        "openpeer/calculated/system"
+
 namespace openpeer
 {
   namespace stack

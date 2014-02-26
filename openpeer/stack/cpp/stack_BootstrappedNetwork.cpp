@@ -1371,9 +1371,9 @@ namespace openpeer
         } else {
           if ((IHelper::hasData(buffer) &&
                (!forceAsGetRequest))) {
-            query = IHTTP::post(mThisWeak.lock(), UseStack::userAgent(), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+            query = IHTTP::post(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
           } else {
-            query = IHTTP::get(mThisWeak.lock(), UseStack::userAgent(), url);
+            query = IHTTP::get(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url);
           }
         }
 

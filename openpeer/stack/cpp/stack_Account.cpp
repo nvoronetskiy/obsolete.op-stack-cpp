@@ -62,6 +62,7 @@
 #include <openpeer/services/IDHKeyDomain.h>
 #include <openpeer/services/IDHPrivateKey.h>
 #include <openpeer/services/IDHPublicKey.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
@@ -571,10 +572,10 @@ namespace openpeer
 
           gethostname(&(buffer[0]), (sizeof(buffer)*sizeof(char))-sizeof(char));
 
-          info->mDeviceID = UseStack::deviceID();
-          info->mUserAgent = UseStack::userAgent();
-          info->mOS = UseStack::os();
-          info->mSystem = UseStack::system();
+          info->mDeviceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_DEVICE_ID);
+          info->mUserAgent = services::ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT);
+          info->mOS = services::ISettings::getString(OPENPEER_COMMON_SETTING_OS);
+          info->mSystem = services::ISettings::getString(OPENPEER_COMMON_SETTING_SYSTEM);
           info->mHost = &(buffer[0]);
           return info;
         }
