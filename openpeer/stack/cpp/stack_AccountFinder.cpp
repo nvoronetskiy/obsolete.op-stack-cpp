@@ -331,6 +331,18 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void AccountFinder::notifyBackgroundingDetected()
+      {
+        ZS_LOG_DEBUG(log("notified backgrounding detected"))
+
+        AutoRecursiveLock lock(getLock());
+        if (mFinderConnection) {
+          ZS_LOG_DEBUG(log("attempting to force a read not from finder connection"))
+          mFinderConnection->forceReadNow();
+        }
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

@@ -95,6 +95,13 @@ namespace openpeer
                                        String *outLastErrorReason = NULL
                                        ) const = 0;
 
+        //-----------------------------------------------------------------------
+        // PURPOSE: Force the finder connection socket to be read immediately
+        // NOTE:    Use this method to test the socket receive will not throw
+        //          an error, typically checked after an application is
+        //          backgrounded.
+        virtual void forceReadNow() = 0;
+
         //---------------------------------------------------------------------
         // PURPOSE: accepts and returns the latest incoming relay channel
         virtual IFinderRelayChannelPtr accept(
@@ -104,6 +111,7 @@ namespace openpeer
                                               ITransportStreamPtr sendStream,
                                               ChannelNumber *outChannelNumber = NULL
                                               ) = 0;
+
       };
 
       //-----------------------------------------------------------------------

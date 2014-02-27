@@ -55,6 +55,10 @@
 #include <map>
 #include <list>
 
+
+#define OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY "openpeer/stack/debug-force-messages-over-relay"
+
+
 namespace openpeer
 {
   namespace stack
@@ -534,6 +538,8 @@ namespace openpeer
 
         IMessageMonitorPtr mIdentifyMonitor;
         IMessageMonitorPtr mKeepAliveMonitor;
+
+        bool mDebugForceMessagesOverRelay;
       };
 
       //-----------------------------------------------------------------------

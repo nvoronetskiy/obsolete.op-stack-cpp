@@ -434,6 +434,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void FinderConnection::forceReadNow()
+      {
+        AutoRecursiveLock lock(getLock());
+        if (!mTCPMessaging) return;
+
+        mTCPMessaging->forceReadNow();
+      }
+
+      //-----------------------------------------------------------------------
       IFinderRelayChannelPtr FinderConnection::accept(
                                                       IFinderRelayChannelDelegatePtr delegate,
                                                       AccountPtr account,

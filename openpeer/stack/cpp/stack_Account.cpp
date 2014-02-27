@@ -1694,6 +1694,10 @@ namespace openpeer
           ZS_LOG_WARNING(Detail, log("account timer detected account went into background"))
 
           mBlockLocationShutdownsUntil = tick + Seconds(OPENPEER_STACK_ACCOUNT_PREVENT_LOCATION_SHUTDOWNS_AFTER_BACKGROUNDING_FOR_IN_SECONDS);
+
+          if (mFinder) {
+            mFinder->notifyBackgroundingDetected();
+          }
         }
 
         mLastTimerFired = tick;

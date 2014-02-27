@@ -1050,22 +1050,22 @@ namespace openpeer
 
         // now we have the DNS service name...
         if (!mServicesGetMonitor) {
-          bool forceOverHTTP = ISettings::getBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP);
+          bool forceOverHTTP = ISettings::getBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP);
 
-          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mDomain + "/.well-known/" + OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
+          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mDomain + "/.well-known/" + OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
           ZS_LOG_DEBUG(log("step - performing services get request") + ZS_PARAM("services-get URL", serviceURL))
 
           if (forceOverHTTP) {
-            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced over insecure http connection"))
+            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced over insecure http connection"))
           }
 
           ServicesGetRequestPtr request = ServicesGetRequest::create();
           request->domain(mDomain);
 
-          bool sendAsGetRequest = !ISettings::getBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST);
+          bool sendAsGetRequest = !ISettings::getBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST);
 
           if (!sendAsGetRequest) {
-            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced as an HTTP POST request"))
+            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced as an HTTP POST request"))
           }
 
           mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));

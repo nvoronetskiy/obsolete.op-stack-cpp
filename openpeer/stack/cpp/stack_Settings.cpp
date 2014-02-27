@@ -30,6 +30,7 @@
  */
 
 #include <openpeer/stack/internal/stack_Settings.h>
+#include <openpeer/stack/internal/stack.h>
 
 #include <openpeer/services/IHelper.h>
 
@@ -106,8 +107,10 @@ namespace openpeer
       {
         services::ISettings::applyDefaults();
 
-        setBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
-        setBool(OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST, false);
+        setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
+        setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST, false);
+
+        setBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY, false);
       }
 
       //-----------------------------------------------------------------------

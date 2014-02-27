@@ -159,6 +159,8 @@ namespace openpeer
                                        String *outLastErrorReason = NULL
                                        ) const;
 
+        virtual void forceReadNow();
+
         virtual IFinderRelayChannelPtr accept(
                                               IFinderRelayChannelDelegatePtr delegate,        // can pass in IFinderRelayChannelDelegatePtr() if not interested in the events
                                               AccountPtr account,

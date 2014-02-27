@@ -54,6 +54,7 @@
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IDHPrivateKey.h>
 #include <openpeer/services/IDHPublicKey.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
@@ -188,7 +189,8 @@ namespace openpeer
         mLocationInfo(request->locationInfo()),
         mLocation(Location::convert(request->locationInfo()->mLocation)),
 
-        mPeer(mLocation->getPeer())
+        mPeer(mLocation->getPeer()),
+        mDebugForceMessagesOverRelay(services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY))
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -228,7 +230,8 @@ namespace openpeer
         mLocationInfo(locationInfo),
         mLocation(Location::convert(locationInfo->mLocation)),
 
-        mPeer(mLocation->getPeer())
+        mPeer(mLocation->getPeer()),
+        mDebugForceMessagesOverRelay(services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY))
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -471,10 +474,12 @@ namespace openpeer
 
         if (mMLSSendStream) {
           if (mMLSSendStream->isWriterReady()) {
-            ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
+            if (!mDebugForceMessagesOverRelay) {
+              ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
 
-            mMLSSendStream->write((const BYTE *)(output.get()), length);
-            return true;
+              mMLSSendStream->write((const BYTE *)(output.get()), length);
+              return true;
+            }
           }
         }
 
@@ -1283,6 +1288,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "identity monitor", (bool)mIdentifyMonitor);
         IHelper::debugAppend(resultEl, "keep alive monitor", (bool)mKeepAliveMonitor);
+
+        IHelper::debugAppend(resultEl, "force messages via relay", mDebugForceMessagesOverRelay);
 
         return resultEl;
       }
