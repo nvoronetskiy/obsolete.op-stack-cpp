@@ -111,8 +111,6 @@ namespace openpeer
                                                ) const = 0;
 
         virtual void notifyFinderDNSComplete() = 0;
-
-        virtual void notifyBackgroundingDetected() = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -201,8 +199,6 @@ namespace openpeer
                                                ) const;
 
         virtual void notifyFinderDNSComplete();
-
-        virtual void notifyBackgroundingDetected();
 
         //---------------------------------------------------------------------
         #pragma mark
