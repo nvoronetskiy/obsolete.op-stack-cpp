@@ -56,7 +56,7 @@
 #include <list>
 
 
-#define OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY "openpeer/stack/debug-force-messages-over-relay"
+#define OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY "openpeer/stack/debug/force-p2p-messages-over-finder-relay"
 
 
 namespace openpeer
