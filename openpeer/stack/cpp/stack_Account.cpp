@@ -1118,10 +1118,14 @@ namespace openpeer
 
           mFinder.reset();
 
-          if (!isShuttingDown()) {
-            ZS_LOG_WARNING(Detail, log("did not expect finder to shutdown") + toDebug())
+          mBackgroundingNotifier.reset(); // ready to go to the background immediately
 
-            handleFinderRelatedFailure();
+          if (!mBackgroundingEnabled) {
+            if (!isShuttingDown()) {
+              ZS_LOG_WARNING(Detail, log("did not expect finder to shutdown") + toDebug())
+
+              handleFinderRelatedFailure();
+            }
           }
         }
 
@@ -1558,6 +1562,7 @@ namespace openpeer
                                                                                                             );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
+          get(peerInfo->mFindAgainAfterBackgrounded) = false; // no need to continue finding now that a location has been found
 
           // the act of finding a peer does not cause notification to the subscribers as only the establishment of a peer connection notifies the subscribers
         }
@@ -1705,6 +1710,53 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark Account => IBackgroundingDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier)
+      {
+        AutoRecursiveLock lock(getLock());
+
+        ZS_LOG_DEBUG(log("going to background"))
+
+        get(mBackgroundingEnabled) = true;
+
+        if (mFinder) {
+          mBackgroundingNotifier = notifier;
+        }
+
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingGoingToBackgroundNow()
+      {
+        AutoRecursiveLock lock(getLock());
+
+        ZS_LOG_DEBUG(log("going to background now"))
+
+        mBackgroundingNotifier.reset();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingReturningFromBackground()
+      {
+        AutoRecursiveLock lock(getLock());
+
+        ZS_LOG_DEBUG(log("returning from background"))
+
+        get(mBackgroundingEnabled) = false;
+        mBackgroundingNotifier.reset();
+
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark Account => IKeyGeneratorDelegate
       #pragma mark
 
@@ -1755,6 +1807,10 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+
+        IHelper::debugAppend(resultEl, "backgrounding", mBackgroundingEnabled);
+        IHelper::debugAppend(resultEl, "backgrounding subscription", (bool)mBackgroundingSubscription);
+        IHelper::debugAppend(resultEl, "backgrounding notifier", (bool)mBackgroundingNotifier);
 
         IHelper::debugAppend(resultEl, "delegate", (bool)mTimer);
         IHelper::debugAppend(resultEl, "timer last fired", mLastTimerFired);
@@ -1926,6 +1982,8 @@ namespace openpeer
 
         mGracefulShutdownReference.reset();
 
+        mBackgroundingNotifier.reset();
+
         // scope: clear out peers that have not had their locations shutdown
         {
           for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
@@ -1991,6 +2049,7 @@ namespace openpeer
         setState(AccountState_Ready);
 
         if (!stepPeers()) return;
+        if (!stepFinderBackgrounding()) return;
 
         ZS_LOG_TRACE(debug("step complete"))
       }
@@ -2223,6 +2282,16 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("received incoming peer find request") + UseLocation::toDebug(fromLocation))
 
+          if (mBackgroundingEnabled) {
+            ZS_LOG_WARNING(Detail, log("all incoming requests must be rejected because of backgrounding") + UseLocation::toDebug(fromLocation))
+
+            MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_Gone);
+            send(Location::convert(mFinderLocation), result);
+
+            mIncomingFindRequests.erase(current);
+            continue;
+          }
+
           PeerInfoPtr peerInfo;
 
           PeerInfoMap::iterator foundPeer = mPeerInfos.find(fromLocation->getPeerURI());
@@ -2327,6 +2396,8 @@ namespace openpeer
                                                                                     );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
+          get(peerInfo->mFindAgainAfterBackgrounded) = false;
+
           ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
 
           mIncomingFindRequests.erase(current);
@@ -2406,6 +2477,11 @@ namespace openpeer
           return true;
         }
 
+        if (mBackgroundingEnabled) {
+          ZS_LOG_TRACE(log("do not create finder while backgrounding"))
+          return true;
+        }
+
         ZS_LOG_DEBUG(log("creating finder instance"))
         mFinder = UseAccountFinder::create(mThisWeak.lock(), mThisWeak.lock());
 
@@ -2428,6 +2504,8 @@ namespace openpeer
           return true;
         }
 
+        bool done = true;
+
         for (PeerInfoMap::iterator peerIter = mPeerInfos.begin(); peerIter != mPeerInfos.end(); )
         {
           PeerInfoMap::iterator current = peerIter;
@@ -2435,6 +2513,16 @@ namespace openpeer
 
           const String &peerURI = (*current).first;
           PeerInfoPtr &peerInfo = (*current).second;
+
+          if (mBackgroundingEnabled) {
+            shutdownAllLocationsDueToBackgrounding(peerURI, peerInfo);
+
+            if (peerInfo->mLocations.size() > 0) {
+              ZS_LOG_TRACE(log("some location are still connected thus do not allow backgrounding yet") + PeerInfo::toDebug(peerInfo))
+              done = false;
+            }
+            continue;
+          }
 
           if (shouldShutdownInactiveLocations(peerURI, peerInfo)) {
 
@@ -2456,7 +2544,27 @@ namespace openpeer
           performPeerFind(peerURI, peerInfo);
         }
 
-        ZS_LOG_TRACE(log("step peers complete"))
+        ZS_LOG_TRACE(log("step peers complete") + ZS_PARAM("done", done))
+        return done;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::stepFinderBackgrounding()
+      {
+        if (!mBackgroundingEnabled) {
+          ZS_LOG_TRACE(log("backgrounding not enabled (skipping step)"))
+          return true;
+        }
+
+        if (!mFinder) {
+          ZS_LOG_TRACE(log("finder already shutdown due to backgrounding"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("telling finder to shutdown now"))
+
+        // safe to shutdown finder now
+        mFinder->shutdown();
         return true;
       }
 
@@ -2662,9 +2770,18 @@ namespace openpeer
           return false;
         }
 
-        if (peerInfo->mTotalSubscribers < 1) {
-          ZS_LOG_TRACE(log("no subscribers required so no need to subscribe to this location"))
-          return false;
+        if (peerInfo->mFindAgainAfterBackgrounded) {
+          if (peerInfo->mLocations.size() > 0) {
+            ZS_LOG_TRACE(log("cannot perform find request while locations are still attached from before backgrounding"))
+            return false;
+          }
+        }
+
+        if (!peerInfo->mFindAgainAfterBackgrounded) {
+          if (peerInfo->mTotalSubscribers < 1) {
+            ZS_LOG_TRACE(log("no subscribers required so no need to subscribe to this location"))
+            return false;
+          }
         }
 
         if (peerInfo->mPeerFindNeedsRedoingBecauseOfLocations.size() > 0) {
@@ -2693,6 +2810,50 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void Account::shutdownAllLocationsDueToBackgrounding(
+                                                           const String &peerURI,
+                                                           PeerInfoPtr &peerInfo
+                                                           )
+      {
+        get(peerInfo->mFindAgainAfterBackgrounded) = true;
+
+        if (peerInfo->mPeerFindMonitor) {
+
+          ZS_LOG_DEBUG(log("must cancel find request as it cannot complete while in background"))
+          peerInfo->mPeerFindMonitor->cancel();
+          peerInfo->mPeerFindMonitor.reset();
+
+          for (PeerInfo::FindingBecauseOfLocationIDMap::iterator iter = peerInfo->mPeerFindBecauseOfLocations.begin(); iter != peerInfo->mPeerFindBecauseOfLocations.end(); ++iter)
+          {
+            const LocationID &locationID = (*iter).first;
+            peerInfo->mPeerFindNeedsRedoingBecauseOfLocations[locationID] = locationID;
+          }
+
+          peerInfo->mPeerFindBecauseOfLocations.clear();
+        }
+
+        // scope: the peer is not incoming and all subscriptions are gone therefor it is safe to shutdown the peer locations entirely
+        if (peerInfo->mLocations.size() < 1) return;
+
+        ZS_LOG_TRACE(log("attempting to shutdown peer location") + PeerInfo::toDebug(peerInfo))
+
+        for (PeerInfo::PeerLocationMap::iterator locationIter = peerInfo->mLocations.begin(); locationIter != peerInfo->mLocations.end(); ) {
+          PeerInfo::PeerLocationMap::iterator locationCurrentIter = locationIter;
+          ++locationIter;
+
+          const String &locationID = (*locationCurrentIter).first;
+          UseAccountPeerLocationPtr &peerLocation = (*locationCurrentIter).second;
+
+          ZS_LOG_DEBUG(log("shutting down peer location immediately due to backgrounding") + PeerInfo::toDebug(peerInfo) + UseAccountPeerLocation::toDebug(peerLocation))
+
+          peerInfo->mPeerFindNeedsRedoingBecauseOfLocations[locationID] = locationID;
+
+          // signal the shutdown now...
+          peerLocation->shutdown();
+        }
+      }
+      
+      //-----------------------------------------------------------------------
       bool Account::shouldShutdownInactiveLocations(
                                                     const String &peerURI,
                                                     const PeerInfoPtr &peerInfo
@@ -2700,6 +2861,11 @@ namespace openpeer
       {
         if (peerInfo->mPeerFindMonitor) {
           ZS_LOG_TRACE(log("peer has peer active find in progress thus its location should not be shutdown") + ZS_PARAM("peer", peerInfo->mID) + ZS_PARAM("peer URI", peerURI))
+          return false;
+        }
+
+        if (peerInfo->mFindAgainAfterBackgrounded) {
+          ZS_LOG_TRACE(log("peer is returning from backgrounding thus do not shut it down") + PeerInfo::toDebug(peerInfo))
           return false;
         }
 
@@ -3030,7 +3196,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "find state", IPeer::toString(mCurrentFindState));
         IHelper::debugAppend(resultEl, "subscribers", mTotalSubscribers);
         IHelper::debugAppend(resultEl, "next find", mNextScheduledFind);
-        IHelper::debugAppend(resultEl, "last duration", mLastScheduleFindDuration.total_milliseconds());
+        IHelper::debugAppend(resultEl, "last duration (ms)", mLastScheduleFindDuration.total_milliseconds());
+        IHelper::debugAppend(resultEl, "find again", mFindAgainAfterBackgrounded);
 
         return resultEl;
       }
