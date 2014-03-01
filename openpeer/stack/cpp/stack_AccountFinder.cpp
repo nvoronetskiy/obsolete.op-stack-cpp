@@ -51,6 +51,7 @@
 #include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
@@ -692,6 +693,14 @@ namespace openpeer
         }
 
         Duration difference = expires - tick;
+
+        ULONG maxKeepAlive = services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS);
+
+        if (0 != maxKeepAlive) {
+          if (difference > Seconds(maxKeepAlive)) {
+            difference = Seconds(maxKeepAlive);
+          }
+        }
 
         if (difference < Seconds(120))
           difference = Seconds(120);

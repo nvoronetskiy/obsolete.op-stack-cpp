@@ -2864,7 +2864,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_TRACE(log("should shutdown this peer's location that are non-active") + PeerInfo::toDebug(peerInfo))
+        ZS_LOG_TRACE(log("this peer should shutdown non-active peer locations") + PeerInfo::toDebug(peerInfo))
         return true;
       }
 
