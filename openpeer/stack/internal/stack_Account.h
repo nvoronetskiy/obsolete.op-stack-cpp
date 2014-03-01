@@ -822,8 +822,6 @@ namespace openpeer
         IBackgroundingNotifierPtr mBackgroundingNotifier;
 
         TimerPtr mTimer;
-        Time mLastTimerFired;
-        Time mBlockLocationShutdownsUntil;  // FLAG FOR REMOVAL
 
         UseServiceLockboxSessionPtr mLockboxSession;
         Service::MethodListPtr mTURN;

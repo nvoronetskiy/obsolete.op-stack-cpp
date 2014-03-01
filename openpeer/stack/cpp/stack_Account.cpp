@@ -79,8 +79,6 @@
 #define OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS (60)
 
 #define OPENPEER_STACK_ACCOUNT_TIMER_FIRES_IN_SECONDS (15)
-#define OPENPEER_STACK_ACCOUNT_TIMER_DETECTED_BACKGROUNDING_TIME_IN_SECONDS (40)
-#define OPENPEER_STACK_ACCOUNT_PREVENT_LOCATION_SHUTDOWNS_AFTER_BACKGROUNDING_FOR_IN_SECONDS (15)
 #define OPENPEER_STACK_ACCOUNT_FINDER_STARTING_RETRY_AFTER_IN_SECONDS (1)
 #define OPENPEER_STACK_ACCOUNT_FINDER_MAX_RETRY_AFTER_TIME_IN_SECONDS (60)
 
@@ -168,7 +166,6 @@ namespace openpeer
         mCurrentState(IAccount::AccountState_Pending),
         mLastError(0),
         mDelegate(IAccountDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
-        mBlockLocationShutdownsUntil(zsLib::now()),
         mLockboxSession(lockboxSession),
         mFinderRetryAfter(zsLib::now()),
         mLastRetryFinderAfterDuration(Seconds(OPENPEER_STACK_ACCOUNT_FINDER_STARTING_RETRY_AFTER_IN_SECONDS))
@@ -1693,15 +1690,6 @@ namespace openpeer
           return;
         }
 
-        Time tick = zsLib::now();
-
-        if (mLastTimerFired + Seconds(OPENPEER_STACK_ACCOUNT_TIMER_DETECTED_BACKGROUNDING_TIME_IN_SECONDS) < tick) {
-          ZS_LOG_WARNING(Detail, log("account timer detected account went into background"))
-
-          mBlockLocationShutdownsUntil = tick + Seconds(OPENPEER_STACK_ACCOUNT_PREVENT_LOCATION_SHUTDOWNS_AFTER_BACKGROUNDING_FOR_IN_SECONDS);
-        }
-
-        mLastTimerFired = tick;
         step();
       }
 
@@ -1813,8 +1801,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "backgrounding notifier", (bool)mBackgroundingNotifier);
 
         IHelper::debugAppend(resultEl, "delegate", (bool)mTimer);
-        IHelper::debugAppend(resultEl, "timer last fired", mLastTimerFired);
-        IHelper::debugAppend(resultEl, "block until", mBlockLocationShutdownsUntil);
 
         IHelper::debugAppend(resultEl, "lockbox session id", mLockboxSession ? mLockboxSession->getID() : 0);
         IHelper::debugAppend(resultEl, "turn method list", mTURN ? mTURN->size() : 0);
@@ -2062,7 +2048,6 @@ namespace openpeer
           return true;
         }
 
-        mLastTimerFired = zsLib::now();
         mTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_TIMER_FIRES_IN_SECONDS));
         ZS_LOG_TRACE(log("created timer") + ZS_PARAM("timer ID", mTimer->getID()))
         return true;
@@ -2885,12 +2870,6 @@ namespace openpeer
                                                    )
       {
         Time tick = zsLib::now();
-
-        if (mBlockLocationShutdownsUntil > tick) {
-          // prevent shutdowns immediately after backgrounding (to give time to see which will self-cancel due to timeout)
-          ZS_LOG_DEBUG(log("not allowing peer locations to shutdown (due to backgrounding)"))
-          return;
-        }
 
         // scope: the peer is not incoming and all subscriptions are gone therefor it is safe to shutdown the peer locations entirely
         if (peerInfo->mLocations.size() > 0) {
