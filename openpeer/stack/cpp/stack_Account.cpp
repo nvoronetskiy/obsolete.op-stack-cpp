@@ -58,6 +58,7 @@
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPublicationRepository.h>
 
+#include <openpeer/services/IBackgrounding.h>
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IDHKeyDomain.h>
 #include <openpeer/services/IDHPrivateKey.h>
@@ -100,6 +101,7 @@ namespace openpeer
       typedef IStackForInternal UseStack;
 
       using services::IHelper;
+      using services::IBackgrounding;
 
       using services::IWakeDelegateProxy;
 
@@ -179,6 +181,8 @@ namespace openpeer
         ZS_LOG_DEBUG(log("inited"))
 
         AutoRecursiveLock lock(getLock());
+
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock());
 
         mLockboxSession->attach(mThisWeak.lock());
 
@@ -1110,12 +1114,9 @@ namespace openpeer
           mLastRetryFinderAfterDuration = Seconds(OPENPEER_STACK_ACCOUNT_FINDER_STARTING_RETRY_AFTER_IN_SECONDS);
         }
 
-        if ((IAccount::AccountState_ShuttingDown == state) ||
-            (IAccount::AccountState_Shutdown == state)) {
+        if (IAccount::AccountState_Shutdown == state) {
 
           mFinder.reset();
-
-          mBackgroundingNotifier.reset(); // ready to go to the background immediately
 
           if (!mBackgroundingEnabled) {
             if (!isShuttingDown()) {
@@ -1710,9 +1711,7 @@ namespace openpeer
 
         get(mBackgroundingEnabled) = true;
 
-        if (mFinder) {
-          mBackgroundingNotifier = notifier;
-        }
+        mBackgroundingNotifier = notifier;
 
         step();
       }
@@ -1965,6 +1964,11 @@ namespace openpeer
         }
 
         setState(IAccount::AccountState_Shutdown);
+
+        if (mBackgroundingSubscription) {
+          mBackgroundingSubscription->cancel();
+          mBackgroundingSubscription.reset();
+        }
 
         mGracefulShutdownReference.reset();
 
@@ -2453,17 +2457,17 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::stepFinder()
       {
+        if (mBackgroundingEnabled) {
+          ZS_LOG_TRACE(log("do not create finder while backgrounding"))
+          return true;
+        }
+
         if (mFinder) {
           if (IAccount::AccountState_Ready != mFinder->getState()) {
             ZS_LOG_TRACE(log("waiting for the finder to connect"))
             return false;
           }
           ZS_LOG_TRACE(log("finder already created"))
-          return true;
-        }
-
-        if (mBackgroundingEnabled) {
-          ZS_LOG_TRACE(log("do not create finder while backgrounding"))
           return true;
         }
 
@@ -2542,6 +2546,7 @@ namespace openpeer
         }
 
         if (!mFinder) {
+          mBackgroundingNotifier.reset();
           ZS_LOG_TRACE(log("finder already shutdown due to backgrounding"))
           return true;
         }

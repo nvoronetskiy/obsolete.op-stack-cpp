@@ -752,6 +752,8 @@ namespace openpeer
 
         if (isShutdown()) return;
 
+        bool wasReady = isReady();
+
         setState(IAccount::AccountState_ShuttingDown);
 
         if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
@@ -781,8 +783,6 @@ namespace openpeer
 
         if (mGracefulShutdownReference) {
 
-          bool wasReady = isReady();
-
           if (mFinderConnection) {
             if (wasReady) {
               if ((!mSessionDeleteMonitor) &&
@@ -792,8 +792,8 @@ namespace openpeer
                 request->domain(outer->getDomain());
 
                 mSessionDeleteMonitor = sendRequest(IMessageMonitorResultDelegate<SessionDeleteResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SESSION_DELETE_REQUEST_TIMEOUT_IN_SECONDS));
+                return;
               }
-              return;
             }
           }
 
