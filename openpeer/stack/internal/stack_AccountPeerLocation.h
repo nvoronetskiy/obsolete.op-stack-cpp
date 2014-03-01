@@ -132,6 +132,7 @@ namespace openpeer
 
         virtual bool wasCreatedFromIncomingFind() const = 0;
         virtual Time getCreationFindRequestTimestamp() const = 0;
+        virtual String getFindRequestContext() const = 0;
 
         virtual bool hasReceivedCandidateInformation() const = 0;
         virtual bool hasReceivedFinalCandidateInformation() const = 0;
@@ -268,6 +269,7 @@ namespace openpeer
 
         virtual bool wasCreatedFromIncomingFind() const;
         virtual Time getCreationFindRequestTimestamp() const;
+        virtual String getFindRequestContext() const;
 
         virtual bool hasReceivedCandidateInformation() const;
         virtual bool hasReceivedFinalCandidateInformation() const;

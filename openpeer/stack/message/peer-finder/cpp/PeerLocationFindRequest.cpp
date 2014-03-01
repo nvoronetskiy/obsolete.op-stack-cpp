@@ -86,7 +86,8 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        PeerLocationFindRequest::PeerLocationFindRequest()
+        PeerLocationFindRequest::PeerLocationFindRequest() :
+          mCreated(zsLib::timeSinceEpoch(Seconds(zsLib::timeSinceEpoch(zsLib::now()).total_seconds())))
         {
         }
 
@@ -138,6 +139,16 @@ namespace openpeer
             ElementPtr findProofEl = root->findFirstChildElementChecked("findProofBundle")->findFirstChildElementChecked("findProof");
 
             String clientNonce = findProofEl->findFirstChildElementChecked("nonce")->getText();
+
+#define WARNING_CREATED_SHOULD_BE_MANDITORY 1
+#define WARNING_CREATED_SHOULD_BE_MANDITORY 2
+
+            ElementPtr createdEl = findProofEl->findFirstChildElement("created");
+            if (createdEl) {
+              ret->mCreated = IHelper::stringToTime(createdEl->getText());
+            } else {
+              ret->mCreated = Time();
+            }
 
             String peerURI = findProofEl->findFirstChildElementChecked("find")->getText();
 
@@ -300,6 +311,7 @@ namespace openpeer
           switch (type)
           {
             case AttributeType_RequestfindProofBundleDigestValue: return mRequestfindProofBundleDigestValue.hasData();
+            case AttributeType_CreatedTimestamp:                  return Time() != mCreated;
             case AttributeType_FindPeer:                          return (bool)mFindPeer;
             case AttributeType_Context:                           return mContext.hasData();
             case AttributeType_PeerSecret:                        return mPeerSecret.hasData();
@@ -353,6 +365,12 @@ namespace openpeer
           ElementPtr findProofEl = Element::create("findProof");
 
           findProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
+
+#define WARNING_CREATED_SHOULD_BE_MANDITORY 1
+#define WARNING_CREATED_SHOULD_BE_MANDITORY 2
+//          if (hasAttribute(AttributeType_CreatedTimestamp)) {
+//            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("created", IHelper::timeToString(mCreated)));
+//          }
 
           if (mFindPeer) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("find", mFindPeer->getPeerURI()));

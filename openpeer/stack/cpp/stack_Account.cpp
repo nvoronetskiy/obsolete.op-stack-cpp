@@ -2311,7 +2311,13 @@ namespace openpeer
 
             if (!peerLocation->wasCreatedFromIncomingFind()) {
               Time existingRequestTime = peerLocation->getCreationFindRequestTimestamp();
-              Time newRequestTime = peerLocationFindRequest->time();
+              Time newRequestTime = peerLocationFindRequest->created();
+
+#define WARNING_TEMPORARY_WHILE_CREATED_IS_NOT_MANDITORY 1
+#define WARNING_TEMPORARY_WHILE_CREATED_IS_NOT_MANDITORY 2
+              if (Time() == newRequestTime) {
+                newRequestTime = existingRequestTime;
+              }
 
               if (existingRequestTime > newRequestTime) {
                 ZS_LOG_DEBUG(log("incoming find request is older than the find request that was issued (thus favouring existing location)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime))
@@ -2320,11 +2326,12 @@ namespace openpeer
                 ZS_LOG_DEBUG(log("incoming find request is newer than the find request that was previously issued (thus favouring incoming find request)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime))
                 resetExistingLocation = true;
               } else {
-                String incomingFindLocationID = fromLocation->getLocationID();
+                String existingContext = peerLocation->getFindRequestContext();
+                String incomingFindLocationID = peerLocationFindRequest->context();
 
                 ZS_LOG_DEBUG(log("incoming find request is the same time as the new find reqest (will resolve conflict by location ID)") + ZS_PARAM("existing time", existingRequestTime) + ZS_PARAM("incoming find request time", newRequestTime) + ZS_PARAM("this location id", mLocationID) + ZS_PARAM("incoming find location id", incomingFindLocationID))
 
-                if (mLocationID > fromLocation->getLocationID()) {
+                if (existingContext > incomingFindLocationID) {
                   ZS_LOG_DEBUG(log("this location is favoured to the incoming find request"))
                   resetExistingLocation = false;
                 } else {

@@ -389,7 +389,14 @@ namespace openpeer
       Time AccountPeerLocation::getCreationFindRequestTimestamp() const
       {
         AutoRecursiveLock lock(getLock());
-        return mFindRequest->time();
+        return mFindRequest->created();
+      }
+
+      //-----------------------------------------------------------------------
+      String AccountPeerLocation::getFindRequestContext() const
+      {
+        AutoRecursiveLock lock(getLock());
+        return mFindRequest->context();
       }
 
       //-----------------------------------------------------------------------
