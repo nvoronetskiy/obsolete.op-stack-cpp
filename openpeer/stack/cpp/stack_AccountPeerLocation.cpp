@@ -927,7 +927,14 @@ namespace openpeer
 
           mLastActivity = zsLib::now();
 
-          DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
+          const char *bufferStr = (CSTR)(buffer->BytePtr());
+
+          if (0 == strcmp(bufferStr, "\n")) {
+            ZS_LOG_TRACE(log("received new line ping"))
+            continue;
+          }
+
+          DocumentPtr document = Document::createFromAutoDetect(bufferStr);
           MessagePtr message = Message::create(document, Location::convert(mLocation));
           
           if (ZS_IS_LOGGING(Detail)) {
@@ -937,7 +944,7 @@ namespace openpeer
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-            ZS_LOG_BASIC(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", viaRelay ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+            ZS_LOG_BASIC(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", viaRelay ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", bufferStr))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
