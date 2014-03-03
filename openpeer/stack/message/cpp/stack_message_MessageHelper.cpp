@@ -338,9 +338,7 @@ namespace openpeer
         if (domain.hasData()) {
           message.domain(domain);
         }
-        if (appID.hasData()) {
-          message.appID(appID);
-        }
+        message.appID(appID);
         Time time = IMessageHelper::getAttributeEpoch(root);
         if (Time() != time) {
           message.time(time);

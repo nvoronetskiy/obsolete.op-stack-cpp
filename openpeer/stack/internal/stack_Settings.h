@@ -34,8 +34,6 @@
 #include <openpeer/stack/ISettings.h>
 #include <openpeer/stack/internal/types.h>
 
-#include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
-
 #include <openpeer/services/ISettings.h>
 
 namespace openpeer

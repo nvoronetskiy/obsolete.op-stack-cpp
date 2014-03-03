@@ -40,13 +40,12 @@
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IHTTP.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
-
-#define OPENPEER_STACK_FINDER_RELAY_MULTIPLEX_OUTGOING_RECEIVE_INACTIVITY_TIMEOUT_IN_SECONDS (60*20)
 
 #define OPENPEER_STACK_CHANNEL_MAP_REQUEST_TIMEOUT_SECONDS (60*2)
 
@@ -196,10 +195,14 @@ namespace openpeer
         zsLib::MessageQueueAssociator(queue),
         mCurrentState(SessionState_Pending),
         mRemoteIP(remoteFinderIP),
-        mLastReceivedData(zsLib::now()),
-        mLastTick(zsLib::now())
+        mLastSentData(zsLib::now()),
+        mSendKeepAliveAfter(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_CONNECTION_MUST_SEND_PING_IF_NO_SEND_ACTIVITY_IN_SECONDS)))
       {
         ZS_LOG_DETAIL(log("created"))
+
+        if (mSendKeepAliveAfter.total_seconds() < 1) {
+          mSendKeepAliveAfter = Duration();
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -212,7 +215,9 @@ namespace openpeer
 
         mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mWireReceiveStream->getStream(), mWireSendStream->getStream(), true, mRemoteIP);
 
-        mInactivityTimer = Timer::create(mThisWeak.lock(), Seconds(1));
+        if (Duration() != mSendKeepAliveAfter) {
+          mPingTimer = Timer::create(mThisWeak.lock(), Seconds(5));
+        }
 
         step();
       }
@@ -396,9 +401,9 @@ namespace openpeer
         mWireReceiveStream->cancel();
         mWireSendStream->cancel();
 
-        if (mInactivityTimer) {
-          mInactivityTimer->cancel();
-          mInactivityTimer.reset();
+        if (mPingTimer) {
+          mPingTimer->cancel();
+          mPingTimer.reset();
         }
 
         // scope: clear out channels
@@ -508,29 +513,29 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        if (timer != mInactivityTimer) {
+        if (timer != mPingTimer) {
           ZS_LOG_WARNING(Detail, log("notified about an obsolete timer") + ZS_PARAM("timer ID", timer->getID()))
           return;
         }
 
-        Time lastTick = mLastTick;
         Time tick = zsLib::now();
-        mLastTick = tick;
 
-        if (tick + Seconds(5) < lastTick) {
-          ZS_LOG_WARNING(Detail, log("timer was not firing likely because application went to sleep (re-adjusting timer)"))
-
-          // fake that we received data just so the inactivity timer waits a bit longer before disconnecting in a wake-up situation
-          mLastReceivedData = tick;
+        if (mLastSentData + mSendKeepAliveAfter > tick) {
+          ZS_LOG_INSANE(log("activity within window thus no need to send ping"))
           return;
         }
 
-        if (tick + Seconds(OPENPEER_STACK_FINDER_RELAY_MULTIPLEX_OUTGOING_RECEIVE_INACTIVITY_TIMEOUT_IN_SECONDS) < mLastReceivedData) {
-          // inactivity timeout
-          setError(IHTTP::HTTPStatusCode_RequestTimeout, "finder relay channel inactivity time-out");
-          cancel();
+        if (!mWireSendStream) {
+          ZS_LOG_WARNING(Detail, log("wire stream gone"))
           return;
         }
+
+        ChannelHeaderPtr header(new ChannelHeader);
+        header->mChannelID = static_cast<decltype(header->mChannelID)>(0);
+
+        mWireSendStream->write((const BYTE *)"\n", sizeof(char), header);
+
+        mLastSentData = tick;
       }
 
       //-----------------------------------------------------------------------
@@ -771,6 +776,8 @@ namespace openpeer
         header->mChannelID = static_cast<decltype(header->mChannelID)>(channelNumber);
 
         mWireSendStream->write(buffer, header);
+
+        mLastSentData = zsLib::now();
       }
 
       //-----------------------------------------------------------------------
@@ -842,24 +849,35 @@ namespace openpeer
         ElementPtr resultEl = Element::create("FinderConnection");
 
         IHelper::debugAppend(resultEl, "id", mID);
+
         IHelper::debugAppend(resultEl, "outer", (bool)mOuter.lock());
+
         IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
         IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+
         IHelper::debugAppend(resultEl, "last error", mLastError);
         IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
+
         IHelper::debugAppend(resultEl, "remote ip", mRemoteIP.string());
         IHelper::debugAppend(resultEl, "tcp messaging", ITCPMessaging::toDebug(mTCPMessaging));
+
         IHelper::debugAppend(resultEl, "wire recv stream", ITransportStream::toDebug(mWireReceiveStream->getStream()));
         IHelper::debugAppend(resultEl, "wire send stream", ITransportStream::toDebug(mWireSendStream->getStream()));
+
         IHelper::debugAppend(resultEl, "send stream notified ready", mSendStreamNotifiedReady);
-        IHelper::debugAppend(resultEl, "last tick", mLastTick);
-        IHelper::debugAppend(resultEl, "last received data", mLastReceivedData);
-        IHelper::debugAppend(resultEl, "inactivity timer", (bool)mInactivityTimer);
+
+        IHelper::debugAppend(resultEl, "send keep alive (s)", mSendKeepAliveAfter);
+        IHelper::debugAppend(resultEl, "last sent data", mLastSentData);
+        IHelper::debugAppend(resultEl, "ping timer", (bool)mPingTimer);
+
         IHelper::debugAppend(resultEl, "channels", mChannels.size());
+
         IHelper::debugAppend(resultEl, "pending map request channels", mPendingMapRequest.size());
         IHelper::debugAppend(resultEl, "incoming channels", mIncomingChannels.size());
         IHelper::debugAppend(resultEl, "remove channels", mRemoveChannels.size());
+
         IHelper::debugAppend(resultEl, "map request monitor", (bool)mMapRequestChannelMonitor);
         IHelper::debugAppend(resultEl, "map request channel number", mMapRequestChannelNumber);
 
@@ -918,6 +936,8 @@ namespace openpeer
         if (!stepReceiveData()) return;
 
         setState(SessionState_Connected);
+
+        if (!stepSelfDestruct()) return;
       }
 
       //-----------------------------------------------------------------------
@@ -1001,19 +1021,13 @@ namespace openpeer
 
             // by writing a buffer of "0" size to the channel number, it will cause the channel to close
             mWireSendStream->write(buffer, header);
+
+            mLastSentData = zsLib::now();
           }
 
         }
 
         mRemoveChannels.clear();
-
-        if ((mChannels.size() < 1) &&
-            (mIncomingChannels.size() < 1) &&
-            (mPendingMapRequest.size() < 1)) {
-          ZS_LOG_DEBUG(log("no more need to have finder connection as no channels in use (thus self destruct)"))
-          cancel();
-          return false;
-        }
 
         ZS_LOG_TRACE(log("remove channels completed"))
 
@@ -1139,6 +1153,8 @@ namespace openpeer
 
         mWireSendStream->write((const BYTE *) (output.get()), outputLength, header);
 
+        mLastSentData = zsLib::now();
+
         if (ZS_IS_LOGGING(Debug)) {
           ZS_LOG_DETAIL(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_DETAIL(log(") ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) ) )"))
@@ -1251,6 +1267,36 @@ namespace openpeer
 
         ZS_LOG_TRACE(log("receive complete"))
         return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool FinderConnection::stepSelfDestruct()
+      {
+        if (mChannels.size() > 0) {
+          ZS_LOG_TRACE(log("has active channels"))
+          return true;
+        }
+
+        if ((mPendingMapRequest.size() > 0) ||
+            (mMapRequestChannelMonitor)) {
+          ZS_LOG_TRACE(log("has pending map request"))
+          return true;
+        }
+
+        if (mIncomingChannels.size() > 0) {
+          ZS_LOG_TRACE(log("has pending incoming channels"))
+          return true;
+        }
+
+        if (mRemoveChannels.size() > 0) {
+          ZS_LOG_TRACE(log("has pending remove channels"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("no more activity detected on finder connection thus going to self destruct now"))
+
+        cancel();
+        return false;
       }
 
       //-----------------------------------------------------------------------

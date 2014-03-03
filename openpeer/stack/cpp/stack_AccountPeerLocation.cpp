@@ -54,6 +54,7 @@
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IDHPrivateKey.h>
 #include <openpeer/services/IDHPublicKey.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
@@ -188,7 +189,8 @@ namespace openpeer
         mLocationInfo(request->locationInfo()),
         mLocation(Location::convert(request->locationInfo()->mLocation)),
 
-        mPeer(mLocation->getPeer())
+        mPeer(mLocation->getPeer()),
+        mDebugForceMessagesOverRelay(services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY))
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -228,7 +230,8 @@ namespace openpeer
         mLocationInfo(locationInfo),
         mLocation(Location::convert(locationInfo->mLocation)),
 
-        mPeer(mLocation->getPeer())
+        mPeer(mLocation->getPeer()),
+        mDebugForceMessagesOverRelay(services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY))
       {
         ZS_LOG_BASIC(debug("created"))
         ZS_THROW_BAD_STATE_IF(!mPeer)
@@ -386,7 +389,14 @@ namespace openpeer
       Time AccountPeerLocation::getCreationFindRequestTimestamp() const
       {
         AutoRecursiveLock lock(getLock());
-        return mFindRequest->time();
+        return mFindRequest->created();
+      }
+
+      //-----------------------------------------------------------------------
+      String AccountPeerLocation::getFindRequestContext() const
+      {
+        AutoRecursiveLock lock(getLock());
+        return mFindRequest->context();
       }
 
       //-----------------------------------------------------------------------
@@ -471,10 +481,12 @@ namespace openpeer
 
         if (mMLSSendStream) {
           if (mMLSSendStream->isWriterReady()) {
-            ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
+            if (!mDebugForceMessagesOverRelay) {
+              ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
 
-            mMLSSendStream->write((const BYTE *)(output.get()), length);
-            return true;
+              mMLSSendStream->write((const BYTE *)(output.get()), length);
+              return true;
+            }
           }
         }
 
@@ -915,7 +927,14 @@ namespace openpeer
 
           mLastActivity = zsLib::now();
 
-          DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
+          const char *bufferStr = (CSTR)(buffer->BytePtr());
+
+          if (0 == strcmp(bufferStr, "\n")) {
+            ZS_LOG_TRACE(log("received new line ping"))
+            continue;
+          }
+
+          DocumentPtr document = Document::createFromAutoDetect(bufferStr);
           MessagePtr message = Message::create(document, Location::convert(mLocation));
           
           if (ZS_IS_LOGGING(Detail)) {
@@ -925,7 +944,7 @@ namespace openpeer
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-            ZS_LOG_BASIC(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", viaRelay ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+            ZS_LOG_BASIC(log("PEER RECEIVED MESSAGE") + ZS_PARAM("via", viaRelay ? "RELAY" : "RUDP/MLS") + ZS_PARAM("json in", bufferStr))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -1283,6 +1302,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "identity monitor", (bool)mIdentifyMonitor);
         IHelper::debugAppend(resultEl, "keep alive monitor", (bool)mKeepAliveMonitor);
+
+        IHelper::debugAppend(resultEl, "force messages via relay", mDebugForceMessagesOverRelay);
 
         return resultEl;
       }

@@ -47,6 +47,7 @@
 #include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/ITransportStream.h>
+#include <openpeer/services/IBackgrounding.h>
 
 #include <zsLib/MessageQueueAssociator.h>
 
@@ -312,6 +313,7 @@ namespace openpeer
                       public IDNSDelegate,
                       public IICESocketDelegate,
                       public ITimerDelegate,
+                      public IBackgroundingDelegate,
                       public IKeyGeneratorDelegate,
                       public IMessageMonitorResultDelegate<PeerLocationFindResult>,
                       public IMessageMonitorResultDelegate<FindersGetResult>
@@ -644,6 +646,17 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
+        #pragma mark Account => IBackgroundingDelegate
+        #pragma mark
+
+        virtual void onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier);
+
+        virtual void onBackgroundingGoingToBackgroundNow();
+
+        virtual void onBackgroundingReturningFromBackground();
+
+        //---------------------------------------------------------------------
+        #pragma mark
         #pragma mark Account => IKeyGeneratorDelegate
         #pragma mark
 
@@ -678,6 +691,7 @@ namespace openpeer
         bool stepFinderDNS();
         bool stepFinder();
         bool stepPeers();
+        bool stepFinderBackgrounding();
 
         void setState(AccountStates accountState);
         void setError(WORD errorCode, const char *reason = NULL);
@@ -695,6 +709,11 @@ namespace openpeer
                         const String &peerURI,
                         const PeerInfoPtr &peerInfo
                         ) const;
+
+        void shutdownAllLocationsDueToBackgrounding(
+                                                    const String &contactID,
+                                                    PeerInfoPtr &peer
+                                                    );
 
         bool shouldShutdownInactiveLocations(
                                              const String &contactID,
@@ -743,7 +762,7 @@ namespace openpeer
 
         struct PeerInfo
         {
-          typedef std::map<LocationID, UseAccountPeerLocationPtr> PeerLocationMap;     // every location needs a session
+          typedef std::map<LocationID, UseAccountPeerLocationPtr> PeerLocationMap;  // every location needs a session
           typedef std::map<LocationID, LocationID> FindingBecauseOfLocationIDMap;   // using this to track the reason why the find needs to be initated or reinitated
 
           static ElementPtr toDebug(PeerInfoPtr peerInfo);
@@ -774,6 +793,8 @@ namespace openpeer
           // NOTE: Presence can also give us a hint to when we should redo the search.
           Time mNextScheduledFind;                                 // if peer was not found, schedule finds to try again
           Duration mLastScheduleFindDuration;                      // how long was the duration between finds (used because it will double each time a search is completed)
+
+          AutoBool mFindAgainAfterBackgrounded;
         };
 
       protected:
@@ -796,9 +817,11 @@ namespace openpeer
 
         IAccountDelegatePtr mDelegate;
 
+        AutoBool mBackgroundingEnabled;
+        IBackgroundingSubscriptionPtr mBackgroundingSubscription;
+        IBackgroundingNotifierPtr mBackgroundingNotifier;
+
         TimerPtr mTimer;
-        Time mLastTimerFired;
-        Time mBlockLocationShutdownsUntil;
 
         UseServiceLockboxSessionPtr mLockboxSession;
         Service::MethodListPtr mTURN;

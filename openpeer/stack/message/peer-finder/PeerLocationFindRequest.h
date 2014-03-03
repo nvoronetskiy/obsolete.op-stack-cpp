@@ -55,6 +55,7 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_RequestfindProofBundleDigestValue,  // filled when decoding from incoming request or after calling encode
+            AttributeType_CreatedTimestamp,
             AttributeType_FindPeer,
             AttributeType_Context,
             AttributeType_PeerSecret,
@@ -87,6 +88,9 @@ namespace openpeer
 
           const String &requestFindProofBundleDigestValue() const         {return mRequestfindProofBundleDigestValue;}
           void requestFindProofBundleDigestValue(const String &secret)    {mRequestfindProofBundleDigestValue = secret;}
+
+          Time created() const                                            {return mCreated;}
+          void created(const Time &value)                                 {mCreated = value;}
 
           const IPeerPtr &findPeer() const                                {return mFindPeer;}
           void findPeer(const IPeerPtr &peer)                             {mFindPeer = peer;}
@@ -127,6 +131,8 @@ namespace openpeer
           PeerLocationFindRequest();
 
           String mRequestfindProofBundleDigestValue;
+
+          Time mCreated;
 
           IPeerPtr mFindPeer;
 
