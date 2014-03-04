@@ -100,8 +100,10 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
 
-        mExpires = zsLib::now() + timeout;
-        mTimer = Timer::create(mThisWeak.lock(), timeout, false);
+        if (Duration() != timeout) {
+          mExpires = zsLib::now() + timeout;
+          mTimer = Timer::create(mThisWeak.lock(), timeout, false);
+        }
 
         UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
         PUID sentViaObjectID = manager->monitorStart(mThisWeak.lock());
