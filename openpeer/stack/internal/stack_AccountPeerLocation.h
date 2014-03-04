@@ -35,6 +35,11 @@
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 #include <openpeer/stack/internal/stack_IFinderConnection.h>
 
+#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
+
+#include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
+#include <openpeer/stack/message/peer-to-peer/PeerKeepAliveResult.h>
+
 #include <openpeer/stack/IAccount.h>
 #include <openpeer/stack/ILocation.h>
 
@@ -42,15 +47,11 @@
 #include <openpeer/services/IRUDPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
 
-#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
-
-#include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
-#include <openpeer/stack/message/peer-to-peer/PeerKeepAliveResult.h>
-
 #include <openpeer/services/IWakeDelegate.h>
 #include <openpeer/services/IMessageLayerSecurityChannel.h>
 
 #include <zsLib/MessageQueueAssociator.h>
+#include <zsLib/Timer.h>
 
 #include <map>
 #include <list>
@@ -173,6 +174,7 @@ namespace openpeer
                                   public MessageQueueAssociator,
                                   public IAccountPeerLocationForAccount,
                                   public IWakeDelegate,
+                                  public ITimerDelegate,
                                   public IFinderRelayChannelDelegate,
                                   public IICESocketDelegate,
                                   public IRUDPTransportDelegate,
@@ -303,6 +305,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark AccountPeerLocation => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -518,6 +527,7 @@ namespace openpeer
         PeerLocationFindRequestPtr mFindRequest;
 
         IMessageMonitorPtr mOutgoingFindRequestMonitor;
+        TimerPtr mFindRequestTimer;
 
         IFinderRelayChannelPtr mOutgoingRelayChannel;
         ITransportStreamReaderPtr mOutgoingRelayReceiveStream;

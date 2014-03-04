@@ -246,7 +246,8 @@ namespace openpeer
 
         if (isCreatedFromOutgoingFind()) {
           // monitor to receive all incoming notifications
-          mOutgoingFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS));
+          mOutgoingFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Duration());
+          mFindRequestTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS), false);
         }
 
         // kick start the object
@@ -680,6 +681,34 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark AccountPeerLocation => ITimerDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void AccountPeerLocation::onTimer(TimerPtr timer)
+      {
+        ZS_LOG_DEBUG(log("on timer"))
+
+        AutoRecursiveLock lock(getLock());
+        if (timer != mFindRequestTimer) {
+          ZS_LOG_WARNING(Detail, log("received timer event for obsolete timer") + ZS_PARAM("timer", timer->getID()))
+          return;
+        }
+
+        mFindRequestTimer->cancel();
+        mFindRequestTimer.reset();
+
+        // fake that the message monitor timed-out because it never really times out...
+
+        typedef IMessageMonitorResultDelegate<PeerLocationFindNotify> BaseType;
+        dynamic_pointer_cast<BaseType>(mThisWeak.lock())->onMessageMonitorTimedOut(mOutgoingFindRequestMonitor, PeerLocationFindNotifyPtr());
       }
 
       //-----------------------------------------------------------------------
@@ -1336,6 +1365,11 @@ namespace openpeer
         if (mKeepAliveMonitor) {
           mKeepAliveMonitor->cancel();
           mKeepAliveMonitor.reset();
+        }
+
+        if (mFindRequestTimer) {
+          mFindRequestTimer->cancel();
+          mFindRequestTimer.reset();
         }
 
         mIncomingRelayChannelNumber = 0;
