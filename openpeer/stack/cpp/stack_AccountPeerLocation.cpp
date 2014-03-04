@@ -213,6 +213,8 @@ namespace openpeer
         mDelegate(IAccountPeerLocationDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
 
+        mLastCandidateVersionSent(request->locationInfo()->mCandidatesVersion),
+
         mCreatedReason(CreatedFromReason_OutgoingFind), // OUTGOING
         mFindRequest(request),
         mIncomingRelayChannelNumber(0),
@@ -244,11 +246,9 @@ namespace openpeer
 
         ZS_THROW_INVALID_ASSUMPTION_IF(!mLocationInfo)
 
-        if (isCreatedFromOutgoingFind()) {
-          // monitor to receive all incoming notifications
-          mOutgoingFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Duration());
-          mFindRequestTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS), false);
-        }
+        // monitor to receive all incoming notifications
+        mFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Duration());
+        mFindRequestTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS), false);
 
         // kick start the object
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -706,9 +706,7 @@ namespace openpeer
         mFindRequestTimer.reset();
 
         // fake that the message monitor timed-out because it never really times out...
-
-        typedef IMessageMonitorResultDelegate<PeerLocationFindNotify> BaseType;
-        dynamic_pointer_cast<BaseType>(mThisWeak.lock())->onMessageMonitorTimedOut(mOutgoingFindRequestMonitor, PeerLocationFindNotifyPtr());
+        onMessageMonitorTimedOut(mFindRequestMonitor, PeerLocationFindNotifyPtr());
       }
 
       //-----------------------------------------------------------------------
@@ -1079,7 +1077,8 @@ namespace openpeer
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
-        return notify->final();
+        // request can never be handled because notifies can happen at any time in the future
+        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -1308,7 +1307,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "created from", toString(mCreatedReason));
         IHelper::debugAppend(resultEl, "find request", mFindRequest->messageID());
 
-        IHelper::debugAppend(resultEl, "outgoing find request monitor", mOutgoingFindRequestMonitor ? mOutgoingFindRequestMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "find request monitor", mFindRequestMonitor ? mFindRequestMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "find request timer", mFindRequestTimer ? mFindRequestTimer->getID() : 0);
 
         IHelper::debugAppend(resultEl, "outgoing relay channel id", mOutgoingRelayChannel ? mOutgoingRelayChannel->getID() : 0);
         IHelper::debugAppend(resultEl, "outgoing relay receive stream id", mOutgoingRelayReceiveStream ? mOutgoingRelayReceiveStream->getID() : 0);
@@ -1352,9 +1352,9 @@ namespace openpeer
 
         if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
 
-        if (mOutgoingFindRequestMonitor) {
-          mOutgoingFindRequestMonitor->cancel();
-          mOutgoingFindRequestMonitor.reset();
+        if (mFindRequestMonitor) {
+          mFindRequestMonitor->cancel();
+          mFindRequestMonitor.reset();
         }
 
         if (mIdentifyMonitor) {
@@ -1527,6 +1527,7 @@ namespace openpeer
           }
         }
 
+        if (!stepConnectIncomingFind()) return;
         if (!stepAnyConnectionPresent()) return;
         if (!stepSendNotify(socket)) return;
         if (!stepCheckIncomingIdentify()) return;
@@ -1879,6 +1880,50 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
+      bool AccountPeerLocation::stepConnectIncomingFind()
+      {
+        if (!isCreatedFromIncomingFind()) {
+          ZS_LOG_TRACE(log("not coming from an incoming find request"))
+          return true;
+        }
+
+        if (mSocketSession) {
+          ZS_LOG_TRACE(log("already have a connected session"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("connecting to incoming find request location"))
+
+        CandidateList remoteCandidates;
+        remoteCandidates = mFindRequest->locationInfo()->mCandidates;
+
+        CandidateList relayCandidates;
+
+        for (CandidateList::iterator iter = remoteCandidates.begin(); iter != remoteCandidates.end(); ) {
+          CandidateList::iterator current = iter;
+          ++iter;
+
+          Candidate &candidate = (*current);
+          if (OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES == candidate.mNamespace) continue;
+
+          if (OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY == candidate.mNamespace) {
+            relayCandidates.push_back(candidate);
+          }
+
+          remoteCandidates.erase(current);
+        }
+
+        connectLocation(
+                        mFindRequest->iceUsernameFrag(),
+                        mFindRequest->icePassword(),
+                        remoteCandidates,
+                        mFindRequest->final()
+                        );
+        
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool AccountPeerLocation::stepAnyConnectionPresent()
       {
         bool foundRelay = false;
@@ -2096,11 +2141,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool AccountPeerLocation::stepSendNotify(IICESocketPtr socket)
       {
-        if (!isCreatedFromIncomingFind()) {
-          ZS_LOG_TRACE(log("only location receiving incoming find request will send outgoing notifies"))
-          return true;
-        }
-
         String candidatesVersion = socket->getLocalCandidatesVersion();
 
         if (candidatesVersion == mLastCandidateVersionSent) {
@@ -2117,25 +2157,6 @@ namespace openpeer
         UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
         LocationInfoPtr selfLocationInfo = selfLocation->getLocationInfo();
 
-        CandidateList remoteCandidates;
-        remoteCandidates = mFindRequest->locationInfo()->mCandidates;
-
-        CandidateList relayCandidates;
-
-        for (CandidateList::iterator iter = remoteCandidates.begin(); iter != remoteCandidates.end(); ) {
-          CandidateList::iterator current = iter;
-          ++iter;
-
-          Candidate &candidate = (*current);
-          if (OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES == candidate.mNamespace) continue;
-
-          if (OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY == candidate.mNamespace) {
-            relayCandidates.push_back(candidate);
-          }
-
-          remoteCandidates.erase(current);
-        }
-
         // local candidates are now preparerd, the request can be answered
         PeerLocationFindNotifyPtr notify = PeerLocationFindNotify::create(mFindRequest);
 
@@ -2149,16 +2170,9 @@ namespace openpeer
 
         mLastCandidateVersionSent = selfLocationInfo->mCandidatesVersion;
 
-        connectLocation(
-                        mFindRequest->iceUsernameFrag(),
-                        mFindRequest->icePassword(),
-                        remoteCandidates,
-                        selfLocationInfo->mCandidatesFinal
-                        );
-
         send(notify);
 
-        ZS_LOG_TRACE(log("step send notifycomplete"))
+        ZS_LOG_TRACE(log("step send notify complete"))
         return true;
       }
 

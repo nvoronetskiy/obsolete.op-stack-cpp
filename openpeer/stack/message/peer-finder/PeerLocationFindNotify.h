@@ -52,7 +52,6 @@ namespace openpeer
             AttributeType_ICEUsernameFrag,
             AttributeType_ICEPassword,
             AttributeType_ICEFinal,
-            AttributeType_RequestFindProofBundleDigest,
             AttributeType_LocationInfo,
             AttributeType_PeerFiles,
           };
@@ -88,8 +87,8 @@ namespace openpeer
           bool final() const                                            {return mFinal;}
           void final(bool val)                                          {get(mFinal) = val;}
 
-          const String &requestFindProofBundleDigestValue() const       {return mRequestfindProofBundleDigestValue;}
-          void requestFindProofBundleDigestValue(const String &secret)  {mRequestfindProofBundleDigestValue = secret;}
+          const String &requestFindProofBundleDigestValue() const       {return mRequestFindProofBundleDigestValue;}
+          void requestFindProofBundleDigestValue(const String &secret)  {mRequestFindProofBundleDigestValue = secret;}
 
           LocationInfoPtr locationInfo() const                          {return mLocationInfo;}
           void locationInfo(LocationInfoPtr locationInfo)               {mLocationInfo = locationInfo;}
@@ -109,7 +108,7 @@ namespace openpeer
 
           AutoBool mFinal;
 
-          String mRequestfindProofBundleDigestValue;
+          String mRequestFindProofBundleDigestValue;
           LocationInfoPtr mLocationInfo;
 
           IPeerFilesPtr mPeerFiles;

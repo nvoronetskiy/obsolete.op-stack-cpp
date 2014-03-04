@@ -458,6 +458,7 @@ namespace openpeer
         bool stepOutgoingRelayChannel();
         bool stepIncomingRelayChannel();
         bool stepAnyConnectionPresent();
+        bool stepConnectIncomingFind();
         bool stepSendNotify(IICESocketPtr socket);
         bool stepRUDPSocketSession();
         bool stepCheckIncomingIdentify();
@@ -526,7 +527,7 @@ namespace openpeer
 
         PeerLocationFindRequestPtr mFindRequest;
 
-        IMessageMonitorPtr mOutgoingFindRequestMonitor;
+        IMessageMonitorPtr mFindRequestMonitor;
         TimerPtr mFindRequestTimer;
 
         IFinderRelayChannelPtr mOutgoingRelayChannel;

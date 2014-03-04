@@ -48,6 +48,7 @@
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
+#include <zsLib/Numeric.h>
 
 
 #define OPENPEER_STACK_MESSAGE_PEER_LOCATION_FIND_REQUEST_LIFETIME_IN_SECONDS ((60*60)*24)
@@ -60,6 +61,7 @@ namespace openpeer
   {
     namespace message
     {
+      using zsLib::Numeric;
       using services::IHelper;
       typedef services::IHelper::SplitMap SplitMap;
 
@@ -87,7 +89,8 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         PeerLocationFindRequest::PeerLocationFindRequest() :
-          mCreated(zsLib::timeSinceEpoch(Seconds(zsLib::timeSinceEpoch(zsLib::now()).total_seconds())))
+          mCreated(zsLib::timeSinceEpoch(Seconds(zsLib::timeSinceEpoch(zsLib::now()).total_seconds()))),
+          mFinal(-1)
         {
         }
 
@@ -148,6 +151,20 @@ namespace openpeer
               ret->mCreated = IHelper::stringToTime(createdEl->getText());
             } else {
               ret->mCreated = Time();
+              ZS_LOG_WARNING(Detail, slog("created value missing"))
+            }
+
+#define WARNING_FINAL_SHOULD_BE_MANDITORY 1
+#define WARNING_FINAL_SHOULD_BE_MANDITORY 2
+            try {
+              ElementPtr finalEl = findProofEl->findFirstChildElement("final");
+              if (finalEl) {
+                ret->mFinal = ((Numeric<bool>(IMessageHelper::getElementTextAndDecode(finalEl))) ? 1 : 0);
+              } else {
+                ZS_LOG_WARNING(Detail, slog("final value missing"))
+              }
+            } catch (Numeric<bool>::ValueOutOfRange &) {
+              ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
 
             String peerURI = findProofEl->findFirstChildElementChecked("find")->getText();
@@ -268,7 +285,7 @@ namespace openpeer
             IHelper::getSignatureInfo(findProofEl, &signatureEl);
 
             if (signatureEl) {
-              ret->mRequestfindProofBundleDigestValue = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
+              ret->mRequestFindProofBundleDigestValue = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
             }
 
             if (peer->getPeerFilePublic()) {
@@ -310,7 +327,7 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_RequestfindProofBundleDigestValue: return mRequestfindProofBundleDigestValue.hasData();
+            case AttributeType_RequestfindProofBundleDigestValue: return mRequestFindProofBundleDigestValue.hasData();
             case AttributeType_CreatedTimestamp:                  return Time() != mCreated;
             case AttributeType_FindPeer:                          return (bool)mFindPeer;
             case AttributeType_Context:                           return mContext.hasData();
@@ -320,6 +337,7 @@ namespace openpeer
             case AttributeType_DHPublicKey:                       return (bool)mDHPublicKey;
             case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
             case AttributeType_ICEPassword:                       return mICEPassword.hasData();
+            case AttributeType_Final:                             return (mFinal >= 0);
             case AttributeType_LocationInfo:                      return mLocationInfo ? mLocationInfo->hasData() : false;
             case AttributeType_ExcludedLocations:                 return (mExcludedLocations.size() > 0);
             case AttributeType_PeerFiles:                         return (bool)mPeerFiles;
@@ -428,6 +446,10 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("icePasswordEncrypted", icePassword));
           }
 
+          if (hasAttribute(AttributeType_Final)) {
+            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("final", mFinal > 0 ? "true" : "false"));
+          }
+
           if (hasAttribute(AttributeType_LocationInfo)) {
             ElementPtr locationEl = internal::MessageHelper::createElement(*mLocationInfo, mPeerSecret);
             findProofEl->adoptAsLastChild(locationEl);
@@ -441,7 +463,7 @@ namespace openpeer
           IHelper::getSignatureInfo(findProofEl, &signatureEl);
 
           if (signatureEl) {
-            mRequestfindProofBundleDigestValue = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
+            mRequestFindProofBundleDigestValue = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
           }
 
           if (hasAttribute(AttributeType_ExcludedLocations))
