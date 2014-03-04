@@ -2956,10 +2956,6 @@ namespace openpeer
         }
 
         mSocket->wakeup();
-        if (IICESocket::ICESocketState_Ready != mSocket->getState()) {
-          ZS_LOG_TRACE(log("should issue find request but must wait until ICE candidates are fully ready") + PeerInfo::toDebug(peerInfo))
-          return;
-        }
 
         ZS_LOG_DEBUG(log("peer is conducting a peer find search for locations") + PeerInfo::toDebug(peerInfo))
 
