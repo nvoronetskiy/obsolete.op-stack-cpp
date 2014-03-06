@@ -427,23 +427,13 @@ namespace openpeer
         }
 
         if (Time() == mIdentifyTime) {
-          if (isCreatedFromOutgoingFind()) {
-            PeerIdentifyRequestPtr identifyRequest = PeerIdentifyRequest::convert(message);
-            if (!identifyRequest) {
-              ZS_LOG_WARNING(Detail, log("only identify request may be sent out at this time") + ZS_PARAM("message id", message->messageID()))
-              return false;
-            }
-          }
+          PeerIdentifyResultPtr identifyResult = PeerIdentifyResult::convert(message);
+          PeerLocationFindNotifyPtr peerLocationFindNotify = PeerLocationFindNotify::convert(message);
 
-          if (isCreatedFromIncomingFind()) {
-            PeerIdentifyResultPtr identifyResult = PeerIdentifyResult::convert(message);
-            PeerLocationFindNotifyPtr peerLocationFindNotify = PeerLocationFindNotify::convert(message);
-
-            if ((!identifyResult) &&
-                (!peerLocationFindNotify)) {
-              ZS_LOG_WARNING(Detail, log("only identify result or peer location find requests may be sent out at this time"))
-              return false;
-            }
+          if ((!identifyResult) &&
+              (!peerLocationFindNotify)) {
+            ZS_LOG_WARNING(Detail, log("only identify result or peer location find notify requests may be sent out at this time"))
+            return false;
           }
         }
 
@@ -2273,17 +2263,6 @@ namespace openpeer
         if (!outer) {
           ZS_LOG_WARNING(Detail, log("peer message is ignored since account is now gone"))
           return;
-        }
-
-        // scope: handle incoming peer location find notifications
-        if (isCreatedFromOutgoingFind()) {
-          PeerLocationFindNotifyPtr notify = PeerLocationFindNotify::convert(message);
-          if (notify) {
-            ZS_LOG_DEBUG(log("handling incoming peer location notify"))
-
-            handleMessageMonitorResultReceived(IMessageMonitorPtr(), notify);
-            return;
-          }
         }
 
         bool expectingIdentify = ((isCreatedFromIncomingFind()) &&

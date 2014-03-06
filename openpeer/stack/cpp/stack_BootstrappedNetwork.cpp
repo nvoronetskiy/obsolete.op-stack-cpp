@@ -757,9 +757,10 @@ namespace openpeer
             ZS_LOG_DEBUG(log("http result was handled by message monitor"))
             return;
           }
+          ZS_LOG_WARNING(Detail, log("no message handler registered for this request"))
+        } else {
+          ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
         }
-
-        ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
 
         MessageResultPtr result = MessageResult::create(originalMessage, IHTTP::HTTPStatusCode_BadRequest);
         if (!result) {
