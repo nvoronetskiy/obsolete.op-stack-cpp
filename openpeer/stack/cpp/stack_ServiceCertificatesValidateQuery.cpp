@@ -137,6 +137,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceCertificatesValidateQuery::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         if (!mDigestSigned) {
           cancel();
           return;

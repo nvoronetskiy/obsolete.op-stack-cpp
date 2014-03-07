@@ -161,6 +161,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         UseAccountPtr account = mAccount.lock();
         ZS_THROW_BAD_STATE_IF(!account)
 
@@ -2850,6 +2852,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationRepository::SubscriptionLocal::init()
       {
+        AutoRecursiveLock lock(getLock());
         setState(IPublicationSubscription::PublicationSubscriptionState_Pending);
       }
 

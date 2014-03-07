@@ -244,6 +244,8 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(debug("initialized"))
 
+        AutoRecursiveLock lock(getLock());
+
         ZS_THROW_INVALID_ASSUMPTION_IF(!mLocationInfo)
 
         // monitor to receive all incoming notifications
@@ -906,7 +908,7 @@ namespace openpeer
         AutoRecursiveLock lock(getLock());
 
         if (mHadConnection) {
-          ZS_LOG_TRACE(log("already had connection (ignored)"))
+          ZS_LOG_TRACE(log("transport stream write ready already had connection (thus ignored)"))
           return;
         }
 
@@ -942,14 +944,14 @@ namespace openpeer
             return;
           }
 
-          mLastActivity = zsLib::now();
-
           const char *bufferStr = (CSTR)(buffer->BytePtr());
 
           if (0 == strcmp(bufferStr, "\n")) {
             ZS_LOG_TRACE(log("received new line ping"))
             continue;
           }
+
+          mLastActivity = zsLib::now();
 
           DocumentPtr document = Document::createFromAutoDetect(bufferStr);
           MessagePtr message = Message::create(document, Location::convert(mLocation));
@@ -2040,7 +2042,7 @@ namespace openpeer
           switch (mMessaging->getState(&error, &reason)) {
             case IRUDPMessaging::RUDPMessagingState_Connecting:
             {
-              ZS_LOG_TRACE(log("messaging channel may become ready yet"))
+              ZS_LOG_TRACE(log("messaging channel may become ready yet") + ZS_PARAM("messaging id", mMessaging->getID()))
               foundPeer = true;
               break;
             }
@@ -2052,7 +2054,7 @@ namespace openpeer
             }
             case IRUDPMessaging::RUDPMessagingState_ShuttingDown:
             case IRUDPMessaging::RUDPMessagingState_Shutdown: {
-              ZS_LOG_WARNING(Trace, log("messaging channel is shutdown (thus unuseable)") + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
+              ZS_LOG_WARNING(Trace, log("messaging channel is shutdown (thus unuseable)") + ZS_PARAM("messaging id", mMessaging->getID()) + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               peerFailed = true;
               break;
             }

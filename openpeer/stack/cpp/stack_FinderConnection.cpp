@@ -320,6 +320,8 @@ namespace openpeer
         FinderConnectionPtr pThis(new FinderConnection(UseStack::queueStack(), remoteFinderIP));
         pThis->mThisWeak = pThis;
 
+        AutoRecursiveLock lock(pThis->getLock());
+
         if (delegate) {
           pThis->mDefaultSubscription = pThis->subscribe(delegate);
         }
