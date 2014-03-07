@@ -737,6 +737,7 @@ namespace openpeer
             } else {
               if (mServicesGetQuery == query) {
                 if (IHTTP::isRedirection(IHTTP::toStatusCode(actualResultMessage->errorCode()))) {
+                  ZS_LOG_DEBUG(log("putting result into cache") + ZS_PARAM("name", cookieName) + ZS_PARAM("expires", cookieExpires) + ZS_PARAM("json", (const char *)(output->BytePtr())))
                   UseCache::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
                 } else {
                   UseCache::clear(cookieName); // do not store error results

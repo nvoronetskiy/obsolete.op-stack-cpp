@@ -131,6 +131,8 @@ namespace openpeer
               (mOS.hasData()) ||
               (mSystem.hasData()) ||
               (mHost.hasData()) ||
+              (mCandidatesFinal) ||
+              (mCandidatesVersion.hasData()) ||
               (mCandidates.size() > 0));
     }
 
@@ -146,6 +148,8 @@ namespace openpeer
       OPIHelper::debugAppend(resultEl, "os", mOS);
       OPIHelper::debugAppend(resultEl, "system", mSystem);
       OPIHelper::debugAppend(resultEl, "host", mHost);
+      OPIHelper::debugAppend(resultEl, "candidates final", mCandidatesFinal);
+      OPIHelper::debugAppend(resultEl, "candidates version", mCandidatesVersion);
       OPIHelper::debugAppend(resultEl, "candidates", mCandidates.size());
 
       return resultEl;

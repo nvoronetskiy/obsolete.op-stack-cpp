@@ -214,7 +214,7 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("context", mContext));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("validated", mValidated ? "true":"false"));
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("validated", mValidated ? "true":"false"));
 
           if (hasAttribute(AttributeType_ICEUsernameFrag)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("iceUsernameFrag", mICEUsernameFrag));
@@ -224,7 +224,7 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("icePassword", mICEPassword));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("final", mFinal ? "true":"false"));
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("final", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
             findProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));

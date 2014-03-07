@@ -75,8 +75,8 @@ namespace openpeer
           const String &context() const                                 {return mContext;}
           void context(const String &secret)                            {mContext = secret;}
 
-          bool validated() const                                        {return mFinal;}
-          void validated(bool val)                                      {get(mFinal) = val;}
+          bool validated() const                                        {return mValidated;}
+          void validated(bool val)                                      {get(mValidated) = val;}
 
           const String &iceUsernameFrag() const                         {return mICEUsernameFrag;}
           void iceUsernameFrag(const String &val)                       {mICEUsernameFrag = val;}

@@ -1054,8 +1054,6 @@ namespace openpeer
             }
           }
 
-        } else {
-          ZS_LOG_ERROR(Detail, log("not expecting to handle peer location find notifies (probably a bug)"))
         }
 
         connectLocation(
@@ -2162,7 +2160,7 @@ namespace openpeer
 
         send(notify);
 
-        ZS_LOG_TRACE(log("step send notify complete"))
+        ZS_LOG_TRACE(log("step send notify complete") + ZS_PARAM("final", selfLocationInfo->mCandidatesFinal))
         return true;
       }
 

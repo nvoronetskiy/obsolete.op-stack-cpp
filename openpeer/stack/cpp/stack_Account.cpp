@@ -566,6 +566,7 @@ namespace openpeer
               convert.mTransport = OPENPEER_STACK_TRANSPORT_JSON_MLS_RUDP;
               info->mCandidates.push_back(convert);
             }
+
           }
 
           char buffer[256];
@@ -578,6 +579,8 @@ namespace openpeer
           info->mOS = services::ISettings::getString(OPENPEER_COMMON_SETTING_OS);
           info->mSystem = services::ISettings::getString(OPENPEER_COMMON_SETTING_SYSTEM);
           info->mHost = &(buffer[0]);
+
+          ZS_LOG_TRACE(log("self location info") + info->toDebug())
           return info;
         }
 
