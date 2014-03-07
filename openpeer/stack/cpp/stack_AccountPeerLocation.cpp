@@ -428,15 +428,9 @@ namespace openpeer
           return false;
         }
 
-        if (Time() == mIdentifyTime) {
-          PeerIdentifyResultPtr identifyResult = PeerIdentifyResult::convert(message);
-          PeerLocationFindNotifyPtr peerLocationFindNotify = PeerLocationFindNotify::convert(message);
-
-          if ((!identifyResult) &&
-              (!peerLocationFindNotify)) {
-            ZS_LOG_WARNING(Detail, log("only identify result or peer location find notify requests may be sent out at this time"))
-            return false;
-          }
+        if (!isLegalDuringPreIdentify(message)) {
+          ZS_LOG_WARNING(Detail, log("only identify result or peer location find notify requests may be sent out at this time"))
+          return false;
         }
 
         DocumentPtr document = message->encode();
@@ -2300,6 +2294,18 @@ namespace openpeer
           return;
         }
 
+        // scope: handle incoming keep alives
+        {
+          PeerKeepAliveRequestPtr request = PeerKeepAliveRequest::convert(message);
+          if (request) {
+            ZS_LOG_DEBUG(log("handling incoming peer keep alive request"))
+
+            PeerKeepAliveResultPtr result = PeerKeepAliveResult::create(request);
+            send(result);
+            return;
+          }
+        }
+
         bool expectingIdentify = ((isCreatedFromIncomingFind()) &&
                                   (Time() == mIdentifyTime));
 
@@ -2309,6 +2315,15 @@ namespace openpeer
         }
 
         if (expectingIdentify) {
+          if (!isLegalDuringPreIdentify(message)) {
+            ZS_LOG_WARNING(Detail, log("message is not legal when expecting to receive identify request"))
+
+            MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_Forbidden);
+            if (result) {
+              send(result);
+            }
+            return;
+          }
 
           // scope: handle identify request
           {
@@ -2370,18 +2385,6 @@ namespace openpeer
           return;
         }
 
-        // scope: handle incoming keep alives
-        {
-          PeerKeepAliveRequestPtr request = PeerKeepAliveRequest::convert(message);
-          if (request) {
-            ZS_LOG_DEBUG(log("handling incoming peer keep alive request"))
-
-            PeerKeepAliveResultPtr result = PeerKeepAliveResult::create(request);
-            send(result);
-            return;
-          }
-        }
-
         ZS_LOG_DEBUG(log("unknown message, will forward message to account"))
 
         // scope: send the message to the outer (asynchronously)
@@ -2390,6 +2393,34 @@ namespace openpeer
         } catch (IAccountPeerLocationDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
+      }
+
+      //-----------------------------------------------------------------------
+      bool AccountPeerLocation::isLegalDuringPreIdentify(MessagePtr message) const
+      {
+        if (Time() != mIdentifyTime) return true;
+
+        {
+          if (message->isResult()) {
+            // all results are legal
+            return true;
+          }
+        }
+
+        {
+          PeerKeepAliveRequestPtr converted = PeerKeepAliveRequest::convert(message);
+          if (converted) return true;
+        }
+        {
+          PeerIdentifyRequestPtr converted = PeerIdentifyRequest::convert(message);
+          if (converted) return true;
+        }
+        {
+          PeerLocationFindNotifyPtr converted = PeerLocationFindNotify::convert(message);
+          if (converted) return true;
+        }
+
+        return false;
       }
       
       //-----------------------------------------------------------------------

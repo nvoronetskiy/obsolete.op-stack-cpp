@@ -469,6 +469,7 @@ namespace openpeer
         void setState(AccountStates state);
 
         void handleMessage(MessagePtr message);
+        bool isLegalDuringPreIdentify(MessagePtr message) const;
 
         void connectLocation(
                              const char *remoteICEUsernameFrag,
