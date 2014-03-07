@@ -50,6 +50,7 @@ namespace openpeer
     {
       enum PeerFindStates
       {
+        PeerFindState_Pending,
         PeerFindState_Idle,
         PeerFindState_Finding,
         PeerFindState_Completed,

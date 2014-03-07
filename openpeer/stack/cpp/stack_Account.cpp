@@ -923,6 +923,9 @@ namespace openpeer
           return IPeer::PeerFindState_Idle;
         }
 
+#define WARNING_HERE 1
+#define WARNING_HERE 2
+
         PeerInfoPtr peerInfo = (*found).second;
         return peerInfo->mCurrentFindState;
       }
@@ -2515,6 +2518,8 @@ namespace openpeer
           PeerInfoPtr &peerInfo = (*current).second;
 
           if (mBackgroundingEnabled) {
+            setFindState(*peerInfo, IPeer::PeerFindState_Completed);
+
             shutdownAllLocationsDueToBackgrounding(peerURI, peerInfo);
 
             if (peerInfo->mLocations.size() > 0) {
@@ -2535,6 +2540,8 @@ namespace openpeer
 
             // erase the peer now...
             ZS_LOG_DEBUG(log("no locations at this peer thus shutting down now") + PeerInfo::toDebug(peerInfo))
+
+            setFindState(*peerInfo, IPeer::PeerFindState_Completed);
             mPeerInfos.erase(current);
             continue;
           }
@@ -3143,7 +3150,7 @@ namespace openpeer
       {
         PeerInfoPtr pThis(new PeerInfo);
         pThis->findTimeReset();
-        pThis->mCurrentFindState = IPeer::PeerFindState_Idle;
+        pThis->mCurrentFindState = IPeer::PeerFindState_Pending;
         pThis->mTotalSubscribers = 0;
         return pThis;
       }
