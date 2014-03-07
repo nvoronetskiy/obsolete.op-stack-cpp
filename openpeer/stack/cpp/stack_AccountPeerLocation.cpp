@@ -543,6 +543,15 @@ namespace openpeer
           return;
         }
 
+        if (isCreatedFromOutgoingFind()) {
+          if (!mIdentifyMonitor) {
+            if (Time() == mIdentifyTime) {
+              ZS_LOG_WARNING(Detail, log("cannot send keep alive as identity request was not sent"))
+              return;
+            }
+          }
+        }
+
         PeerKeepAliveRequestPtr request = PeerKeepAliveRequest::create();
         request->domain(outer->getDomain());
 
@@ -869,7 +878,33 @@ namespace openpeer
         ZS_LOG_DEBUG(log("on RUDP messaging state changed") + ZS_PARAM("messaging", messaging->getID()) + ZS_PARAM("state", IRUDPMessaging::toString(state)))
 
         AutoRecursiveLock lock(getLock());
+        if (messaging != mMessaging) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete RUDP messaging") + ZS_PARAM("messaging", messaging->getID()) + ZS_PARAM("state", IRUDPMessaging::toString(state)))
+          return;
+        }
+
         step();
+
+        if ((state == IRUDPMessaging::RUDPMessagingState_ShuttingDown) ||
+            (state == IRUDPMessaging::RUDPMessagingState_Shutdown)) {
+
+          if ((isShuttingDown()) ||
+              (isShutdown()))
+          {
+            ZS_LOG_TRACE(log("RUDP messaging being closed during shutdown"))
+            return;
+          }
+
+          ZS_LOG_WARNING(Detail, log("due to the unexpected shutdown of the RUDP messaging which did not cause the peer connection to shutdown a keep alive is being forced over the channel"))
+
+          // force a keep alive now to ensure the session is still alive
+          Time lastActivity = mLastActivity;
+
+          sendKeepAlive();
+
+          // this keep alive will not be counted as intentional local activity meant to keep the connection alive
+          mLastActivity = lastActivity;
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -2088,7 +2123,7 @@ namespace openpeer
 
         if (mHadPeerConnection) {
           if (peerFailed) {
-            ZS_LOG_WARNING(Detail, log("something went wrong in peer connection thus must shutdown (not going to continue via relay even if it is an option)"))
+            ZS_LOG_WARNING(Detail, log("the peer connection is no longer available thus must shutdown (not going to continue via relay even if it is an option)"))
             cancel();
             return false;
           }
