@@ -71,6 +71,8 @@ namespace openpeer
 
       using boost::dynamic_pointer_cast;
 
+      ZS_DECLARE_USING_PTR(services, IBackgroundingNotifier)
+      ZS_DECLARE_USING_PTR(services, IBackgroundingSubscription)
       ZS_DECLARE_USING_PTR(services, IDHKeyDomain)
       ZS_DECLARE_USING_PTR(services, IDHPrivateKey)
       ZS_DECLARE_USING_PTR(services, IDHPublicKey)
@@ -103,6 +105,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(services, ITransportStreamWriterSubscription)
 
       ZS_DECLARE_USING_PROXY(services, IWakeDelegate)
+      ZS_DECLARE_USING_PROXY(services, IBackgroundingDelegate)
 
       using namespace message;
 

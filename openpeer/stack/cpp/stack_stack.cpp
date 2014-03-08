@@ -44,6 +44,10 @@
 #include <openpeer/stack/message/peer-salt/MessageFactoryPeerSalt.h>
 #include <openpeer/stack/message/peer-to-peer/MessageFactoryPeerToPeer.h>
 
+#include <openpeer/stack/internal/stack_Settings.h>
+
+#include <openpeer/stack/ISettings.h>
+
 #include <openpeer/services/IHelper.h>
 
 #include <zsLib/Log.h>
@@ -82,54 +86,6 @@ namespace openpeer
       #pragma mark
       #pragma mark IStackForInternal
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::appID()
-      {
-        return (Stack::singleton())->getAppID();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::appName()
-      {
-        return (Stack::singleton())->getAppName();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::appImageURL()
-      {
-        return (Stack::singleton())->getAppImageURL();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::appURL()
-      {
-        return (Stack::singleton())->getAppURL();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::userAgent()
-      {
-        return (Stack::singleton())->getUserAgent();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::deviceID()
-      {
-        return (Stack::singleton())->getDeviceID();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::os()
-      {
-        return (Stack::singleton())->getOS();
-      }
-
-      //-----------------------------------------------------------------------
-      const String &IStackForInternal::system()
-      {
-        return (Stack::singleton())->getSystem();
-      }
 
       //-----------------------------------------------------------------------
       AgentInfo IStackForInternal::agentInfo()
@@ -233,15 +189,7 @@ namespace openpeer
                         IMessageQueuePtr defaultDelegateMessageQueue,
                         IMessageQueuePtr stackMessageQueue,
                         IMessageQueuePtr servicesMessageQueue,
-                        IMessageQueuePtr keyGenerationQueue,
-                        const char *appID,
-                        const char *appName,
-                        const char *appImageURL,
-                        const char *appURL,
-                        const char *userAgent,
-                        const char *deviceID,
-                        const char *os,
-                        const char *system
+                        IMessageQueuePtr keyGenerationQueue
                         )
       {
         AutoRecursiveLock lock(mLock);
@@ -261,43 +209,21 @@ namespace openpeer
           mKeyGenerationQueue = keyGenerationQueue;
         }
 
-        if (appID) {
-          mAppID = appID;
-        }
-        if (appName) {
-          mAppName = appName;
-        }
-        if (appImageURL) {
-          mAppImageURL = appImageURL;
-        }
-        if (appURL) {
-          mAppURL = appURL;
-        }
-        if (deviceID) {
-          mDeviceID = String(deviceID);
-        }
-        if (userAgent) {
-          mUserAgent = String(userAgent);
-        }
-        if (os) {
-          mOS = String(os);
-        }
-        if (system) {
-          mSystem = String(system);
-        }
+        ISettingsForStack::applyDefaultsIfNoDelegatePresent();
+
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_URL);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_USER_AGENT);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_DEVICE_ID);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_OS);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_SYSTEM);
 
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(!mStackQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(!mServicesQueue)
         ZS_THROW_INVALID_ARGUMENT_IF(!keyGenerationQueue)
-        ZS_THROW_INVALID_ARGUMENT_IF(mAppID.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mAppName.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mAppImageURL.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mAppURL.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mUserAgent.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mDeviceID.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mOS.isEmpty())
-        ZS_THROW_INVALID_ARGUMENT_IF(mSystem.isEmpty())
       }
 
       //-----------------------------------------------------------------------
@@ -311,10 +237,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Stack::getAgentInfo(AgentInfo &result) const
       {
-        result.mUserAgent = getUserAgent();
-        result.mName = getAppName();
-        result.mImageURL = getAppImageURL();
-        result.mAgentURL = getAppURL();
+        result.mUserAgent = services::ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT);
+        result.mName = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
+        result.mImageURL = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
+        result.mAgentURL = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_URL);
       }
 
       //-----------------------------------------------------------------------
@@ -356,6 +282,19 @@ namespace openpeer
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
+
+      //-----------------------------------------------------------------------
+      void Stack::verifySettingIsSet(const char *settingName)
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!settingName)
+
+        String result = services::ISettings::getString(settingName);
+        if (!result.isEmpty()) return;
+
+        ZS_LOG_WARNING(Basic, log("setting was not set") + ZS_PARAM("setting name", settingName))
+
+        ZS_THROW_INVALID_USAGE(String("setting is missing a value: ") + settingName)
+      }
     }
 
     //-------------------------------------------------------------------------
@@ -377,18 +316,10 @@ namespace openpeer
                        IMessageQueuePtr defaultDelegateMessageQueue,
                        IMessageQueuePtr stackMessageQueue,
                        IMessageQueuePtr servicesQueue,
-                       IMessageQueuePtr keyGenerationQueue,
-                       const char *appID,
-                       const char *appName,
-                       const char *appImageURL,
-                       const char *appURL,
-                       const char *userAgent,
-                       const char *deviceID,
-                       const char *os,
-                       const char *system
+                       IMessageQueuePtr keyGenerationQueue
                        )
     {
-      return internal::Stack::singleton()->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue, appID, appName, appImageURL, appURL, userAgent, deviceID, os, system);
+      return internal::Stack::singleton()->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue);
     }
   }
 }

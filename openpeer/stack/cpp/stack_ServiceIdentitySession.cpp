@@ -337,6 +337,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         if (mIdentityBootstrappedNetwork) {
           UseBootstrappedNetwork::prepare(mIdentityBootstrappedNetwork->getDomain(), mThisWeak.lock());
         }

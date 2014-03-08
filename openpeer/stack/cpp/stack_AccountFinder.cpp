@@ -51,6 +51,7 @@
 #include <openpeer/stack/IMessageMonitor.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
@@ -456,7 +457,14 @@ namespace openpeer
             return;
           }
 
-          DocumentPtr document = Document::createFromAutoDetect((CSTR)(buffer->BytePtr()));
+          const char *bufferStr = (CSTR)(buffer->BytePtr());
+
+          if (0 == strcmp(bufferStr, "\n")) {
+            ZS_LOG_TRACE(log("received new line ping"))
+            continue;
+          }
+
+          DocumentPtr document = Document::createFromAutoDetect(bufferStr);
           message::MessagePtr message = Message::create(document, Location::convert(UseLocation::getForFinder(Account::convert(outer))));
 
           if (ZS_IS_LOGGING(Detail)) {
@@ -465,7 +473,7 @@ namespace openpeer
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-            ZS_LOG_BASIC(log("FINDER RECEIVED MESSAGE") + ZS_PARAM("json in", ((CSTR)(buffer->BytePtr()))))
+            ZS_LOG_BASIC(log("FINDER RECEIVED MESSAGE") + ZS_PARAM("json in", bufferStr))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
             ZS_LOG_BASIC(log("< < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < <"))
             ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -693,6 +701,14 @@ namespace openpeer
 
         Duration difference = expires - tick;
 
+        ULONG maxKeepAlive = services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS);
+
+        if (0 != maxKeepAlive) {
+          if (difference > Seconds(maxKeepAlive)) {
+            difference = Seconds(maxKeepAlive);
+          }
+        }
+
         if (difference < Seconds(120))
           difference = Seconds(120);
 
@@ -752,6 +768,8 @@ namespace openpeer
 
         if (isShutdown()) return;
 
+        bool wasReady = isReady();
+
         setState(IAccount::AccountState_ShuttingDown);
 
         if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
@@ -781,8 +799,6 @@ namespace openpeer
 
         if (mGracefulShutdownReference) {
 
-          bool wasReady = isReady();
-
           if (mFinderConnection) {
             if (wasReady) {
               if ((!mSessionDeleteMonitor) &&
@@ -792,8 +808,8 @@ namespace openpeer
                 request->domain(outer->getDomain());
 
                 mSessionDeleteMonitor = sendRequest(IMessageMonitorResultDelegate<SessionDeleteResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SESSION_DELETE_REQUEST_TIMEOUT_IN_SECONDS));
+                return;
               }
-              return;
             }
           }
 

@@ -51,6 +51,8 @@
 #include <list>
 #include <map>
 
+#define OPENPEER_STACK_SETTING_FINDER_CONNECTION_MUST_SEND_PING_IF_NO_SEND_ACTIVITY_IN_SECONDS "openpeer/stack/finder-connection-send-ping-keep-alive-after-in-seconds"
+
 namespace openpeer
 {
   namespace stack
@@ -273,6 +275,7 @@ namespace openpeer
         bool stepMasterChannel();
         bool stepChannelMapRequest();
         bool stepReceiveData();
+        bool stepSelfDestruct();
 
         IFinderConnectionRelayChannelPtr connect(
                                                  IFinderConnectionRelayChannelDelegatePtr delegate,
@@ -500,9 +503,9 @@ namespace openpeer
 
         AutoBool mSendStreamNotifiedReady;
 
-        Time mLastTick;
-        Time mLastReceivedData;
-        TimerPtr mInactivityTimer;
+        Duration mSendKeepAliveAfter;
+        Time mLastSentData;
+        TimerPtr mPingTimer;
 
         ChannelMap mChannels;
 

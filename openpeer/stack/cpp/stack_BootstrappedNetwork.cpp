@@ -44,6 +44,7 @@
 #include <openpeer/stack/IPeer.h>
 #include <openpeer/stack/IMessageMonitor.h>
 
+#include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IRSAPublicKey.h>
 
@@ -74,6 +75,7 @@ namespace openpeer
       using services::IHelper;
       using services::IHTTPQuery;
       using services::IHTTPQueryDelegateProxy;
+      using services::ISettings;
 
       using namespace stack::message;
       using namespace stack::message::bootstrapper;
@@ -735,6 +737,7 @@ namespace openpeer
             } else {
               if (mServicesGetQuery == query) {
                 if (IHTTP::isRedirection(IHTTP::toStatusCode(actualResultMessage->errorCode()))) {
+                  ZS_LOG_DEBUG(log("putting result into cache") + ZS_PARAM("name", cookieName) + ZS_PARAM("expires", cookieExpires) + ZS_PARAM("json", (const char *)(output->BytePtr())))
                   UseCache::store(cookieName, cookieExpires, (const char *)(output->BytePtr()));
                 } else {
                   UseCache::clear(cookieName); // do not store error results
@@ -755,9 +758,10 @@ namespace openpeer
             ZS_LOG_DEBUG(log("http result was handled by message monitor"))
             return;
           }
+          ZS_LOG_WARNING(Detail, log("no message handler registered for this request"))
+        } else {
+          ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
         }
-
-        ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
 
         MessageResultPtr result = MessageResult::create(originalMessage, IHTTP::HTTPStatusCode_BadRequest);
         if (!result) {
@@ -1046,26 +1050,28 @@ namespace openpeer
 
         ZS_LOG_DEBUG(debug("step"))
 
-#if (0 != OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP)
-#define OPENPEER_STACK_BOOTSTRAPPER_WARNING_FORCING_OVER_INSECURE_HTTP 1
-#define OPENPEER_STACK_BOOTSTRAPPER_WARNING_FORCING_OVER_INSECURE_HTTP 2
-#endif //(0 != OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP)
-
         // now we have the DNS service name...
         if (!mServicesGetMonitor) {
-          bool forceOverHTTP = (0 == OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP ? false : true);
-          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mDomain + "/.well-known/" + OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
+          bool forceOverHTTP = ISettings::getBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP);
+
+          String serviceURL = (forceOverHTTP ? "http://" : "https://") + mDomain + "/.well-known/" + OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME;
           ZS_LOG_DEBUG(log("step - performing services get request") + ZS_PARAM("services-get URL", serviceURL))
+
+          if (forceOverHTTP) {
+            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced over insecure http connection"))
+          }
 
           ServicesGetRequestPtr request = ServicesGetRequest::create();
           request->domain(mDomain);
 
-          mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-          mServicesGetQuery = post(serviceURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain), getCacheTime(BootstrapperRequestType_ServicesGet));
+          bool sendAsGetRequest = !ISettings::getBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST);
 
-          //mServicesGetQuery = post(serviceURL, MessagePtr());
-#define WARNING_SHOULD_BE_SENDING_AS_A_GET_REQUEST_NOT_A_POST 1
-#define WARNING_SHOULD_BE_SENDING_AS_A_GET_REQUEST_NOT_A_POST 2
+          if (!sendAsGetRequest) {
+            ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced as an HTTP POST request"))
+          }
+
+          mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
+          mServicesGetQuery = post(serviceURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain), getCacheTime(BootstrapperRequestType_ServicesGet), sendAsGetRequest);
         }
 
         if (!mServicesGetMonitor->isComplete()) {
@@ -1276,7 +1282,9 @@ namespace openpeer
               // from a HTTP GET request where no data was posted. As a result,
               // the returned message might not contain the message ID. Thus
               // force the message to have the same message ID as the request.
-              IMessageHelper::setAttributeID(rootEl, originalMesssage->messageID());
+              if (originalMesssage) {
+                IMessageHelper::setAttributeID(rootEl, originalMesssage->messageID());
+              }
               IMessageHelper::setAttributeTimestamp(rootEl, zsLib::now());
             }
             message = Message::create(doc, mThisWeak.lock());
@@ -1289,7 +1297,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + ZS_PARAM("override message ID", fakeQuery ? originalMesssage->messageID() : String()) + Message::toDebug(message))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + ZS_PARAM("override message ID", fakeQuery ? (originalMesssage ? originalMesssage->messageID() : String()) : String()) + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           if (buffer.SizeInBytes() > 0) {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", buffer.SizeInBytes()) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))
@@ -1313,7 +1321,8 @@ namespace openpeer
                                               const char *url,
                                               MessagePtr message,
                                               const char *cachedCookieNameForResult,
-                                              Time cacheExpires
+                                              Time cacheExpires,
+                                              bool forceAsGetRequest
                                               )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!url)
@@ -1362,10 +1371,11 @@ namespace openpeer
 
           query = fakeQuery;
         } else {
-          if (IHelper::hasData(buffer)) {
-            query = IHTTP::post(mThisWeak.lock(), UseStack::userAgent(), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+          if ((IHelper::hasData(buffer) &&
+               (!forceAsGetRequest))) {
+            query = IHTTP::post(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
           } else {
-            query = IHTTP::get(mThisWeak.lock(), UseStack::userAgent(), url);
+            query = IHTTP::get(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url);
           }
         }
 

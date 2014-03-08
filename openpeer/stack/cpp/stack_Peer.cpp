@@ -179,6 +179,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Peer::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         if (!mPeerFilePublic) {
           ZS_LOG_TRACE(log("attempting to load peer file public from cache") + ZS_PARAM("uri", mPeerURI))
           mPeerFilePublic = IPeerFilePublic::loadFromCache(mPeerURI);
@@ -619,6 +621,7 @@ namespace openpeer
     {
       switch (state)
       {
+        case PeerFindState_Pending:   return "Pending";
         case PeerFindState_Idle:      return "Idle";
         case PeerFindState_Finding:   return "Finding";
         case PeerFindState_Completed: return "Complete";

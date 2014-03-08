@@ -55,6 +55,7 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_RequestfindProofBundleDigestValue,  // filled when decoding from incoming request or after calling encode
+            AttributeType_CreatedTimestamp,
             AttributeType_FindPeer,
             AttributeType_Context,
             AttributeType_PeerSecret,
@@ -63,6 +64,7 @@ namespace openpeer
             AttributeType_DHPublicKey,
             AttributeType_ICEUsernameFrag,
             AttributeType_ICEPassword,
+            AttributeType_Final,
             AttributeType_ExcludedLocations,
             AttributeType_LocationInfo,
             AttributeType_PeerFiles,
@@ -85,8 +87,11 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const String &requestFindProofBundleDigestValue() const         {return mRequestfindProofBundleDigestValue;}
-          void requestFindProofBundleDigestValue(const String &secret)    {mRequestfindProofBundleDigestValue = secret;}
+          const String &requestFindProofBundleDigestValue() const         {return mRequestFindProofBundleDigestValue;}
+          void requestFindProofBundleDigestValue(const String &secret)    {mRequestFindProofBundleDigestValue = secret;}
+
+          Time created() const                                            {return mCreated;}
+          void created(const Time &value)                                 {mCreated = value;}
 
           const IPeerPtr &findPeer() const                                {return mFindPeer;}
           void findPeer(const IPeerPtr &peer)                             {mFindPeer = peer;}
@@ -112,6 +117,9 @@ namespace openpeer
           const String &icePassword() const                               {return mICEPassword;}
           void icePassword(const String &val)                             {mICEPassword = val;}
 
+          bool final() const                                              {return mFinal > 0;}
+          void final(bool value)                                          {mFinal = (value ? 1 : 0);}
+
           const ExcludedLocationList &excludeLocations() const            {return mExcludedLocations;}
           void excludeLocations(const ExcludedLocationList &excludeList)  {mExcludedLocations = excludeList;}
 
@@ -126,7 +134,9 @@ namespace openpeer
         protected:
           PeerLocationFindRequest();
 
-          String mRequestfindProofBundleDigestValue;
+          String mRequestFindProofBundleDigestValue;
+
+          Time mCreated;
 
           IPeerPtr mFindPeer;
 
@@ -139,6 +149,8 @@ namespace openpeer
 
           String mICEUsernameFrag;
           String mICEPassword;
+
+          int mFinal;
 
           ExcludedLocationList mExcludedLocations;
 

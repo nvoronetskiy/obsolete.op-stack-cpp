@@ -53,10 +53,10 @@
 
 #include <zsLib/MessageQueueAssociator.h>
 
-// set to 1 to force over HTTP instead of HTTPS
-#define OPENPEER_STACK_BOOTSTRAPPER_SERVICE_FORCE_OVER_INSECURE_HTTP 0
+#define OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP   "openpeer/stack/bootstrapper-force-well-known-over-insecure-http"
+#define OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST           "openpeer/stack/bootstrapper-force-well-known-using-post"
 
-#define OPENPEER_STACK_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME "openpeer-services-get"
+#define OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME "openpeer-services-get"
 
 namespace openpeer
 {
@@ -475,7 +475,8 @@ namespace openpeer
                            const char *url,
                            MessagePtr message,
                            const char *cachedCookieNameForResult = NULL,
-                           Time cacheExpires = Time()
+                           Time cacheExpires = Time(),
+                           bool forceAsGetRequest = false
                            );
 
       protected:

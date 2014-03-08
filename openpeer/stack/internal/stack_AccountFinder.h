@@ -50,6 +50,8 @@
 
 #include <map>
 
+#define OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS "openpeer/stack/finder-max-client-session-keep-alive-in-seconds"
+
 namespace openpeer
 {
   namespace stack

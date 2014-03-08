@@ -98,6 +98,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceSaltFetchSignedSaltQuery::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
 

@@ -35,6 +35,11 @@
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 #include <openpeer/stack/internal/stack_IFinderConnection.h>
 
+#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
+
+#include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
+#include <openpeer/stack/message/peer-to-peer/PeerKeepAliveResult.h>
+
 #include <openpeer/stack/IAccount.h>
 #include <openpeer/stack/ILocation.h>
 
@@ -42,18 +47,18 @@
 #include <openpeer/services/IRUDPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
 
-#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
-
-#include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
-#include <openpeer/stack/message/peer-to-peer/PeerKeepAliveResult.h>
-
 #include <openpeer/services/IWakeDelegate.h>
 #include <openpeer/services/IMessageLayerSecurityChannel.h>
 
 #include <zsLib/MessageQueueAssociator.h>
+#include <zsLib/Timer.h>
 
 #include <map>
 #include <list>
+
+
+#define OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY "openpeer/stack/debug/force-p2p-messages-over-finder-relay"
+
 
 namespace openpeer
 {
@@ -128,6 +133,7 @@ namespace openpeer
 
         virtual bool wasCreatedFromIncomingFind() const = 0;
         virtual Time getCreationFindRequestTimestamp() const = 0;
+        virtual String getFindRequestContext() const = 0;
 
         virtual bool hasReceivedCandidateInformation() const = 0;
         virtual bool hasReceivedFinalCandidateInformation() const = 0;
@@ -168,6 +174,7 @@ namespace openpeer
                                   public MessageQueueAssociator,
                                   public IAccountPeerLocationForAccount,
                                   public IWakeDelegate,
+                                  public ITimerDelegate,
                                   public IFinderRelayChannelDelegate,
                                   public IICESocketDelegate,
                                   public IRUDPTransportDelegate,
@@ -264,6 +271,7 @@ namespace openpeer
 
         virtual bool wasCreatedFromIncomingFind() const;
         virtual Time getCreationFindRequestTimestamp() const;
+        virtual String getFindRequestContext() const;
 
         virtual bool hasReceivedCandidateInformation() const;
         virtual bool hasReceivedFinalCandidateInformation() const;
@@ -297,6 +305,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark AccountPeerLocation => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -443,6 +458,7 @@ namespace openpeer
         bool stepOutgoingRelayChannel();
         bool stepIncomingRelayChannel();
         bool stepAnyConnectionPresent();
+        bool stepConnectIncomingFind();
         bool stepSendNotify(IICESocketPtr socket);
         bool stepRUDPSocketSession();
         bool stepCheckIncomingIdentify();
@@ -453,6 +469,7 @@ namespace openpeer
         void setState(AccountStates state);
 
         void handleMessage(MessagePtr message);
+        bool isLegalDuringPreIdentify(MessagePtr message) const;
 
         void connectLocation(
                              const char *remoteICEUsernameFrag,
@@ -511,7 +528,8 @@ namespace openpeer
 
         PeerLocationFindRequestPtr mFindRequest;
 
-        IMessageMonitorPtr mOutgoingFindRequestMonitor;
+        IMessageMonitorPtr mFindRequestMonitor;
+        TimerPtr mFindRequestTimer;
 
         IFinderRelayChannelPtr mOutgoingRelayChannel;
         ITransportStreamReaderPtr mOutgoingRelayReceiveStream;
@@ -534,6 +552,8 @@ namespace openpeer
 
         IMessageMonitorPtr mIdentifyMonitor;
         IMessageMonitorPtr mKeepAliveMonitor;
+
+        bool mDebugForceMessagesOverRelay;
       };
 
       //-----------------------------------------------------------------------

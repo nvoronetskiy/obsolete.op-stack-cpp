@@ -154,6 +154,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceLockboxSession::init()
       {
+        AutoRecursiveLock lock(getLock());
+
         calculateAndNotifyIdentityChanges();  // calculate the identities hash for the firs ttime
 
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());

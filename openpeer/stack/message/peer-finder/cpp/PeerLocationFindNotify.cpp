@@ -92,7 +92,7 @@ namespace openpeer
 
             ElementPtr findProofEl = root->findFirstChildElementChecked("findProofBundle")->findFirstChildElementChecked("findProof");
 
-            ret->mRequestfindProofBundleDigestValue = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("requestFindProofBundleDigestValue"));
+            ret->mRequestFindProofBundleDigestValue = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("requestFindProofBundleDigestValue"));
 
             ret->mContext = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("context"));
 
@@ -157,7 +157,7 @@ namespace openpeer
           get(ret->mValidated) = request->didVerifySignature();
 
           if (request->hasAttribute(PeerLocationFindRequest::AttributeType_RequestfindProofBundleDigestValue)) {
-            ret->mRequestfindProofBundleDigestValue = request->mRequestfindProofBundleDigestValue;
+            ret->mRequestFindProofBundleDigestValue = request->mRequestFindProofBundleDigestValue;
           }
           return ret;
         }
@@ -167,12 +167,11 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_RequestfindProofBundleDigestValue: return mRequestfindProofBundleDigestValue.hasData();
+            case AttributeType_RequestfindProofBundleDigestValue: return mRequestFindProofBundleDigestValue.hasData();
             case AttributeType_Context:                           return mContext.hasData();
             case AttributeType_ICEUsernameFrag:                   return mICEUsernameFrag.hasData();
             case AttributeType_ICEPassword:                       return mICEPassword.hasData();
             case AttributeType_ICEFinal:                          return mFinal;
-            case AttributeType_RequestFindProofBundleDigest:      return mRequestfindProofBundleDigestValue.hasData();
             case AttributeType_LocationInfo:                      return mLocationInfo ? mLocationInfo->hasData() : false;
             case AttributeType_PeerFiles:                         return (bool)mPeerFiles;
             default:
@@ -208,14 +207,14 @@ namespace openpeer
 
           if (hasAttribute(AttributeType_RequestfindProofBundleDigestValue))
           {
-            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("requestFindProofBundleDigestValue", mRequestfindProofBundleDigestValue));
+            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("requestFindProofBundleDigestValue", mRequestFindProofBundleDigestValue));
           }
 
           if (hasAttribute(AttributeType_Context)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("context", mContext));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("validated", mValidated ? "true":"false"));
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("validated", mValidated ? "true":"false"));
 
           if (hasAttribute(AttributeType_ICEUsernameFrag)) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("iceUsernameFrag", mICEUsernameFrag));
@@ -225,7 +224,7 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("icePassword", mICEPassword));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("final", mFinal ? "true":"false"));
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("final", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
             findProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));

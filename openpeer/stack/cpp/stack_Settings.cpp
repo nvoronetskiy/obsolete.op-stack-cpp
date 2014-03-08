@@ -30,6 +30,7 @@
  */
 
 #include <openpeer/stack/internal/stack_Settings.h>
+#include <openpeer/stack/internal/stack.h>
 
 #include <openpeer/services/IHelper.h>
 
@@ -44,6 +45,20 @@ namespace openpeer
     namespace internal
     {
       using services::IHelper;
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ISettingsForStack
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ISettingsForStack::applyDefaultsIfNoDelegatePresent()
+      {
+        Settings::singleton()->applyDefaultsIfNoDelegatePresent();
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -96,14 +111,58 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool Settings::apply(const char *jsonSettings)
+      void Settings::setup(ISettingsDelegatePtr delegate)
       {
-        return services::ISettings::apply(jsonSettings);
+        {
+          AutoRecursiveLock lock(mLock);
+          mDelegate = delegate;
+
+          ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
+        }
+
+        services::ISettings::setup(delegate ? mThisWeak.lock() : services::ISettingsDelegatePtr());
       }
 
       //-----------------------------------------------------------------------
       void Settings::applyDefaults()
       {
+        {
+          AutoRecursiveLock lock(mLock);
+          get(mAppliedDefaults) = true;
+        }
+
+        services::ISettings::applyDefaults();
+
+        setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
+        setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST, false);
+
+        setBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY, false);
+
+        setUInt(OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS, 0);
+        setUInt(OPENPEER_STACK_SETTING_FINDER_CONNECTION_MUST_SEND_PING_IF_NO_SEND_ACTIVITY_IN_SECONDS, 25);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Settings => ISettingsForStack
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Settings::applyDefaultsIfNoDelegatePresent()
+      {
+        {
+          AutoRecursiveLock lock(mLock);
+          if (mDelegate) return;
+
+          if (mAppliedDefaults) return;
+        }
+
+        ZS_LOG_WARNING(Detail, log("To prevent issues with missing settings, the default settings are being applied. Recommend installing a settings delegate to fetch settings required from a externally."))
+
+        applyDefaults();
       }
 
       //-----------------------------------------------------------------------
@@ -113,17 +172,6 @@ namespace openpeer
       #pragma mark
       #pragma mark Settings => ISettingsDelegate
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      void Settings::setup(ISettingsDelegatePtr delegate)
-      {
-        AutoRecursiveLock lock(mLock);
-        mDelegate = delegate;
-
-        ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
-
-        services::ISettings::setup(mThisWeak.lock());
-      }
 
       //-----------------------------------------------------------------------
       String Settings::getString(const char *key) const
@@ -345,9 +393,69 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
+    void ISettings::setString(
+                              const char *key,
+                              const char *value
+                              )
+    {
+      return services::ISettings::setString(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setInt(
+                           const char *key,
+                           LONG value
+                           )
+    {
+      return services::ISettings::setInt(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setUInt(
+                            const char *key,
+                            ULONG value
+                            )
+    {
+      return services::ISettings::setUInt(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setBool(
+                            const char *key,
+                            bool value
+                            )
+    {
+      return services::ISettings::setBool(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setFloat(
+                             const char *key,
+                             float value
+                             )
+    {
+      return services::ISettings::setFloat(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::setDouble(
+                              const char *key,
+                              double value
+                              )
+    {
+      return services::ISettings::setDouble(key, value);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::clear(const char *key)
+    {
+      return services::ISettings::clear(key);
+    }
+    
+    //-------------------------------------------------------------------------
     bool ISettings::apply(const char *jsonSettings)
     {
-      return internal::Settings::singleton()->apply(jsonSettings);
+      return services::ISettings::apply(jsonSettings);
     }
 
     //-------------------------------------------------------------------------

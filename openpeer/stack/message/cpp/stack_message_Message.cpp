@@ -37,6 +37,7 @@
 #include <openpeer/stack/internal/stack_Stack.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
@@ -89,7 +90,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       Message::Message() :
-        mAppID(UseStack::appID()),
+        mAppID(services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID)),
         mID(IHelper::randomString(32)),
         mTime(zsLib::now())
       {

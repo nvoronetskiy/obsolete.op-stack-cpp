@@ -104,6 +104,7 @@ namespace openpeer
                                               ITransportStreamPtr sendStream,
                                               ChannelNumber *outChannelNumber = NULL
                                               ) = 0;
+
       };
 
       //-----------------------------------------------------------------------

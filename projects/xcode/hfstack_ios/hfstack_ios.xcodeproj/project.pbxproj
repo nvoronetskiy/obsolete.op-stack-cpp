@@ -557,8 +557,8 @@
 				00AF4DF1171E3DC700DCA0A8 /* IServiceLockbox.h */,
 				0084000E18501686009F6934 /* IServiceNamespaceGrant.h */,
 				0063BA5C16CA92CF00E6DB4D /* IServiceSalt.h */,
-				0063BA5D16CA92CF00E6DB4D /* IStack.h */,
 				004B8D5F189C03C500D4F6A8 /* ISettings.h */,
+				0063BA5D16CA92CF00E6DB4D /* IStack.h */,
 			);
 			path = stack;
 			sourceTree = "<group>";
@@ -597,8 +597,8 @@
 				00AF4DF2171E3DE300DCA0A8 /* stack_ServiceLockboxSession.cpp */,
 				00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */,
 				0063BA2716CA92CF00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp */,
-				0063BA2816CA92CF00E6DB4D /* stack_Stack.cpp */,
 				004B8D5D189C036800D4F6A8 /* stack_Settings.cpp */,
+				0063BA2816CA92CF00E6DB4D /* stack_Stack.cpp */,
 			);
 			path = cpp;
 			sourceTree = "<group>";
