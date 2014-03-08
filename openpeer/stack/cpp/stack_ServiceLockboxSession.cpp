@@ -133,6 +133,8 @@ namespace openpeer
                                                    ServiceNamespaceGrantSessionPtr grantSession
                                                    ) :
         zsLib::MessageQueueAssociator(queue),
+        mLockPtr(new RecursiveLock),
+        mLock(*mLockPtr),
         mDelegate(delegate ? IServiceLockboxSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceLockboxSessionDelegatePtr()),
         mBootstrappedNetwork(network),
         mGrantSession(grantSession),

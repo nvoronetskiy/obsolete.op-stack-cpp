@@ -113,6 +113,7 @@ namespace openpeer
 
       interaction IServiceLockboxSessionForServiceIdentity
       {
+        ZS_DECLARE_TYPEDEF_PTR(RecursiveLock, UseRecursiveLock)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServiceIdentity, ForServiceIdentity)
 
         virtual IServiceLockboxSession::SessionStates getState(
@@ -129,6 +130,8 @@ namespace openpeer
                                                         ) const = 0;
 
         virtual void notifyStateChanged() = 0;
+
+        virtual UseRecursiveLockPtr getLockPtr() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -162,6 +165,8 @@ namespace openpeer
         friend interaction IServiceLockboxSessionFactory;
         friend interaction IServiceLockboxSession;
 
+        ZS_DECLARE_TYPEDEF_PTR(RecursiveLock, UseRecursiveLock)
+
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServiceLockboxSession, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceIdentitySessionForServiceLockbox, UseServiceIdentitySession)
@@ -184,7 +189,11 @@ namespace openpeer
                               ServiceNamespaceGrantSessionPtr grantSession
                               );
         
-        ServiceLockboxSession(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        ServiceLockboxSession(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          mLockPtr(new RecursiveLock),
+          mLock(*mLockPtr) {}
 
         void init();
 
@@ -294,6 +303,8 @@ namespace openpeer
                                                         ) const;
 
         virtual void notifyStateChanged();
+
+        virtual UseRecursiveLockPtr getLockPtr() const {return mLockPtr;}
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -442,7 +453,7 @@ namespace openpeer
         #pragma mark ServiceLockboxSession => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const;
+        virtual RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
@@ -505,7 +516,8 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLock;
+        mutable UseRecursiveLockPtr mLockPtr;
+        UseRecursiveLock &mLock;
         ServiceLockboxSessionWeakPtr mThisWeak;
 
         IServiceLockboxSessionDelegatePtr mDelegate;

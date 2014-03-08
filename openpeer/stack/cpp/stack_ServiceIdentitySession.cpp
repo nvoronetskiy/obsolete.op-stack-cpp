@@ -309,6 +309,8 @@ namespace openpeer
                                                      const char *outerFrameURLUponReload
                                                      ) :
         zsLib::MessageQueueAssociator(queue),
+        mLockPtr(new RecursiveLock),
+        mLock(*mLockPtr),
         mDelegate(delegate ? IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceIdentitySessionDelegatePtr()),
         mAssociatedLockbox(existingLockbox),
         mProviderBootstrappedNetwork(providerNetwork),
@@ -923,6 +925,8 @@ namespace openpeer
           }
         }
 
+        UseServiceLockboxSessionPtr lockbox = ServiceLockboxSession::convert(existingLockbox);
+
         ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(
                                                                    UseStack::queueStack(),
                                                                    IServiceIdentitySessionDelegatePtr(),
@@ -933,7 +937,8 @@ namespace openpeer
                                                                    NULL
                                                                    ));
         pThis->mThisWeak = pThis;
-        pThis->mAssociatedLockbox = ServiceLockboxSession::convert(existingLockbox);
+        pThis->mAssociatedLockbox = lockbox;
+        pThis->mAssociatedLockPtr = lockbox->getLockPtr();
         pThis->mIdentityInfo.mURI = identityURI;
         pThis->mIdentityInfo.mReloginKey = String(reloginKey);
         pThis->init();
@@ -941,10 +946,20 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServiceIdentitySession::associate(ServiceLockboxSessionPtr lockbox)
+      void ServiceIdentitySession::associate(ServiceLockboxSessionPtr inLockbox)
       {
+        UseServiceLockboxSessionPtr lockbox = inLockbox;
+
+        // NOTE: will use the service identity session lockbox's lock
+        //       temporarily to attach the lock from the associated lockbox
+        //       but it's safe because the service identity session will not be
+        //       calling into the lockbox at this time (since it wasn't
+        //       associated yet). And if for some reason it was associated then
+        //       they share the same lock anyway so it's still safe.
+
         AutoRecursiveLock lock(getLock());
         ZS_LOG_DEBUG(log("associate called"))
+        mAssociatedLockPtr = lockbox->getLockPtr();
         mAssociatedLockbox = lockbox;
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -1598,6 +1613,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &ServiceIdentitySession::getLock() const
       {
+        if (mAssociatedLockPtr) return *mAssociatedLockPtr;
         return mLock;
       }
 
