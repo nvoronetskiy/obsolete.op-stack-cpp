@@ -259,7 +259,9 @@ namespace openpeer
       IMessageQueuePtr Stack::queueDelegate() const
       {
         AutoRecursiveLock lock(mLock);
-        ZS_LOG_WARNING(Detail, log("default message queue was not registered thus could cause crash if any delegate passed into methods was not associated to a IMessageQueue via MessageQueueAssociator"))
+        if (!mDelegateQueue) {
+          ZS_LOG_WARNING(Detail, log("default message queue was not registered thus could cause crash if any delegate passed into methods was not associated to a IMessageQueue via MessageQueueAssociator"))
+        }
         return mDelegateQueue;
       }
 
