@@ -72,8 +72,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryIdentityLockboxPtr MessageFactoryIdentityLockbox::singleton()
         {
-          static MessageFactoryIdentityLockboxPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryIdentityLockbox> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

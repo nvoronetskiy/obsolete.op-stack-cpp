@@ -133,6 +133,7 @@ namespace openpeer
         RecursiveLock &getLock() const {return mLock;}
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
 
       protected:
         //---------------------------------------------------------------------

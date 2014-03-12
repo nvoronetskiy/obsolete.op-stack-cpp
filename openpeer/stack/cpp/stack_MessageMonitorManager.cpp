@@ -68,6 +68,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountFinder::notifyMessageSendFailed(message::MessagePtr message)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSendFailed(message);
       }
 
@@ -75,6 +76,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountFinder::notifyMessageSenderObjectGone(PUID objectID)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSenderObjectGone(objectID);
       }
 
@@ -90,6 +92,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountPeerLocation::notifyMessageSendFailed(message::MessagePtr message)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSendFailed(message);
       }
 
@@ -97,6 +100,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountPeerLocation::notifyMessageSenderObjectGone(PUID objectID)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSenderObjectGone(objectID);
       }
 
@@ -165,8 +169,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorManagerPtr MessageMonitorManager::singleton()
       {
-        static MessageMonitorManagerPtr global = IMessageMonitorManagerFactory::singleton().createMessageMonitorManager();
-        return global;
+        static SingletonLazySharedPtr<MessageMonitorManager> singleton(IMessageMonitorManagerFactory::singleton().createMessageMonitorManager());
+        MessageMonitorManagerPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
 
       //-----------------------------------------------------------------------
@@ -488,9 +496,15 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Log::Params MessageMonitorManager::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("MessageMonitorManager");
+        ElementPtr objectEl = Element::create("stack::MessageMonitorManager");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params MessageMonitorManager::slog(const char *message)
+      {
+        return Log::Params(message, "stack::MessageMonitorManager");
       }
     }
   }

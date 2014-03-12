@@ -50,13 +50,17 @@ namespace openpeer
       static IStackPtr singleton();
 
       static void setup(
-                        IMessageQueuePtr defaultDelegateMessageQueue,
-                        IMessageQueuePtr stackMessageQueue,
-                        IMessageQueuePtr servicesQueue,
-                        IMessageQueuePtr keyGenerationQueue
+                        IMessageQueuePtr defaultDelegateMessageQueue,   // if any object does not find a message queue, it will use this queue
+                        IMessageQueuePtr stackMessageQueue = IMessageQueuePtr(),
+                        IMessageQueuePtr servicesQueue = IMessageQueuePtr(),
+                        IMessageQueuePtr keyGenerationQueue = IMessageQueuePtr()
                         );
 
-      virtual PUID getID() const = 0;
+      static IMessageQueuePtr getStackQueue();
+      static IMessageQueuePtr getServicesQueue();
+      static IMessageQueuePtr getKeyGenerationQueue();
+
+      virtual ~IStack() {}  // needed to make polymorphic
     };
   }
 }

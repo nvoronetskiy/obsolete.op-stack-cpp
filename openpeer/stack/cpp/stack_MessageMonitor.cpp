@@ -90,7 +90,8 @@ namespace openpeer
         mWasHandled(false),
         mTimeoutFired(false),
         mPendingHandled(0),
-        mSentViaObjectID(0)
+        mSentViaObjectID(0),
+        mManager(UseMessageMonitorManager::singleton())
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -105,11 +106,14 @@ namespace openpeer
           mTimer = Timer::create(mThisWeak.lock(), timeout, false);
         }
 
-        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
-        PUID sentViaObjectID = manager->monitorStart(mThisWeak.lock());
-        if (0 != sentViaObjectID) {
-          ZS_LOG_TRACE(log("message was sent via a known sender object ID") + ZS_PARAM("sent via object id", sentViaObjectID))
-          mSentViaObjectID = sentViaObjectID;
+        UseMessageMonitorManagerPtr manager = mManager.lock();
+
+        if (manager) {
+          PUID sentViaObjectID = manager->monitorStart(mThisWeak.lock());
+          if (0 != sentViaObjectID) {
+            ZS_LOG_TRACE(log("message was sent via a known sender object ID") + ZS_PARAM("sent via object id", sentViaObjectID))
+            mSentViaObjectID = sentViaObjectID;
+          }
         }
       }
 
@@ -190,7 +194,9 @@ namespace openpeer
           pThis->mSentViaObjectID = sentViaObjectID;
 
           UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
-          manager->trackSentViaObjectID(message, sentViaObjectID);
+          if (manager) {
+            manager->trackSentViaObjectID(message, sentViaObjectID);
+          }
         } else {
           pThis->notifySendMessageFailure(message);
         }
@@ -221,7 +227,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool MessageMonitor::handleMessageReceived(message::MessagePtr message)
       {
-        return (UseMessageMonitorManager::singleton())->handleMessage(message);
+        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+        if (!manager) return false;
+        return manager->handleMessage(message);
       }
 
       //-----------------------------------------------------------------------
@@ -246,7 +254,9 @@ namespace openpeer
         if (!mDelegate) return;
 
         UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
-        manager->monitorEnd(*this);
+        if (manager) {
+          manager->monitorEnd(*this);
+        }
 
         if (mTimer) {
           mTimer->cancel();
@@ -397,7 +407,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Log::Params MessageMonitor::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("MessageMonitor");
+        ElementPtr objectEl = Element::create("stack::MessageMonitor");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
@@ -412,7 +422,7 @@ namespace openpeer
       ElementPtr MessageMonitor::toDebug() const
       {
         AutoRecursiveLock lock(getLock());
-        ElementPtr resultEl = Element::create("MessageMonitor");
+        ElementPtr resultEl = Element::create("stack::MessageMonitor");
 
         IHelper::debugAppend(resultEl, "id", mID);
 
@@ -436,7 +446,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &MessageMonitor::getLock() const
       {
-        UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
+        UseMessageMonitorManagerPtr manager = mManager.lock();
+        if (!manager) return mBogusLock;
         return manager->getLock();
       }
 

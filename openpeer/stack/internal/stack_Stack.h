@@ -107,9 +107,9 @@ namespace openpeer
         virtual void getAgentInfo(AgentInfo &result) const;
 
         virtual IMessageQueuePtr queueDelegate() const;
-        virtual IMessageQueuePtr queueStack() const;
-        virtual IMessageQueuePtr queueServices() const;
-        virtual IMessageQueuePtr queueKeyGeneration() const;
+        virtual IMessageQueuePtr queueStack();
+        virtual IMessageQueuePtr queueServices();
+        virtual IMessageQueuePtr queueKeyGeneration();
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -127,11 +127,11 @@ namespace openpeer
 
         PUID mID;
         StackWeakPtr mThisWeak;
-        RecursiveLock mLock;
+        mutable RecursiveLock mLock;
 
+        IMessageQueuePtr mDelegateQueue;
         IMessageQueuePtr mStackQueue;
         IMessageQueuePtr mServicesQueue;
-        IMessageQueuePtr mDelegateQueue;
         IMessageQueuePtr mKeyGenerationQueue;
       };
     }

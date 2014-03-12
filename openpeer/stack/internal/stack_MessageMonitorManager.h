@@ -217,6 +217,7 @@ namespace openpeer
         #pragma mark
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
 
         virtual RecursiveLock &getLock() const {return mLock;}
 

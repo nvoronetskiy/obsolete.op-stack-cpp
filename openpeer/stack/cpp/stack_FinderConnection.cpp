@@ -118,9 +118,12 @@ namespace openpeer
         //---------------------------------------------------------------------
         static FinderConnectionManagerPtr singleton()
         {
-          AutoRecursiveLock lock(IHelper::getGlobalLock());
-          static FinderConnectionManagerPtr singleton = create();
-          return singleton;
+          static SingletonLazySharedPtr<FinderConnectionManager> singleton(create());
+          FinderConnectionManagerPtr result = singleton.singleton();
+          if (!result) {
+            ZS_LOG_WARNING(Detail, slog("singleton gone"))
+          }
+          return result;
         }
 
       protected:
@@ -156,6 +159,11 @@ namespace openpeer
           if (found == mRelays.end()) return;
 
           mRelays.erase(found);
+        }
+
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "stack::FinderConnectionManager");
         }
 
       protected:
@@ -268,11 +276,13 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
+        RecursiveLock bogusLock;
+
         FinderConnectionManagerPtr manager = FinderConnectionManager::singleton();
 
-        AutoRecursiveLock lock(manager->getLock());
+        AutoRecursiveLock lock(manager ? manager->getLock() : bogusLock);
 
-        FinderConnectionPtr existing = manager->find(remoteFinderIP);
+        FinderConnectionPtr existing = manager ? manager->find(remoteFinderIP) : FinderConnectionPtr();
 
         if (existing) {
           ZS_LOG_DEBUG(existing->log("reusing existing connection"))
@@ -284,7 +294,9 @@ namespace openpeer
         pThis->mOuter = manager;
         pThis->init();
 
-        manager->add(remoteFinderIP, pThis);
+        if (manager) {
+          manager->add(remoteFinderIP, pThis);
+        }
 
         return pThis->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
       }

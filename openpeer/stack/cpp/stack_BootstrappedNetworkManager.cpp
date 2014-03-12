@@ -114,8 +114,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkManagerPtr BootstrappedNetworkManager::singleton()
       {
-        static BootstrappedNetworkManagerPtr global = IBootstrappedNetworkManagerFactory::singleton().createBootstrappedNetworkManager();
-        return global;
+        static SingletonLazySharedPtr<BootstrappedNetworkManager> singleton(IBootstrappedNetworkManagerFactory::singleton().createBootstrappedNetworkManager());
+        BootstrappedNetworkManagerPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
 
       //-----------------------------------------------------------------------
@@ -161,7 +165,7 @@ namespace openpeer
           try {
             delegate->onBootstrappedNetworkPreparationCompleted(BootstrappedNetwork::convert(network));
           } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
-            ZS_LOG_DEBUG(log("delegate gone"))
+            ZS_LOG_WARNING(Detail, log("delegate gone"))
           }
           return;
         }
@@ -208,6 +212,12 @@ namespace openpeer
         ElementPtr objectEl = Element::create("BootstrappedNetworkManager");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params BootstrappedNetworkManager::slog(const char *message)
+      {
+        return Log::Params(message, "BootstrappedNetworkManager");
       }
     }
   }

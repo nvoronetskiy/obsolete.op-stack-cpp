@@ -103,35 +103,34 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ZS_DECLARE_CLASS_PTR(Publication_UniqueLineage)
-
       class Publication_UniqueLineage
       {
-      protected:
+      public:
         Publication_UniqueLineage() :
           mUnique(0)
         {
         }
 
-        static Publication_UniqueLineagePtr create()
-        {
-          Publication_UniqueLineagePtr pThis(new Publication_UniqueLineage);
-          return pThis;
-        }
-
-      public:
         ~Publication_UniqueLineage() {}
 
-        static Publication_UniqueLineagePtr singleton()
+        static ULONG getUniqueLineage()
         {
-          static Publication_UniqueLineagePtr singleton = create();
-          return singleton;
+          return singleton().actualGetUniqueLineage();
         }
 
-        ULONG getUniqueLineage()
+      protected:
+        static Publication_UniqueLineage &singleton()
+        {
+          return Singleton<Publication_UniqueLineage, false>::ref();  // non-destructable object
+        }
+
+        ULONG actualGetUniqueLineage()
         {
           AutoRecursiveLock lock(mLock);
-          ULONG proposed = (ULONG)(time(NULL));
+
+          Duration duration = zsLib::timeSinceEpoch(zsLib::now());
+
+          ULONG proposed = (ULONG)(duration.total_seconds());
           if (proposed <= mUnique) {
             proposed = mUnique + 1;
           }
@@ -216,7 +215,7 @@ namespace openpeer
         PublicationMetaData(
                             1,
                             0,
-                            Publication_UniqueLineage::singleton()->getUniqueLineage(),
+                            Publication_UniqueLineage::getUniqueLineage(),
                             creatorLocation,
                             name,
                             mimeType,

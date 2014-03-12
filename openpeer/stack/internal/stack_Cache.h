@@ -73,6 +73,8 @@ namespace openpeer
                           );
 
         static void clear(const char *cookieNamePath);
+
+        static Log::Params slog(const char *message);
       };
 
       //-----------------------------------------------------------------------
@@ -92,22 +94,22 @@ namespace openpeer
       protected:
         Cache();
 
+        static CachePtr create();
+
       public:
         ~Cache();
 
       protected:
         static CachePtr convert(ICachePtr cache);
 
-        static CachePtr create();
+        static CachePtr singleton();
 
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark Cache => ICache
         #pragma mark
 
-        static void setup(ICacheDelegatePtr delegate);
-
-        static CachePtr singleton();
+        virtual void setup(ICacheDelegatePtr delegate);
 
         virtual String fetch(const char *cookieNamePath) const;
         virtual void store(
@@ -138,8 +140,7 @@ namespace openpeer
         #pragma mark
 
         Log::Params log(const char *message) const;
-
-        void actualSetup(ICacheDelegatePtr delegate);
+        static Log::Params slog(const char *message);
 
       protected:
         //---------------------------------------------------------------------

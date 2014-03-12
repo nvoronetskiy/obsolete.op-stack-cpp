@@ -69,8 +69,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryIdentityLookupPtr MessageFactoryIdentityLookup::singleton()
         {
-          static MessageFactoryIdentityLookupPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryIdentityLookup> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

@@ -201,6 +201,7 @@ namespace openpeer
         #pragma mark
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
         Log::Params debug(const char *message) const;
 
         virtual ElementPtr toDebug() const;
@@ -213,6 +214,8 @@ namespace openpeer
         AutoPUID mID;
         mutable RecursiveLock mBogusLock;
         MessageMonitorWeakPtr mThisWeak;
+
+        UseMessageMonitorManagerWeakPtr mManager;
 
         String mMessageID;
 

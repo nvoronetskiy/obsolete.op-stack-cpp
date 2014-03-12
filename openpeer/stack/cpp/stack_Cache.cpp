@@ -71,11 +71,9 @@ namespace openpeer
                                                  IMessageSourcePtr source
                                                  )
       {
-        ICachePtr singleton = ICache::singleton();
-
         outRawBuffer = SecureByteBlockPtr();
 
-        String str = singleton->fetch(cookieNamePath);
+        String str = ICache::fetch(cookieNamePath);
         if (str.isEmpty()) return MessagePtr();
 
         DocumentPtr doc = Document::createFromParsedJSON(str);
@@ -121,15 +119,13 @@ namespace openpeer
 
         String result = (const char *)output.get();
 
-        ICachePtr singleton = ICache::singleton();
-
-        singleton->store(cookieNamePath, expires, result);
+        ICache::store(cookieNamePath, expires, result);
       }
 
       //-----------------------------------------------------------------------
       String ICacheForServices::fetch(const char *cookieNamePath)
       {
-        return ICache::singleton()->fetch(cookieNamePath);
+        return ICache::fetch(cookieNamePath);
       }
 
       //-----------------------------------------------------------------------
@@ -139,13 +135,19 @@ namespace openpeer
                                     const char *str
                                     )
       {
-        ICache::singleton()->store(cookieNamePath, expires, str);
+        ICache::store(cookieNamePath, expires, str);
       }
 
       //-----------------------------------------------------------------------
       void ICacheForServices::clear(const char *cookieNamePath)
       {
-        ICache::singleton()->clear(cookieNamePath);
+        ICache::clear(cookieNamePath);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params ICacheForServices::slog(const char *message)
+      {
+        return Log::Params(message, "stack::ICacheForServices");
       }
 
       //-----------------------------------------------------------------------
@@ -192,16 +194,25 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Cache::setup(ICacheDelegatePtr delegate)
+      CachePtr Cache::singleton()
       {
-        singleton()->actualSetup(delegate);
+        static SingletonLazySharedPtr<Cache> singleton(Cache::create());
+        CachePtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, internal::Cache::slog("singleton gone"))
+        }
+        return result;
       }
 
       //-----------------------------------------------------------------------
-      CachePtr Cache::singleton()
+      void Cache::setup(ICacheDelegatePtr delegate)
       {
-        static CachePtr singleton = Cache::create();
-        return singleton;
+        AutoRecursiveLock lock(mLock);
+        mDelegate = delegate;
+
+        ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
+
+        services::ICache::setup(delegate ? mThisWeak.lock() : services::ICacheDelegatePtr());
       }
 
       //-----------------------------------------------------------------------
@@ -295,14 +306,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Cache::actualSetup(ICacheDelegatePtr delegate)
+      Log::Params Cache::slog(const char *message)
       {
-        AutoRecursiveLock lock(mLock);
-        mDelegate = delegate;
-
-        ZS_LOG_DEBUG(log("setup called") + ZS_PARAM("has delegate", (bool)delegate))
-
-        services::ICache::setup(delegate ? mThisWeak.lock() : services::ICacheDelegatePtr());
+        return Log::Params(message, "stack::Cache");
       }
 
     }
@@ -318,13 +324,37 @@ namespace openpeer
     //-------------------------------------------------------------------------
     void ICache::setup(ICacheDelegatePtr delegate)
     {
-      internal::Cache::setup(delegate);
+      internal::CachePtr singleton = internal::Cache::singleton();
+      if (!singleton) return;
+      singleton->setup(delegate);
     }
 
     //-------------------------------------------------------------------------
-    ICachePtr ICache::singleton()
+    String ICache::fetch(const char *cookieNamePath)
     {
-      return internal::Cache::singleton();
+      internal::CachePtr singleton = internal::Cache::singleton();
+      if (!singleton) return String();
+      return singleton->fetch(cookieNamePath);
+    }
+
+    //-------------------------------------------------------------------------
+    void ICache::store(
+                       const char *cookieNamePath,
+                       Time expires,
+                       const char *str
+                       )
+    {
+      internal::CachePtr singleton = internal::Cache::singleton();
+      if (!singleton) return;
+      singleton->store(cookieNamePath, expires, str);
+    }
+
+    //-------------------------------------------------------------------------
+    void ICache::clear(const char *cookieNamePath)
+    {
+      internal::CachePtr singleton = internal::Cache::singleton();
+      if (!singleton) return;
+      singleton->clear(cookieNamePath);
     }
 
   }

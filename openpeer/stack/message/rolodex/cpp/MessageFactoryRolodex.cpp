@@ -70,8 +70,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryRolodexPtr MessageFactoryRolodex::singleton()
         {
-          static MessageFactoryRolodexPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryRolodex> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

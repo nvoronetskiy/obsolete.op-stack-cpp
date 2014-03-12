@@ -57,7 +57,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ISettingsForStack::applyDefaultsIfNoDelegatePresent()
       {
-        Settings::singleton()->applyDefaultsIfNoDelegatePresent();
+        SettingsPtr singleton = Settings::singleton();
+        if (!singleton) return;
+        singleton->applyDefaultsIfNoDelegatePresent();
       }
 
       //-----------------------------------------------------------------------
@@ -98,8 +100,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SettingsPtr Settings::singleton()
       {
-        static SettingsPtr singleton = Settings::create();
-        return singleton;
+        static SingletonLazySharedPtr<Settings> singleton(Settings::create());
+        SettingsPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
       
       //-----------------------------------------------------------------------
@@ -371,9 +377,15 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Log::Params Settings::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("core::Settings");
+        ElementPtr objectEl = Element::create("stack::Settings");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Settings::slog(const char *message)
+      {
+        return Log::Params(message, "stack::Settings");
       }
 
     }
@@ -389,7 +401,9 @@ namespace openpeer
     //-------------------------------------------------------------------------
     void ISettings::setup(ISettingsDelegatePtr delegate)
     {
-      internal::Settings::singleton()->setup(delegate);
+      internal::SettingsPtr singleton = internal::Settings::singleton();
+      if (!singleton) return;
+      singleton->setup(delegate);
     }
 
     //-------------------------------------------------------------------------

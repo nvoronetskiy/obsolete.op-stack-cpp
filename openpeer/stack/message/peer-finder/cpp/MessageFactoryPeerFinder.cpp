@@ -75,8 +75,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryPeerFinderPtr MessageFactoryPeerFinder::singleton()
         {
-          static MessageFactoryPeerFinderPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryPeerFinder> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

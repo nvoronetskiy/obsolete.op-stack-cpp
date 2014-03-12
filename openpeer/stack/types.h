@@ -79,6 +79,7 @@ namespace openpeer
     ZS_DECLARE_USING_PTR(zsLib::XML, Document)
     ZS_DECLARE_USING_PTR(zsLib::XML, Node)
 
+    ZS_DECLARE_USING_PTR(services, RecursiveLock)
     ZS_DECLARE_USING_PTR(services, IHTTP)
     ZS_DECLARE_USING_PTR(services, IICESocket)
     ZS_DECLARE_USING_PTR(services, IRSAPrivateKey)

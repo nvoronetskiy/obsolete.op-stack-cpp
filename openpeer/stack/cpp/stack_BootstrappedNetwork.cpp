@@ -336,7 +336,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::prepare(
                                                           const char *inDomain,
-                                                          IBootstrappedNetworkDelegatePtr delegate
+                                                          IBootstrappedNetworkDelegatePtr inDelegate
                                                           )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!inDomain)
@@ -347,7 +347,6 @@ namespace openpeer
         domain.toLower();
 
         UseBootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
-        ZS_THROW_BAD_STATE_IF(!manager)
 
         BootstrappedNetworkPtr pThis(new BootstrappedNetwork(UseStack::queueStack(), domain));
         pThis->mThisWeak = pThis;
@@ -355,7 +354,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(pThis->getLock());
 
-        BootstrappedNetworkPtr useThis = manager->findExistingOrUse(pThis);
+        BootstrappedNetworkPtr useThis = manager ? manager->findExistingOrUse(pThis) : pThis;
 
         if (pThis->getID() != useThis->getID()) {
           ZS_LOG_DEBUG(useThis->log("reusing existing object") + useThis->toDebug())
@@ -363,8 +362,23 @@ namespace openpeer
           pThis->dontUse();
         }
 
-        if (delegate) {
-          manager->registerDelegate(useThis, delegate);
+        if (inDelegate) {
+          if (!manager) {
+            IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(UseStack::queueDelegate(), inDelegate);
+
+            useThis->setFailure(IHTTP::HTTPStatusCode_Gone, "BootstrappedNetworkManager singleton is gone");
+            useThis->cancel();
+
+            try {
+              delegate->onBootstrappedNetworkPreparationCompleted(useThis);
+            } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
+              ZS_LOG_WARNING(Detail, slog("delegate gone"))
+            }
+
+            return useThis;
+          }
+
+          manager->registerDelegate(useThis, inDelegate);
         }
 
         if (pThis->getID() == useThis->getID()) {
@@ -945,6 +959,12 @@ namespace openpeer
         ElementPtr objectEl = Element::create("BootstrappedNetwork");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params BootstrappedNetwork::slog(const char *message)
+      {
+        return Log::Params(message, "BootstrappedNetwork");
       }
 
       //-----------------------------------------------------------------------

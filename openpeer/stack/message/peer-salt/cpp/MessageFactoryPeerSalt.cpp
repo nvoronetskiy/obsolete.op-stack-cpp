@@ -69,8 +69,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryPeerSaltPtr MessageFactoryPeerSalt::singleton()
         {
-          static MessageFactoryPeerSaltPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryPeerSalt> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

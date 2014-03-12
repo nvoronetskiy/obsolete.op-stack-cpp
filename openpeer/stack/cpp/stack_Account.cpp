@@ -923,9 +923,6 @@ namespace openpeer
           return IPeer::PeerFindState_Idle;
         }
 
-#define WARNING_HERE 1
-#define WARNING_HERE 2
-
         PeerInfoPtr peerInfo = (*found).second;
         return peerInfo->mCurrentFindState;
       }
@@ -1388,7 +1385,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::notifyServiceLockboxSessionStateChanged()
       {
-        AutoRecursiveLock lock(getLock());
+        // WARNING: DO NOT LOCK HERE
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
@@ -2663,9 +2660,6 @@ namespace openpeer
         }
 
         // attempt to load from cache
-        ICachePtr cache = ICache::singleton();
-        ZS_THROW_BAD_STATE_IF(!cache)
-
         String namespaceStr = IDHKeyDomain::toNamespace(type);
 
         IDHKeyDomainPtr keyDomain = IDHKeyDomain::loadPrecompiled(type);
@@ -2685,11 +2679,11 @@ namespace openpeer
 
         // scope: load existing key template
         {
-          SecureByteBlockPtr staticPrivateKey = IHelper::convertFromBase64(cache->fetch(staticPrivateCacheStr));
-          SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(cache->fetch(staticPublicCacheStr));
+          SecureByteBlockPtr staticPrivateKey = IHelper::convertFromBase64(ICache::fetch(staticPrivateCacheStr));
+          SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(ICache::fetch(staticPublicCacheStr));
 
-          SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(cache->fetch(ephemeralPrivateCacheStr));
-          SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(cache->fetch(ephemeralPublicCacheStr));
+          SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(ICache::fetch(ephemeralPrivateCacheStr));
+          SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(ICache::fetch(ephemeralPublicCacheStr));
 
           if ((IHelper::hasData(staticPrivateKey)) &&
               (IHelper::hasData(staticPublicKey)) &&
@@ -2707,10 +2701,10 @@ namespace openpeer
             // this previous public / private key pair failed to load thus clear out the cache
             ZS_LOG_ERROR(Detail, log("failed to load existing DH public / private key pair template"))
 
-            cache->clear(staticPrivateCacheStr);
-            cache->clear(staticPublicCacheStr);
-            cache->clear(ephemeralPrivateCacheStr);
-            cache->clear(ephemeralPublicCacheStr);
+            ICache::clear(staticPrivateCacheStr);
+            ICache::clear(staticPublicCacheStr);
+            ICache::clear(ephemeralPrivateCacheStr);
+            ICache::clear(ephemeralPublicCacheStr);
           }
         }
 
@@ -2735,10 +2729,10 @@ namespace openpeer
 
           zsLib::Time expires = zsLib::now() + Hours(OPENPEER_STACK_ACCOUNT_COOKIE_DH_KEY_DOMAIN_CACHE_LIFETIME_HOURS);
 
-          cache->store(staticPrivateCacheStr, expires, IHelper::convertToBase64(staticPrivateKey));
-          cache->store(staticPublicCacheStr, expires, IHelper::convertToBase64(staticPublicKey));
-          cache->store(ephemeralPrivateCacheStr, expires, IHelper::convertToBase64(ephemeralPrivateKey));
-          cache->store(ephemeralPublicCacheStr, expires, IHelper::convertToBase64(ephemeralPublicKey));
+          ICache::store(staticPrivateCacheStr, expires, IHelper::convertToBase64(staticPrivateKey));
+          ICache::store(staticPublicCacheStr, expires, IHelper::convertToBase64(staticPublicKey));
+          ICache::store(ephemeralPrivateCacheStr, expires, IHelper::convertToBase64(ephemeralPrivateKey));
+          ICache::store(ephemeralPublicCacheStr, expires, IHelper::convertToBase64(ephemeralPublicKey));
         }
 
         ZS_LOG_DEBUG(log("sucessfully generated DH public / private key pair template") + ZS_PARAM("private key id", privateTemplate->getID()) + ZS_PARAM("public key id", publicTemplate->getID()))

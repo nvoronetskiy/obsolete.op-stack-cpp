@@ -584,7 +584,7 @@ namespace openpeer
           String hashNonce = IHelper::convertToHex(*IHelper::hash(nonce));
           String nonceNamespace = OPENPEER_STACK_ACCOUNT_PEER_LOCATION_CHANNEL_MAP_COOKIE_NONCE_CACHE_NAMESPACE + hashNonce;
 
-          String result = ICache::singleton()->fetch(nonceNamespace);
+          String result = ICache::fetch(nonceNamespace);
           if (result.hasData()) {
             ZS_LOG_ERROR(Detail, log("nonce was seen previously") + ZS_PARAM("nonce", nonce) + ZS_PARAM("nonce namespace", nonceNamespace))
             return false;
