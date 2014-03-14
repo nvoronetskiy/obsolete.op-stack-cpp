@@ -2507,7 +2507,7 @@ namespace openpeer
         RolodexInfo rolodexInfo(mRolodexInfo);
         rolodexInfo.mRefreshFlag = forceRefresh;
 
-        request->rolodexInfo(mRolodexInfo);
+        request->rolodexInfo(rolodexInfo);
 
         mRolodexContactsGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexContactsGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-contacts-get", request);
