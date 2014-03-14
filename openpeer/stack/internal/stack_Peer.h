@@ -343,7 +343,7 @@ namespace openpeer
         #pragma mark
 
         PUID mID;
-        mutable RecursiveLock mBogusLock;
+        mutable RecursiveLock mLock;
         PeerWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;

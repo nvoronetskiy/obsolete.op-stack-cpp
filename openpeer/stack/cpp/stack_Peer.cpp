@@ -344,10 +344,10 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->init();
 
-        AutoRecursiveLock lock(pThis->getLock());
-
         // check if it already exists in the account
         PeerPtr useThis = pThis->mAccount.lock()->findExistingOrUse(pThis);
+
+        AutoRecursiveLock lock(pThis->getLock());
 
         if (!(useThis->mPeerFilePublic)) {
           useThis->mPeerFilePublic = peerFilePublic;
@@ -466,7 +466,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeer::PeerFindStates Peer::getFindState() const
       {
-        AutoRecursiveLock lock(getLock());
         UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("get find state account gone"))
@@ -478,7 +477,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationListPtr Peer::getLocationsForPeer(bool includeOnlyConnectedLocations) const
       {
-        AutoRecursiveLock lock(getLock());
         UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("locations are not available as account is gone"))
@@ -582,9 +580,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RecursiveLock &Peer::getLock() const
       {
-        UseAccountPtr account = mAccount.lock();
-        if (!account) return mBogusLock;
-        return account->getLock();
+        return mLock;
       }
 
       //-----------------------------------------------------------------------

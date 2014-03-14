@@ -113,25 +113,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueStack()
       {
-        StackPtr singleton = Stack::singleton();
-        if (!singleton) return IMessageQueuePtr();
-        return singleton->queueStack();
+        return IStack::getStackQueue();
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueServices()
       {
-        StackPtr singleton = Stack::singleton();
-        if (!singleton) return IMessageQueuePtr();
-        return singleton->queueServices();
+        return IStack::getServicesQueue();
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueKeyGeneration()
       {
-        StackPtr singleton = Stack::singleton();
-        if (!singleton) return IMessageQueuePtr();
-        return singleton->queueKeyGeneration();
+        return IStack::getKeyGenerationQueue();
       }
 
       //-----------------------------------------------------------------------
@@ -196,6 +190,10 @@ namespace openpeer
       StackPtr Stack::singleton()
       {
         static SingletonLazySharedPtr<Stack> singleton(create());
+        StackPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
         return singleton.singleton();
       }
 
@@ -208,6 +206,9 @@ namespace openpeer
                         )
       {
         AutoRecursiveLock lock(mLock);
+
+        IMessageQueueManager::registerMessageQueueThreadPriority(OPENPEER_STACK_STACK_THREAD_NAME, zsLib::threadPriorityFromString(services::ISettings::getString(OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY)));
+        IMessageQueueManager::registerMessageQueueThreadPriority(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME, zsLib::threadPriorityFromString(services::ISettings::getString(OPENPEER_STACK_SETTING_STACK_KEY_GENERATION_THREAD_PRIORITY)));
 
         if (defaultDelegateMessageQueue) {
           mDelegateQueue = defaultDelegateMessageQueue;
@@ -286,7 +287,6 @@ namespace openpeer
       {
         AutoRecursiveLock lock(mLock);
         if (!mKeyGenerationQueue) {
-          IMessageQueueManager::registerMessageQueueThreadPriority(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME, zsLib::ThreadPriority_LowPriority);
           mKeyGenerationQueue = IMessageQueueManager::getMessageQueue(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME);
         }
         return mKeyGenerationQueue;
@@ -306,6 +306,12 @@ namespace openpeer
         ElementPtr objectEl = Element::create("stack::Stack");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Stack::slog(const char *message)
+      {
+        return Log::Params(message, "stack::Stack");
       }
 
       //-----------------------------------------------------------------------
@@ -344,6 +350,9 @@ namespace openpeer
                        IMessageQueuePtr keyGenerationQueue
                        )
     {
+      services::IHelper::setSocketThreadPriority();
+      services::IHelper::setTimerThreadPriority();
+
       internal::StackPtr singleton = internal::Stack::singleton();
       ZS_THROW_INVALID_USAGE_IF(!singleton) // called during shutdown process?
       singleton->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue);
@@ -353,7 +362,9 @@ namespace openpeer
     IMessageQueuePtr IStack::getStackQueue()
     {
       internal::StackPtr singleton = internal::Stack::singleton();
-      if (!singleton) return IMessageQueuePtr();
+      if (!singleton) {
+        return services::IMessageQueueManager::getMessageQueue(OPENPEER_STACK_STACK_THREAD_NAME);
+      }
       return singleton->queueStack();
     }
 
@@ -361,7 +372,9 @@ namespace openpeer
     IMessageQueuePtr IStack::getServicesQueue()
     {
       internal::StackPtr singleton = internal::Stack::singleton();
-      if (!singleton) return IMessageQueuePtr();
+      if (!singleton) {
+        return services::IHelper::getServiceQueue();
+      }
       return singleton->queueServices();
     }
 
@@ -369,7 +382,9 @@ namespace openpeer
     IMessageQueuePtr IStack::getKeyGenerationQueue()
     {
       internal::StackPtr singleton = internal::Stack::singleton();
-      if (!singleton) return IMessageQueuePtr();
+      if (!singleton) {
+        return services::IMessageQueueManager::getMessageQueue(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME);
+      }
       return singleton->queueKeyGeneration();
     }
   }

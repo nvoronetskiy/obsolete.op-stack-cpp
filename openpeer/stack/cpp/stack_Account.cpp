@@ -437,65 +437,25 @@ namespace openpeer
                                         const String &locationID
                                         ) const
       {
-        AutoRecursiveLock lock(getLock());
-
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::const_iterator found = mLocations.find(index);
-
-        if (found == mLocations.end()) {
-          ZS_LOG_TRACE(log("did not find existing location") + ZS_PARAM("peer uri", peerURI) + ZS_PARAM("location id", locationID))
-          return LocationPtr();
-        }
-
-        UseLocationPtr location = (*found).second.lock();
-
-        ZS_LOG_TRACE(log("found existing location") + UseLocation::toDebug(location))
-        return Location::convert(location);
+        return Location::convert(mLocationsDB.findExisting(mThisWeak.lock(), peerURI, locationID));
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::findExistingOrUse(LocationPtr inLocation)
       {
-        UseLocationPtr location = inLocation;
-
-        ZS_THROW_INVALID_ARGUMENT_IF(!location)
-
-        AutoRecursiveLock lock(getLock());
-
-        String locationID = location->getLocationID();
-        String peerURI = location->getPeerURI();
-
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::iterator found = mLocations.find(index);
-
-        if (found != mLocations.end()) {
-          UseLocationPtr existingLocation = (*found).second.lock();
-          if (existingLocation) {
-            ZS_LOG_DEBUG(log("found existing location to use") + UseLocation::toDebug(existingLocation))
-            return Location::convert(existingLocation);
-          }
-          ZS_LOG_WARNING(Detail, log("existing location in map is now gone") + UseLocation::toDebug(location))
-        }
-
-        ZS_LOG_DEBUG(log("using newly created location") + UseLocation::toDebug(location))
-        mLocations[index] = location;
-        return Location::convert(location);
+        return Location::convert(mLocationsDB.findExistingOrUse(mThisWeak.lock(), inLocation));
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::getLocationForLocal() const
       {
-        AutoRecursiveLock lock(getLock());
-        return Location::convert(mSelfLocation);
+        return Location::convert(mLocationsDB.getLocal());
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::getLocationForFinder() const
       {
-        AutoRecursiveLock lock(getLock());
-        return Location::convert(mFinderLocation);
+        return Location::convert(mLocationsDB.getFinder());
       }
 
       //-----------------------------------------------------------------------
@@ -503,38 +463,30 @@ namespace openpeer
       {
         UseLocation &location = inLocation;
 
-        AutoRecursiveLock lock(getLock());
-
         String locationID = location.getLocationID();
         String peerURI = location.getPeerURI();
 
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::iterator found = mLocations.find(index);
-        if (found == mLocations.end()) {
+        if (mLocationsDB.remove(locationID, peerURI)) {
+          ZS_LOG_DEBUG(log("notified location is destroyed") + location.toDebug())
+        } else {
           ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + location.toDebug())
-          return;
         }
-
-        ZS_LOG_DEBUG(log("notified location is destroyed") + location.toDebug())
-        mLocations.erase(found);
       }
 
       //-----------------------------------------------------------------------
       const String &Account::getLocationID() const
       {
-        AutoRecursiveLock lock(getLock());
         return mLocationID;
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Account::getPeerForLocal() const
       {
-        AutoRecursiveLock lock(getLock());
-        if (!mSelfPeer) {
+        UsePeerPtr peer = mPeersDB.getLocal();
+        if (!peer) {
           ZS_LOG_WARNING(Detail, log("obtained peer for local before peer was ready"))
         }
-        return Peer::convert(mSelfPeer);
+        return Peer::convert(peer);
       }
 
       //-----------------------------------------------------------------------
@@ -549,7 +501,7 @@ namespace openpeer
         LocationInfoPtr info = LocationInfo::create();
         info->mLocation = Location::convert(location);
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           if (mSocket) {
             get(info->mCandidatesFinal) = IICESocket::ICESocketState_Ready == mSocket->getState();
 
@@ -584,7 +536,7 @@ namespace openpeer
           return info;
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             ZS_LOG_WARNING(Detail, log("obtaining finder info before finder created"))
             return info;
@@ -635,11 +587,11 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           return toLocationConnectionState(getState());
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             if ((isShuttingDown()) ||
                 (isShutdown())) return ILocation::LocationConnectionState_Disconnected;
@@ -684,12 +636,12 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           ZS_LOG_ERROR(Detail, log("attempting to send message to self") + UseLocation::toDebug(location))
           return false;
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             ZS_LOG_WARNING(Detail, log("attempting to send to finder") + UseLocation::toDebug(location))
             return false;
@@ -842,50 +794,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Account::findExisting(const String &peerURI) const
       {
-        AutoRecursiveLock lock(getLock());
-
-        PeerMap::const_iterator found = mPeers.find(peerURI);
-
-        if (found == mPeers.end()) {
-          ZS_LOG_TRACE(log("did not find existing peer") + ZS_PARAM("uri", peerURI))
-          return PeerPtr();
-        }
-
-        UsePeerPtr existingPeer = (*found).second.lock();
-        if (!existingPeer) {
-          ZS_LOG_WARNING(Debug, log("existing peer object was destroyed") + ZS_PARAM("uri", peerURI))
-          return PeerPtr();
-        }
-
-        ZS_LOG_TRACE(log("found existing peer") + UsePeer::toDebug(existingPeer))
-        return Peer::convert(existingPeer);
+        return Peer::convert(mPeersDB.findExisting(mThisWeak.lock(), peerURI));
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Account::findExistingOrUse(PeerPtr inPeer)
       {
-        UsePeerPtr peer = inPeer;
-
-        ZS_THROW_INVALID_ARGUMENT_IF(!peer)
-
-        AutoRecursiveLock lock(getLock());
-
-        String peerURI = peer->getPeerURI();
-
-        PeerMap::iterator found = mPeers.find(peerURI);
-
-        if (found != mPeers.end()) {
-          UsePeerPtr existingPeer = (*found).second.lock();
-          if (existingPeer) {
-            ZS_LOG_DEBUG(log("found existing peer to use") + UsePeer::toDebug(existingPeer))
-            return Peer::convert(existingPeer);
-          }
-          ZS_LOG_WARNING(Detail, log("existing peer in map is now gone") + ZS_PARAM("peer URI", peerURI))
-        }
-
-        ZS_LOG_DEBUG(log("using newly created peer") + UsePeer::toDebug(peer))
-        mPeers[peerURI] = peer;
-        return Peer::convert(peer);
+        return Peer::convert(mPeersDB.findExistingOrUse(mThisWeak.lock(), inPeer));
       }
 
       //-----------------------------------------------------------------------
@@ -893,18 +808,13 @@ namespace openpeer
       {
         UsePeer &peer = inPeer;
 
-        AutoRecursiveLock lock(getLock());
-
         String peerURI = peer.getPeerURI();
 
-        PeerMap::iterator found = mPeers.find(peerURI);
-        if (found == mPeers.end()) {
+        if (mPeersDB.remove(peerURI)) {
+          ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.toDebug())
+        } else {
           ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + peer.toDebug())
-          return;
         }
-
-        ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.toDebug())
-        mPeers.erase(found);
       }
 
       //-----------------------------------------------------------------------
@@ -982,9 +892,11 @@ namespace openpeer
 
         mPeerSubscriptions[subscription->getID()] = subscription;
 
+        UseLocationPtr finderLocation = mLocationsDB.getFinder();
+
         if ((mFinder) &&
-            (mFinderLocation)) {
-          subscription->notifyLocationConnectionStateChanged(Location::convert(mFinderLocation), toLocationConnectionState(mFinder->getState()));
+            (finderLocation)) {
+          subscription->notifyLocationConnectionStateChanged(Location::convert(finderLocation), toLocationConnectionState(mFinder->getState()));
         }
 
         for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
@@ -1112,7 +1024,7 @@ namespace openpeer
           return;
         }
 
-        notifySubscriptions(mFinderLocation, toLocationConnectionState(state));
+        notifySubscriptions(mLocationsDB.getFinder(), toLocationConnectionState(state));
 
         if (IAccount::AccountState_Ready == state) {
           mLastRetryFinderAfterDuration = Seconds(OPENPEER_STACK_ACCOUNT_FINDER_STARTING_RETRY_AFTER_IN_SECONDS);
@@ -1199,7 +1111,7 @@ namespace openpeer
           return;
         }
 
-        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(mFinderLocation), message);
+        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(mLocationsDB.getFinder()), message);
         notifySubscriptions(messageIncoming);
       }
 
@@ -1812,9 +1724,9 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "ice socket id", mSocket ? mSocket->getID() : 0);
 
         IHelper::debugAppend(resultEl, "location id", mLocationID);
-        IHelper::debugAppend(resultEl, "self peer", UsePeer::toDebug(mSelfPeer));
-        IHelper::debugAppend(resultEl, "self location", UseLocation::toDebug(mSelfLocation));
-        IHelper::debugAppend(resultEl, "finder location", UseLocation::toDebug(mFinderLocation));
+        IHelper::debugAppend(resultEl, "self peer", UsePeer::toDebug(mPeersDB.getLocal()));
+        IHelper::debugAppend(resultEl, "self location", UseLocation::toDebug(mLocationsDB.getLocal()));
+        IHelper::debugAppend(resultEl, "finder location", UseLocation::toDebug(mLocationsDB.getFinder()));
 
         IHelper::debugAppend(resultEl, "repository id", mRepository ? mRepository->getID() : 0);
 
@@ -1838,9 +1750,9 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "subscribers", mPeerSubscriptions.size());
 
-        IHelper::debugAppend(resultEl, "peer infos", mPeers.size());
+        IHelper::debugAppend(resultEl, "peer infos", mPeersDB.size());
 
-        IHelper::debugAppend(resultEl, "locations", mLocations.size());
+        IHelper::debugAppend(resultEl, "locations", mLocationsDB.size());
 
         return resultEl;
       }
@@ -2166,10 +2078,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::stepLocations()
       {
-        if (mSelfPeer) {
+        if (mPeersDB.getLocal()) {
           ZS_LOG_TRACE(log("already have a self peer"))
-          ZS_THROW_BAD_STATE_IF(!mSelfLocation)
-          ZS_THROW_BAD_STATE_IF(!mFinderLocation)
+          ZS_THROW_BAD_STATE_IF(!mLocationsDB.getLocal())
+          ZS_THROW_BAD_STATE_IF(!mLocationsDB.getFinder())
           return true;
         }
 
@@ -2189,9 +2101,9 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerFilePublic)
         ZS_THROW_BAD_STATE_IF(!peerFilePrivate)
 
-        mSelfPeer = IPeerForAccount::create(mThisWeak.lock(), peerFilePublic);
-        mSelfLocation = UseLocation::getForLocal(mThisWeak.lock());
-        mFinderLocation = UseLocation::getForFinder(mThisWeak.lock());
+        mPeersDB.setLocal(IPeerForAccount::create(mThisWeak.lock(), peerFilePublic));
+        mLocationsDB.setLocal(UseLocation::getForLocal(mThisWeak.lock()));
+        mLocationsDB.setFinder(UseLocation::getForFinder(mThisWeak.lock()));
         return true;
       }
 
@@ -2267,7 +2179,7 @@ namespace openpeer
               (!fromPeer)){
             ZS_LOG_WARNING(Detail, log("invalid request received") + UseLocation::toDebug(fromLocation))
             MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_BadRequest);
-            send(Location::convert(mFinderLocation), result);
+            send(Location::convert(mLocationsDB.getFinder()), result);
 
             mIncomingFindRequests.erase(current);
             continue;
@@ -2279,7 +2191,7 @@ namespace openpeer
             ZS_LOG_WARNING(Detail, log("all incoming requests must be rejected because of backgrounding") + UseLocation::toDebug(fromLocation))
 
             MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_Gone);
-            send(Location::convert(mFinderLocation), result);
+            send(Location::convert(mLocationsDB.getFinder()), result);
 
             mIncomingFindRequests.erase(current);
             continue;
@@ -2593,7 +2505,7 @@ namespace openpeer
           }
         }
 
-        notifySubscriptions(mSelfLocation, toLocationConnectionState(mCurrentState));
+        notifySubscriptions(mLocationsDB.getLocal(), toLocationConnectionState(mCurrentState));
       }
 
       //-----------------------------------------------------------------------
@@ -2981,7 +2893,7 @@ namespace openpeer
           exclude.push_back(locationID);
         }
 
-        LocationInfoPtr locationInfo = getLocationInfo(Location::convert(mSelfLocation));
+        LocationInfoPtr locationInfo = getLocationInfo(Location::convert(mLocationsDB.getLocal()));
 
         request->findPeer(Peer::convert(peerInfo->mPeer));
         request->context(IHelper::randomString(20*8/5));
@@ -3197,6 +3109,215 @@ namespace openpeer
 
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Account::PeersDB
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::getLocal() const
+      {
+        AutoRecursiveLock lock(mLock);
+        return mSelf;
+      }
+      
+      //-----------------------------------------------------------------------
+      void Account::PeersDB::setLocal(UsePeerPtr peer)
+      {
+        AutoRecursiveLock lock(mLock);
+        mSelf = peer;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::findExisting(
+                                                         AccountPtr account,
+                                                         const String &peerURI
+                                                         ) const
+      {
+        AutoRecursiveLock lock(mLock);
+        PeerMap::const_iterator found = mPeers.find(peerURI);
+
+        if (found == mPeers.end()) {
+          ZS_LOG_TRACE(account->log("did not find existing peer") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        UsePeerPtr existingPeer = (*found).second.lock();
+        if (!existingPeer) {
+          ZS_LOG_WARNING(Debug, account->log("existing peer object was destroyed") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        ZS_LOG_TRACE(account->log("found existing peer") + UsePeer::toDebug(existingPeer))
+        return existingPeer;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::findExistingOrUse(
+                                                              AccountPtr account,
+                                                              UsePeerPtr peer
+                                                              )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!peer)
+
+        AutoRecursiveLock lock(mLock);
+
+        String peerURI = peer->getPeerURI();
+
+        PeerMap::iterator found = mPeers.find(peerURI);
+
+        if (found != mPeers.end()) {
+          UsePeerPtr existingPeer = (*found).second.lock();
+          if (existingPeer) {
+            ZS_LOG_DEBUG(account->log("found existing peer to use") + UsePeer::toDebug(existingPeer))
+            return Peer::convert(existingPeer);
+          }
+          ZS_LOG_WARNING(Detail, account->log("existing peer in map is now gone") + ZS_PARAM("peer URI", peerURI))
+        }
+
+        ZS_LOG_DEBUG(account->log("using newly created peer") + UsePeer::toDebug(peer))
+        mPeers[peerURI] = peer;
+        return peer;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::PeersDB::remove(const String &peerURI)
+      {
+        AutoRecursiveLock lock(mLock);
+
+        PeerMap::iterator found = mPeers.find(peerURI);
+        if (found == mPeers.end()) return false;
+
+        mPeers.erase(found);
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      size_t Account::PeersDB::size() const
+      {
+        AutoRecursiveLock lock(mLock);
+        return mPeers.size();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Account::LocationsDB
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::findExisting(
+                                                                 AccountPtr account,
+                                                                 const String &peerURI,
+                                                                 const String &locationID
+                                                                 ) const
+      {
+        AutoRecursiveLock lock(mLock);
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::const_iterator found = mLocations.find(index);
+
+        if (found == mLocations.end()) {
+          ZS_LOG_TRACE(account->log("did not find existing location") + ZS_PARAM("peer uri", peerURI) + ZS_PARAM("location id", locationID))
+          return UseLocationPtr();
+        }
+
+        UseLocationPtr location = (*found).second.lock();
+
+        ZS_LOG_TRACE(account->log("found existing location") + UseLocation::toDebug(location))
+        return location;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::findExistingOrUse(
+                                                                      AccountPtr account,
+                                                                      UseLocationPtr location
+                                                                      )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!location)
+
+        AutoRecursiveLock lock(mLock);
+
+        String locationID = location->getLocationID();
+        String peerURI = location->getPeerURI();
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::iterator found = mLocations.find(index);
+
+        if (found != mLocations.end()) {
+          UseLocationPtr existingLocation = (*found).second.lock();
+          if (existingLocation) {
+            ZS_LOG_DEBUG(account->log("found existing location to use") + UseLocation::toDebug(existingLocation))
+            return Location::convert(existingLocation);
+          }
+          ZS_LOG_WARNING(Detail, account->log("existing location in map is now gone") + UseLocation::toDebug(location))
+        }
+
+        ZS_LOG_DEBUG(account->log("using newly created location") + UseLocation::toDebug(location))
+        mLocations[index] = location;
+        return Location::convert(location);
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::getLocal() const
+      {
+        AutoRecursiveLock lock(mLock);
+        return mSelf;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::getFinder() const
+      {
+        AutoRecursiveLock lock(mLock);
+        return mFinder;
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::LocationsDB::setLocal(UseLocationPtr location)
+      {
+        AutoRecursiveLock lock(mLock);
+        mSelf = location;
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::LocationsDB::setFinder(UseLocationPtr location)
+      {
+        AutoRecursiveLock lock(mLock);
+        mFinder = location;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::LocationsDB::remove(
+                                        const String &locationID,
+                                        const String &peerURI
+                                        )
+      {
+        AutoRecursiveLock lock(mLock);
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::iterator found = mLocations.find(index);
+        if (found == mLocations.end()) return false;
+
+        mLocations.erase(found);
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
+      size_t Account::LocationsDB::size() const
+      {
+        AutoRecursiveLock lock(mLock);
+        return mLocations.size();
+      }
+
     }
 
     //-------------------------------------------------------------------------

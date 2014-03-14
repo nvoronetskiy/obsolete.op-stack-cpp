@@ -339,7 +339,7 @@ namespace openpeer
         #pragma mark PublicationRepository => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const {return mLock;}
+        RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
 

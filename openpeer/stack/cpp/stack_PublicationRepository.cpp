@@ -1201,6 +1201,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      RecursiveLock &PublicationRepository::getLock() const
+      {
+        return mLock;
+      }
+
+      //-----------------------------------------------------------------------
       Log::Params PublicationRepository::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("PublicationRepository");
@@ -1668,6 +1674,8 @@ namespace openpeer
       void PublicationRepository::cancel()
       {
         ZS_LOG_DETAIL(log("publication repository cancel is called"))
+
+        AutoRecursiveLock lock(getLock());
 
         if (mPeerSubscription) {
           mPeerSubscription->cancel();

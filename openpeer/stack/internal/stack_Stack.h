@@ -34,6 +34,9 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/IStack.h>
 
+#define OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY "openpeer/stack/stack-thread-priority"
+#define OPENPEER_STACK_SETTING_STACK_KEY_GENERATION_THREAD_PRIORITY "openpeer/stack/key-generation-thread-priority"
+
 namespace openpeer
 {
   namespace stack
@@ -117,6 +120,7 @@ namespace openpeer
         #pragma mark
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
         void verifySettingIsSet(const char *settingName);
 
       protected:

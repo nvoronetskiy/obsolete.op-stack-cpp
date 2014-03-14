@@ -830,9 +830,6 @@ namespace openpeer
         IICESocketPtr mSocket;
 
         String mLocationID;
-        UsePeerPtr mSelfPeer;
-        UseLocationPtr mSelfLocation;
-        UseLocationPtr mFinderLocation;
 
         UsePublicationRepositoryPtr mRepository;
 
@@ -857,8 +854,75 @@ namespace openpeer
 
         PeerSubscriptionMap mPeerSubscriptions;
 
-        PeerMap mPeers;
-        LocationMap mLocations;
+        class PeersDB
+        {
+        public:
+          PeersDB() {}
+
+          UsePeerPtr getLocal() const;
+          void setLocal(UsePeerPtr peer);
+
+          UsePeerPtr findExisting(
+                                  AccountPtr account,
+                                  const String &peerURI
+                                  ) const;
+
+          UsePeerPtr findExistingOrUse(
+                                       AccountPtr account,
+                                       UsePeerPtr peer
+                                       );
+
+          bool remove(const String &peerURI);
+
+          size_t size() const;
+
+        protected:
+          mutable RecursiveLock mLock;
+
+          UsePeerPtr mSelf;
+          PeerMap mPeers;
+        };
+
+        class LocationsDB
+        {
+        public:
+          LocationsDB() {}
+
+          UseLocationPtr findExisting(
+                                      AccountPtr account,
+                                      const String &peerURI,
+                                      const String &locationID
+                                      ) const;
+
+          UseLocationPtr findExistingOrUse(
+                                           AccountPtr account,
+                                           UseLocationPtr inLocation
+                                           );
+
+          UseLocationPtr getLocal() const;
+          UseLocationPtr getFinder() const;
+
+          void setLocal(UseLocationPtr location);
+          void setFinder(UseLocationPtr location);
+
+          bool remove(
+                      const String &locationID,
+                      const String &peerURI
+                      );
+
+          size_t size() const;
+
+        protected:
+          mutable RecursiveLock mLock;
+
+          UseLocationPtr mSelf;
+          UseLocationPtr mFinder;
+
+          LocationMap mLocations;
+        };
+
+        PeersDB mPeersDB;
+        LocationsDB mLocationsDB;
       };
 
       //-----------------------------------------------------------------------

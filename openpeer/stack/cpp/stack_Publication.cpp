@@ -121,7 +121,8 @@ namespace openpeer
       protected:
         static Publication_UniqueLineage &singleton()
         {
-          return Singleton<Publication_UniqueLineage, false>::ref();  // non-destructable object
+          static Singleton<Publication_UniqueLineage, false> singleton;  // non-destructable object
+          return singleton.singleton();
         }
 
         ULONG actualGetUniqueLineage()
