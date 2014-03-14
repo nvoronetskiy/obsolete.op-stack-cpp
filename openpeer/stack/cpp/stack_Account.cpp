@@ -1787,12 +1787,19 @@ namespace openpeer
 
         // scope: kill all the connection subscriptions
         {
-          for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+          for (PeerSubscriptionMap::iterator iter_doNotUse = mPeerSubscriptions.begin(); iter_doNotUse != mPeerSubscriptions.end(); )
           {
-            PeerSubscriptionMap::iterator current = iter;
-            ++iter;
+            PeerSubscriptionMap::iterator current = iter_doNotUse;
+            ++iter_doNotUse;
 
+            PUID subscriptionID = (*current).first;
             UsePeerSubscriptionPtr subscriber = (*current).second.lock();
+
+            if (!subscriber) {
+              ZS_LOG_WARNING(Trace, log("peer subscription already gone thus removing (likely okay)") + ZS_PARAM("subscriber", subscriptionID))
+              mPeerSubscriptions.erase(current);
+              continue;
+            }
             subscriber->notifyShutdown();
           }
         }
