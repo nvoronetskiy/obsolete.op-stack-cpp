@@ -92,6 +92,16 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PeerSubscription::init()
       {
+        UseAccountPtr account = mAccount.lock();
+        if (!account) {
+          ZS_LOG_WARNING(Detail, log("subscribing to a peer attached to a dead account"))
+          try {
+            mDelegate->onPeerSubscriptionShutdown(mThisWeak.lock());
+          } catch (IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+          }
+          mDelegate.reset();
+          return;
+        }
         mAccount.lock()->subscribe(mThisWeak.lock());
       }
 
