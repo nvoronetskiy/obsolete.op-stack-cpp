@@ -183,7 +183,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(getLock());
 
-        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock());
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
         mLockboxSession->attach(mThisWeak.lock());
 
@@ -1619,7 +1619,10 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier)
+      void Account::onBackgroundingGoingToBackground(
+                                                     IBackgroundingSubscriptionPtr subscription,
+                                                     IBackgroundingNotifierPtr notifier
+                                                     )
       {
         AutoRecursiveLock lock(getLock());
 
@@ -1633,7 +1636,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackgroundNow()
+      void Account::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
       {
         AutoRecursiveLock lock(getLock());
 
@@ -1643,7 +1646,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingReturningFromBackground()
+      void Account::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
       {
         AutoRecursiveLock lock(getLock());
 
