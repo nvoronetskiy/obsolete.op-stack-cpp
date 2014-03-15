@@ -79,10 +79,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       PeerSubscription::PeerSubscription(
-                                         UseAccountPtr account,
+                                         AccountPtr account,
                                          IPeerSubscriptionDelegatePtr delegate
                                          ) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(*account),
         mAccount(account),
         mDelegate(IPeerSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
@@ -145,14 +145,14 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::subscribeAll(
-                                                         IAccountPtr account,
+                                                         AccountPtr account,
                                                          IPeerSubscriptionDelegatePtr delegate
                                                          )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!account)
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        PeerSubscriptionPtr pThis(new PeerSubscription(Account::convert(account), delegate));
+        PeerSubscriptionPtr pThis(new PeerSubscription(account, delegate));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -180,21 +180,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeerPtr PeerSubscription::getSubscribedToPeer() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return Peer::convert(mPeer);
       }
 
       //-----------------------------------------------------------------------
       bool PeerSubscription::PeerSubscription::isShutdown() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return !mDelegate;
       }
 
       //-----------------------------------------------------------------------
       void PeerSubscription::cancel()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mDelegate) {
           ZS_LOG_DEBUG(log("cancel called but already shutdown (probably okay)"))
@@ -239,7 +239,7 @@ namespace openpeer
       {
         UsePeerPtr peer = inPeer;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("notify of find state changed after shutdown"))
           return;
@@ -267,7 +267,7 @@ namespace openpeer
       {
         UseLocationPtr location = inLocation;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("notify of location connection state changed after shutdown"))
@@ -296,7 +296,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PeerSubscription::notifyMessageIncoming(IMessageIncomingPtr message)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("notify of incoming message after shutdown"))
@@ -331,7 +331,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PeerSubscription::notifyShutdown()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         cancel();
       }
 
@@ -344,14 +344,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &PeerSubscription::getLock() const
-      {
-        UseAccountPtr account = mAccount.lock();
-        if (!account) return mBogusLock;
-        return account->getLock();
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params PeerSubscription::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("PeerSubscription");
@@ -362,7 +354,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr PeerSubscription::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ElementPtr resultEl = Element::create("PeerSubscription");
 
         IHelper::debugAppend(resultEl, "id", mID);
@@ -393,7 +385,7 @@ namespace openpeer
                                                          IPeerSubscriptionDelegatePtr delegate
                                                          )
     {
-      return internal::IPeerSubscriptionFactory::singleton().subscribeAll(account, delegate);
+      return internal::IPeerSubscriptionFactory::singleton().subscribeAll(internal::Account::convert(account), delegate);
     }
 
     //-------------------------------------------------------------------------

@@ -172,6 +172,7 @@ namespace openpeer
 
       class AccountPeerLocation : public Noop,
                                   public MessageQueueAssociator,
+                                  public SharedRecursiveLock,
                                   public IAccountPeerLocationForAccount,
                                   public IWakeDelegate,
                                   public ITimerDelegate,
@@ -223,7 +224,11 @@ namespace openpeer
                             LocationInfoPtr locationInfo
                             );
 
-        AccountPeerLocation(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        AccountPeerLocation(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -443,7 +448,6 @@ namespace openpeer
         bool isCreatedFromIncomingFind() const {return CreatedFromReason_IncomingFind == mCreatedReason;}
         bool isCreatedFromOutgoingFind() const  {return CreatedFromReason_OutgoingFind == mCreatedReason;}
 
-        RecursiveLock &getLock() const;
         IICESocketPtr getSocket() const;
 
         Log::Params log(const char *message) const;
@@ -485,7 +489,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mBogusLock;
         mutable AccountPeerLocationWeakPtr mThisWeak;
 
         IAccountPeerLocationDelegatePtr mDelegate;

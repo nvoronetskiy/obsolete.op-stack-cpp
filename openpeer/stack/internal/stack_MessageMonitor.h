@@ -96,6 +96,7 @@ namespace openpeer
 
       class MessageMonitor : public Noop,
                              public MessageQueueAssociator,
+                             public SharedRecursiveLock,
                              public IMessageMonitor,
                              public IMessageMonitorAsyncDelegate,
                              public IMessageMonitorForMessageMonitorManager,
@@ -109,9 +110,16 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(ILocationForMessageMonitor, UseLocation)
 
       protected:
-        MessageMonitor(IMessageQueuePtr queue);
+        MessageMonitor(
+                       MessageMonitorManagerPtr manager,
+                       IMessageQueuePtr queue
+                       );
         
-        MessageMonitor(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        MessageMonitor(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init(Duration timeout);
 
@@ -206,13 +214,10 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const;
 
-        RecursiveLock &getLock() const;
-
         void notifyWithError(IHTTP::HTTPStatusCodes code);
 
       protected:
         AutoPUID mID;
-        mutable RecursiveLock mBogusLock;
         MessageMonitorWeakPtr mThisWeak;
 
         UseMessageMonitorManagerWeakPtr mManager;

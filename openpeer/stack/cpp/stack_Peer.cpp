@@ -164,11 +164,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       Peer::Peer(
-                 UseAccountPtr account,
+                 AccountPtr account,
                  IPeerFilePublicPtr peerFilePublic,
                  const String &peerURI
                  ) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mAccount(account),
         mPeerFilePublic(peerFilePublic),
         mPeerURI(peerURI)
@@ -179,7 +179,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Peer::init()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mPeerFilePublic) {
           ZS_LOG_TRACE(log("attempting to load peer file public from cache") + ZS_PARAM("uri", mPeerURI))
@@ -317,11 +317,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::create(
-                           IAccountPtr inAccount,
+                           AccountPtr inAccount,
                            IPeerFilePublicPtr peerFilePublic
                            )
       {
-        UseAccountPtr account = Account::convert(inAccount);
+        UseAccountPtr account = inAccount;
 
         ZS_THROW_INVALID_ARGUMENT_IF(!account)
         ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
@@ -330,7 +330,7 @@ namespace openpeer
 
         PeerPtr existing = account->findExisting(peerURI);
         if (existing) {
-          AutoRecursiveLock lock(existing->getLock());
+          AutoRecursiveLock lock(*existing);
 
           ZS_LOG_TRACE(existing->log("found existing peer object to re-use") + ZS_PARAM("uri", peerURI))
           if (!existing->mPeerFilePublic) {
@@ -340,14 +340,14 @@ namespace openpeer
           return existing;
         }
 
-        PeerPtr pThis(new Peer(account, peerFilePublic, String()));
+        PeerPtr pThis(new Peer(inAccount, peerFilePublic, String()));
         pThis->mThisWeak = pThis;
         pThis->init();
 
         // check if it already exists in the account
         PeerPtr useThis = pThis->mAccount.lock()->findExistingOrUse(pThis);
 
-        AutoRecursiveLock lock(pThis->getLock());
+        AutoRecursiveLock lock(*pThis);
 
         if (!(useThis->mPeerFilePublic)) {
           useThis->mPeerFilePublic = peerFilePublic;
@@ -364,7 +364,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::getFromSignature(
-                                     IAccountPtr account,
+                                     AccountPtr account,
                                      ElementPtr inSignedElement
                                      )
       {
@@ -397,7 +397,7 @@ namespace openpeer
           return PeerPtr();
         }
 
-        PeerPtr peer = create(Account::convert(account), peerURI);
+        PeerPtr peer = create(account, peerURI);
         if (!peer) {
           ZS_LOG_ERROR(Detail, slog("could not create peer for given peer") + ZS_PARAM("peer uri", peerURI))
           return PeerPtr();
@@ -449,7 +449,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String Peer::getPeerURI() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (mPeerFilePublic) {
           return mPeerFilePublic->getPeerURI();
         }
@@ -459,7 +459,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeerFilePublicPtr Peer::getPeerFilePublic() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mPeerFilePublic;
       }
 
@@ -499,7 +499,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!peerFilePublic)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         mPeerFilePublic = peerFilePublic;
         mPeerURI.clear();
       }
@@ -535,7 +535,7 @@ namespace openpeer
           return existing;
         }
 
-        PeerPtr pThis(new Peer(account, IPeerFilePublicPtr(), peerURI));
+        PeerPtr pThis(new Peer(inAccount, IPeerFilePublicPtr(), peerURI));
         pThis->mThisWeak = pThis;
         pThis->init();
 
@@ -558,7 +558,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr Peer::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("Peer");
 
@@ -576,12 +576,6 @@ namespace openpeer
       #pragma mark
       #pragma mark Peer => (internal)
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      RecursiveLock &Peer::getLock() const
-      {
-        return mLock;
-      }
 
       //-----------------------------------------------------------------------
       Log::Params Peer::slog(const char *message)
@@ -662,7 +656,7 @@ namespace openpeer
                            IPeerFilePublicPtr peerFilePublic
                            )
     {
-      return internal::IPeerFactory::singleton().create(account, peerFilePublic);
+      return internal::IPeerFactory::singleton().create(internal::Account::convert(account), peerFilePublic);
     }
 
     //-------------------------------------------------------------------------
@@ -680,7 +674,7 @@ namespace openpeer
                                      ElementPtr signedElement
                                      )
     {
-      return internal::IPeerFactory::singleton().getFromSignature(account, signedElement);
+      return internal::IPeerFactory::singleton().getFromSignature(internal::Account::convert(account), signedElement);
     }
   }
 }

@@ -75,7 +75,8 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkManager::BootstrappedNetworkManager()
+      BootstrappedNetworkManager::BootstrappedNetworkManager() :
+        SharedRecursiveLock(SharedRecursiveLock::create())
       {
         ZS_LOG_DETAIL(log("created"))
       }
@@ -127,7 +128,7 @@ namespace openpeer
       {
         UseBootstrappedNetworkPtr network = inNetwork;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         String domain = network->getDomain();
 
@@ -155,7 +156,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!network)
         ZS_THROW_INVALID_ARGUMENT_IF(!inDelegate)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(UseStack::queueDelegate(), inDelegate);
 
@@ -178,7 +179,7 @@ namespace openpeer
       {
         UseBootstrappedNetworkPtr network = inNetwork;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         for (PendingDelegateList::iterator iter = mPendingDelegates.begin(); iter != mPendingDelegates.end(); )
         {
           PendingDelegateList::iterator current = iter;

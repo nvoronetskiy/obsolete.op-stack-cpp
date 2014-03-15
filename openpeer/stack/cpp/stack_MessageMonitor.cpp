@@ -85,13 +85,17 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageMonitor::MessageMonitor(IMessageQueuePtr queue) :
+      MessageMonitor::MessageMonitor(
+                                     MessageMonitorManagerPtr manager,
+                                     IMessageQueuePtr queue
+                                     ) :
         MessageQueueAssociator(queue),
+        SharedRecursiveLock(manager ? *manager : SharedRecursiveLock::create()),
+        mManager(manager),
         mWasHandled(false),
         mTimeoutFired(false),
         mPendingHandled(0),
-        mSentViaObjectID(0),
-        mManager(UseMessageMonitorManager::singleton())
+        mSentViaObjectID(0)
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -99,7 +103,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void MessageMonitor::init(Duration timeout)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (Duration() != timeout) {
           mExpires = zsLib::now() + timeout;
@@ -122,7 +126,7 @@ namespace openpeer
       {
         if(isNoop()) return;
         
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         mThisWeak.reset();
         cancel();
 
@@ -159,7 +163,10 @@ namespace openpeer
       {
         if (!requestMessage) return MessageMonitorPtr();
 
-        MessageMonitorPtr pThis(new MessageMonitor(UseStack::queueStack()));
+        MessageMonitorPtr pThis(new MessageMonitor(
+                                                   MessageMonitorManager::convert(UseMessageMonitorManager::singleton()),
+                                                   UseStack::queueStack()
+                                                   ));
         pThis->mThisWeak = pThis;
         pThis->mMessageID = requestMessage->messageID();
         pThis->mOriginalMessage = requestMessage;
@@ -190,7 +197,7 @@ namespace openpeer
         PUID sentViaObjectID = location->sendMessageFromMonitor(message);
 
         if (0 != sentViaObjectID) {
-          AutoRecursiveLock lock(pThis->getLock());
+          AutoRecursiveLock lock(*pThis);
           pThis->mSentViaObjectID = sentViaObjectID;
 
           UseMessageMonitorManagerPtr manager = UseMessageMonitorManager::singleton();
@@ -235,21 +242,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool MessageMonitor::isComplete() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return !mDelegate;
       }
 
       //-----------------------------------------------------------------------
       bool MessageMonitor::wasHandled() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mWasHandled;
       }
 
       //-----------------------------------------------------------------------
       void MessageMonitor::cancel()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mDelegate) return;
 
@@ -269,14 +276,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       message::MessagePtr MessageMonitor::getMonitoredMessage() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mOriginalMessage;
       }
 
       //-----------------------------------------------------------------------
       String MessageMonitor::getMonitoredMessageID() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mOriginalMessage->messageID();
       }
 
@@ -297,7 +304,7 @@ namespace openpeer
         bool handled = delegate->handleMessageMonitorMessageReceived(mThisWeak.lock(), message);
 
         {
-          AutoRecursiveLock lock(getLock());
+          AutoRecursiveLock lock(*this);
           --mPendingHandled;
 
           mWasHandled = handled;
@@ -332,7 +339,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool MessageMonitor::handleMessage(message::MessagePtr message)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mDelegate) return false;
         if (!message) return false;
         if (mMessageID != message->messageID()) return false;
@@ -353,7 +360,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void MessageMonitor::notifySendMessageFailure(message::MessagePtr message)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!message) return;
         if (mMessageID != message->messageID()) return;
 
@@ -364,7 +371,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void MessageMonitor::notifySenderObjectGone(PUID senderObjectID)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (senderObjectID != mSentViaObjectID) return;
 
         ZS_LOG_WARNING(Detail, debug("notifying of message send failure (because object is gone)") + ZS_PARAM("message id", mMessageID))
@@ -382,7 +389,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void MessageMonitor::onTimer(TimerPtr timer)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mDelegate) return;
 
         mTimeoutFired = true;
@@ -421,7 +428,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr MessageMonitor::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ElementPtr resultEl = Element::create("stack::MessageMonitor");
 
         IHelper::debugAppend(resultEl, "id", mID);
@@ -444,17 +451,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      RecursiveLock &MessageMonitor::getLock() const
-      {
-        UseMessageMonitorManagerPtr manager = mManager.lock();
-        if (!manager) return mBogusLock;
-        return manager->getLock();
-      }
-
-      //-----------------------------------------------------------------------
       void MessageMonitor::notifyWithError(IHTTP::HTTPStatusCodes code)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("cannot notify of sent failure as delegate is gone"))
           return;

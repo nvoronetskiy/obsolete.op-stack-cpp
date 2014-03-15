@@ -78,6 +78,7 @@ namespace openpeer
       #pragma mark
 
       class MessageIncoming : public Noop,
+                              public SharedRecursiveLock,
                               public IMessageIncoming,
                               public IMessageIncomingForAccount
       {
@@ -90,12 +91,15 @@ namespace openpeer
 
       protected:
         MessageIncoming(
-                        UseAccountPtr account,
+                        AccountPtr account,
                         LocationPtr location,
                         message::MessagePtr message
                         );
         
-        MessageIncoming(Noop) : Noop(true) {};
+        MessageIncoming(Noop) :
+          Noop(true),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -146,7 +150,6 @@ namespace openpeer
         #pragma mark MessageIncoming => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const;
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
 
@@ -158,8 +161,7 @@ namespace openpeer
         #pragma mark MessageIncoming => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mBogusLock;
+        AutoPUID mID;
         MessageIncomingWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;

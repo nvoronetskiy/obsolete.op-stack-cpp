@@ -56,6 +56,8 @@ namespace openpeer
       typedef IStackForInternal UseStack;
       using services::IHelper;
 
+      ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor::ForMessageMonitor, ForMessageMonitor)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -113,7 +115,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      IMessageMonitorManagerForMessageMonitor::ForMessageMonitorPtr IMessageMonitorManagerForMessageMonitor::singleton()
+      ForMessageMonitorPtr IMessageMonitorManagerForMessageMonitor::singleton()
       {
         return MessageMonitorManager::singleton();
       }
@@ -128,7 +130,8 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageMonitorManager::MessageMonitorManager() :
-        MessageQueueAssociator(UseStack::queueStack())
+        MessageQueueAssociator(UseStack::queueStack()),
+        SharedRecursiveLock(SharedRecursiveLock::create())
       {
         ZS_LOG_DETAIL(log("created"))
       }
@@ -156,6 +159,12 @@ namespace openpeer
           mTimer->cancel();
           mTimer.reset();
         }
+      }
+
+      //-----------------------------------------------------------------------
+      MessageMonitorManagerPtr MessageMonitorManager::convert(ForMessageMonitorPtr object)
+      {
+        return dynamic_pointer_cast<MessageMonitorManager>(object);
       }
 
       //-----------------------------------------------------------------------
@@ -308,7 +317,7 @@ namespace openpeer
 
         if (0 == sentViaObjectID) return;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         String messageID = message->messageID();
 
@@ -338,7 +347,7 @@ namespace openpeer
       {
         ZS_LOG_WARNING(Detail, log("notify message send failure") + ZS_PARAM("message", message->messageID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mPendingFailures.push_back(message);
 
@@ -350,7 +359,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("notify sender object gone") + ZS_PARAM("sender object id", objectID))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mPendingGone.push_back(objectID);
 
@@ -370,7 +379,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("on wake"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         // scope: handle message send failures
         {
@@ -452,7 +461,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("on timer"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         Time tick = zsLib::now();
 

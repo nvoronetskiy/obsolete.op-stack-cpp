@@ -73,7 +73,8 @@ namespace openpeer
       #pragma mark
 
       class FinderConnection : public Noop,
-                               public zsLib::MessageQueueAssociator,
+                               public MessageQueueAssociator,
+                               public SharedRecursiveLock,
                                public IFinderConnection,
                                public ITimerDelegate,
                                public IWakeDelegate,
@@ -103,13 +104,16 @@ namespace openpeer
 
       protected:
         FinderConnection(
+                         FinderConnectionManagerPtr outer,
                          IMessageQueuePtr queue,
                          IPAddress remoteFinderIP
                          );
 
         FinderConnection(Noop) :
           Noop(true),
-          zsLib::MessageQueueAssociator(IMessageQueuePtr()) {}
+          zsLib::MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -239,8 +243,6 @@ namespace openpeer
         #pragma mark FinderConnection => friend Channel
         #pragma mark
 
-        // RecursiveLock &getLock() const;
-
         void notifyOuterWriterReady();
 
         void sendBuffer(
@@ -258,8 +260,6 @@ namespace openpeer
         bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
         bool isFinderSessionConnection() const;
         bool isFinderRelayConnection() const;
-
-        RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
@@ -297,8 +297,8 @@ namespace openpeer
         #pragma mark FinderConnection::Channel
         #pragma mark
 
-        class Channel : public Noop,
-                        public zsLib::MessageQueueAssociator,
+        class Channel : public MessageQueueAssociator,
+                        public SharedRecursiveLock,
                         public IFinderConnectionRelayChannel,
                         public IFinderRelayChannelDelegate,
                         public ITransportStreamWriterDelegate,
@@ -326,10 +326,6 @@ namespace openpeer
             String mRelayAccessToken;
             String mRelayAccessSecretProof;
           };
-
-          Channel(Noop) :
-            Noop(true),
-            zsLib::MessageQueueAssociator(IMessageQueuePtr()) {}
 
           void init();
 
@@ -432,7 +428,6 @@ namespace openpeer
           #pragma mark FinderConnection::Channel => (internal)
           #pragma mark
 
-          RecursiveLock &getLock() const;
           Log::Params log(const char *message) const;
           Log::Params debug(const char *message) const;
 
@@ -448,7 +443,6 @@ namespace openpeer
 
         protected:
           AutoPUID mID;
-          mutable RecursiveLock mBogusLock;
           ChannelWeakPtr mThisWeak;
 
           FinderConnectionWeakPtr mOuter;
@@ -482,7 +476,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLocalLock;
         FinderConnectionWeakPtr mThisWeak;
 
         FinderConnectionManagerWeakPtr mOuter;
