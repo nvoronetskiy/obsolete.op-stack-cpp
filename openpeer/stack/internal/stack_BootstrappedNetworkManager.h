@@ -57,7 +57,7 @@ namespace openpeer
 
         static ForBootstrappedNetworkPtr singleton();
 
-        virtual RecursiveLock &getLock() const = 0;
+        virtual const SharedRecursiveLock &getLock() const = 0;
 
         virtual BootstrappedNetworkPtr findExistingOrUse(BootstrappedNetworkPtr network) = 0;
 
@@ -78,6 +78,7 @@ namespace openpeer
       #pragma mark
 
       class BootstrappedNetworkManager : public Noop,
+                                         public SharedRecursiveLock,
                                          public IBootstrappedNetworkManagerForBootstrappedNetwork
       {
       public:
@@ -95,7 +96,10 @@ namespace openpeer
       protected:
         BootstrappedNetworkManager();
         
-        BootstrappedNetworkManager(Noop) : Noop(true) {};
+        BootstrappedNetworkManager(Noop) :
+          Noop(true),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+          {}
 
         void init();
 
@@ -113,7 +117,7 @@ namespace openpeer
 
         static BootstrappedNetworkManagerPtr singleton();
 
-        // (duplicate) virtual RecursiveLock &getLock() const;
+        // (duplicate) virtual const SharedRecursiveLock &getLock() const;
 
         virtual BootstrappedNetworkPtr findExistingOrUse(BootstrappedNetworkPtr network);
 
@@ -130,7 +134,7 @@ namespace openpeer
         #pragma mark BootstrappedNetworkManager => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const {return mLock;}
+        const SharedRecursiveLock &getLock() const {return *this;}
 
         Log::Params log(const char *message) const;
         static Log::Params slog(const char *message);
@@ -142,7 +146,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLock;
         BootstrappedNetworkManagerWeakPtr mThisWeak;
 
         BootstrappedNetworkMap mBootstrappedNetworks;

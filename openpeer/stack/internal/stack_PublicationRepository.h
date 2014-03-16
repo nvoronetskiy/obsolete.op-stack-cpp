@@ -87,6 +87,7 @@ namespace openpeer
 
       class PublicationRepository : public Noop,
                                     public MessageQueueAssociator,
+                                    public SharedRecursiveLock,
                                     public IPublicationRepository,
                                     public IPublicationRepositoryForAccount,
                                     public IPeerSubscriptionDelegate,
@@ -153,7 +154,11 @@ namespace openpeer
                               UseAccountPtr account
                               );
         
-        PublicationRepository(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        PublicationRepository(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -246,8 +251,6 @@ namespace openpeer
 
         CachedPeerSourceMap &getCachedPeerSources() {return mCachedPeerSources;}
 
-        // (duplicate) RecursiveLock &getLock() const;
-
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark PublicationRepository => friend Publisher
@@ -255,8 +258,6 @@ namespace openpeer
 
         void notifyPublished(PublisherPtr publisher);
         void notifyPublisherCancelled(PublisherPtr publisher);
-
-        // (duplicate) RecursiveLock &getLock() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -266,16 +267,12 @@ namespace openpeer
         void notifyFetched(FetcherPtr fetcher);
         void notifyFetcherCancelled(FetcherPtr fetcher);
 
-        // (duplicate) RecursiveLock &getLock() const;
-
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark PublicationRepository => friend Remover
         #pragma mark
 
         void notifyRemoved(RemoverPtr remover);
-
-        // (duplicate) RecursiveLock &getLock() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -285,7 +282,6 @@ namespace openpeer
         void notifySubscribed(PeerSubscriptionOutgoingPtr subscriber);
         void notifyPeerOutgoingSubscriptionShutdown(PeerSubscriptionOutgoingPtr subscription);
 
-        // (duplicate) RecursiveLock &getLock() const;
         // (duplicate) IAccountForPublicationRepositoryPtr getOuter() const;
 
         //---------------------------------------------------------------------
@@ -297,7 +293,6 @@ namespace openpeer
 
         UseAccountPtr getAccount() {return mAccount.lock();}
 
-        // (duplicate) RecursiveLock &getLock() const;
         // (duplicate) IAccountForPublicationRepositoryPtr getOuter() const;
 
         void resolveRelationships(
@@ -322,7 +317,6 @@ namespace openpeer
         #pragma mark PublicationRepository => friend PeerSubscriptionIncoming
         #pragma mark
 
-        // (duplicate) RecursiveLock &getLock() const;
         // (duplicate) IAccountForPublicationRepositoryPtr getOuter() const;
 
         // (duplicate) void resolveRelationships(
@@ -338,8 +332,6 @@ namespace openpeer
         #pragma mark
         #pragma mark PublicationRepository => (internal)
         #pragma mark
-
-        RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
 
@@ -379,747 +371,33 @@ namespace openpeer
         void cancel();
 
       public:
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::PeerCache
-        #pragma mark
-
-        class PeerCache : public IPublicationRepositoryPeerCache
-        {
-        public:
-          friend class PublicationRepository;
-
-        protected:
-          PeerCache(
-                    PeerSourcePtr peerSource,
-                    PublicationRepositoryPtr repository
-                    );
-
-          void init();
-
-          static PeerCachePtr create(
-                                     PeerSourcePtr peerSource,
-                                     PublicationRepositoryPtr repository
-                                     );
-
-        public:
-          ~PeerCache();
-
-          static PeerCachePtr convert(IPublicationRepositoryPeerCachePtr cache);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerCache => IPublicationRepositoryPeerCache
-          #pragma mark
-
-          static ElementPtr toDebug(IPublicationRepositoryPeerCachePtr cache);
-
-          virtual bool getNextVersionToNotifyAboutAndMarkNotified(
-                                                                  IPublicationPtr publication,
-                                                                  size_t &ioMaxSizeAvailableInBytes,
-                                                                  ULONG &outNotifyFromVersion,
-                                                                  ULONG &outNotifyToVersion
-                                                                  );
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerCache => friend PublicationRepository
-          #pragma mark
-
-          static PeerCachePtr find(
-                                   PeerSourcePtr peerSource,
-                                   PublicationRepositoryPtr repository
-                                   );
-
-          void notifyFetched(UsePublicationPtr publication);
-
-          Time getExpires() const       {return mExpires;}
-          void setExpires(Time expires) {mExpires = expires;}
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerCache => (internal)
-          #pragma mark
-
-          Log::Params log(const char *message) const;
-          virtual ElementPtr toDebug() const;
-
-          RecursiveLock &getLock() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerCache => (data)
-          #pragma mark
-
-          mutable RecursiveLock mBogusLock;
-          PUID mID;
-          PeerCacheWeakPtr mThisWeak;
-          PublicationRepositoryWeakPtr mOuter;
-
-          PeerSourcePtr mPeerSource;
-
-          Time mExpires;
-
-          CachedPeerPublicationMap mCachedPublications;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::Publisher
-        #pragma mark
-
-        class Publisher : public MessageQueueAssociator,
-                          public IPublicationPublisher,
-                          public IMessageMonitorDelegate
-        {
-        public:
-          friend class PublicationRepository;
-
-        protected:
-          Publisher(
-                    IMessageQueuePtr queue,
-                    PublicationRepositoryPtr outer,
-                    IPublicationPublisherDelegatePtr delegate,
-                    UsePublicationPtr publication
-                    );
-
-          void init();
-
-        public:
-          ~Publisher();
-
-          static PublisherPtr convert(IPublicationPublisherPtr);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Publisher => friend PublicationRepository
-          #pragma mark
-
-          static ElementPtr toDebug(IPublicationPublisherPtr publisher);
-
-          static PublisherPtr create(
-                                     IMessageQueuePtr queue,
-                                     PublicationRepositoryPtr outer,
-                                     IPublicationPublisherDelegatePtr delegate,
-                                     UsePublicationPtr publication
-                                     );
-
-          // PUID getID() const;
-
-          void setMonitor(IMessageMonitorPtr monitor);
-          void notifyCompleted();
-
-          // (duplicate) virtual IPublicationPtr getPublication() const;
-          // (duplicate) virtual void cancel();
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Publisher => IPublicationPublisher
-          #pragma mark
-
-          virtual void cancel();
-          virtual bool isComplete() const;
-
-          virtual bool wasSuccessful(
-                                     WORD *outErrorResult = NULL,
-                                     String *outReason = NULL
-                                     ) const;
-
-          virtual IPublicationPtr getPublication() const;
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Publisher => IMessageMonitorDelegate
-          #pragma mark
-
-          virtual bool handleMessageMonitorMessageReceived(
-                                                           IMessageMonitorPtr monitor,
-                                                           message::MessagePtr message
-                                                           );
-
-          virtual void onMessageMonitorTimedOut(IMessageMonitorPtr monitor);
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Publisher => (internal)
-          #pragma mark
-
-          PUID getID() const {return mID;}
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-          IMessageMonitorPtr getMonitor() const;
-
-          RecursiveLock &getLock() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Publisher => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          PublisherWeakPtr mThisWeak;
-
-          IPublicationPublisherDelegatePtr mDelegate;
-
-          UsePublicationPtr mPublication;
-
-          IMessageMonitorPtr mMonitor;
-
-          bool mSucceeded;
-          WORD mErrorCode;
-          String mErrorReason;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::Fetcher
-        #pragma mark
-
-        class Fetcher : public MessageQueueAssociator,
-                        public IPublicationFetcher,
-                        public IMessageMonitorDelegate
-        {
-        public:
-          friend class PublicationRepository;
-
-        protected:
-          Fetcher(
-                  IMessageQueuePtr queue,
-                  PublicationRepositoryPtr outer,
-                  IPublicationFetcherDelegatePtr delegate,
-                  UsePublicationMetaDataPtr metaData
-                  );
-
-          void init();
-
-        public:
-          ~Fetcher();
-
-          static FetcherPtr convert(IPublicationFetcherPtr fetcher);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Fetcher => friend PublicationRepository
-          #pragma mark
-
-          static ElementPtr toDebug(IPublicationFetcherPtr fetcher);
-
-          static FetcherPtr create(
-                                   IMessageQueuePtr queue,
-                                   PublicationRepositoryPtr outer,
-                                   IPublicationFetcherDelegatePtr delegate,
-                                   UsePublicationMetaDataPtr metaData
-                                   );
-
-          void setPublication(UsePublicationPtr publication);
-          void setMonitor(IMessageMonitorPtr monitor);
-          void notifyCompleted();
-
-          // (duplicate) virtual void cancel();
-          // (duplicate) virtual IPublicationMetaDataPtr getPublicationMetaData() const;
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Fetcher => IPublicationFetcher
-          #pragma mark
-
-          virtual void cancel();
-          virtual bool isComplete() const;
-
-          virtual bool wasSuccessful(
-                                     WORD *outErrorResult = NULL,
-                                     String *outReason = NULL
-                                     ) const;
-
-          virtual IPublicationPtr getFetchedPublication() const;
-
-          virtual IPublicationMetaDataPtr getPublicationMetaData() const;
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Fetcher => IMessageMonitorDelegate
-          #pragma mark
-
-          virtual bool handleMessageMonitorMessageReceived(
-                                                           IMessageMonitorPtr monitor,
-                                                           message::MessagePtr message
-                                                           );
-
-          virtual void onMessageMonitorTimedOut(IMessageMonitorPtr monitor);
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Fetcher => (internal)
-          #pragma mark
-
-          PUID getID() const {return mID;}
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-          IMessageMonitorPtr getMonitor() const;
-
-          RecursiveLock &getLock() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Fetcher => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          FetcherWeakPtr mThisWeak;
-
-          IPublicationFetcherDelegatePtr mDelegate;
-
-          UsePublicationMetaDataPtr mPublicationMetaData;
-
-          IMessageMonitorPtr mMonitor;
-
-          bool mSucceeded;
-          WORD mErrorCode;
-          String mErrorReason;
-
-          UsePublicationPtr mFetchedPublication;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::Remover
-        #pragma mark
-
-        class Remover : public MessageQueueAssociator,
-                        public IPublicationRemover,
-                        public IMessageMonitorDelegate
-        {
-        public:
-          friend class PublicationRepository;
-
-        protected:
-          Remover(
-                  IMessageQueuePtr queue,
-                  PublicationRepositoryPtr outer,
-                  IPublicationRemoverDelegatePtr delegate,
-                  UsePublicationPtr publication
-                  );
-
-          void init();
-
-        public:
-          ~Remover();
-
-          static RemoverPtr convert(IPublicationRemoverPtr remover);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Remover => friend PublicationRepository
-          #pragma mark
-
-          static ElementPtr toDebug(IPublicationRemoverPtr remover);
-
-          static RemoverPtr create(
-                                   IMessageQueuePtr queue,
-                                   PublicationRepositoryPtr outer,
-                                   IPublicationRemoverDelegatePtr delegate,
-                                   UsePublicationPtr publication
-                                   );
-
-          void setMonitor(IMessageMonitorPtr monitor);
-
-          void notifyCompleted();
-
-          // (duplicate) virtual void cancel();
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Remover => IPublicationRemover
-          #pragma mark
-
-          virtual void cancel();
-          virtual bool isComplete() const;
-
-          virtual bool wasSuccessful(
-                                     WORD *outErrorResult = NULL,
-                                     String *outReason = NULL
-                                     ) const;
-
-          virtual IPublicationPtr getPublication() const;
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Remover => IMessageMonitorDelegate
-          #pragma mark
-
-          virtual bool handleMessageMonitorMessageReceived(
-                                                           IMessageMonitorPtr monitor,
-                                                           message::MessagePtr message
-                                                           );
-
-          virtual void onMessageMonitorTimedOut(IMessageMonitorPtr monitor);
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Remover => (internal)
-          #pragma mark
-
-          RecursiveLock &getLock() const;
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::Remover => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          RemoverWeakPtr mThisWeak;
-          IPublicationRemoverDelegatePtr mDelegate;
-
-          UsePublicationPtr mPublication;
-
-          IMessageMonitorPtr mMonitor;
-
-          bool mSucceeded;
-          WORD mErrorCode;
-          String mErrorReason;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::SubscriptionLocal
-        #pragma mark
-
-        class SubscriptionLocal : public MessageQueueAssociator,
-                                  public IPublicationSubscription
-        {
-        public:
-          typedef IPublicationMetaData::SubscribeToRelationshipsMap SubscribeToRelationshipsMap;
-
-          friend class PublicationRepository;
-
-        protected:
-          SubscriptionLocal(
-                            IMessageQueuePtr queue,
-                            PublicationRepositoryPtr outer,
-                            IPublicationSubscriptionDelegatePtr delegate,
-                            const char *publicationPath,
-                            const SubscribeToRelationshipsMap &relationships
-                            );
-
-          void init();
-
-        public:
-          ~SubscriptionLocal();
-
-          static SubscriptionLocalPtr convert(IPublicationSubscriptionPtr subscription);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::SubscriptionLocal => friend SubscriptionLocal
-          #pragma mark
-
-          static ElementPtr toDebug(SubscriptionLocalPtr subscription);
-
-          static SubscriptionLocalPtr create(
-                                             IMessageQueuePtr queue,
-                                             PublicationRepositoryPtr outer,
-                                             IPublicationSubscriptionDelegatePtr delegate,
-                                             const char *publicationPath,
-                                             const SubscribeToRelationshipsMap &relationships
-                                             );
-
-          void notifyUpdated(UsePublicationPtr publication);
-          void notifyGone(UsePublicationPtr publication);
-
-          // (duplicate) virtual void cancel();
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::SubscriptionLocal => IPublicationSubscription
-          #pragma mark
-
-          virtual void cancel();
-
-          virtual PublicationSubscriptionStates getState() const;
-          virtual IPublicationMetaDataPtr getSource() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::SubscriptionLocal => (internal)
-          #pragma mark
-
-          PUID getID() const {return mID;}
-          RecursiveLock &getLock() const;
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-          void setState(PublicationSubscriptionStates state);
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::SubscriptionLocal => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          SubscriptionLocalWeakPtr mThisWeak;
-
-          IPublicationSubscriptionDelegatePtr mDelegate;
-
-          UsePublicationMetaDataPtr mSubscriptionInfo;
-          PublicationSubscriptionStates mCurrentState;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::PeerSubscriptionIncoming
-        #pragma mark
-
-        class PeerSubscriptionIncoming : public MessageQueueAssociator
-        {
-        public:
-          typedef IPublicationMetaData::SubscribeToRelationshipsMap SubscribeToRelationshipsMap;
-
-          friend class PublicationRepository;
-
-        protected:
-          PeerSubscriptionIncoming(
-                                   IMessageQueuePtr queue,
-                                   PublicationRepositoryPtr outer,
-                                   PeerSourcePtr peerSource,
-                                   UsePublicationMetaDataPtr subscriptionInfo
-                                   );
-
-          void init();
-
-        public:
-          ~PeerSubscriptionIncoming();
-
-          static ElementPtr toDebug(PeerSubscriptionIncomingPtr subscription);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionIncoming => friend PublicationRepository
-          #pragma mark
-
-          static PeerSubscriptionIncomingPtr create(
-                                                    IMessageQueuePtr queue,
-                                                    PublicationRepositoryPtr outer,
-                                                    PeerSourcePtr peerSource,
-                                                    UsePublicationMetaDataPtr subscriptionInfo
-                                                    );
-
-          // (duplicate) PUID getID() const;
-
-          void notifyUpdated(UsePublicationPtr publication);
-          void notifyGone(UsePublicationPtr publication);
-
-          void notifyUpdated(const CachedPublicationMap &cachedPublications);
-          void notifyGone(const CachedPublicationMap &publication);
-
-          IPublicationMetaDataPtr getSource() const;
-
-          void cancel();
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionIncoming => (internal)
-          #pragma mark
-
-          PUID getID() const {return mID;}
-          RecursiveLock &getLock() const;
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionIncoming => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          PeerSubscriptionIncomingWeakPtr mThisWeak;
-
-          PeerSourcePtr mPeerSource;
-          UsePublicationMetaDataPtr mSubscriptionInfo;
-        };
-
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark PublicationRepository::PeerSubscriptionOutgoing
-        #pragma mark
-
-        class PeerSubscriptionOutgoing : public MessageQueueAssociator,
-                                         public IPublicationSubscription,
-                                         public IMessageMonitorDelegate
-        {
-        public:
-          typedef IPublicationMetaData::SubscribeToRelationshipsMap SubscribeToRelationshipsMap;
-
-          friend class PublicationRepository;
-
-        protected:
-          PeerSubscriptionOutgoing(
-                                   IMessageQueuePtr queue,
-                                   PublicationRepositoryPtr outer,
-                                   IPublicationSubscriptionDelegatePtr delegate,
-                                   UsePublicationMetaDataPtr subscriptionInfo
-                                   );
-
-          void init();
-
-        public:
-          ~PeerSubscriptionOutgoing();
-
-          static PeerSubscriptionOutgoingPtr convert(IPublicationSubscriptionPtr subscription);
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionOutgoing => friend PublicationRepository
-          #pragma mark
-
-          static ElementPtr toDebug(PeerSubscriptionOutgoingPtr subscription);
-
-          static PeerSubscriptionOutgoingPtr create(
-                                                    IMessageQueuePtr queue,
-                                                    PublicationRepositoryPtr outer,
-                                                    IPublicationSubscriptionDelegatePtr delegate,
-                                                    UsePublicationMetaDataPtr subscriptionInfo
-                                                    );
-
-          // (duplicate) PUID getID() const;
-          // (duplicate) virtual void cancel();
-
-          // (duplicate) virtual IPublicationMetaDataPtr getSource() const;
-
-          void setMonitor(IMessageMonitorPtr monitor);
-          void notifyUpdated(UsePublicationMetaDataPtr metaData);
-
-        protected:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionOutgoing => IPublicationSubscription
-          #pragma mark
-
-          // (duplicate) virtual void cancel();
-
-          virtual PublicationSubscriptionStates getState() const;
-          virtual IPublicationMetaDataPtr getSource() const;
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionOutgoing => IMessageMonitorDelegate
-          #pragma mark
-
-          virtual bool handleMessageMonitorMessageReceived(
-                                                           IMessageMonitorPtr monitor,
-                                                           message::MessagePtr message
-                                                           );
-
-          virtual void onMessageMonitorTimedOut(IMessageMonitorPtr monitor);
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionOutgoing => (internal)
-          #pragma mark
-
-          PUID getID() const {return mID;}
-          RecursiveLock &getLock() const;
-          Log::Params log(const char *message) const;
-
-          virtual ElementPtr toDebug() const;
-
-          bool isPending() const {return PublicationSubscriptionState_Pending == mCurrentState;}
-          bool isEstablished() const {return PublicationSubscriptionState_Established == mCurrentState;}
-          bool isShuttingDown() const {return PublicationSubscriptionState_ShuttingDown == mCurrentState;}
-          bool isShutdown() const {return PublicationSubscriptionState_Shutdown == mCurrentState;}
-
-          void setState(PublicationSubscriptionStates state);
-
-          void cancel();
-
-        private:
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark PublicationRepository::PeerSubscriptionOutgoing => (data)
-          #pragma mark
-
-          PUID mID;
-          mutable RecursiveLock mBogusLock;
-          PublicationRepositoryWeakPtr mOuter;
-
-          PeerSubscriptionOutgoingWeakPtr mThisWeak;
-          PeerSubscriptionOutgoingPtr mGracefulShutdownReference;
-
-          IPublicationSubscriptionDelegatePtr mDelegate;
-
-          UsePublicationMetaDataPtr mSubscriptionInfo;
-
-          IMessageMonitorPtr mMonitor;
-          IMessageMonitorPtr mCancelMonitor;
-
-          bool mSucceeded;
-          WORD mErrorCode;
-          String mErrorReason;
-
-          PublicationSubscriptionStates mCurrentState;
-        };
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_CACHE
+#include <openpeer/stack/internal/stack_PublicationRepository_PeerCache.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_CACHE
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_PUBLISHER
+#include <openpeer/stack/internal/stack_PublicationRepository_Publisher.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_PUBLISHER
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_FETCHER
+#include <openpeer/stack/internal/stack_PublicationRepository_Fetcher.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_FETCHER
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_REMOVER
+#include <openpeer/stack/internal/stack_PublicationRepository_Remover.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_REMOVER
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_SUBSCRIPTION_LOCAL
+#include <openpeer/stack/internal/stack_PublicationRepository_SubscriptionLocal.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_SUBSCRIPTION_LOCAL
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_SUBSCRIPTION_INCOMING
+#include <openpeer/stack/internal/stack_PublicationRepository_PeerSubscriptionIncoming.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_SUBSCRIPTION_INCOMING
+
+#define OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_SUBSCRIPTION_OUTGOING
+#include <openpeer/stack/internal/stack_PublicationRepository_PeerSubscriptionOutgoing.h>
+#undef OPENPEER_STACK_PUBLICATION_REPOSITORY_PEER_SUBSCRIPTION_OUTGOING
 
       private:
         //---------------------------------------------------------------------
@@ -1131,7 +409,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLock;
         PublicationRepositoryWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;

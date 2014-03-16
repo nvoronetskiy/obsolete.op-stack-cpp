@@ -89,8 +89,6 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountFinder, ForAccountFinder)
 
-        virtual RecursiveLock &getLock() const = 0;
-
         virtual String getDomain() const = 0;
 
         virtual IPeerFilesPtr getPeerFiles() const = 0;
@@ -127,8 +125,6 @@ namespace openpeer
       interaction IAccountForAccountPeerLocation
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountPeerLocation, ForAccountPeerLocation)
-
-        virtual RecursiveLock &getLock() const = 0;
 
         virtual String getDomain() const = 0;
 
@@ -186,8 +182,6 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForMessageIncoming, ForMessageIncoming)
 
-        virtual RecursiveLock &getLock() const = 0;
-
         virtual bool send(
                           LocationPtr location,
                           MessagePtr response,
@@ -227,8 +221,6 @@ namespace openpeer
         virtual PeerPtr findExistingOrUse(PeerPtr peer) = 0;
         virtual void notifyDestroyed(Peer &peer) = 0;
 
-        virtual RecursiveLock &getLock() const = 0;
-
         virtual IPeer::PeerFindStates getPeerState(const String &peerURI) const = 0;
         virtual LocationListPtr getPeerLocations(
                                                  const String &peerURI,
@@ -250,8 +242,6 @@ namespace openpeer
 
         virtual void subscribe(PeerSubscriptionPtr subscription) = 0;
         virtual void notifyDestroyed(PeerSubscription &subscription) = 0;
-
-        virtual RecursiveLock &getLock() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -298,6 +288,7 @@ namespace openpeer
 
       class Account : public Noop,
                       public MessageQueueAssociator,
+                      public SharedRecursiveLock,
                       public IAccount,
                       public IAccountForAccountFinder,
                       public IAccountForFinderRelayChannel,
@@ -366,7 +357,11 @@ namespace openpeer
                 ServiceLockboxSessionPtr peerContactSession
                 );
         
-        Account(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        Account(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -417,8 +412,6 @@ namespace openpeer
         #pragma mark Account => IAccountForAccountFinder
         #pragma mark
 
-        // (duplicate) virtual RecursiveLock &getLock() const;
-
         virtual String getDomain() const;
 
         // (duplicate) virtual IPeerFilesPtr getPeerFiles() const;
@@ -439,8 +432,6 @@ namespace openpeer
         #pragma mark
         #pragma mark Account => IAccountForAccountPeerLocation
         #pragma mark
-
-        // (duplicate) virtual RecursiveLock &getLock() const;
 
         // (duplicate) virtual String getDomain() const;
 
@@ -482,8 +473,6 @@ namespace openpeer
         #pragma mark Account => IAccountForMessageIncoming
         #pragma mark
 
-        // (duplicate) virtual RecursiveLock &getLock() const;
-
         // (duplicate) virtual bool send(
         //                              LocationPtr location,
         //                              MessagePtr response,
@@ -507,8 +496,6 @@ namespace openpeer
         virtual PeerPtr findExistingOrUse(PeerPtr peer);
         virtual void notifyDestroyed(Peer &peer);
 
-        virtual RecursiveLock &getLock() const;
-
         virtual IPeer::PeerFindStates getPeerState(const String &peerURI) const;
         virtual LocationListPtr getPeerLocations(
                                                  const String &peerURI,
@@ -522,8 +509,6 @@ namespace openpeer
 
         virtual void subscribe(PeerSubscriptionPtr subscription);
         virtual void notifyDestroyed(PeerSubscription &subscription);
-
-        // (duplicate) virtual RecursiveLock &getLock() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -812,7 +797,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLock;
         AccountWeakPtr mThisWeak;
         AccountPtr mGracefulShutdownReference;
 
@@ -859,10 +843,10 @@ namespace openpeer
 
         PeerSubscriptionMap mPeerSubscriptions;
 
-        class PeersDB
+        class PeersDB : public SharedRecursiveLock
         {
         public:
-          PeersDB() {}
+          PeersDB() : SharedRecursiveLock(SharedRecursiveLock::create()) {}
 
           UsePeerPtr getLocal() const;
           void setLocal(UsePeerPtr peer);
@@ -882,16 +866,14 @@ namespace openpeer
           size_t size() const;
 
         protected:
-          mutable RecursiveLock mLock;
-
           UsePeerPtr mSelf;
           PeerMap mPeers;
         };
 
-        class LocationsDB
+        class LocationsDB : public SharedRecursiveLock
         {
         public:
-          LocationsDB() {}
+          LocationsDB() : SharedRecursiveLock(SharedRecursiveLock::create()) {}
 
           UseLocationPtr findExisting(
                                       AccountPtr account,
@@ -918,8 +900,6 @@ namespace openpeer
           size_t size() const;
 
         protected:
-          mutable RecursiveLock mLock;
-
           UseLocationPtr mSelf;
           UseLocationPtr mFinder;
 

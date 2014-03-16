@@ -132,6 +132,13 @@
 		00AF4E47171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4E41171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp */; };
 		00AF4E48171E40AD00DCA0A8 /* PeerServicesGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4E42171E40AD00DCA0A8 /* PeerServicesGetResult.cpp */; };
 		00C59C0B17AB4F3D0063A110 /* stack_FinderConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00C59C0A17AB4F3D0063A110 /* stack_FinderConnection.cpp */; };
+		00F28E0818D48867007E9FE4 /* stack_PublicationRepository_Fetcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0118D48867007E9FE4 /* stack_PublicationRepository_Fetcher.cpp */; };
+		00F28E0918D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0218D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp */; };
+		00F28E0A18D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0318D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp */; };
+		00F28E0B18D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0418D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp */; };
+		00F28E0C18D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0518D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp */; };
+		00F28E0D18D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0618D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp */; };
+		00F28E0E18D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -433,6 +440,20 @@
 		00C59C0817AB4F250063A110 /* stack_IFinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnection.h; sourceTree = "<group>"; };
 		00C59C0917AB4F250063A110 /* stack_IFinderConnectionRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnectionRelayChannel.h; sourceTree = "<group>"; };
 		00C59C0A17AB4F3D0063A110 /* stack_FinderConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderConnection.cpp; sourceTree = "<group>"; };
+		00F28DFA18D47CCA007E9FE4 /* stack_PublicationRepository_Fetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_Fetcher.h; sourceTree = "<group>"; };
+		00F28DFB18D47CCA007E9FE4 /* stack_PublicationRepository_PeerCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerCache.h; sourceTree = "<group>"; };
+		00F28DFC18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerSubscriptionIncoming.h; sourceTree = "<group>"; };
+		00F28DFD18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerSubscriptionOutgoing.h; sourceTree = "<group>"; };
+		00F28DFE18D47CCA007E9FE4 /* stack_PublicationRepository_Publisher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_Publisher.h; sourceTree = "<group>"; };
+		00F28DFF18D47CCA007E9FE4 /* stack_PublicationRepository_Remover.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_Remover.h; sourceTree = "<group>"; };
+		00F28E0018D47CCA007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_SubscriptionLocal.h; sourceTree = "<group>"; };
+		00F28E0118D48867007E9FE4 /* stack_PublicationRepository_Fetcher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_Fetcher.cpp; sourceTree = "<group>"; };
+		00F28E0218D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_PeerCache.cpp; sourceTree = "<group>"; };
+		00F28E0318D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_PeerSubscriptionIncoming.cpp; sourceTree = "<group>"; };
+		00F28E0418D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_PeerSubscriptionOutgoing.cpp; sourceTree = "<group>"; };
+		00F28E0518D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_Publisher.cpp; sourceTree = "<group>"; };
+		00F28E0618D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_Remover.cpp; sourceTree = "<group>"; };
+		00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_SubscriptionLocal.cpp; sourceTree = "<group>"; };
 		00FF149117AB4ED600F5DEB8 /* stack_FinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderConnection.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -592,6 +613,13 @@
 				0063BA1F16CA92CF00E6DB4D /* stack_Publication.cpp */,
 				0063BA2016CA92CF00E6DB4D /* stack_PublicationMetaData.cpp */,
 				0063BA2116CA92CF00E6DB4D /* stack_PublicationRepository.cpp */,
+				00F28E0218D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp */,
+				00F28E0118D48867007E9FE4 /* stack_PublicationRepository_Fetcher.cpp */,
+				00F28E0518D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp */,
+				00F28E0618D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp */,
+				00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */,
+				00F28E0318D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp */,
+				00F28E0418D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp */,
 				0063BA2416CA92CF00E6DB4D /* stack_ServiceCertificatesValidateQuery.cpp */,
 				0063BA2516CA92CF00E6DB4D /* stack_ServiceIdentitySession.cpp */,
 				00AF4DF2171E3DE300DCA0A8 /* stack_ServiceLockboxSession.cpp */,
@@ -635,6 +663,13 @@
 				0063BA4416CA92CF00E6DB4D /* stack_Publication.h */,
 				0063BA4516CA92CF00E6DB4D /* stack_PublicationMetaData.h */,
 				0063BA4616CA92CF00E6DB4D /* stack_PublicationRepository.h */,
+				00F28DFB18D47CCA007E9FE4 /* stack_PublicationRepository_PeerCache.h */,
+				00F28DFA18D47CCA007E9FE4 /* stack_PublicationRepository_Fetcher.h */,
+				00F28DFE18D47CCA007E9FE4 /* stack_PublicationRepository_Publisher.h */,
+				00F28DFF18D47CCA007E9FE4 /* stack_PublicationRepository_Remover.h */,
+				00F28E0018D47CCA007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.h */,
+				00F28DFC18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.h */,
+				00F28DFD18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.h */,
 				0063BA4916CA92CF00E6DB4D /* stack_ServiceCertificatesValidateQuery.h */,
 				0063BA4A16CA92CF00E6DB4D /* stack_ServiceIdentitySession.h */,
 				005F60B11756B04F00BC3DD6 /* stack_ServiceLockboxSession.h */,
@@ -1067,6 +1102,7 @@
 				0063BB6A16CA92D000E6DB4D /* stack.cpp in Sources */,
 				0063BB6B16CA92D000E6DB4D /* stack_Account.cpp in Sources */,
 				0063BB6C16CA92D000E6DB4D /* stack_AccountFinder.cpp in Sources */,
+				00F28E0B18D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp in Sources */,
 				0063BB6D16CA92D000E6DB4D /* stack_AccountPeerLocation.cpp in Sources */,
 				0063BB6E16CA92D000E6DB4D /* stack_BootstrappedNetwork.cpp in Sources */,
 				0063BB6F16CA92D000E6DB4D /* stack_BootstrappedNetworkManager.cpp in Sources */,
@@ -1079,8 +1115,10 @@
 				0063BB7516CA92D000E6DB4D /* stack_MessageMonitor.cpp in Sources */,
 				0063BB7616CA92D000E6DB4D /* stack_MessageMonitorManager.cpp in Sources */,
 				0063BB7716CA92D000E6DB4D /* stack_Peer.cpp in Sources */,
+				00F28E0E18D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp in Sources */,
 				0063BB7816CA92D000E6DB4D /* stack_PeerFilePrivate.cpp in Sources */,
 				0063BB7916CA92D000E6DB4D /* stack_PeerFilePublic.cpp in Sources */,
+				00F28E0C18D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp in Sources */,
 				0063BB7A16CA92D000E6DB4D /* stack_PeerFiles.cpp in Sources */,
 				0063BB7B16CA92D000E6DB4D /* stack_PeerSubscription.cpp in Sources */,
 				0063BB7C16CA92D000E6DB4D /* stack_Publication.cpp in Sources */,
@@ -1117,6 +1155,7 @@
 				0063BBA916CA92D000E6DB4D /* PeerDeleteRequest.cpp in Sources */,
 				0063BBAA16CA92D000E6DB4D /* PeerDeleteResult.cpp in Sources */,
 				0063BBAB16CA92D000E6DB4D /* PeerGetRequest.cpp in Sources */,
+				00F28E0918D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp in Sources */,
 				0063BBAC16CA92D000E6DB4D /* PeerGetResult.cpp in Sources */,
 				0063BBAD16CA92D000E6DB4D /* PeerPublishNotify.cpp in Sources */,
 				0063BBAF16CA92D000E6DB4D /* PeerPublishRequest.cpp in Sources */,
@@ -1145,6 +1184,7 @@
 				00AF4E02171E3E4A00DCA0A8 /* IdentityAccessCompleteNotify.cpp in Sources */,
 				00AF4E03171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateRequest.cpp in Sources */,
 				00AF4E04171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateResult.cpp in Sources */,
+				00F28E0D18D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp in Sources */,
 				00AF4E05171E3E4A00DCA0A8 /* IdentityAccessStartNotify.cpp in Sources */,
 				00AF4E07171E3E4A00DCA0A8 /* IdentityLookupUpdateRequest.cpp in Sources */,
 				00AF4E08171E3E4A00DCA0A8 /* IdentityLookupUpdateResult.cpp in Sources */,
@@ -1159,6 +1199,7 @@
 				00AF4E38171E3F3F00DCA0A8 /* LockboxIdentitiesUpdateRequest.cpp in Sources */,
 				00AF4E39171E3F3F00DCA0A8 /* LockboxIdentitiesUpdateResult.cpp in Sources */,
 				00AF4E3D171E3F3F00DCA0A8 /* MessageFactoryIdentityLockbox.cpp in Sources */,
+				00F28E0818D48867007E9FE4 /* stack_PublicationRepository_Fetcher.cpp in Sources */,
 				00AF4E46171E40AD00DCA0A8 /* MessageFactoryPeer.cpp in Sources */,
 				00AF4E47171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp in Sources */,
 				00AF4E48171E40AD00DCA0A8 /* PeerServicesGetResult.cpp in Sources */,
@@ -1186,6 +1227,7 @@
 				000CBEB017A2F75A0075E86C /* stack_FinderRelayChannel.cpp in Sources */,
 				00C59C0B17AB4F3D0063A110 /* stack_FinderConnection.cpp in Sources */,
 				0077F3B717AC1FDD009399FD /* ChannelMapRequest.cpp in Sources */,
+				00F28E0A18D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp in Sources */,
 				0077F3B817AC1FDD009399FD /* ChannelMapResult.cpp in Sources */,
 				0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */,
 				005E6C1C17AD66C1002D8335 /* ChannelMapNotify.cpp in Sources */,

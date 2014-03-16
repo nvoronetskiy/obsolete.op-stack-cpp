@@ -125,6 +125,7 @@ namespace openpeer
 
       class AccountFinder : public Noop,
                             public MessageQueueAssociator,
+                            public SharedRecursiveLock,
                             public IAccountFinderForAccount,
                             public IWakeDelegate,
                             public IFinderConnectionDelegate,
@@ -152,7 +153,11 @@ namespace openpeer
                       AccountPtr outer
                       );
         
-        AccountFinder(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        AccountFinder(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -302,8 +307,6 @@ namespace openpeer
         bool isShuttingDown() const {return IAccount::AccountState_ShuttingDown == mCurrentState;}
         bool isShutdown() const     {return IAccount::AccountState_Shutdown == mCurrentState;}
 
-        RecursiveLock &getLock() const;
-
         void setTimeout(Time expires);
 
         Log::Params log(const char *message) const;
@@ -326,7 +329,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mBogusLock;
 
         AccountStates mCurrentState;
 

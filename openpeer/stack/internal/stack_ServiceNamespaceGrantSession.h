@@ -159,6 +159,7 @@ namespace openpeer
 
       class ServiceNamespaceGrantSession : public Noop,
                                            public zsLib::MessageQueueAssociator,
+                                           public SharedRecursiveLock,
                                            public IServiceNamespaceGrantSession,
                                            public IMessageSource,
                                            public IServiceNamespaceGrantSessionForServices,
@@ -195,7 +196,11 @@ namespace openpeer
                                      const char *grantID
                                      );
 
-        ServiceNamespaceGrantSession(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        ServiceNamespaceGrantSession(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -289,8 +294,6 @@ namespace openpeer
 
         void notifyQueryGone(PUID queryID);
 
-        // (duplicate) RecursiveLock &getLock() const;
-
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark ServiceNamespaceGrantSession => friend class Wait
@@ -303,8 +306,6 @@ namespace openpeer
         #pragma mark
         #pragma mark ServiceNamespaceGrantSession => (internal)
         #pragma mark
-
-        RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
@@ -338,7 +339,8 @@ namespace openpeer
         #pragma mark
 
       public:
-        class Wait : public IServiceNamespaceGrantSessionWait
+        class Wait : public SharedRecursiveLock,
+                     public IServiceNamespaceGrantSessionWait
         {
         public:
           friend class ServiceNamespaceGrantSession;
@@ -370,8 +372,7 @@ namespace openpeer
           // (duplicate) virtual PUID getID() const;
 
         public:
-          PUID mID;
-          RecursiveLock mLock;
+          AutoPUID mID;
           ServiceNamespaceGrantSessionPtr mOuter;
         };
 
@@ -381,7 +382,8 @@ namespace openpeer
         #pragma mark
 
       public:
-        class Query : public IServiceNamespaceGrantSessionQuery
+        class Query : public SharedRecursiveLock,
+                      public IServiceNamespaceGrantSessionQuery
         {
         public:
           friend class ServiceNamespaceGrantSession;
@@ -436,13 +438,10 @@ namespace openpeer
           #pragma mark ServiceNamespaceGrantSession::Query => (internal)
           #pragma mark
 
-          RecursiveLock &getLock() const;
-
           Log::Params log(const char *message) const;
 
         public:
-          mutable RecursiveLock mBogusLock;
-          PUID mID;
+          AutoPUID mID;
           QueryWeakPtr mThisWeak;
           ServiceNamespaceGrantSessionWeakPtr mOuter;
 
@@ -460,8 +459,7 @@ namespace openpeer
         #pragma mark ServiceNamespaceGrantSession => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mLock;
+        AutoPUID mID;
         ServiceNamespaceGrantSessionWeakPtr mThisWeak;
 
         IServiceNamespaceGrantSessionDelegatePtr mDelegate;

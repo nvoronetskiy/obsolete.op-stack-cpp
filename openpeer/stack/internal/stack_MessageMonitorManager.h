@@ -102,8 +102,6 @@ namespace openpeer
                                           message::MessagePtr message,
                                           SentViaObjectID sentViaObjectID
                                           ) = 0;
-
-        virtual RecursiveLock &getLock() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -116,6 +114,7 @@ namespace openpeer
 
       class MessageMonitorManager : public Noop,
                                     public MessageQueueAssociator,
+                                    public SharedRecursiveLock,
                                     public IMessageMonitorManagerForMessageMonitor,
                                     public IWakeDelegate,
                                     public ITimerDelegate
@@ -148,12 +147,18 @@ namespace openpeer
       protected:
         MessageMonitorManager();
         
-        MessageMonitorManager(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        MessageMonitorManager(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         static MessageMonitorManagerPtr create();
 
       public:
         ~MessageMonitorManager();
+
+        static MessageMonitorManagerPtr convert(ForMessageMonitorPtr object);
 
       protected:
         //---------------------------------------------------------------------
@@ -173,8 +178,6 @@ namespace openpeer
                                           message::MessagePtr message,
                                           SentViaObjectID sentViaObjectID
                                           );
-
-        // (duplicate) virtual RecursiveLock &getLock() const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -218,8 +221,6 @@ namespace openpeer
 
         Log::Params log(const char *message) const;
         static Log::Params slog(const char *message);
-
-        virtual RecursiveLock &getLock() const {return mLock;}
 
       protected:
         //---------------------------------------------------------------------

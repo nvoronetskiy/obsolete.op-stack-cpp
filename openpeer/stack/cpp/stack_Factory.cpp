@@ -506,7 +506,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr IPeerFactory::create(
-                                   IAccountPtr account,
+                                   AccountPtr account,
                                    IPeerFilePublicPtr peerFilePublic
                                    )
       {
@@ -516,7 +516,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr IPeerFactory::getFromSignature(
-                                             IAccountPtr account,
+                                             AccountPtr account,
                                              ElementPtr signedElement
                                              )
       {
@@ -702,7 +702,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr IPeerSubscriptionFactory::subscribeAll(
-                                                                 IAccountPtr account,
+                                                                 AccountPtr account,
                                                                  IPeerSubscriptionDelegatePtr delegate
                                                                  )
       {

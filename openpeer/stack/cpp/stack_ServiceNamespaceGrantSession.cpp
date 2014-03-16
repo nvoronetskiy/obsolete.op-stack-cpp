@@ -92,7 +92,7 @@ namespace openpeer
                                                                  const char *grantID
                                                                  ) :
         zsLib::MessageQueueAssociator(queue),
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mDelegate(delegate ? IServiceNamespaceGrantSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceNamespaceGrantSessionDelegatePtr()),
         mCurrentState(SessionState_Pending),
         mLastError(0),
@@ -174,7 +174,7 @@ namespace openpeer
                                                                                          String *outLastErrorReason
                                                                                          ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
@@ -184,14 +184,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServiceNamespaceGrantSession::getGrantID() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mGrantID;
       }
       
       //-----------------------------------------------------------------------
       String ServiceNamespaceGrantSession::getInnerBrowserWindowFrameURL() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mBootstrappedNetwork) {
           ZS_LOG_WARNING(Debug, log("inner browser window frame url is not ready"))
           return String();
@@ -208,7 +208,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("notified browser window made visible"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         mBrowserWindowVisible = true;
         step();
       }
@@ -218,7 +218,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("notified browser window closed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         mBrowserWindowClosed = true;
         step();
       }
@@ -226,7 +226,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       DocumentPtr ServiceNamespaceGrantSession::getNextMessageForInnerBrowerWindowFrame()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (mPendingMessagesToDeliver.size() < 1) {
           ZS_LOG_WARNING(Trace, log("no messages to deliver to inner browser window frame"))
           return DocumentPtr();
@@ -289,7 +289,7 @@ namespace openpeer
           return;
         }
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("cannot handle message when shutdown"))
@@ -394,7 +394,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("cancel"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("already shutdown"))
@@ -452,7 +452,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServiceNamespaceGrantSessionWaitPtr ServiceNamespaceGrantSession::obtainWaitToProceed(IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         {
           if (isShutdown()) {
@@ -498,7 +498,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate), challengeInfo, namespaces);
 
         if (isShutdown()) {
@@ -563,7 +563,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on wake"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -580,7 +580,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("bootstrapper reported complete"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -597,7 +597,7 @@ namespace openpeer
       {
         ZS_LOG_WARNING(Debug, log("removing query") + ZS_PARAM("query ID", queryID))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         {
           QueryMap::iterator found = mQueriesInProcess.find(queryID);
           if (found != mQueriesInProcess.end()) {
@@ -628,7 +628,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::notifyWaitGone(PUID waitID)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("removing wait") + ZS_PARAM("wait ID", waitID) + ZS_PARAM("total waits", mTotalWaits))
 
@@ -664,12 +664,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &ServiceNamespaceGrantSession::getLock() const
-      {
-        return mLock;
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params ServiceNamespaceGrantSession::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("ServiceNamespaceGrantSession");
@@ -686,7 +680,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr ServiceNamespaceGrantSession::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("ServiceNamespaceGrantSession");
 
@@ -1120,7 +1114,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSession::Wait::Wait(ServiceNamespaceGrantSessionPtr outer) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(*outer),
         mOuter(outer)
       {
       }
@@ -1145,7 +1139,7 @@ namespace openpeer
 
         ServiceNamespaceGrantSessionPtr outer;
         {
-          AutoRecursiveLock lock(mLock);
+          AutoRecursiveLock lock(*this);
           outer = mOuter;
           mOuter.reset();
         }
@@ -1185,7 +1179,7 @@ namespace openpeer
                                                  const NamespaceGrantChallengeInfo &challengeInfo,
                                                  const NamespaceInfoMap &namespaces
                                                  ) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(*outer),
         mOuter(outer),
         mDelegate(delegate),
         mChallengeInfo(challengeInfo),
@@ -1216,7 +1210,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("cancel"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         notifyComplete(ElementPtr());
 
@@ -1233,14 +1227,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceNamespaceGrantSession::Query::isComplete() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return (bool)(!mDelegate);
       }
 
       //-----------------------------------------------------------------------
       ElementPtr ServiceNamespaceGrantSession::Query::getNamespaceGrantChallengeBundle() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mNamespaceGrantChallengeBundleEl;
       }
 
@@ -1270,7 +1264,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("notify complete") + ZS_PARAM("bundle", (bool)bundleEl))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mNamespaceGrantChallengeBundleEl = bundleEl;
 
@@ -1295,14 +1289,6 @@ namespace openpeer
       #pragma mark
       #pragma mark ServiceNamespaceGrantSession::Query => (internal)
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      RecursiveLock &ServiceNamespaceGrantSession::Query::getLock() const
-      {
-        ServiceNamespaceGrantSessionPtr outer = mOuter.lock();
-        if (!outer) return mBogusLock;
-        return outer->getLock();
-      }
 
       //-----------------------------------------------------------------------
       Log::Params ServiceNamespaceGrantSession::Query::log(const char *message) const

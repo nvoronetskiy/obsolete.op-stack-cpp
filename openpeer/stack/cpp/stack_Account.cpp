@@ -165,6 +165,7 @@ namespace openpeer
                        ServiceLockboxSessionPtr lockboxSession
                        ) :
         MessageQueueAssociator(queue),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mLocationID(IHelper::randomString(32)),
         mCurrentState(IAccount::AccountState_Pending),
         mLastError(0),
@@ -181,7 +182,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("inited"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
@@ -287,7 +288,7 @@ namespace openpeer
                                                 String *outLastErrorReason
                                                 ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(debug("get account state"))
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
@@ -297,7 +298,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServiceLockboxSessionPtr Account::getLockboxSession() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return ServiceLockboxSession::convert(mLockboxSession);
       }
 
@@ -307,7 +308,7 @@ namespace openpeer
                                   IICESocket::STUNServerInfoList &outSTUNServers
                                   ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         outTURNServers.clear();
         outSTUNServers.clear();
@@ -349,7 +350,7 @@ namespace openpeer
       void Account::shutdown()
       {
         ZS_LOG_DEBUG(log("requested to shutdown"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         cancel();
       }
 
@@ -364,7 +365,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String Account::getDomain() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_THROW_BAD_STATE_IF(!mLockboxSession)
 
@@ -419,7 +420,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IICESocketPtr Account::getSocket() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mSocket;
       }
 
@@ -496,7 +497,7 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationInfoPtr info = LocationInfo::create();
         info->mLocation = Location::convert(location);
@@ -585,7 +586,7 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (location == getLocationForLocal()) {
           return toLocationConnectionState(getState());
@@ -634,7 +635,7 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (location == getLocationForLocal()) {
           ZS_LOG_ERROR(Detail, log("attempting to send message to self") + UseLocation::toDebug(location))
@@ -682,7 +683,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("received hint about peer location") + UseLocation::toDebug(location))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if ((isShutdown()) ||
             (isShuttingDown())) {
           ZS_LOG_WARNING(Detail, log("hint about new location when shutting down/shutdown is ignored") + UseLocation::toDebug(location))
@@ -743,7 +744,7 @@ namespace openpeer
       {
         UseMessageIncoming &messageIncoming = inMessageIncoming;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationPtr location = messageIncoming.getLocation();
         MessagePtr message = messageIncoming.getMessage();
@@ -773,7 +774,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeerFilesPtr Account::getPeerFiles() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mLockboxSession) {
           ZS_LOG_WARNING(Detail, debug("peer files are not available on account as peer contact session does not exist"))
@@ -818,15 +819,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      RecursiveLock &Account::getLock() const
-      {
-        return mLock;
-      }
-
-      //-----------------------------------------------------------------------
       IPeer::PeerFindStates Account::getPeerState(const String &peerURI) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         PeerInfoMap::const_iterator found = mPeerInfos.find(peerURI);
         if (found == mPeerInfos.end()) {
           ZS_LOG_DEBUG(log("no state to get as peer URI was not found") + ZS_PARAM("peer URI", peerURI))
@@ -843,7 +838,7 @@ namespace openpeer
                                                 bool includeOnlyConnectedLocations
                                                 ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationListPtr result(new LocationList);
 
@@ -880,7 +875,7 @@ namespace openpeer
       {
         UsePeerSubscriptionPtr subscription = inSubscription;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
@@ -990,7 +985,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr Account::getRepository() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mRepository) return PublicationRepositoryPtr();
         return PublicationRepository::convert(mRepository);
       }
@@ -1012,7 +1007,7 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!finder)
 
         ZS_LOG_DETAIL(log("received notification finder state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountFinder::toDebug(finder))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("notification of finder state changed after shutdown"))
@@ -1052,7 +1047,7 @@ namespace openpeer
                                                    MessagePtr message
                                                    )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!message) {
           ZS_LOG_DEBUG(log("ignoring incoming message as message is NULL"))
@@ -1134,7 +1129,7 @@ namespace openpeer
 
         // scope: check to see if relay channel can be used
         {
-          AutoRecursiveLock lock(getLock());
+          AutoRecursiveLock lock(*this);
           
           if ((isShutdown()) ||
               (isShuttingDown())) {
@@ -1262,7 +1257,7 @@ namespace openpeer
       {
         UseAccountPeerLocationPtr peerLocation = inPeerLocation;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
@@ -1304,7 +1299,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IKeyGeneratorPtr Account::takeOverRSAGeyGeneration()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         IKeyGeneratorPtr result = mRSAKeyGenerator;
 
@@ -1326,7 +1321,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onLookupCompleted(IDNSQueryPtr query)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (query != mFinderDNSLookup) {
           ZS_LOG_DEBUG(log("notified about obsolete DNS query"))
           return;
@@ -1371,7 +1366,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on ice socket state changed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1380,7 +1375,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on ice socket candidates changed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1400,7 +1395,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("peer location find received result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("received response after already shutdown"))
@@ -1499,7 +1494,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("peer location find received error result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("received response after already shutdown"))
@@ -1527,7 +1522,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("finders get received result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (monitor != mFindersGetMonitor) {
           ZS_LOG_WARNING(Detail, log("received finders get result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
@@ -1557,7 +1552,7 @@ namespace openpeer
       {
         ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebug(result))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (monitor != mFindersGetMonitor) {
           ZS_LOG_WARNING(Detail, log("received finders get error result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
@@ -1584,7 +1579,7 @@ namespace openpeer
       void Account::onWake()
       {
         ZS_LOG_DEBUG(log("on wake"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1600,7 +1595,7 @@ namespace openpeer
       void Account::onTimer(TimerPtr timer)
       {
         ZS_LOG_TRACE(log("tick"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (timer != mTimer) {
           ZS_LOG_WARNING(Detail, log("received timer notification on obsolete timer (probably okay)") + ZS_PARAM("timer ID", timer->getID()))
@@ -1624,7 +1619,7 @@ namespace openpeer
                                                      IBackgroundingNotifierPtr notifier
                                                      )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("going to background"))
 
@@ -1638,7 +1633,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("going to background now"))
 
@@ -1648,7 +1643,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("returning from background"))
 
@@ -1671,7 +1666,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on key generated") + ZS_PARAM("generator id", generator->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
       
@@ -1700,7 +1695,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr Account::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("stack::Account");
 
@@ -1765,7 +1760,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(debug("cancel called"))
 
-        AutoRecursiveLock lock(getLock());  // just in case
+        AutoRecursiveLock lock(*this);  // just in case
 
         if (isShutdown()) return;
 
@@ -2944,7 +2939,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::handleFindRequestComplete(IMessageMonitorPtr monitor)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
           PeerInfoPtr peerInfo = (*iter).second;
@@ -3131,14 +3126,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Account::UsePeerPtr Account::PeersDB::getLocal() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mSelf;
       }
-      
+
       //-----------------------------------------------------------------------
       void Account::PeersDB::setLocal(UsePeerPtr peer)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mSelf = peer;
       }
 
@@ -3148,7 +3143,7 @@ namespace openpeer
                                                          const String &peerURI
                                                          ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         PeerMap::const_iterator found = mPeers.find(peerURI);
 
         if (found == mPeers.end()) {
@@ -3174,7 +3169,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!peer)
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         String peerURI = peer->getPeerURI();
 
@@ -3197,7 +3192,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::PeersDB::remove(const String &peerURI)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         PeerMap::iterator found = mPeers.find(peerURI);
         if (found == mPeers.end()) return false;
@@ -3209,7 +3204,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       size_t Account::PeersDB::size() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mPeers.size();
       }
 
@@ -3228,7 +3223,7 @@ namespace openpeer
                                                                  const String &locationID
                                                                  ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         PeerLocationIDPair index(locationID, peerURI);
 
@@ -3253,7 +3248,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         String locationID = location->getLocationID();
         String peerURI = location->getPeerURI();
@@ -3279,28 +3274,28 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Account::UseLocationPtr Account::LocationsDB::getLocal() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mSelf;
       }
 
       //-----------------------------------------------------------------------
       Account::UseLocationPtr Account::LocationsDB::getFinder() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mFinder;
       }
 
       //-----------------------------------------------------------------------
       void Account::LocationsDB::setLocal(UseLocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mSelf = location;
       }
 
       //-----------------------------------------------------------------------
       void Account::LocationsDB::setFinder(UseLocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mFinder = location;
       }
 
@@ -3310,7 +3305,7 @@ namespace openpeer
                                         const String &peerURI
                                         )
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         PeerLocationIDPair index(locationID, peerURI);
 
@@ -3324,7 +3319,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       size_t Account::LocationsDB::size() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mLocations.size();
       }
 

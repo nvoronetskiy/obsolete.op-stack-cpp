@@ -86,11 +86,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageIncoming::MessageIncoming(
-                                       UseAccountPtr account,
+                                       AccountPtr account,
                                        LocationPtr location,
                                        message::MessagePtr message
                                        ) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(*account),
         mAccount(account),
         mLocation(location),
         mMessage(message),
@@ -172,7 +172,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         UseAccountPtr account = mAccount.lock();
         if (!account) {
@@ -220,14 +220,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &MessageIncoming::getLock() const
-      {
-        UseAccountPtr account = mAccount.lock();
-        if (!account) return mBogusLock;
-        return account->getLock();
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params MessageIncoming::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("MessageIncoming");
@@ -244,7 +236,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr MessageIncoming::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ElementPtr resultEl = Element::create("MessageIncoming");
 
         IHelper::debugAppend(resultEl, "id", mID);
