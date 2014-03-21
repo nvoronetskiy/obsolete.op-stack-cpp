@@ -299,6 +299,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      ElementPtr IMessageHelper::createElement(
+                                               const IdentityInfo &identity,
+                                               bool forcePriorityWeightOutput
+                                               )
+      {
+        return internal::MessageHelper::createElement(identity, forcePriorityWeightOutput);
+      }
+
+      //-----------------------------------------------------------------------
       TextPtr IMessageHelper::createText(const String &textVal)
       {
         TextPtr tmpTxt = Text::create();
@@ -361,6 +370,12 @@ namespace openpeer
                                                 )
       {
         return internal::MessageHelper::createCandidate(elem, encryptionPassphrase);
+      }
+
+      //-----------------------------------------------------------------------
+      IdentityInfo IMessageHelper::createIdentity(ElementPtr elem)
+      {
+        return internal::MessageHelper::createIdentity(elem);
       }
 
       namespace internal

@@ -38,6 +38,7 @@
 #include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 #include <openpeer/services/IHelper.h>
 
+#include <zsLib/RegEx.h>
 #include <zsLib/XML.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
@@ -161,15 +162,11 @@ namespace openpeer
           ZS_LOG_TRACE(log("notified of updated publication") + publication->toDebug())
 
           String name = publication->getName();
-          String path = mSubscriptionInfo->getName();
+          String regex = mSubscriptionInfo->getName();
 
-          if (name.length() < path.length()) {
-            ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
-            continue;
-          }
-
-          if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-            ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
+          zsLib::RegEx e(regex);
+          if (!e.hasMatch(name)) {
+            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
             continue;
           }
 
@@ -232,14 +229,11 @@ namespace openpeer
           const UsePublicationPtr &publication = (*iter).second;
 
           String name = publication->getName();
-          String path = mSubscriptionInfo->getName();
+          String regex = mSubscriptionInfo->getName();
 
-          if (name.length() < path.length()) {
-            ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
-            continue;
-          }
-          if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-            ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
+          zsLib::RegEx e(regex);
+          if (!e.hasMatch(name)) {
+            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
             continue;
           }
 

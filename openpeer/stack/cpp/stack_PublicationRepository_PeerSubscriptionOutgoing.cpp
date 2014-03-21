@@ -41,6 +41,7 @@
 
 #include <openpeer/services/IHelper.h>
 
+#include <zsLib/RegEx.h>
 #include <zsLib/XML.h>
 
 
@@ -143,15 +144,11 @@ namespace openpeer
         }
 
         String name = metaData->getName();
-        String path = mSubscriptionInfo->getName();
+        String regex = mSubscriptionInfo->getName();
 
-        if (name.length() < path.length()) {
-          ZS_LOG_TRACE(log("name is too short for subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
-          return;
-        }
-
-        if (0 != strncmp(name.c_str(), path.c_str(), path.length())) {
-          ZS_LOG_TRACE(log("name does not match subscription path") + ZS_PARAM("name", name) + ZS_PARAM("path", path))
+        zsLib::RegEx e(regex);
+        if (!e.hasMatch(name)) {
+          ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
           return;
         }
 

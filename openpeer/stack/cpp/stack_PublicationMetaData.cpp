@@ -456,6 +456,8 @@ namespace openpeer
           if (compare < 0) {goto result_true;}
           if (compare > 0) {goto result_false;}
 
+          ignoreLineage = ignoreLineage || (0 == getLineage()) || (0 == metaData->getLineage());
+
           if (!ignoreLineage) {
             if (getLineage() < metaData->getLineage()) {reason = "lineage"; goto result_true;}
             if (getLineage() > metaData->getLineage()) {reason = "lineage"; goto result_false;}
@@ -607,5 +609,34 @@ namespace openpeer
       }
       return "UNDEFINED";
     }
+
+    //-------------------------------------------------------------------------
+    IPublicationMetaDataPtr IPublicationMetaData::create(
+                                                         ULONG version,
+                                                         ULONG baseVersion,
+                                                         ULONG lineage,
+                                                         ILocationPtr creatorLocation,
+                                                         const char *name,
+                                                         const char *mimeType,
+                                                         Encodings encoding,
+                                                         const PublishToRelationshipsMap &relationships,
+                                                         ILocationPtr publishedLocation,
+                                                         Time expires
+                                                         )
+    {
+      return internal::IPublicationMetaDataFactory::singleton().creatPublicationMetaData(
+                                                                                         version,
+                                                                                         baseVersion,
+                                                                                         lineage,
+                                                                                         internal::Location::convert(creatorLocation),
+                                                                                         name,
+                                                                                         mimeType,
+                                                                                         encoding,
+                                                                                         relationships,
+                                                                                         internal::Location::convert(publishedLocation),
+                                                                                         expires
+                                                                                         );
+    }
+
   }
 }
