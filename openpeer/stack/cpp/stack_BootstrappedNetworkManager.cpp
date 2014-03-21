@@ -139,7 +139,7 @@ namespace openpeer
           return BootstrappedNetwork::convert(result);
         }
 
-        ZS_LOG_DEBUG(log("using new bootstrapped network obejct") + ZS_PARAM("domain", domain))
+        ZS_LOG_DEBUG(log("using new bootstrapped network object") + ZS_PARAM("domain", domain))
 
         mBootstrappedNetworks[domain] = network;
         return BootstrappedNetwork::convert(network);
