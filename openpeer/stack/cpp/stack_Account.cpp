@@ -1619,9 +1619,9 @@ namespace openpeer
                                                      IBackgroundingNotifierPtr notifier
                                                      )
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("going to background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = true;
 
@@ -1633,9 +1633,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("going to background now"))
+
+        AutoRecursiveLock lock(*this);
 
         mBackgroundingNotifier.reset();
       }
@@ -1643,14 +1643,25 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("returning from background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = false;
         mBackgroundingNotifier.reset();
 
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("application will quit"))
+
+        AutoRecursiveLock lock(*this);
+
+        setError(IHTTP::HTTPStatusCode_ClientClosedRequest, "application is quitting");
+        cancel();
       }
 
       //-----------------------------------------------------------------------
