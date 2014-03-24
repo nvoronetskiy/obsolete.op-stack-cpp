@@ -55,6 +55,8 @@
 
 #include <map>
 
+#define OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE "openpeer/stack/backgrounding-phase-account"
+
 namespace openpeer
 {
   namespace stack
@@ -634,11 +636,16 @@ namespace openpeer
         #pragma mark Account => IBackgroundingDelegate
         #pragma mark
 
-        virtual void onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier);
+        virtual void onBackgroundingGoingToBackground(
+                                                      IBackgroundingSubscriptionPtr subscription,
+                                                      IBackgroundingNotifierPtr notifier
+                                                      );
 
-        virtual void onBackgroundingGoingToBackgroundNow();
+        virtual void onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription);
 
-        virtual void onBackgroundingReturningFromBackground();
+        virtual void onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription);
+
+        virtual void onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription);
 
         //---------------------------------------------------------------------
         #pragma mark

@@ -184,7 +184,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock());
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
         mLockboxSession->attach(mThisWeak.lock());
 
@@ -1614,11 +1614,14 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier)
+      void Account::onBackgroundingGoingToBackground(
+                                                     IBackgroundingSubscriptionPtr subscription,
+                                                     IBackgroundingNotifierPtr notifier
+                                                     )
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("going to background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = true;
 
@@ -1628,26 +1631,37 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackgroundNow()
+      void Account::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("going to background now"))
+
+        AutoRecursiveLock lock(*this);
 
         mBackgroundingNotifier.reset();
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingReturningFromBackground()
+      void Account::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(*this);
-
         ZS_LOG_DEBUG(log("returning from background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = false;
         mBackgroundingNotifier.reset();
 
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("application will quit"))
+
+        AutoRecursiveLock lock(*this);
+
+        setError(IHTTP::HTTPStatusCode_ClientClosedRequest, "application is quitting");
+        cancel();
       }
 
       //-----------------------------------------------------------------------
