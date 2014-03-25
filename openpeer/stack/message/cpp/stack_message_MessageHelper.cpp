@@ -600,10 +600,6 @@ namespace openpeer
             identityEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("vprofile", identity.mVProfile));
           }
 
-          if (!identity.mProfile.isEmpty()) {
-            identityEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("profile", identity.mProfile));
-          }
-
           if (identity.mAvatars.size() > 0) {
             ElementPtr avatarsEl = Element::create("avatars");
             for (IdentityInfo::AvatarList::const_iterator iter = identity.mAvatars.begin(); iter != identity.mAvatars.end(); ++iter)
