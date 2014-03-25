@@ -2989,6 +2989,11 @@ namespace openpeer
                                         ILocation::LocationConnectionStates state
                                         )
       {
+        if (!location) {
+          ZS_LOG_WARNING(Detail, log("location was NULL thus cannot notify about location state") + ZS_PARAM("state", ILocation::toString(state)))
+          return;
+        }
+
         for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
         {
           PeerSubscriptionMap::iterator current = iter;
