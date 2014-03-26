@@ -75,7 +75,8 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      BootstrappedNetworkManager::BootstrappedNetworkManager()
+      BootstrappedNetworkManager::BootstrappedNetworkManager() :
+        SharedRecursiveLock(SharedRecursiveLock::create())
       {
         ZS_LOG_DETAIL(log("created"))
       }
@@ -114,8 +115,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkManagerPtr BootstrappedNetworkManager::singleton()
       {
-        static BootstrappedNetworkManagerPtr global = IBootstrappedNetworkManagerFactory::singleton().createBootstrappedNetworkManager();
-        return global;
+        static SingletonLazySharedPtr<BootstrappedNetworkManager> singleton(IBootstrappedNetworkManagerFactory::singleton().createBootstrappedNetworkManager());
+        BootstrappedNetworkManagerPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
 
       //-----------------------------------------------------------------------
@@ -123,7 +128,7 @@ namespace openpeer
       {
         UseBootstrappedNetworkPtr network = inNetwork;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         String domain = network->getDomain();
 
@@ -134,7 +139,7 @@ namespace openpeer
           return BootstrappedNetwork::convert(result);
         }
 
-        ZS_LOG_DEBUG(log("using new bootstrapped network obejct") + ZS_PARAM("domain", domain))
+        ZS_LOG_DEBUG(log("using new bootstrapped network object") + ZS_PARAM("domain", domain))
 
         mBootstrappedNetworks[domain] = network;
         return BootstrappedNetwork::convert(network);
@@ -151,7 +156,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!network)
         ZS_THROW_INVALID_ARGUMENT_IF(!inDelegate)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(UseStack::queueDelegate(), inDelegate);
 
@@ -161,7 +166,7 @@ namespace openpeer
           try {
             delegate->onBootstrappedNetworkPreparationCompleted(BootstrappedNetwork::convert(network));
           } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
-            ZS_LOG_DEBUG(log("delegate gone"))
+            ZS_LOG_WARNING(Detail, log("delegate gone"))
           }
           return;
         }
@@ -174,7 +179,7 @@ namespace openpeer
       {
         UseBootstrappedNetworkPtr network = inNetwork;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         for (PendingDelegateList::iterator iter = mPendingDelegates.begin(); iter != mPendingDelegates.end(); )
         {
           PendingDelegateList::iterator current = iter;
@@ -208,6 +213,12 @@ namespace openpeer
         ElementPtr objectEl = Element::create("BootstrappedNetworkManager");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params BootstrappedNetworkManager::slog(const char *message)
+      {
+        return Log::Params(message, "BootstrappedNetworkManager");
       }
     }
   }

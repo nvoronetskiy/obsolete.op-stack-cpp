@@ -88,7 +88,7 @@ namespace openpeer
       #pragma mark FinderConnectionManager
       #pragma mark
 
-      class FinderConnectionManager
+      class FinderConnectionManager : public SharedRecursiveLock
       {
       public:
         friend class FinderConnection;
@@ -98,7 +98,8 @@ namespace openpeer
 
       protected:
         //---------------------------------------------------------------------
-        FinderConnectionManager()
+        FinderConnectionManager() :
+          SharedRecursiveLock(SharedRecursiveLock::create())
         {
         }
 
@@ -118,9 +119,12 @@ namespace openpeer
         //---------------------------------------------------------------------
         static FinderConnectionManagerPtr singleton()
         {
-          AutoRecursiveLock lock(IHelper::getGlobalLock());
-          static FinderConnectionManagerPtr singleton = create();
-          return singleton;
+          static SingletonLazySharedPtr<FinderConnectionManager> singleton(create());
+          FinderConnectionManagerPtr result = singleton.singleton();
+          if (!result) {
+            ZS_LOG_WARNING(Detail, slog("singleton gone"))
+          }
+          return result;
         }
 
       protected:
@@ -129,7 +133,7 @@ namespace openpeer
         #pragma mark FinderConnectionManager => friend FinderConnection
         #pragma mark
 
-        // (duplicate) virtual RecursiveLock &getLock() const;
+        // (duplicate) virtual RecursiveLock &*this const;
 
         //---------------------------------------------------------------------
         FinderConnectionPtr find(const IPAddress &remoteIP)
@@ -158,6 +162,11 @@ namespace openpeer
           mRelays.erase(found);
         }
 
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "stack::FinderConnectionManager");
+        }
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -165,7 +174,7 @@ namespace openpeer
         #pragma mark
 
         //---------------------------------------------------------------------
-        virtual RecursiveLock &getLock() const {return mLock;}
+        virtual const SharedRecursiveLock &getLock() const {return *this;}
 
       protected:
         //---------------------------------------------------------------------
@@ -173,7 +182,6 @@ namespace openpeer
         #pragma mark FinderConnectionManager => (data)
         #pragma mark
 
-        mutable RecursiveLock mLock;
         FinderConnectionManagerWeakPtr mThisWeak;
 
         FinderConnectionMap mRelays;
@@ -189,10 +197,13 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       FinderConnection::FinderConnection(
+                                         FinderConnectionManagerPtr outer,
                                          IMessageQueuePtr queue,
                                          IPAddress remoteFinderIP
                                          ) :
         zsLib::MessageQueueAssociator(queue),
+        SharedRecursiveLock(outer ? *outer : SharedRecursiveLock(SharedRecursiveLock::create())),
+        mOuter(outer),
         mCurrentState(SessionState_Pending),
         mRemoteIP(remoteFinderIP),
         mLastSentData(zsLib::now()),
@@ -208,7 +219,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::init()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mWireReceiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock())->getReader();
         mWireSendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr())->getWriter();
@@ -268,23 +279,24 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
+        RecursiveLock bogusLock;
+
         FinderConnectionManagerPtr manager = FinderConnectionManager::singleton();
 
-        AutoRecursiveLock lock(manager->getLock());
-
-        FinderConnectionPtr existing = manager->find(remoteFinderIP);
+        FinderConnectionPtr existing = manager ? manager->find(remoteFinderIP) : FinderConnectionPtr();
 
         if (existing) {
           ZS_LOG_DEBUG(existing->log("reusing existing connection"))
           return existing->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
         }
 
-        FinderConnectionPtr pThis(new FinderConnection(UseStack::queueStack(), remoteFinderIP));
+        FinderConnectionPtr pThis(new FinderConnection(manager, UseStack::queueStack(), remoteFinderIP));
         pThis->mThisWeak = pThis;
-        pThis->mOuter = manager;
         pThis->init();
 
-        manager->add(remoteFinderIP, pThis);
+        if (manager) {
+          manager->add(remoteFinderIP, pThis);
+        }
 
         return pThis->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
       }
@@ -317,10 +329,10 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
-        FinderConnectionPtr pThis(new FinderConnection(UseStack::queueStack(), remoteFinderIP));
+        FinderConnectionPtr pThis(new FinderConnection(FinderConnectionManagerPtr(), UseStack::queueStack(), remoteFinderIP));
         pThis->mThisWeak = pThis;
 
-        AutoRecursiveLock lock(pThis->getLock());
+        AutoRecursiveLock lock(*pThis);
 
         if (delegate) {
           pThis->mDefaultSubscription = pThis->subscribe(delegate);
@@ -339,7 +351,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("subscribe called"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!originalDelegate) return mDefaultSubscription;
 
@@ -373,7 +385,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("cancel called"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("already shutdown"))
@@ -434,7 +446,7 @@ namespace openpeer
                                                                  String *outLastErrorReason
                                                                  ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
@@ -459,7 +471,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("accept called"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("cannot accept channel as already shutdown"))
@@ -513,7 +525,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::onTimer(TimerPtr timer)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (timer != mPingTimer) {
           ZS_LOG_WARNING(Detail, log("notified about an obsolete timer") + ZS_PARAM("timer ID", timer->getID()))
@@ -543,7 +555,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::onWake()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("on wake"))
         step();
       }
@@ -562,7 +574,7 @@ namespace openpeer
                                                         ITCPMessaging::SessionStates state
                                                         )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (ITCPMessaging::SessionState_Connected == state) {
           ZS_LOG_TRACE(log("enabling TCP keep-alive"))
           messaging->enableKeepAlive();
@@ -581,7 +593,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::onTransportStreamWriterReady(ITransportStreamWriterPtr writer)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("on transport stream write ready"))
 
@@ -621,7 +633,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::onTransportStreamReaderReady(ITransportStreamReaderPtr reader)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("on transport stream read ready"))
         step();
       }
@@ -640,7 +652,7 @@ namespace openpeer
                                                                         IFinderConnectionRelayChannel::SessionStates state
                                                                         )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("notified master relay channel state changed") + ZS_PARAM("channel", channel->getID()))
         step();
       }
@@ -659,7 +671,7 @@ namespace openpeer
                                                                 ChannelMapResultPtr result
                                                                 )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mMapRequestChannelMonitor) {
           ZS_LOG_WARNING(Detail, log("notified about obsolete monitor"))
           return false;
@@ -699,7 +711,7 @@ namespace openpeer
                                                                      message::MessageResultPtr result
                                                                      )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mMapRequestChannelMonitor) {
           ZS_LOG_WARNING(Detail, log("notified about obsolete monitor"))
           return false;
@@ -748,7 +760,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::notifyOuterWriterReady()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("notify outer writer ready"))
 
@@ -765,7 +777,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!buffer)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("cannot send data while shutdown"))
@@ -785,7 +797,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::notifyDestroyed(ChannelNumber channelNumber)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("channel is destroyed") + ZS_PARAM("channel number", channelNumber))
 
@@ -822,14 +834,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      RecursiveLock &FinderConnection::getLock() const
-      {
-        FinderConnectionManagerPtr outer = mOuter.lock();
-        if (!outer) return mLocalLock;
-        return outer->getLock();
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params FinderConnection::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("FinderConnection");
@@ -846,7 +850,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr FinderConnection::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("FinderConnection");
 
@@ -1350,6 +1354,7 @@ namespace openpeer
                                          ChannelNumber channelNumber
                                          ) :
         MessageQueueAssociator(queue),
+        SharedRecursiveLock(*outer),
         mOuter(outer),
         mCurrentState(SessionState_Pending),
         mOuterReceiveStream(receiveStream->getWriter()),
@@ -1365,7 +1370,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::Channel::init()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mOuterReceiveStreamSubscription = mOuterReceiveStream->subscribe(mThisWeak.lock());
         mOuterSendStreamSubscription = mOuterSendStream->subscribe(mThisWeak.lock());
@@ -1439,7 +1444,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::Channel::cancel()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("cancel called"))
 
         if (isShutdown()) return;
@@ -1468,7 +1473,7 @@ namespace openpeer
                                                                                        String *outLastErrorReason
                                                                                        ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
@@ -1485,7 +1490,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::Channel::onTransportStreamWriterReady(ITransportStreamWriterPtr writer)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("notified write ready"))
         if (writer == mOuterReceiveStream) {
           if (!mOuterStreamNotifiedReady) {
@@ -1546,7 +1551,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void FinderConnection::Channel::onTransportStreamReaderReady(ITransportStreamReaderPtr reader)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("notified read ready"))
         step();
       }
@@ -1582,7 +1587,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("monitoring incoming finder relay channel for shutdown (to ensure related channel gets shutdown too)") + ZS_PARAM("finder relay channel", relayChannel->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         mRelayChannelSubscription = relayChannel->subscribe(mThisWeak.lock());
       }
 
@@ -1626,14 +1631,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &FinderConnection::Channel::getLock() const
-      {
-        FinderConnectionPtr outer = mOuter.lock();
-        if (!outer) return mBogusLock;
-        return outer->getLock();
-      }
-      
-      //-----------------------------------------------------------------------
       Log::Params FinderConnection::Channel::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("FinderConnection::Channel");
@@ -1650,7 +1647,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr FinderConnection::Channel::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("FinderConnection::Channel");
 

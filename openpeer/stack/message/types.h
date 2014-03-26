@@ -51,6 +51,8 @@ namespace openpeer
       using zsLib::XML::TextPtr;
       using zsLib::XML::Attribute;
       using zsLib::XML::AttributePtr;
+      using zsLib::Singleton;
+      using zsLib::SingletonLazySharedPtr;
 
       using boost::dynamic_pointer_cast;
 

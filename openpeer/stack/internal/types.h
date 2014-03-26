@@ -61,6 +61,9 @@ namespace openpeer
       using zsLib::AutoWORD;
       using zsLib::AutoULONG;
       using zsLib::AutoPUID;
+      using zsLib::PrivateGlobalLock;
+      using zsLib::Singleton;
+      using zsLib::SingletonLazySharedPtr;
 
       ZS_DECLARE_USING_PTR(zsLib::XML, Element)
       ZS_DECLARE_USING_PTR(zsLib::XML, Document)
@@ -85,14 +88,15 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(services, IICESocketSession)
       ZS_DECLARE_USING_PTR(services, IICESocketSessionDelegate)
       ZS_DECLARE_USING_PTR(services, IICESocketSessionSubscription)
+      ZS_DECLARE_USING_PTR(services, IHTTP)
+      ZS_DECLARE_USING_PTR(services, IHTTPQuery)
+      ZS_DECLARE_USING_PTR(services, IHTTPQueryDelegate)
+      ZS_DECLARE_USING_PTR(services, IMessageQueueManager)
       ZS_DECLARE_USING_PTR(services, IRUDPTransport)
       ZS_DECLARE_USING_PTR(services, IRUDPTransportDelegate)
       ZS_DECLARE_USING_PTR(services, IRUDPTransportSubscription)
       ZS_DECLARE_USING_PTR(services, IRUDPMessaging)
       ZS_DECLARE_USING_PTR(services, IRUDPMessagingDelegate)
-      ZS_DECLARE_USING_PTR(services, IHTTP)
-      ZS_DECLARE_USING_PTR(services, IHTTPQuery)
-      ZS_DECLARE_USING_PTR(services, IHTTPQueryDelegate)
       ZS_DECLARE_USING_PTR(services, ITransportStream)
       ZS_DECLARE_USING_PTR(services, ITCPMessaging)
       ZS_DECLARE_USING_PTR(services, ITCPMessagingDelegate)

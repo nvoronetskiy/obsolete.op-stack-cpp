@@ -174,6 +174,7 @@ namespace openpeer
       #pragma mark
 
       class Peer : public Noop,
+                   public SharedRecursiveLock,
                    public IPeer,
                    public IPeerForAccount,
                    public IPeerForLocation,
@@ -194,12 +195,15 @@ namespace openpeer
 
       protected:
         Peer(
-             UseAccountPtr account,
+             AccountPtr account,
              IPeerFilePublicPtr peerFilePublic,
              const String &peerURI
              );
         
-        Peer(Noop) : Noop(true) {};
+        Peer(Noop) :
+          Noop(true),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -234,17 +238,17 @@ namespace openpeer
         static ElementPtr toDebug(IPeerPtr peer);
 
         static PeerPtr create(
-                              IAccountPtr account,
+                              AccountPtr account,
                               IPeerFilePublicPtr peerFilePublic
                               );
 
         // (duplicate) static IPeerPtr create(
-        //                                    IAccountPtr account,
+        //                                    AccountPtr account,
         //                                    const char *peerURI
         //                                    );
 
         static PeerPtr getFromSignature(
-                                        IAccountPtr account,
+                                        AccountPtr account,
                                         ElementPtr signedElement
                                         );
 
@@ -342,8 +346,7 @@ namespace openpeer
         #pragma mark Peer => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mBogusLock;
+        AutoPUID mID;
         PeerWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;
@@ -366,11 +369,11 @@ namespace openpeer
         static IPeerFactory &singleton();
 
         virtual PeerPtr create(
-                               IAccountPtr account,
+                               AccountPtr account,
                                IPeerFilePublicPtr peerFilePublic
                                );
         virtual PeerPtr getFromSignature(
-                                         IAccountPtr account,
+                                         AccountPtr account,
                                          ElementPtr signedElement
                                          );
         virtual PeerPtr create(

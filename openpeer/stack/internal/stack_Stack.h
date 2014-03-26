@@ -34,6 +34,9 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/IStack.h>
 
+#define OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY "openpeer/stack/stack-thread-priority"
+#define OPENPEER_STACK_SETTING_STACK_KEY_GENERATION_THREAD_PRIORITY "openpeer/stack/key-generation-thread-priority"
+
 namespace openpeer
 {
   namespace stack
@@ -107,9 +110,9 @@ namespace openpeer
         virtual void getAgentInfo(AgentInfo &result) const;
 
         virtual IMessageQueuePtr queueDelegate() const;
-        virtual IMessageQueuePtr queueStack() const;
-        virtual IMessageQueuePtr queueServices() const;
-        virtual IMessageQueuePtr queueKeyGeneration() const;
+        virtual IMessageQueuePtr queueStack();
+        virtual IMessageQueuePtr queueServices();
+        virtual IMessageQueuePtr queueKeyGeneration();
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -117,6 +120,7 @@ namespace openpeer
         #pragma mark
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
         void verifySettingIsSet(const char *settingName);
 
       protected:
@@ -127,11 +131,11 @@ namespace openpeer
 
         PUID mID;
         StackWeakPtr mThisWeak;
-        RecursiveLock mLock;
+        mutable RecursiveLock mLock;
 
+        IMessageQueuePtr mDelegateQueue;
         IMessageQueuePtr mStackQueue;
         IMessageQueuePtr mServicesQueue;
-        IMessageQueuePtr mDelegateQueue;
         IMessageQueuePtr mKeyGenerationQueue;
       };
     }

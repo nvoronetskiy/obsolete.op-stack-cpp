@@ -56,6 +56,8 @@ namespace openpeer
       typedef IStackForInternal UseStack;
       using services::IHelper;
 
+      ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor::ForMessageMonitor, ForMessageMonitor)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -68,6 +70,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountFinder::notifyMessageSendFailed(message::MessagePtr message)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSendFailed(message);
       }
 
@@ -75,6 +78,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountFinder::notifyMessageSenderObjectGone(PUID objectID)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSenderObjectGone(objectID);
       }
 
@@ -90,6 +94,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountPeerLocation::notifyMessageSendFailed(message::MessagePtr message)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSendFailed(message);
       }
 
@@ -97,6 +102,7 @@ namespace openpeer
       void IMessageMonitorManagerForAccountPeerLocation::notifyMessageSenderObjectGone(PUID objectID)
       {
         MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
         manager->notifyMessageSenderObjectGone(objectID);
       }
 
@@ -109,7 +115,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      IMessageMonitorManagerForMessageMonitor::ForMessageMonitorPtr IMessageMonitorManagerForMessageMonitor::singleton()
+      ForMessageMonitorPtr IMessageMonitorManagerForMessageMonitor::singleton()
       {
         return MessageMonitorManager::singleton();
       }
@@ -124,7 +130,8 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageMonitorManager::MessageMonitorManager() :
-        MessageQueueAssociator(UseStack::queueStack())
+        MessageQueueAssociator(UseStack::queueStack()),
+        SharedRecursiveLock(SharedRecursiveLock::create())
       {
         ZS_LOG_DETAIL(log("created"))
       }
@@ -155,6 +162,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      MessageMonitorManagerPtr MessageMonitorManager::convert(ForMessageMonitorPtr object)
+      {
+        return dynamic_pointer_cast<MessageMonitorManager>(object);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -165,8 +178,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorManagerPtr MessageMonitorManager::singleton()
       {
-        static MessageMonitorManagerPtr global = IMessageMonitorManagerFactory::singleton().createMessageMonitorManager();
-        return global;
+        static SingletonLazySharedPtr<MessageMonitorManager> singleton(IMessageMonitorManagerFactory::singleton().createMessageMonitorManager());
+        MessageMonitorManagerPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
 
       //-----------------------------------------------------------------------
@@ -300,7 +317,7 @@ namespace openpeer
 
         if (0 == sentViaObjectID) return;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         String messageID = message->messageID();
 
@@ -330,7 +347,7 @@ namespace openpeer
       {
         ZS_LOG_WARNING(Detail, log("notify message send failure") + ZS_PARAM("message", message->messageID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mPendingFailures.push_back(message);
 
@@ -342,7 +359,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("notify sender object gone") + ZS_PARAM("sender object id", objectID))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mPendingGone.push_back(objectID);
 
@@ -362,7 +379,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("on wake"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         // scope: handle message send failures
         {
@@ -444,7 +461,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("on timer"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         Time tick = zsLib::now();
 
@@ -488,9 +505,15 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Log::Params MessageMonitorManager::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("MessageMonitorManager");
+        ElementPtr objectEl = Element::create("stack::MessageMonitorManager");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params MessageMonitorManager::slog(const char *message)
+      {
+        return Log::Params(message, "stack::MessageMonitorManager");
       }
     }
   }

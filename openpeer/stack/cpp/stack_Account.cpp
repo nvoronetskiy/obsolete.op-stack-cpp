@@ -165,6 +165,7 @@ namespace openpeer
                        ServiceLockboxSessionPtr lockboxSession
                        ) :
         MessageQueueAssociator(queue),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mLocationID(IHelper::randomString(32)),
         mCurrentState(IAccount::AccountState_Pending),
         mLastError(0),
@@ -181,9 +182,9 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("inited"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
-        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock());
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
         mLockboxSession->attach(mThisWeak.lock());
 
@@ -287,7 +288,7 @@ namespace openpeer
                                                 String *outLastErrorReason
                                                 ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(debug("get account state"))
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
@@ -297,7 +298,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServiceLockboxSessionPtr Account::getLockboxSession() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return ServiceLockboxSession::convert(mLockboxSession);
       }
 
@@ -307,7 +308,7 @@ namespace openpeer
                                   IICESocket::STUNServerInfoList &outSTUNServers
                                   ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         outTURNServers.clear();
         outSTUNServers.clear();
@@ -349,7 +350,7 @@ namespace openpeer
       void Account::shutdown()
       {
         ZS_LOG_DEBUG(log("requested to shutdown"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         cancel();
       }
 
@@ -364,7 +365,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String Account::getDomain() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_THROW_BAD_STATE_IF(!mLockboxSession)
 
@@ -419,7 +420,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IICESocketPtr Account::getSocket() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mSocket;
       }
 
@@ -437,65 +438,25 @@ namespace openpeer
                                         const String &locationID
                                         ) const
       {
-        AutoRecursiveLock lock(getLock());
-
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::const_iterator found = mLocations.find(index);
-
-        if (found == mLocations.end()) {
-          ZS_LOG_TRACE(log("did not find existing location") + ZS_PARAM("peer uri", peerURI) + ZS_PARAM("location id", locationID))
-          return LocationPtr();
-        }
-
-        UseLocationPtr location = (*found).second.lock();
-
-        ZS_LOG_TRACE(log("found existing location") + UseLocation::toDebug(location))
-        return Location::convert(location);
+        return Location::convert(mLocationsDB.findExisting(mThisWeak.lock(), peerURI, locationID));
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::findExistingOrUse(LocationPtr inLocation)
       {
-        UseLocationPtr location = inLocation;
-
-        ZS_THROW_INVALID_ARGUMENT_IF(!location)
-
-        AutoRecursiveLock lock(getLock());
-
-        String locationID = location->getLocationID();
-        String peerURI = location->getPeerURI();
-
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::iterator found = mLocations.find(index);
-
-        if (found != mLocations.end()) {
-          UseLocationPtr existingLocation = (*found).second.lock();
-          if (existingLocation) {
-            ZS_LOG_DEBUG(log("found existing location to use") + UseLocation::toDebug(existingLocation))
-            return Location::convert(existingLocation);
-          }
-          ZS_LOG_WARNING(Detail, log("existing location in map is now gone") + UseLocation::toDebug(location))
-        }
-
-        ZS_LOG_DEBUG(log("using newly created location") + UseLocation::toDebug(location))
-        mLocations[index] = location;
-        return Location::convert(location);
+        return Location::convert(mLocationsDB.findExistingOrUse(mThisWeak.lock(), inLocation));
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::getLocationForLocal() const
       {
-        AutoRecursiveLock lock(getLock());
-        return Location::convert(mSelfLocation);
+        return Location::convert(mLocationsDB.getLocal());
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Account::getLocationForFinder() const
       {
-        AutoRecursiveLock lock(getLock());
-        return Location::convert(mFinderLocation);
+        return Location::convert(mLocationsDB.getFinder());
       }
 
       //-----------------------------------------------------------------------
@@ -503,38 +464,30 @@ namespace openpeer
       {
         UseLocation &location = inLocation;
 
-        AutoRecursiveLock lock(getLock());
-
         String locationID = location.getLocationID();
         String peerURI = location.getPeerURI();
 
-        PeerLocationIDPair index(locationID, peerURI);
-
-        LocationMap::iterator found = mLocations.find(index);
-        if (found == mLocations.end()) {
+        if (mLocationsDB.remove(locationID, peerURI)) {
+          ZS_LOG_DEBUG(log("notified location is destroyed") + location.toDebug())
+        } else {
           ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + location.toDebug())
-          return;
         }
-
-        ZS_LOG_DEBUG(log("notified location is destroyed") + location.toDebug())
-        mLocations.erase(found);
       }
 
       //-----------------------------------------------------------------------
       const String &Account::getLocationID() const
       {
-        AutoRecursiveLock lock(getLock());
         return mLocationID;
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Account::getPeerForLocal() const
       {
-        AutoRecursiveLock lock(getLock());
-        if (!mSelfPeer) {
+        UsePeerPtr peer = mPeersDB.getLocal();
+        if (!peer) {
           ZS_LOG_WARNING(Detail, log("obtained peer for local before peer was ready"))
         }
-        return Peer::convert(mSelfPeer);
+        return Peer::convert(peer);
       }
 
       //-----------------------------------------------------------------------
@@ -544,12 +497,12 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationInfoPtr info = LocationInfo::create();
         info->mLocation = Location::convert(location);
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           if (mSocket) {
             get(info->mCandidatesFinal) = IICESocket::ICESocketState_Ready == mSocket->getState();
 
@@ -584,7 +537,7 @@ namespace openpeer
           return info;
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             ZS_LOG_WARNING(Detail, log("obtaining finder info before finder created"))
             return info;
@@ -633,13 +586,13 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           return toLocationConnectionState(getState());
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             if ((isShuttingDown()) ||
                 (isShutdown())) return ILocation::LocationConnectionState_Disconnected;
@@ -682,14 +635,14 @@ namespace openpeer
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
-        if (location == mSelfLocation) {
+        if (location == getLocationForLocal()) {
           ZS_LOG_ERROR(Detail, log("attempting to send message to self") + UseLocation::toDebug(location))
           return false;
         }
 
-        if (location == mFinderLocation) {
+        if (location == getLocationForFinder()) {
           if (!mFinder) {
             ZS_LOG_WARNING(Detail, log("attempting to send to finder") + UseLocation::toDebug(location))
             return false;
@@ -730,7 +683,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("received hint about peer location") + UseLocation::toDebug(location))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if ((isShutdown()) ||
             (isShuttingDown())) {
           ZS_LOG_WARNING(Detail, log("hint about new location when shutting down/shutdown is ignored") + UseLocation::toDebug(location))
@@ -791,7 +744,7 @@ namespace openpeer
       {
         UseMessageIncoming &messageIncoming = inMessageIncoming;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationPtr location = messageIncoming.getLocation();
         MessagePtr message = messageIncoming.getMessage();
@@ -821,7 +774,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPeerFilesPtr Account::getPeerFiles() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!mLockboxSession) {
           ZS_LOG_WARNING(Detail, debug("peer files are not available on account as peer contact session does not exist"))
@@ -842,50 +795,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Account::findExisting(const String &peerURI) const
       {
-        AutoRecursiveLock lock(getLock());
-
-        PeerMap::const_iterator found = mPeers.find(peerURI);
-
-        if (found == mPeers.end()) {
-          ZS_LOG_TRACE(log("did not find existing peer") + ZS_PARAM("uri", peerURI))
-          return PeerPtr();
-        }
-
-        UsePeerPtr existingPeer = (*found).second.lock();
-        if (!existingPeer) {
-          ZS_LOG_WARNING(Debug, log("existing peer object was destroyed") + ZS_PARAM("uri", peerURI))
-          return PeerPtr();
-        }
-
-        ZS_LOG_TRACE(log("found existing peer") + UsePeer::toDebug(existingPeer))
-        return Peer::convert(existingPeer);
+        return Peer::convert(mPeersDB.findExisting(mThisWeak.lock(), peerURI));
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Account::findExistingOrUse(PeerPtr inPeer)
       {
-        UsePeerPtr peer = inPeer;
-
-        ZS_THROW_INVALID_ARGUMENT_IF(!peer)
-
-        AutoRecursiveLock lock(getLock());
-
-        String peerURI = peer->getPeerURI();
-
-        PeerMap::iterator found = mPeers.find(peerURI);
-
-        if (found != mPeers.end()) {
-          UsePeerPtr existingPeer = (*found).second.lock();
-          if (existingPeer) {
-            ZS_LOG_DEBUG(log("found existing peer to use") + UsePeer::toDebug(existingPeer))
-            return Peer::convert(existingPeer);
-          }
-          ZS_LOG_WARNING(Detail, log("existing peer in map is now gone") + ZS_PARAM("peer URI", peerURI))
-        }
-
-        ZS_LOG_DEBUG(log("using newly created peer") + UsePeer::toDebug(peer))
-        mPeers[peerURI] = peer;
-        return Peer::convert(peer);
+        return Peer::convert(mPeersDB.findExistingOrUse(mThisWeak.lock(), inPeer));
       }
 
       //-----------------------------------------------------------------------
@@ -893,38 +809,24 @@ namespace openpeer
       {
         UsePeer &peer = inPeer;
 
-        AutoRecursiveLock lock(getLock());
-
         String peerURI = peer.getPeerURI();
 
-        PeerMap::iterator found = mPeers.find(peerURI);
-        if (found == mPeers.end()) {
+        if (mPeersDB.remove(peerURI)) {
+          ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.toDebug())
+        } else {
           ZS_LOG_WARNING(Detail, log("existing location in map was already gone (probably okay)") + peer.toDebug())
-          return;
         }
-
-        ZS_LOG_DEBUG(log("notified peer is destroyed") + peer.toDebug())
-        mPeers.erase(found);
-      }
-
-      //-----------------------------------------------------------------------
-      RecursiveLock &Account::getLock() const
-      {
-        return mLock;
       }
 
       //-----------------------------------------------------------------------
       IPeer::PeerFindStates Account::getPeerState(const String &peerURI) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         PeerInfoMap::const_iterator found = mPeerInfos.find(peerURI);
         if (found == mPeerInfos.end()) {
           ZS_LOG_DEBUG(log("no state to get as peer URI was not found") + ZS_PARAM("peer URI", peerURI))
           return IPeer::PeerFindState_Idle;
         }
-
-#define WARNING_HERE 1
-#define WARNING_HERE 2
 
         PeerInfoPtr peerInfo = (*found).second;
         return peerInfo->mCurrentFindState;
@@ -936,7 +838,7 @@ namespace openpeer
                                                 bool includeOnlyConnectedLocations
                                                 ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         LocationListPtr result(new LocationList);
 
@@ -973,7 +875,7 @@ namespace openpeer
       {
         UsePeerSubscriptionPtr subscription = inSubscription;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
@@ -985,9 +887,11 @@ namespace openpeer
 
         mPeerSubscriptions[subscription->getID()] = subscription;
 
+        UseLocationPtr finderLocation = mLocationsDB.getFinder();
+
         if ((mFinder) &&
-            (mFinderLocation)) {
-          subscription->notifyLocationConnectionStateChanged(Location::convert(mFinderLocation), toLocationConnectionState(mFinder->getState()));
+            (finderLocation)) {
+          subscription->notifyLocationConnectionStateChanged(Location::convert(finderLocation), toLocationConnectionState(mFinder->getState()));
         }
 
         for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
@@ -1081,7 +985,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr Account::getRepository() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mRepository) return PublicationRepositoryPtr();
         return PublicationRepository::convert(mRepository);
       }
@@ -1103,7 +1007,7 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!finder)
 
         ZS_LOG_DETAIL(log("received notification finder state changed") + ZS_PARAM("notified state", toString(state)) + UseAccountFinder::toDebug(finder))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("notification of finder state changed after shutdown"))
@@ -1115,7 +1019,7 @@ namespace openpeer
           return;
         }
 
-        notifySubscriptions(mFinderLocation, toLocationConnectionState(state));
+        notifySubscriptions(mLocationsDB.getFinder(), toLocationConnectionState(state));
 
         if (IAccount::AccountState_Ready == state) {
           mLastRetryFinderAfterDuration = Seconds(OPENPEER_STACK_ACCOUNT_FINDER_STARTING_RETRY_AFTER_IN_SECONDS);
@@ -1143,7 +1047,7 @@ namespace openpeer
                                                    MessagePtr message
                                                    )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!message) {
           ZS_LOG_DEBUG(log("ignoring incoming message as message is NULL"))
@@ -1202,7 +1106,7 @@ namespace openpeer
           return;
         }
 
-        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(mFinderLocation), message);
+        UseMessageIncomingPtr messageIncoming = UseMessageIncoming::create(mThisWeak.lock(), Location::convert(mLocationsDB.getFinder()), message);
         notifySubscriptions(messageIncoming);
       }
 
@@ -1225,7 +1129,7 @@ namespace openpeer
 
         // scope: check to see if relay channel can be used
         {
-          AutoRecursiveLock lock(getLock());
+          AutoRecursiveLock lock(*this);
           
           if ((isShutdown()) ||
               (isShuttingDown())) {
@@ -1353,7 +1257,7 @@ namespace openpeer
       {
         UseAccountPeerLocationPtr peerLocation = inPeerLocation;
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
@@ -1388,14 +1292,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::notifyServiceLockboxSessionStateChanged()
       {
-        AutoRecursiveLock lock(getLock());
+        // WARNING: DO NOT LOCK HERE
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
       IKeyGeneratorPtr Account::takeOverRSAGeyGeneration()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         IKeyGeneratorPtr result = mRSAKeyGenerator;
 
@@ -1417,7 +1321,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::onLookupCompleted(IDNSQueryPtr query)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (query != mFinderDNSLookup) {
           ZS_LOG_DEBUG(log("notified about obsolete DNS query"))
           return;
@@ -1462,7 +1366,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on ice socket state changed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1471,7 +1375,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on ice socket candidates changed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1491,7 +1395,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("peer location find received result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("received response after already shutdown"))
@@ -1590,7 +1494,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("peer location find received error result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("received response after already shutdown"))
@@ -1618,7 +1522,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("finders get received result") + IMessageMonitor::toDebug(monitor))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (monitor != mFindersGetMonitor) {
           ZS_LOG_WARNING(Detail, log("received finders get result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
@@ -1648,7 +1552,7 @@ namespace openpeer
       {
         ZS_LOG_ERROR(Detail, log("finders get failed, will try later") + Message::toDebug(result))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (monitor != mFindersGetMonitor) {
           ZS_LOG_WARNING(Detail, log("received finders get error result on obsolete monitor") + ZS_PARAM("received from", IMessageMonitor::toDebug(monitor)) + ZS_PARAM("expecting", IMessageMonitor::toDebug(mFindersGetMonitor)))
@@ -1675,7 +1579,7 @@ namespace openpeer
       void Account::onWake()
       {
         ZS_LOG_DEBUG(log("on wake"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1691,7 +1595,7 @@ namespace openpeer
       void Account::onTimer(TimerPtr timer)
       {
         ZS_LOG_TRACE(log("tick"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (timer != mTimer) {
           ZS_LOG_WARNING(Detail, log("received timer notification on obsolete timer (probably okay)") + ZS_PARAM("timer ID", timer->getID()))
@@ -1710,11 +1614,14 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackground(IBackgroundingNotifierPtr notifier)
+      void Account::onBackgroundingGoingToBackground(
+                                                     IBackgroundingSubscriptionPtr subscription,
+                                                     IBackgroundingNotifierPtr notifier
+                                                     )
       {
-        AutoRecursiveLock lock(getLock());
-
         ZS_LOG_DEBUG(log("going to background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = true;
 
@@ -1724,26 +1631,37 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingGoingToBackgroundNow()
+      void Account::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(getLock());
-
         ZS_LOG_DEBUG(log("going to background now"))
+
+        AutoRecursiveLock lock(*this);
 
         mBackgroundingNotifier.reset();
       }
 
       //-----------------------------------------------------------------------
-      void Account::onBackgroundingReturningFromBackground()
+      void Account::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
       {
-        AutoRecursiveLock lock(getLock());
-
         ZS_LOG_DEBUG(log("returning from background"))
+
+        AutoRecursiveLock lock(*this);
 
         get(mBackgroundingEnabled) = false;
         mBackgroundingNotifier.reset();
 
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("application will quit"))
+
+        AutoRecursiveLock lock(*this);
+
+        setError(IHTTP::HTTPStatusCode_ClientClosedRequest, "application is quitting");
+        cancel();
       }
 
       //-----------------------------------------------------------------------
@@ -1759,7 +1677,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on key generated") + ZS_PARAM("generator id", generator->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
       
@@ -1788,7 +1706,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr Account::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("stack::Account");
 
@@ -1815,9 +1733,9 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "ice socket id", mSocket ? mSocket->getID() : 0);
 
         IHelper::debugAppend(resultEl, "location id", mLocationID);
-        IHelper::debugAppend(resultEl, "self peer", UsePeer::toDebug(mSelfPeer));
-        IHelper::debugAppend(resultEl, "self location", UseLocation::toDebug(mSelfLocation));
-        IHelper::debugAppend(resultEl, "finder location", UseLocation::toDebug(mFinderLocation));
+        IHelper::debugAppend(resultEl, "self peer", UsePeer::toDebug(mPeersDB.getLocal()));
+        IHelper::debugAppend(resultEl, "self location", UseLocation::toDebug(mLocationsDB.getLocal()));
+        IHelper::debugAppend(resultEl, "finder location", UseLocation::toDebug(mLocationsDB.getFinder()));
 
         IHelper::debugAppend(resultEl, "repository id", mRepository ? mRepository->getID() : 0);
 
@@ -1841,9 +1759,9 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "subscribers", mPeerSubscriptions.size());
 
-        IHelper::debugAppend(resultEl, "peer infos", mPeers.size());
+        IHelper::debugAppend(resultEl, "peer infos", mPeersDB.size());
 
-        IHelper::debugAppend(resultEl, "locations", mLocations.size());
+        IHelper::debugAppend(resultEl, "locations", mLocationsDB.size());
 
         return resultEl;
       }
@@ -1853,7 +1771,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(debug("cancel called"))
 
-        AutoRecursiveLock lock(getLock());  // just in case
+        AutoRecursiveLock lock(*this);  // just in case
 
         if (isShutdown()) return;
 
@@ -1878,12 +1796,19 @@ namespace openpeer
 
         // scope: kill all the connection subscriptions
         {
-          for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+          for (PeerSubscriptionMap::iterator iter_doNotUse = mPeerSubscriptions.begin(); iter_doNotUse != mPeerSubscriptions.end(); )
           {
-            PeerSubscriptionMap::iterator current = iter;
-            ++iter;
+            PeerSubscriptionMap::iterator current = iter_doNotUse;
+            ++iter_doNotUse;
 
+            PUID subscriptionID = (*current).first;
             UsePeerSubscriptionPtr subscriber = (*current).second.lock();
+
+            if (!subscriber) {
+              ZS_LOG_WARNING(Trace, log("peer subscription already gone thus removing (likely okay)") + ZS_PARAM("subscriber", subscriptionID))
+              mPeerSubscriptions.erase(current);
+              continue;
+            }
             subscriber->notifyShutdown();
           }
         }
@@ -2169,10 +2094,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::stepLocations()
       {
-        if (mSelfPeer) {
+        if (mPeersDB.getLocal()) {
           ZS_LOG_TRACE(log("already have a self peer"))
-          ZS_THROW_BAD_STATE_IF(!mSelfLocation)
-          ZS_THROW_BAD_STATE_IF(!mFinderLocation)
+          ZS_THROW_BAD_STATE_IF(!mLocationsDB.getLocal())
+          ZS_THROW_BAD_STATE_IF(!mLocationsDB.getFinder())
           return true;
         }
 
@@ -2192,9 +2117,9 @@ namespace openpeer
         ZS_THROW_BAD_STATE_IF(!peerFilePublic)
         ZS_THROW_BAD_STATE_IF(!peerFilePrivate)
 
-        mSelfPeer = IPeerForAccount::create(mThisWeak.lock(), peerFilePublic);
-        mSelfLocation = UseLocation::getForLocal(mThisWeak.lock());
-        mFinderLocation = UseLocation::getForFinder(mThisWeak.lock());
+        mPeersDB.setLocal(IPeerForAccount::create(mThisWeak.lock(), peerFilePublic));
+        mLocationsDB.setLocal(UseLocation::getForLocal(mThisWeak.lock()));
+        mLocationsDB.setFinder(UseLocation::getForFinder(mThisWeak.lock()));
         return true;
       }
 
@@ -2270,7 +2195,7 @@ namespace openpeer
               (!fromPeer)){
             ZS_LOG_WARNING(Detail, log("invalid request received") + UseLocation::toDebug(fromLocation))
             MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_BadRequest);
-            send(Location::convert(mFinderLocation), result);
+            send(Location::convert(mLocationsDB.getFinder()), result);
 
             mIncomingFindRequests.erase(current);
             continue;
@@ -2282,7 +2207,7 @@ namespace openpeer
             ZS_LOG_WARNING(Detail, log("all incoming requests must be rejected because of backgrounding") + UseLocation::toDebug(fromLocation))
 
             MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_Gone);
-            send(Location::convert(mFinderLocation), result);
+            send(Location::convert(mLocationsDB.getFinder()), result);
 
             mIncomingFindRequests.erase(current);
             continue;
@@ -2596,7 +2521,7 @@ namespace openpeer
           }
         }
 
-        notifySubscriptions(mSelfLocation, toLocationConnectionState(mCurrentState));
+        notifySubscriptions(mLocationsDB.getLocal(), toLocationConnectionState(mCurrentState));
       }
 
       //-----------------------------------------------------------------------
@@ -2663,9 +2588,6 @@ namespace openpeer
         }
 
         // attempt to load from cache
-        ICachePtr cache = ICache::singleton();
-        ZS_THROW_BAD_STATE_IF(!cache)
-
         String namespaceStr = IDHKeyDomain::toNamespace(type);
 
         IDHKeyDomainPtr keyDomain = IDHKeyDomain::loadPrecompiled(type);
@@ -2685,11 +2607,11 @@ namespace openpeer
 
         // scope: load existing key template
         {
-          SecureByteBlockPtr staticPrivateKey = IHelper::convertFromBase64(cache->fetch(staticPrivateCacheStr));
-          SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(cache->fetch(staticPublicCacheStr));
+          SecureByteBlockPtr staticPrivateKey = IHelper::convertFromBase64(ICache::fetch(staticPrivateCacheStr));
+          SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(ICache::fetch(staticPublicCacheStr));
 
-          SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(cache->fetch(ephemeralPrivateCacheStr));
-          SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(cache->fetch(ephemeralPublicCacheStr));
+          SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(ICache::fetch(ephemeralPrivateCacheStr));
+          SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(ICache::fetch(ephemeralPublicCacheStr));
 
           if ((IHelper::hasData(staticPrivateKey)) &&
               (IHelper::hasData(staticPublicKey)) &&
@@ -2707,10 +2629,10 @@ namespace openpeer
             // this previous public / private key pair failed to load thus clear out the cache
             ZS_LOG_ERROR(Detail, log("failed to load existing DH public / private key pair template"))
 
-            cache->clear(staticPrivateCacheStr);
-            cache->clear(staticPublicCacheStr);
-            cache->clear(ephemeralPrivateCacheStr);
-            cache->clear(ephemeralPublicCacheStr);
+            ICache::clear(staticPrivateCacheStr);
+            ICache::clear(staticPublicCacheStr);
+            ICache::clear(ephemeralPrivateCacheStr);
+            ICache::clear(ephemeralPublicCacheStr);
           }
         }
 
@@ -2735,10 +2657,10 @@ namespace openpeer
 
           zsLib::Time expires = zsLib::now() + Hours(OPENPEER_STACK_ACCOUNT_COOKIE_DH_KEY_DOMAIN_CACHE_LIFETIME_HOURS);
 
-          cache->store(staticPrivateCacheStr, expires, IHelper::convertToBase64(staticPrivateKey));
-          cache->store(staticPublicCacheStr, expires, IHelper::convertToBase64(staticPublicKey));
-          cache->store(ephemeralPrivateCacheStr, expires, IHelper::convertToBase64(ephemeralPrivateKey));
-          cache->store(ephemeralPublicCacheStr, expires, IHelper::convertToBase64(ephemeralPublicKey));
+          ICache::store(staticPrivateCacheStr, expires, IHelper::convertToBase64(staticPrivateKey));
+          ICache::store(staticPublicCacheStr, expires, IHelper::convertToBase64(staticPublicKey));
+          ICache::store(ephemeralPrivateCacheStr, expires, IHelper::convertToBase64(ephemeralPrivateKey));
+          ICache::store(ephemeralPublicCacheStr, expires, IHelper::convertToBase64(ephemeralPublicKey));
         }
 
         ZS_LOG_DEBUG(log("sucessfully generated DH public / private key pair template") + ZS_PARAM("private key id", privateTemplate->getID()) + ZS_PARAM("public key id", publicTemplate->getID()))
@@ -2987,7 +2909,7 @@ namespace openpeer
           exclude.push_back(locationID);
         }
 
-        LocationInfoPtr locationInfo = getLocationInfo(Location::convert(mSelfLocation));
+        LocationInfoPtr locationInfo = getLocationInfo(Location::convert(mLocationsDB.getLocal()));
 
         request->findPeer(Peer::convert(peerInfo->mPeer));
         request->context(IHelper::randomString(20*8/5));
@@ -3028,7 +2950,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::handleFindRequestComplete(IMessageMonitorPtr monitor)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
           PeerInfoPtr peerInfo = (*iter).second;
@@ -3067,6 +2989,11 @@ namespace openpeer
                                         ILocation::LocationConnectionStates state
                                         )
       {
+        if (!location) {
+          ZS_LOG_WARNING(Detail, log("location was NULL thus cannot notify about location state") + ZS_PARAM("state", ILocation::toString(state)))
+          return;
+        }
+
         for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
         {
           PeerSubscriptionMap::iterator current = iter;
@@ -3203,6 +3130,215 @@ namespace openpeer
 
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Account::PeersDB
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::getLocal() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mSelf;
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::PeersDB::setLocal(UsePeerPtr peer)
+      {
+        AutoRecursiveLock lock(*this);
+        mSelf = peer;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::findExisting(
+                                                         AccountPtr account,
+                                                         const String &peerURI
+                                                         ) const
+      {
+        AutoRecursiveLock lock(*this);
+        PeerMap::const_iterator found = mPeers.find(peerURI);
+
+        if (found == mPeers.end()) {
+          ZS_LOG_TRACE(account->log("did not find existing peer") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        UsePeerPtr existingPeer = (*found).second.lock();
+        if (!existingPeer) {
+          ZS_LOG_WARNING(Debug, account->log("existing peer object was destroyed") + ZS_PARAM("uri", peerURI))
+          return PeerPtr();
+        }
+
+        ZS_LOG_TRACE(account->log("found existing peer") + UsePeer::toDebug(existingPeer))
+        return existingPeer;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UsePeerPtr Account::PeersDB::findExistingOrUse(
+                                                              AccountPtr account,
+                                                              UsePeerPtr peer
+                                                              )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!peer)
+
+        AutoRecursiveLock lock(*this);
+
+        String peerURI = peer->getPeerURI();
+
+        PeerMap::iterator found = mPeers.find(peerURI);
+
+        if (found != mPeers.end()) {
+          UsePeerPtr existingPeer = (*found).second.lock();
+          if (existingPeer) {
+            ZS_LOG_DEBUG(account->log("found existing peer to use") + UsePeer::toDebug(existingPeer))
+            return Peer::convert(existingPeer);
+          }
+          ZS_LOG_WARNING(Detail, account->log("existing peer in map is now gone") + ZS_PARAM("peer URI", peerURI))
+        }
+
+        ZS_LOG_DEBUG(account->log("using newly created peer") + UsePeer::toDebug(peer))
+        mPeers[peerURI] = peer;
+        return peer;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::PeersDB::remove(const String &peerURI)
+      {
+        AutoRecursiveLock lock(*this);
+
+        PeerMap::iterator found = mPeers.find(peerURI);
+        if (found == mPeers.end()) return false;
+
+        mPeers.erase(found);
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      size_t Account::PeersDB::size() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mPeers.size();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Account::LocationsDB
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::findExisting(
+                                                                 AccountPtr account,
+                                                                 const String &peerURI,
+                                                                 const String &locationID
+                                                                 ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::const_iterator found = mLocations.find(index);
+
+        if (found == mLocations.end()) {
+          ZS_LOG_TRACE(account->log("did not find existing location") + ZS_PARAM("peer uri", peerURI) + ZS_PARAM("location id", locationID))
+          return UseLocationPtr();
+        }
+
+        UseLocationPtr location = (*found).second.lock();
+
+        ZS_LOG_TRACE(account->log("found existing location") + UseLocation::toDebug(location))
+        return location;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::findExistingOrUse(
+                                                                      AccountPtr account,
+                                                                      UseLocationPtr location
+                                                                      )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!location)
+
+        AutoRecursiveLock lock(*this);
+
+        String locationID = location->getLocationID();
+        String peerURI = location->getPeerURI();
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::iterator found = mLocations.find(index);
+
+        if (found != mLocations.end()) {
+          UseLocationPtr existingLocation = (*found).second.lock();
+          if (existingLocation) {
+            ZS_LOG_DEBUG(account->log("found existing location to use") + UseLocation::toDebug(existingLocation))
+            return Location::convert(existingLocation);
+          }
+          ZS_LOG_WARNING(Detail, account->log("existing location in map is now gone") + UseLocation::toDebug(location))
+        }
+
+        ZS_LOG_DEBUG(account->log("using newly created location") + UseLocation::toDebug(location))
+        mLocations[index] = location;
+        return Location::convert(location);
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::getLocal() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mSelf;
+      }
+
+      //-----------------------------------------------------------------------
+      Account::UseLocationPtr Account::LocationsDB::getFinder() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mFinder;
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::LocationsDB::setLocal(UseLocationPtr location)
+      {
+        AutoRecursiveLock lock(*this);
+        mSelf = location;
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::LocationsDB::setFinder(UseLocationPtr location)
+      {
+        AutoRecursiveLock lock(*this);
+        mFinder = location;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Account::LocationsDB::remove(
+                                        const String &locationID,
+                                        const String &peerURI
+                                        )
+      {
+        AutoRecursiveLock lock(*this);
+
+        PeerLocationIDPair index(locationID, peerURI);
+
+        LocationMap::iterator found = mLocations.find(index);
+        if (found == mLocations.end()) return false;
+
+        mLocations.erase(found);
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
+      size_t Account::LocationsDB::size() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mLocations.size();
+      }
+
     }
 
     //-------------------------------------------------------------------------

@@ -49,11 +49,16 @@
 #include <openpeer/stack/ISettings.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/IMessageQueueManager.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
+
+
+#define OPENPEER_STACK_STACK_THREAD_NAME          "org.openpeer.stack.stackThread"
+#define OPENPEER_STACK_KEY_GENERATION_THREAD_NAME "org.openpeer.stack.keyGenerationThread"
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -91,32 +96,36 @@ namespace openpeer
       AgentInfo IStackForInternal::agentInfo()
       {
         AgentInfo info;
-        (Stack::singleton())->getAgentInfo(info);
+        StackPtr singleton = Stack::singleton();
+        if (!singleton) return info;
+        singleton->getAgentInfo(info);
         return info;
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueDelegate()
       {
-        return (Stack::singleton())->queueDelegate();
+        StackPtr singleton = Stack::singleton();
+        if (!singleton) return IMessageQueuePtr();
+        return singleton->queueDelegate();
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueStack()
       {
-        return (Stack::singleton())->queueStack();
+        return IStack::getStackQueue();
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueServices()
       {
-        return (Stack::singleton())->queueServices();
+        return IStack::getServicesQueue();
       }
 
       //-----------------------------------------------------------------------
       IMessageQueuePtr IStackForInternal::queueKeyGeneration()
       {
-        return (Stack::singleton())->queueKeyGeneration();
+        return IStack::getKeyGenerationQueue();
       }
 
       //-----------------------------------------------------------------------
@@ -180,8 +189,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       StackPtr Stack::singleton()
       {
-        static StackPtr singleton = Stack::create();
-        return singleton;
+        static SingletonLazySharedPtr<Stack> singleton(create());
+        StackPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return singleton.singleton();
       }
 
       //-----------------------------------------------------------------------
@@ -193,6 +206,9 @@ namespace openpeer
                         )
       {
         AutoRecursiveLock lock(mLock);
+
+        IMessageQueueManager::registerMessageQueueThreadPriority(OPENPEER_STACK_STACK_THREAD_NAME, zsLib::threadPriorityFromString(services::ISettings::getString(OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY)));
+        IMessageQueueManager::registerMessageQueueThreadPriority(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME, zsLib::threadPriorityFromString(services::ISettings::getString(OPENPEER_STACK_SETTING_STACK_KEY_GENERATION_THREAD_PRIORITY)));
 
         if (defaultDelegateMessageQueue) {
           mDelegateQueue = defaultDelegateMessageQueue;
@@ -221,9 +237,6 @@ namespace openpeer
         verifySettingIsSet(OPENPEER_COMMON_SETTING_SYSTEM);
 
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
-        ZS_THROW_INVALID_ARGUMENT_IF(!mStackQueue)
-        ZS_THROW_INVALID_ARGUMENT_IF(!mServicesQueue)
-        ZS_THROW_INVALID_ARGUMENT_IF(!keyGenerationQueue)
       }
 
       //-----------------------------------------------------------------------
@@ -246,24 +259,36 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IMessageQueuePtr Stack::queueDelegate() const
       {
+        AutoRecursiveLock lock(mLock);
+        if (!mDelegateQueue) {
+          ZS_LOG_WARNING(Detail, log("default message queue was not registered thus could cause crash if any delegate passed into methods was not associated to a IMessageQueue via MessageQueueAssociator"))
+        }
         return mDelegateQueue;
       }
 
       //-----------------------------------------------------------------------
-      IMessageQueuePtr Stack::queueStack() const
+      IMessageQueuePtr Stack::queueStack()
       {
+        AutoRecursiveLock lock(mLock);
+        if (!mStackQueue) mStackQueue = IMessageQueueManager::getMessageQueue(OPENPEER_STACK_STACK_THREAD_NAME);
         return mStackQueue;
       }
 
       //-----------------------------------------------------------------------
-      IMessageQueuePtr Stack::queueServices() const
+      IMessageQueuePtr Stack::queueServices()
       {
+        AutoRecursiveLock lock(mLock);
+        if (!mServicesQueue) mServicesQueue = IHelper::getServiceQueue();
         return mServicesQueue;
       }
 
       //-----------------------------------------------------------------------
-      IMessageQueuePtr Stack::queueKeyGeneration() const
+      IMessageQueuePtr Stack::queueKeyGeneration()
       {
+        AutoRecursiveLock lock(mLock);
+        if (!mKeyGenerationQueue) {
+          mKeyGenerationQueue = IMessageQueueManager::getMessageQueue(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME);
+        }
         return mKeyGenerationQueue;
       }
 
@@ -281,6 +306,12 @@ namespace openpeer
         ElementPtr objectEl = Element::create("stack::Stack");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Stack::slog(const char *message)
+      {
+        return Log::Params(message, "stack::Stack");
       }
 
       //-----------------------------------------------------------------------
@@ -319,7 +350,42 @@ namespace openpeer
                        IMessageQueuePtr keyGenerationQueue
                        )
     {
-      return internal::Stack::singleton()->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue);
+      services::IHelper::setSocketThreadPriority();
+      services::IHelper::setTimerThreadPriority();
+
+      internal::StackPtr singleton = internal::Stack::singleton();
+      ZS_THROW_INVALID_USAGE_IF(!singleton) // called during shutdown process?
+      singleton->setup(defaultDelegateMessageQueue, stackMessageQueue, servicesQueue, keyGenerationQueue);
+    }
+
+    //-------------------------------------------------------------------------
+    IMessageQueuePtr IStack::getStackQueue()
+    {
+      internal::StackPtr singleton = internal::Stack::singleton();
+      if (!singleton) {
+        return services::IMessageQueueManager::getMessageQueue(OPENPEER_STACK_STACK_THREAD_NAME);
+      }
+      return singleton->queueStack();
+    }
+
+    //-------------------------------------------------------------------------
+    IMessageQueuePtr IStack::getServicesQueue()
+    {
+      internal::StackPtr singleton = internal::Stack::singleton();
+      if (!singleton) {
+        return services::IHelper::getServiceQueue();
+      }
+      return singleton->queueServices();
+    }
+
+    //-------------------------------------------------------------------------
+    IMessageQueuePtr IStack::getKeyGenerationQueue()
+    {
+      internal::StackPtr singleton = internal::Stack::singleton();
+      if (!singleton) {
+        return services::IMessageQueueManager::getMessageQueue(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME);
+      }
+      return singleton->queueKeyGeneration();
     }
   }
 }

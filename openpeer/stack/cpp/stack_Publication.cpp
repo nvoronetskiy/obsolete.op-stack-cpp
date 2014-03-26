@@ -31,12 +31,17 @@
 
 #include <openpeer/stack/internal/stack_Publication.h>
 #include <openpeer/stack/internal/stack_PublicationMetaData.h>
-#include <openpeer/stack/message/IMessageHelper.h>
-#include <openpeer/stack/IPeer.h>
+#include <openpeer/stack/internal/stack_Stack.h>
 #include <openpeer/stack/internal/stack_Diff.h>
 #include <openpeer/stack/internal/stack_Location.h>
 
+#include <openpeer/stack/message/IMessageHelper.h>
+
+#include <openpeer/stack/ICache.h>
+#include <openpeer/stack/IPeer.h>
+
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
@@ -58,6 +63,10 @@ namespace openpeer
       using services::IHelper;
       typedef IPublicationForMessages::ForMessagesPtr ForMessagesPtr;
 
+      ZS_DECLARE_USING_PTR(services, ISettings)
+
+      ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -103,35 +112,35 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ZS_DECLARE_CLASS_PTR(Publication_UniqueLineage)
-
       class Publication_UniqueLineage
       {
-      protected:
+      public:
         Publication_UniqueLineage() :
           mUnique(0)
         {
         }
 
-        static Publication_UniqueLineagePtr create()
-        {
-          Publication_UniqueLineagePtr pThis(new Publication_UniqueLineage);
-          return pThis;
-        }
-
-      public:
         ~Publication_UniqueLineage() {}
 
-        static Publication_UniqueLineagePtr singleton()
+        static ULONG getUniqueLineage()
         {
-          static Publication_UniqueLineagePtr singleton = create();
-          return singleton;
+          return singleton().actualGetUniqueLineage();
         }
 
-        ULONG getUniqueLineage()
+      protected:
+        static Publication_UniqueLineage &singleton()
+        {
+          static Singleton<Publication_UniqueLineage, false> singleton;  // non-destructable object
+          return singleton.singleton();
+        }
+
+        ULONG actualGetUniqueLineage()
         {
           AutoRecursiveLock lock(mLock);
-          ULONG proposed = (ULONG)(time(NULL));
+
+          Duration duration = zsLib::timeSinceEpoch(zsLib::now());
+
+          ULONG proposed = (ULONG)(duration.total_seconds());
           if (proposed <= mUnique) {
             proposed = mUnique + 1;
           }
@@ -216,7 +225,7 @@ namespace openpeer
         PublicationMetaData(
                             1,
                             0,
-                            Publication_UniqueLineage::singleton()->getUniqueLineage(),
+                            Publication_UniqueLineage::getUniqueLineage(),
                             creatorLocation,
                             name,
                             mimeType,
@@ -410,7 +419,7 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->mThisWeakPublication = pThis;
         pThis->mPublication = pThis;
-        pThis->mDocument = documentToBeAdopted;
+        pThis->mDocument = CacheableDocument::create(documentToBeAdopted);
         pThis->init();
         return pThis;
       }
@@ -469,7 +478,7 @@ namespace openpeer
         if (!diffElem) {
           mDiffDocuments.clear();
 
-          mDocument = updatedDocumentToBeAdopted;
+          mDocument = CacheableDocument::create(updatedDocumentToBeAdopted);
           return;
         }
 
@@ -481,10 +490,14 @@ namespace openpeer
           mDiffDocuments.clear();
         }
 
-        // this is a difference document
-        IDiff::process(mDocument, updatedDocumentToBeAdopted);
+        DocumentPtr doc = mDocument->getDocument()->clone()->toDocument();
 
-        mDiffDocuments[mVersion] = updatedDocumentToBeAdopted;
+        // this is a difference document
+        IDiff::process(doc, updatedDocumentToBeAdopted);
+
+        mDocument = CacheableDocument::create(doc);
+
+        mDiffDocuments[mVersion] = CacheableDocument::create(updatedDocumentToBeAdopted);
 
         ZS_LOG_DEBUG(debug("updating document complete"))
 
@@ -492,7 +505,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"))
-          ZS_LOG_DEBUG(log("FINAL JSON") + ZS_PARAM("json", internal::toString(mDocument)))
+          ZS_LOG_DEBUG(log("FINAL JSON") + ZS_PARAM("json", internal::toString(doc)))
           ZS_LOG_DEBUG(log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"))
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
@@ -517,7 +530,7 @@ namespace openpeer
       DocumentPtr Publication::getJSON(AutoRecursiveLockPtr &outDocumentLock) const
       {
         outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(mLock));
-        return mDocument;
+        return mDocument->getDocument();
       }
 
       //-----------------------------------------------------------------------
@@ -536,7 +549,9 @@ namespace openpeer
           return result;
         }
 
-        ElementPtr contactsEl = mDocument->findFirstChildElement("contacts");
+        DocumentPtr doc = mDocument->getDocument();
+
+        ElementPtr contactsEl = doc->findFirstChildElement("contacts");
         if (!contactsEl) {
           ZS_LOG_WARNING(Debug, debug("unable to find contact root element"))
           return result;
@@ -678,7 +693,7 @@ namespace openpeer
           mData = publication->mData;
           mDocument.reset();
         } else {
-          ElementPtr diffEl = publication->mDocument->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
+          ElementPtr diffEl = publication->mDocument->getDocument()->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
           if (diffEl) {
             if (publication->mBaseVersion != mVersion + 1) {
               if (NULL != noThrowVersionMismatched) {
@@ -688,7 +703,12 @@ namespace openpeer
               ZS_THROW_CUSTOM(Exceptions::VersionMismatch, debug("remote party sent diff based on wrong document"))
               return;
             }
-            IDiff::process(mDocument, publication->mDocument);
+
+            DocumentPtr doc = mDocument->getDocument()->clone()->toDocument();
+
+            IDiff::process(doc, publication->mDocument->getDocument());
+
+            mDocument = CacheableDocument::create(doc);
           } else {
             mDocument = publication->mDocument;
           }
@@ -758,9 +778,8 @@ namespace openpeer
           }
 
           ZS_LOG_TRACE(debug("returning size of latest version diff's document") + ZS_PARAM("from", fromVersionNumber) + ZS_PARAM("current", from))
-          const DocumentPtr &doc = (*found).second;
-          GeneratorPtr generator = Generator::createJSONGenerator();
-          outOutputSizeInBytes += generator->getOutputSize(doc);
+          const DiffDocumentPtr &doc = (*found).second;
+          outOutputSizeInBytes += doc->getOutputSize();
         }
       }
 
@@ -778,8 +797,8 @@ namespace openpeer
           getDiffVersionsOutputSize(0, 0, outOutputSizeInBytes);
           return;
         }
-        GeneratorPtr generator = Generator::createJSONGenerator();
-        outOutputSizeInBytes = generator->getOutputSize(mDocument);
+
+        outOutputSizeInBytes = mDocument->getOutputSize();
       }
 
       //-----------------------------------------------------------------------
@@ -855,7 +874,7 @@ namespace openpeer
               doc->adoptAsLastChild(node);
               node = next;
             }
-            pThis->mDocument = doc;
+            pThis->mDocument = CacheableDocument::create(doc);
             break;
           }
         }
@@ -895,7 +914,7 @@ namespace openpeer
         if (0 == ioFromVersion) {
           ZS_LOG_DEBUG(debug("first time publishing or fetching document thus returning entire document"))
 
-          ElementPtr firstEl = mDocument->getFirstChildElement();
+          ElementPtr firstEl = mDocument->getDocument()->getFirstChildElement();
           if (!firstEl) return firstEl;
           return firstEl->clone();
         }
@@ -934,17 +953,17 @@ namespace openpeer
             return getDiffs(ioFromVersion, toVersion);
           }
 
-          DocumentPtr doc = (*iter).second;
+          DiffDocumentPtr doc = (*iter).second;
 
           try {
             if (!cloned) {
-              cloned = doc->clone()->toDocument();
+              cloned = doc->getDocument()->clone()->toDocument();
               diffOutputEl = cloned->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
             } else {
               diffOutputEl = cloned->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
 
               // we need to process all elements and insert them into the other...
-              ElementPtr diffEl = doc->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
+              ElementPtr diffEl = doc->getDocument()->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
 
               ElementPtr itemEl = diffEl->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ITEM_ELEMENT_NAME);
               while (itemEl) {
@@ -997,7 +1016,7 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           if (mDocument) {
-            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("json", internal::toString(mDocument)))
+            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("json", internal::toString(mDocument->getDocument())))
           } else if (mData) {
             ZS_LOG_BASIC(log("publication contains binary data") + ZS_PARAM("length", mData ? mData->SizeInBytes() : 0))
           } else {
@@ -1007,6 +1026,193 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
         }
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Publication::CacheableDocument
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Publication::CacheableDocument::CacheableDocument(DocumentPtr document) :
+        MessageQueueAssociator(UseStack::queueStack()),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
+        mOutputSize(0),
+        mDocument(document),
+        mMoveToCacheDuration(Seconds(ISettings::getUInt(OPENPEER_STACK_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME)))
+      {
+        ZS_LOG_DEBUG(log("created"))
+      }
+
+      //-----------------------------------------------------------------------
+      void Publication::CacheableDocument::init()
+      {
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      Publication::CacheableDocument::~CacheableDocument()
+      {
+        mThisWeak.reset();
+
+        ZS_LOG_DEBUG(log("destroyed"))
+
+        if (mMoveToCacheTimer) {
+          mMoveToCacheTimer->cancel();
+          mMoveToCacheTimer.reset();
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Publication::CacheableDocument => friend Publication
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      Publication::CacheableDocumentPtr Publication::CacheableDocument::create(DocumentPtr document)
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!document)
+
+        CacheableDocumentPtr pThis(new CacheableDocument(document));
+        pThis->mThisWeak = pThis;
+        pThis->init();
+        return pThis;
+      }
+
+      //-----------------------------------------------------------------------
+      size_t Publication::CacheableDocument::getOutputSize() const
+      {
+        AutoRecursiveLock lock(*this);
+        if (0 != mOutputSize) return mOutputSize;
+
+        ZS_THROW_BAD_STATE_IF(!mDocument)
+
+        GeneratorPtr generator = Generator::createJSONGenerator();
+        mOutputSize = generator->getOutputSize(mDocument);
+        return mOutputSize;
+      }
+
+      //-----------------------------------------------------------------------
+      DocumentPtr Publication::CacheableDocument::getDocument() const
+      {
+        AutoRecursiveLock lock(*this);
+
+        CacheableDocument *pThis = const_cast<CacheableDocument *>(this);
+
+        if (mDocument) {
+          if (mMoveToCacheTimer) {
+            ZS_LOG_TRACE(log("document fetched thus do not yet move to cache just yet"))
+            mMoveToCacheTimer->cancel();
+            mMoveToCacheTimer.reset();
+          }
+          pThis->step();
+          return mDocument;
+        }
+
+        ZS_LOG_DEBUG(log("restoring from cache"))
+
+        ZS_THROW_BAD_STATE_IF(!mPreviouslyStored)
+
+        String output = ICache::fetch(getCookieName());
+
+        mDocument = Document::createFromParsedJSON(output);
+        ZS_THROW_INVALID_ASSUMPTION_IF(!mDocument)
+
+        pThis->step();
+
+        return mDocument;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Publication::CacheableDocument => ITimerDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Publication::CacheableDocument::onTimer(TimerPtr timer)
+      {
+        AutoRecursiveLock lock(*this);
+
+        if (timer != mMoveToCacheTimer) {
+          ZS_LOG_WARNING(Trace, log("ignoring obsolete move to cache timer (probably okay)") + ZS_PARAM("timer", timer->getID()))
+          return;
+        }
+        moveToCacheNow();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Publication::CacheableDocument => friend Publication
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Publication::CacheableDocument::step()
+      {
+        if (!mDocument) {
+          if (mMoveToCacheTimer) {
+            ZS_LOG_TRACE(log("no timer needed as document must already be in cache"))
+            mMoveToCacheTimer->cancel();
+            mMoveToCacheTimer.reset();
+          }
+          return;
+        }
+
+        if (!mMoveToCacheTimer) {
+          ZS_LOG_TRACE(log("creating timer to move to cache"))
+          mMoveToCacheTimer = Timer::create(mThisWeak.lock(), mMoveToCacheDuration, false);
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      String Publication::CacheableDocument::getCookieName() const
+      {
+        return String("/diff/publication-") + string(mID);
+      }
+
+      //-----------------------------------------------------------------------
+      void Publication::CacheableDocument::moveToCacheNow()
+      {
+        if (!mPreviouslyStored) {
+          // time to move to cache
+          GeneratorPtr generator = Generator::createJSONGenerator();
+
+          boost::shared_array<char> output;
+          size_t length = 0;
+          output = generator->write(mDocument, &length);
+
+          mOutputSize = length;
+
+          ZS_LOG_DEBUG(log("moving document to cache"))
+          ICache::store(getCookieName(), Time(), output.get());
+          get(mPreviouslyStored) = true;
+        } else {
+          ZS_LOG_TRACE(log("document is already in cache (thus forgetting about document)"))
+        }
+
+        mDocument.reset();
+
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Publication::CacheableDocument::log(const char *message) const
+      {
+        ElementPtr objectEl = Element::create("Publication::CacheableDocument");
+        IHelper::debugAppend(objectEl, "id", mID);
+        return Log::Params(message, objectEl);
       }
     }
 

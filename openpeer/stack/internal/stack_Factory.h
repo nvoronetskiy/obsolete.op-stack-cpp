@@ -77,15 +77,7 @@ namespace openpeer
       public:
         static void override(FactoryPtr override);
 
-        static FactoryPtr &singleton();
-
-      protected:
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark Factory => (internal)
-        #pragma mark
-
-        static FactoryPtr create();
+        static Factory &singleton();
 
       protected:
         //---------------------------------------------------------------------

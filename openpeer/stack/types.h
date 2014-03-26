@@ -65,12 +65,12 @@ namespace openpeer
     using zsLib::Duration;
     using zsLib::String;
     using zsLib::AutoBool;
-    using zsLib::RecursiveLock;
     using zsLib::IPAddress;
     using zsLib::Log;
 
     using boost::dynamic_pointer_cast;
 
+    ZS_DECLARE_TYPEDEF_PTR(zsLib::RecursiveLock, RecursiveLock)
     ZS_DECLARE_TYPEDEF_PTR(zsLib::AutoRecursiveLock, AutoRecursiveLock)
 
     ZS_DECLARE_USING_PTR(zsLib, IMessageQueue)
@@ -78,6 +78,9 @@ namespace openpeer
     ZS_DECLARE_USING_PTR(zsLib::XML, Element)
     ZS_DECLARE_USING_PTR(zsLib::XML, Document)
     ZS_DECLARE_USING_PTR(zsLib::XML, Node)
+
+    using openpeer::services::SharedRecursiveLock;
+    using openpeer::services::LockedValue;
 
     ZS_DECLARE_USING_PTR(services, IHTTP)
     ZS_DECLARE_USING_PTR(services, IICESocket)

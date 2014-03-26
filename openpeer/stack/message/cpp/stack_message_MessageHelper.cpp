@@ -299,6 +299,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      ElementPtr IMessageHelper::createElement(
+                                               const IdentityInfo &identity,
+                                               bool forcePriorityWeightOutput
+                                               )
+      {
+        return internal::MessageHelper::createElement(identity, forcePriorityWeightOutput);
+      }
+
+      //-----------------------------------------------------------------------
       TextPtr IMessageHelper::createText(const String &textVal)
       {
         TextPtr tmpTxt = Text::create();
@@ -361,6 +370,12 @@ namespace openpeer
                                                 )
       {
         return internal::MessageHelper::createCandidate(elem, encryptionPassphrase);
+      }
+
+      //-----------------------------------------------------------------------
+      IdentityInfo IMessageHelper::createIdentity(ElementPtr elem)
+      {
+        return internal::MessageHelper::createIdentity(elem);
       }
 
       namespace internal
@@ -585,10 +600,6 @@ namespace openpeer
             identityEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("vprofile", identity.mVProfile));
           }
 
-          if (!identity.mProfile.isEmpty()) {
-            identityEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("profile", identity.mProfile));
-          }
-
           if (identity.mAvatars.size() > 0) {
             ElementPtr avatarsEl = Element::create("avatars");
             for (IdentityInfo::AvatarList::const_iterator iter = identity.mAvatars.begin(); iter != identity.mAvatars.end(); ++iter)
@@ -730,40 +741,40 @@ namespace openpeer
         //---------------------------------------------------------------------
         ElementPtr MessageHelper::createElement(const RolodexInfo &info)
         {
-          ElementPtr lockboxEl = Element::create("rolodex");
+          ElementPtr rolodexEl = Element::create("rolodex");
 
           if (!info.mServerToken.isEmpty()) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("serverToken", info.mServerToken));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("serverToken", info.mServerToken));
           }
 
           if (!info.mAccessToken.isEmpty()) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessToken", info.mAccessToken));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessToken", info.mAccessToken));
           }
           if (!info.mAccessSecret.isEmpty()) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecret", info.mAccessSecret));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecret", info.mAccessSecret));
           }
           if (Time() != info.mAccessSecretExpires) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(info.mAccessSecretExpires)));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(info.mAccessSecretExpires)));
           }
           if (!info.mAccessSecretProof.isEmpty()) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecretProof", info.mAccessSecretProof));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecretProof", info.mAccessSecretProof));
           }
           if (Time() != info.mAccessSecretExpires) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(info.mAccessSecretProofExpires)));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(info.mAccessSecretProofExpires)));
           }
 
           if (!info.mVersion.isEmpty()) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("version", info.mVersion));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("version", info.mVersion));
           }
           if (Time() != info.mUpdateNext) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", IHelper::timeToString(info.mUpdateNext)));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", IHelper::timeToString(info.mUpdateNext)));
           }
 
           if (info.mRefreshFlag) {
-            lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("refresh", "true"));
+            rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("refresh", "true"));
           }
 
-          return lockboxEl;
+          return rolodexEl;
         }
         
         //---------------------------------------------------------------------

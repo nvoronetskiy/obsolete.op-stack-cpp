@@ -57,7 +57,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ISettingsForStack::applyDefaultsIfNoDelegatePresent()
       {
-        Settings::singleton()->applyDefaultsIfNoDelegatePresent();
+        SettingsPtr singleton = Settings::singleton();
+        if (!singleton) return;
+        singleton->applyDefaultsIfNoDelegatePresent();
       }
 
       //-----------------------------------------------------------------------
@@ -98,8 +100,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SettingsPtr Settings::singleton()
       {
-        static SettingsPtr singleton = Settings::create();
-        return singleton;
+        static SingletonLazySharedPtr<Settings> singleton(Settings::create());
+        SettingsPtr result = singleton.singleton();
+        if (!result) {
+          ZS_LOG_WARNING(Detail, slog("singleton gone"))
+        }
+        return result;
       }
       
       //-----------------------------------------------------------------------
@@ -133,10 +139,15 @@ namespace openpeer
 
         services::ISettings::applyDefaults();
 
+        setString(OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY, "normal");
+        setString(OPENPEER_STACK_SETTING_STACK_KEY_GENERATION_THREAD_PRIORITY, "low");
+
         setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_OVER_INSECURE_HTTP, false);
         setBool(OPENPEER_STACK_SETTING_BOOTSTRAPPER_SERVICE_FORCE_WELL_KNOWN_USING_POST, false);
 
         setBool(OPENPEER_STACK_SETTING_ACCOUNT_PEER_LOCATION_DEBUG_FORCE_MESSAGES_OVER_RELAY, false);
+
+        setUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE, 1);
 
         setUInt(OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS, 0);
         setUInt(OPENPEER_STACK_SETTING_FINDER_CONNECTION_MUST_SEND_PING_IF_NO_SEND_ACTIVITY_IN_SECONDS, 25);
@@ -371,9 +382,15 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Log::Params Settings::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("core::Settings");
+        ElementPtr objectEl = Element::create("stack::Settings");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params Settings::slog(const char *message)
+      {
+        return Log::Params(message, "stack::Settings");
       }
 
     }
@@ -389,7 +406,9 @@ namespace openpeer
     //-------------------------------------------------------------------------
     void ISettings::setup(ISettingsDelegatePtr delegate)
     {
-      internal::Settings::singleton()->setup(delegate);
+      internal::SettingsPtr singleton = internal::Settings::singleton();
+      if (!singleton) return;
+      singleton->setup(delegate);
     }
 
     //-------------------------------------------------------------------------

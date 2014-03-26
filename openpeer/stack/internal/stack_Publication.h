@@ -36,8 +36,11 @@
 #include <openpeer/stack/IPublication.h>
 
 #include <zsLib/Exception.h>
+#include <zsLib/Timer.h>
 
 #include <boost/shared_array.hpp>
+
+#define OPENPEER_STACK_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME "openpeer/stack/move-publication-to-cache-time-in-seconds"
 
 namespace openpeer
 {
@@ -238,9 +241,12 @@ namespace openpeer
         typedef IPublication::RelationshipListPtr RelationshipListPtr;
         typedef IPublication::PublishToRelationshipsMap PublishToRelationshipsMap;
 
+        ZS_DECLARE_CLASS_PTR(CacheableDocument)
+        ZS_DECLARE_TYPEDEF_PTR(CacheableDocument, DiffDocument)
+
         typedef ULONG VersionNumber;
-        typedef DocumentPtr DiffDocument;
-        typedef std::map<VersionNumber, DiffDocument> DiffDocumentMap;
+
+        typedef std::map<VersionNumber, DiffDocumentPtr> DiffDocumentMap;
 
       protected:
         Publication(
@@ -462,6 +468,77 @@ namespace openpeer
                                  ULONG &ioFromVersion,
                                  ULONG toVersion
                                  ) const;
+
+      public:
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Publication::CacheableDocument
+        #pragma mark
+
+        class CacheableDocument : public MessageQueueAssociator,
+                                  public SharedRecursiveLock,
+                                  public ITimerDelegate
+        {
+        protected:
+          CacheableDocument(DocumentPtr document);
+
+          void init();
+
+        public:
+          ~CacheableDocument();
+
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark Publication::CacheableDocument => friend Publication
+          #pragma mark
+
+          static CacheableDocumentPtr create(DocumentPtr document);
+
+          size_t getOutputSize() const;
+          DocumentPtr getDocument() const;
+
+        protected:
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark Publication::CacheableDocument => ITimerDelegate
+          #pragma mark
+
+          void onTimer(TimerPtr timer);
+
+        protected:
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark Publication::CacheableDocument => (internal)
+          #pragma mark
+
+          void step();
+
+          String getCookieName() const;
+          void moveToCacheNow();
+
+          Log::Params log(const char *message) const;
+
+        protected:
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark Publication::CacheableDocument => (data)
+          #pragma mark
+
+          AutoPUID mID;
+          CacheableDocumentWeakPtr mThisWeak;
+
+          Duration mMoveToCacheDuration;
+
+          mutable DocumentPtr mDocument;
+          mutable size_t mOutputSize;
+
+          mutable AutoBool mPreviouslyStored;
+          mutable TimerPtr mMoveToCacheTimer;
+        };
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -483,7 +560,7 @@ namespace openpeer
 
         SecureByteBlockPtr mData;
 
-        DocumentPtr mDocument;
+        CacheableDocumentPtr mDocument;
 
         Time mCacheExpires;
 

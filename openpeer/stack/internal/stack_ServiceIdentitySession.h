@@ -148,6 +148,8 @@ namespace openpeer
         friend interaction IServiceIdentitySessionFactory;
         friend interaction IServiceIdentitySession;
 
+        ZS_DECLARE_TYPEDEF_PTR(RecursiveLock, UseRecursiveLock)
+
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServiceIdentity, UseServiceLockboxSession)
         ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
@@ -169,7 +171,11 @@ namespace openpeer
                                const char *outerFrameURLUponReload
                                );
 
-        ServiceIdentitySession(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        ServiceIdentitySession(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          mLockPtr(new RecursiveLock),
+          mLock(*mLockPtr) {}
 
         void init();
 
@@ -487,7 +493,9 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable RecursiveLock mLock;
+        mutable UseRecursiveLockPtr mLockPtr;
+        UseRecursiveLockPtr mAssociatedLockPtr;
+        UseRecursiveLock &mLock;
         ServiceIdentitySessionWeakPtr mThisWeak;
         ServiceIdentitySessionPtr mGraciousShutdownReference;
 

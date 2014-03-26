@@ -167,7 +167,8 @@ namespace openpeer
       #pragma mark
 
       class BootstrappedNetwork : public Noop,
-                                  public zsLib::MessageQueueAssociator,
+                                  public MessageQueueAssociator,
+                                  public SharedRecursiveLock,
                                   public IBootstrappedNetwork,
                                   public IServiceCertificates,
                                   public IServiceIdentity,
@@ -214,11 +215,16 @@ namespace openpeer
 
       protected:
         BootstrappedNetwork(
+                            const SharedRecursiveLock &inLock,
                             IMessageQueuePtr queue,
                             const char *domain
                             );
         
-        BootstrappedNetwork(Noop) : Noop(true), MessageQueueAssociator(IMessageQueuePtr()) {};
+        BootstrappedNetwork(Noop) :
+          Noop(true),
+          MessageQueueAssociator(IMessageQueuePtr()),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
         
         void init();
 
@@ -445,6 +451,7 @@ namespace openpeer
         RecursiveLock &getLock() const;
 
         Log::Params log(const char *message) const;
+        static Log::Params slog(const char *message);
         Log::Params debug(const char *message) const;
 
         virtual ElementPtr toDebug() const;
@@ -485,8 +492,7 @@ namespace openpeer
         #pragma mark BootstrappedNetwork => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mBogusLock;
+        AutoPUID mID;
         BootstrappedNetworkWeakPtr mThisWeak;
         String mDomain;
 

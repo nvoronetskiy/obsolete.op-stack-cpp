@@ -245,11 +245,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       BootstrappedNetwork::BootstrappedNetwork(
+                                               const SharedRecursiveLock &inLock,
                                                IMessageQueuePtr queue,
                                                const char *domain
                                                ) :
-        zsLib::MessageQueueAssociator(queue),
-        mID(zsLib::createPUID()),
+        MessageQueueAssociator(queue),
+        SharedRecursiveLock(inLock),
         mManager(UseBootstrappedNetworkManager::singleton()),
         mDomain(domain),
         mCompleted(false),
@@ -336,7 +337,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::prepare(
                                                           const char *inDomain,
-                                                          IBootstrappedNetworkDelegatePtr delegate
+                                                          IBootstrappedNetworkDelegatePtr inDelegate
                                                           )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!inDomain)
@@ -347,15 +348,14 @@ namespace openpeer
         domain.toLower();
 
         UseBootstrappedNetworkManagerPtr manager = UseBootstrappedNetworkManager::singleton();
-        ZS_THROW_BAD_STATE_IF(!manager)
 
-        BootstrappedNetworkPtr pThis(new BootstrappedNetwork(UseStack::queueStack(), domain));
+        BootstrappedNetworkPtr pThis(new BootstrappedNetwork(manager ? manager->getLock() : SharedRecursiveLock(SharedRecursiveLock::create()), UseStack::queueStack(), domain));
         pThis->mThisWeak = pThis;
         pThis->init();
 
-        AutoRecursiveLock lock(pThis->getLock());
+        AutoRecursiveLock lock(*pThis);
 
-        BootstrappedNetworkPtr useThis = manager->findExistingOrUse(pThis);
+        BootstrappedNetworkPtr useThis = manager ? manager->findExistingOrUse(pThis) : pThis;
 
         if (pThis->getID() != useThis->getID()) {
           ZS_LOG_DEBUG(useThis->log("reusing existing object") + useThis->toDebug())
@@ -363,8 +363,23 @@ namespace openpeer
           pThis->dontUse();
         }
 
-        if (delegate) {
-          manager->registerDelegate(useThis, delegate);
+        if (inDelegate) {
+          if (!manager) {
+            IBootstrappedNetworkDelegatePtr delegate = IBootstrappedNetworkDelegateProxy::createWeak(UseStack::queueDelegate(), inDelegate);
+
+            useThis->setFailure(IHTTP::HTTPStatusCode_Gone, "BootstrappedNetworkManager singleton is gone");
+            useThis->cancel();
+
+            try {
+              delegate->onBootstrappedNetworkPreparationCompleted(useThis);
+            } catch(IBootstrappedNetworkDelegateProxy::Exceptions::DelegateGone &) {
+              ZS_LOG_WARNING(Detail, slog("delegate gone"))
+            }
+
+            return useThis;
+          }
+
+          manager->registerDelegate(useThis, inDelegate);
         }
 
         if (pThis->getID() == useThis->getID()) {
@@ -383,7 +398,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool BootstrappedNetwork::isPreparationComplete() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mCompleted;
       }
 
@@ -393,7 +408,7 @@ namespace openpeer
                                               String *outErrorReason
                                               ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (outErrorCode) *outErrorCode = mErrorCode;
         if (outErrorReason) *outErrorReason = mErrorReason;
@@ -411,7 +426,7 @@ namespace openpeer
                                                    )
       {
         ZS_LOG_DEBUG(log("sending message to service") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName) + Message::toDebug(message))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mCompleted) {
           ZS_LOG_WARNING(Detail, log("bootstrapper isn't complete and thus cannot send message"))
           return false;
@@ -611,7 +626,7 @@ namespace openpeer
                                                 const char *serviceMethodName
                                                 ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mCompleted) return String();
 
         const Service::Method *service = findServiceMethod(serviceType, serviceMethodName);
@@ -629,7 +644,7 @@ namespace openpeer
                                                  SecureByteBlockPtr bufferSigned
                                                  ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (domain != mDomain) {
           ZS_LOG_WARNING(Detail, log("signature is not valid as domains do not match") + ZS_PARAM("signature domain", domain) + ZS_PARAM("domain", mDomain))
@@ -681,7 +696,7 @@ namespace openpeer
       void BootstrappedNetwork::onWake()
       {
         ZS_LOG_DEBUG(log("on wake"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -701,7 +716,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("on http complete") + ZS_PARAM("query ID", query->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         PendingRequestMap::iterator found = mPendingRequests.find(query);
         if (found == mPendingRequests.end()) {
@@ -787,7 +802,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("services get result received") + ZS_PARAM("monitor", monitor->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mServicesGetMonitor) {
           ZS_LOG_WARNING(Detail, log("services get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
           return false;
@@ -815,7 +830,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("services get result error received") + ZS_PARAM("monitor", monitor->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mServicesGetMonitor) {
           ZS_LOG_WARNING(Detail, log("services get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
           return false;
@@ -881,7 +896,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("certificates get result received") + ZS_PARAM("monitor", monitor->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mCertificatesGetMonitor) {
           ZS_LOG_WARNING(Detail, log("certificates get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
           return false;
@@ -909,7 +924,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("certificates get result error received") + ZS_PARAM("monitor", monitor->getID()))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mCertificatesGetMonitor) {
           ZS_LOG_WARNING(Detail, log("certificates get result received from obsolete monitor") + ZS_PARAM("monitor", monitor->getID()))
           return false;
@@ -932,19 +947,17 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &BootstrappedNetwork::getLock() const
-      {
-        UseBootstrappedNetworkManagerPtr manager = mManager.lock();
-        if (!manager) return mBogusLock;
-        return manager->getLock();
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params BootstrappedNetwork::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("BootstrappedNetwork");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
+      Log::Params BootstrappedNetwork::slog(const char *message)
+      {
+        return Log::Params(message, "BootstrappedNetwork");
       }
 
       //-----------------------------------------------------------------------
@@ -956,7 +969,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr BootstrappedNetwork::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("BootstrappedNetwork");
 
@@ -994,7 +1007,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("reuse called"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (!isPreparationComplete()) {
           ZS_LOG_DEBUG(log("preparation is still pending"))
@@ -1137,7 +1150,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void BootstrappedNetwork::cancel()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("cancel called"))
 

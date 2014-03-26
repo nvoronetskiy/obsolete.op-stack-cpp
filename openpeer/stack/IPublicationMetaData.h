@@ -79,6 +79,19 @@ namespace openpeer
 
       static ElementPtr toDebug(IPublicationMetaDataPtr metaData);
 
+      static IPublicationMetaDataPtr create(
+                                            ULONG version,
+                                            ULONG baseVersion,
+                                            ULONG lineage,
+                                            ILocationPtr creatorLocation,
+                                            const char *name,
+                                            const char *mimeType,
+                                            Encodings encoding,
+                                            const PublishToRelationshipsMap &relationships,
+                                            ILocationPtr publishedLocation,
+                                            Time expires = Time()
+                                            );
+
       virtual PUID getID() const = 0;
 
       virtual IPublicationPtr toPublication() const = 0;

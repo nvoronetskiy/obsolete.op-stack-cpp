@@ -69,8 +69,8 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageFactoryNamespaceGrantPtr MessageFactoryNamespaceGrant::singleton()
         {
-          static MessageFactoryNamespaceGrantPtr pThis = create();
-          return pThis;
+          static SingletonLazySharedPtr<MessageFactoryNamespaceGrant> singleton(create());
+          return singleton.singleton();
         }
 
         //---------------------------------------------------------------------

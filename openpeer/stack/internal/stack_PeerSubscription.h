@@ -92,6 +92,7 @@ namespace openpeer
       #pragma mark
 
       class PeerSubscription : public Noop,
+                               public SharedRecursiveLock,
                                public IPeerSubscription,
                                public IPeerSubscriptionForAccount
       {
@@ -105,11 +106,14 @@ namespace openpeer
 
       protected:
         PeerSubscription(
-                         UseAccountPtr account,
+                         AccountPtr account,
                          IPeerSubscriptionDelegatePtr delegate
                          );
         
-        PeerSubscription(Noop) : Noop(true) {};
+        PeerSubscription(Noop) :
+          Noop(true),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -128,7 +132,7 @@ namespace openpeer
         static ElementPtr toDebug(IPeerSubscriptionPtr subscription);
 
         static PeerSubscriptionPtr subscribeAll(
-                                                IAccountPtr account,
+                                                AccountPtr account,
                                                 IPeerSubscriptionDelegatePtr delegate
                                                 );
 
@@ -176,8 +180,6 @@ namespace openpeer
         #pragma mark PeerSubscription => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const;
-
         Log::Params log(const char *message) const;
 
         virtual ElementPtr toDebug() const;
@@ -188,8 +190,7 @@ namespace openpeer
         #pragma mark PeerSubscription => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mBogusLock;
+        AutoPUID mID;
         PeerSubscriptionWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;
@@ -212,7 +213,7 @@ namespace openpeer
         static IPeerSubscriptionFactory &singleton();
 
         virtual PeerSubscriptionPtr subscribeAll(
-                                                 IAccountPtr account,
+                                                 AccountPtr account,
                                                  IPeerSubscriptionDelegatePtr delegate
                                                  );
 

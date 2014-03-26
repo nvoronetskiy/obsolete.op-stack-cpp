@@ -147,6 +147,7 @@ namespace openpeer
                                    AccountPtr outer
                                    ) :
         MessageQueueAssociator(queue),
+        SharedRecursiveLock(*outer),
         mDelegate(IAccountFinderDelegateProxy::createWeak(UseStack::queueStack(), delegate)),
         mOuter(outer),
         mCurrentState(IAccount::AccountState_Pending)
@@ -206,7 +207,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IAccount::AccountStates AccountFinder::getState() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mCurrentState;
       }
 
@@ -222,7 +223,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!message) {
           ZS_LOG_ERROR(Detail, log("message to send was NULL"))
           return false;
@@ -318,7 +319,7 @@ namespace openpeer
                                                     String &outFinderRelayAccessSecret
                                                     ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         outFinderIP = mFinderIP;
         outFinderRelayAccessToken = mRelayAccessToken;
         outFinderRelayAccessSecret = mRelayAccessSecret;
@@ -342,7 +343,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void AccountFinder::onWake()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -362,7 +363,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("finder connection state changed") + ZS_PARAM("finder connection ID", connection->getID()) + ZS_PARAM("state", IFinderConnection::toString(state)))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -372,7 +373,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("finder connection incoming relay channel"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("finder already shutdown"))
@@ -432,7 +433,7 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("RUDP messaging read ready"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (reader != mReceiveStream) {
           ZS_LOG_DEBUG(log("RUDP messaging ready came in about obsolete messaging"))
@@ -511,7 +512,7 @@ namespace openpeer
                                                              SessionCreateResultPtr result
                                                              )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionCreateMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete session create event"))
           return false;
@@ -538,7 +539,7 @@ namespace openpeer
                                                                   MessageResultPtr result
                                                                   )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionCreateMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete session create error event"))
           return false;
@@ -564,7 +565,7 @@ namespace openpeer
                                                              SessionKeepAliveResultPtr result
                                                              )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionKeepAliveMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete keep alive event"))
           return false;
@@ -586,7 +587,7 @@ namespace openpeer
                                                                   MessageResultPtr result
                                                                   )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionKeepAliveMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete session keep alive error event"))
           return false;
@@ -611,7 +612,7 @@ namespace openpeer
                                                              SessionDeleteResultPtr result
                                                              )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionDeleteMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete session delete event"))
           return false;
@@ -628,7 +629,7 @@ namespace openpeer
                                                                   MessageResultPtr result
                                                                   )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mSessionDeleteMonitor) {
           ZS_LOG_WARNING(Detail, log("received an obsolete session delete event"))
           return false;
@@ -677,14 +678,6 @@ namespace openpeer
       #pragma mark
       #pragma mark AccountFinder => (internal)
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      RecursiveLock &AccountFinder::getLock() const
-      {
-        UseAccountPtr outer = mOuter.lock();
-        if (!outer) return mBogusLock;
-        return outer->getLock();
-      }
 
       //-----------------------------------------------------------------------
       void AccountFinder::setTimeout(Time expires)
@@ -739,7 +732,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr AccountFinder::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("AccountFinder");
 
@@ -764,7 +757,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("cancel called"))
 
-        AutoRecursiveLock lock(getLock());    // just in case
+        AutoRecursiveLock lock(*this);    // just in case
 
         if (isShutdown()) return;
 
