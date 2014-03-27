@@ -58,6 +58,13 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_PeerSubscription.cpp \
 		   $(SOURCE_PATH)/stack_Publication.cpp \
 		   $(SOURCE_PATH)/stack_PublicationMetaData.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_Fetcher.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_PeerCache.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionIncoming.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionoutgoing.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_Publisher.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_Remover.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_SubscriptionLocal.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository.cpp \
 		   $(SOURCE_PATH)/stack_ServiceCertificatesValidateQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServiceIdentitySession.cpp \
