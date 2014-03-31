@@ -2245,8 +2245,6 @@ namespace openpeer
               Time existingRequestTime = peerLocation->getCreationFindRequestTimestamp();
               Time newRequestTime = peerLocationFindRequest->created();
 
-#define WARNING_TEMPORARY_WHILE_CREATED_IS_NOT_MANDITORY 1
-#define WARNING_TEMPORARY_WHILE_CREATED_IS_NOT_MANDITORY 2
               if (Time() == newRequestTime) {
                 newRequestTime = existingRequestTime;
               }
@@ -2916,10 +2914,8 @@ namespace openpeer
         request->peerSecret(IHelper::randomString(32*8/5+1));
         request->iceUsernameFrag(mSocket->getUsernameFrag());
         request->icePassword(mSocket->getPassword());
-#define WARNING_FINAL_SHOULD_BE_SET 1
-#define WARNING_FINAL_SHOULD_BE_SET 2
         ZS_LOG_WARNING(Trace, log("peer location find request final should be set"))
-        //request->final(locationInfo->mCandidatesFinal);
+        request->final(locationInfo->mCandidatesFinal);
         request->excludeLocations(exclude);
 
         DHKeyPair keyPair = getDHKeyPairTemplate(OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY);

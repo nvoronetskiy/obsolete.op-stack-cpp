@@ -143,21 +143,10 @@ namespace openpeer
 
             String clientNonce = findProofEl->findFirstChildElementChecked("nonce")->getText();
 
-#define WARNING_CREATED_SHOULD_BE_MANDITORY 1
-#define WARNING_CREATED_SHOULD_BE_MANDITORY 2
+            ret->mCreated = IHelper::stringToTime(findProofEl->findFirstChildElementChecked("created")->getText());
 
-            ElementPtr createdEl = findProofEl->findFirstChildElement("created");
-            if (createdEl) {
-              ret->mCreated = IHelper::stringToTime(createdEl->getText());
-            } else {
-              ret->mCreated = Time();
-              ZS_LOG_WARNING(Detail, slog("created value missing"))
-            }
-
-#define WARNING_FINAL_SHOULD_BE_MANDITORY 1
-#define WARNING_FINAL_SHOULD_BE_MANDITORY 2
             try {
-              ElementPtr finalEl = findProofEl->findFirstChildElement("final");
+              ElementPtr finalEl = findProofEl->findFirstChildElement("iceFinal");
               if (finalEl) {
                 ret->mFinal = ((Numeric<bool>(IMessageHelper::getElementTextAndDecode(finalEl))) ? 1 : 0);
               } else {
@@ -384,11 +373,9 @@ namespace openpeer
 
           findProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
 
-#define WARNING_CREATED_SHOULD_BE_MANDITORY 1
-#define WARNING_CREATED_SHOULD_BE_MANDITORY 2
-//          if (hasAttribute(AttributeType_CreatedTimestamp)) {
-//            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("created", IHelper::timeToString(mCreated)));
-//          }
+          if (hasAttribute(AttributeType_CreatedTimestamp)) {
+            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", IHelper::timeToString(mCreated)));
+          }
 
           if (mFindPeer) {
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("find", mFindPeer->getPeerURI()));
@@ -447,7 +434,7 @@ namespace openpeer
           }
 
           if (hasAttribute(AttributeType_Final)) {
-            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("final", mFinal > 0 ? "true" : "false"));
+            findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("iceFinal", mFinal > 0 ? "true" : "false"));
           }
 
           if (hasAttribute(AttributeType_LocationInfo)) {

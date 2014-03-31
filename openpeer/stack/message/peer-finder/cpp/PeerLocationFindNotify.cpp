@@ -106,7 +106,7 @@ namespace openpeer
             ret->mICEPassword = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("icePassword"));
 
             try {
-              get(ret->mFinal) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("final")));
+              get(ret->mFinal) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceFinal")));
             } catch (Numeric<bool>::ValueOutOfRange &) {
               ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
@@ -224,7 +224,7 @@ namespace openpeer
             findProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("icePassword", mICEPassword));
           }
 
-          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("final", mFinal ? "true":"false"));
+          findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("iceFinal", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
             findProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
