@@ -2182,8 +2182,10 @@ namespace openpeer
 
           LocationInfoPtr fromLocationInfo = peerLocationFindRequest->locationInfo();
           UseLocationPtr fromLocation;
-          if (fromLocationInfo->mLocation) {
-            fromLocation = Location::convert(fromLocationInfo->mLocation);
+          if (fromLocationInfo) {
+            if (fromLocationInfo->mLocation) {
+              fromLocation = Location::convert(fromLocationInfo->mLocation);
+            }
           }
 
           UsePeerPtr fromPeer;
