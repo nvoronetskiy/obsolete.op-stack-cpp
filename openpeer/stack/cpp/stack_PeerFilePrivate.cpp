@@ -780,6 +780,8 @@ namespace openpeer
             return false;
           }
 
+          ZS_LOG_TRACE(log("decrypted private key") + ZS_PARAM("private key", services::IHelper::convertToHex(*decryptedPrivateKey)))
+
           mPeerURI = contact;
           mPrivateKey = IRSAPrivateKey::load(*decryptedPrivateKey);
           if (!mPrivateKey) {
