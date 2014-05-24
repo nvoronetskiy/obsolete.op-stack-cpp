@@ -88,7 +88,9 @@ namespace openpeer
       typedef String ValueType;
       typedef std::list<ValueType> ValueList;
 
-      struct PushPeerDetail
+      ZS_DECLARE_TYPEDEF_PTR(std::list<IPeerPtr>, PeerList)
+
+      struct PushStatePeerDetail
       {
         IPeerPtr mPeer;
 
@@ -96,24 +98,24 @@ namespace openpeer
         String mErrorReason;
       };
 
-      ZS_DECLARE_PTR(PushPeerDetail)
+      ZS_DECLARE_PTR(PushStatePeerDetail)
 
-      ZS_DECLARE_TYPEDEF_PTR(std::list<PushPeerDetailPtr>, PushPeerDetailList)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushStatePeerDetailPtr>, PushStatePeerDetailList)
 
-      struct PushDetail
+      struct PushStateDetail
       {
         PushStates mState;
-        PushPeerDetailList mRelatedPeers;
+        PushStatePeerDetailList mRelatedPeers;
       };
 
-      ZS_DECLARE_PTR(PushDetail)
+      ZS_DECLARE_PTR(PushStateDetail)
 
-      ZS_DECLARE_TYPEDEF_PTR(std::list<PushDetailPtr>, PushDetailList)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushStateDetailPtr>, PushStateDetailList)
 
       struct PushMessage
       {
-        String mMessageID;
-        String mMessageVersion;
+        String mMessageID;                // system will assign this value
+        String mMessageVersion;           // system will assign this value
 
         String mMessageType;
         SecureByteBlockPtr mFullMessage;
@@ -126,7 +128,7 @@ namespace openpeer
 
         IPeerPtr mFrom;                   // the peer that sent the message
 
-        PushDetailListPtr mPushDetails;   // detailed related state information about the push
+        PushStateDetailListPtr mPushDetails;   // detailed related state information about the push
       };
 
       ZS_DECLARE_PTR(PushMessage)
@@ -155,13 +157,33 @@ namespace openpeer
 
       virtual void cancel() = 0;
 
+      virtual void registerDevice(
+                                  const char *deviceToken,
+                                  const char *mappedType,   // for APNS maps to "loc-key"
+                                  bool unreadBadge,         // true causes total unread messages to be displayed in badge
+                                  const char *sound,        // what sound to play upon receiving a message. For APNS, maps to "sound" field
+                                  const char *action,       // for APNS, maps to "action-loc-key"
+                                  const char *launchImage,  // for APNS, maps to "launch-image"
+                                  unsigned int priority     // for APNS, maps to push priority
+                                  ) = 0;
+
       virtual void monitorFolder(const char *folderName) = 0;
 
       virtual PushMessageListPtr getFolderMessageUpdates(
                                                          const char *folder,
                                                          String &ioLastVersionDownloaded,   // pass in String() if no previous version known
                                                          bool &outFlushAllPreviousMessages  // returns true if all messages associated to the folder need to be flushed
-                                                         );
+                                                         ) = 0;
+
+      virtual IServicePushMailboxSendQueryPtr sendMessage(
+                                                          IServicePushMailboxSendQueryDelegatePtr delegate,
+                                                          const PeerList &toPeers,
+                                                          const PushMessage &message,
+                                                          bool copyToSentFolder = true
+                                                          ) = 0;
+
+      virtual void markPushMessageRead(const char *messageID) = 0;
+      virtual void deletePushMessage(const char *messageID) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -184,8 +206,9 @@ namespace openpeer
       virtual void onServicePushMailboxSessionFolderChanged(
                                                             IServicePushMailboxSessionPtr session,
                                                             const char *folder
-                                                            );
+                                                            ) = 0;
     };
+
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
@@ -202,6 +225,40 @@ namespace openpeer
 
       virtual void background() = 0;
     };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSendQuery
+    #pragma mark
+
+    interaction IServicePushMailboxSendQuery
+    {
+      ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSession::PushMessage, PushMessage)
+      ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSession::PushStateDetailList, PushStateDetailList)
+
+      virtual PUID getID() const = 0;
+
+      virtual void cancel() = 0;
+
+      virtual PushMessagePtr getPushMessage() = 0;
+      virtual PushStateDetailListPtr getPushStates() = 0;
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSendQueryDelegate
+    #pragma mark
+
+    interaction IServicePushMailboxSendQueryDelegate
+    {
+      virtual void onPushMailboxQueryPushStatesChanged(IServicePushMailboxSendQueryPtr query) = 0;
+    };
   }
 
 }
@@ -210,10 +267,17 @@ ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSessionDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSessionPtr, IServicePushMailboxSessionPtr)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSessionDelegate::SessionStates, SessionStates)
 ZS_DECLARE_PROXY_METHOD_2(onServicePushMailboxSessionStateChanged, IServicePushMailboxSessionPtr, SessionStates)
+ZS_DECLARE_PROXY_METHOD_2(onServicePushMailboxSessionFolderChanged, IServicePushMailboxSessionPtr, const char *)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::IServicePushMailboxSessionDelegate, openpeer::stack::IServicePushMailboxSessionSubscription)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServicePushMailboxSessionPtr, IServicePushMailboxSessionPtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServicePushMailboxSessionDelegate::SessionStates, SessionStates)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onServicePushMailboxSessionStateChanged, IServicePushMailboxSessionPtr, SessionStates)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onServicePushMailboxSessionFolderChanged, IServicePushMailboxSessionPtr, const char *)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
+
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSendQueryDelegate)
+ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSendQueryPtr, IServicePushMailboxSendQueryPtr)
+ZS_DECLARE_PROXY_METHOD_1(onPushMailboxQueryPushStatesChanged, IServicePushMailboxSendQueryPtr)
+ZS_DECLARE_PROXY_END()
