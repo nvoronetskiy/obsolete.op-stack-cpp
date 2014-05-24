@@ -189,6 +189,8 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IServiceLockbox)
     ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSession)
     ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSession)
+    ZS_DECLARE_INTERACTION_PTR(IServicePushMailbox)
+    ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSession)
     ZS_DECLARE_INTERACTION_PTR(ISettings)
     ZS_DECLARE_INTERACTION_PTR(ISettingsDelegate)
     ZS_DECLARE_INTERACTION_PTR(IStack)
@@ -208,8 +210,10 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IServiceIdentityProofBundleQueryDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServiceLockboxSessionDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionDelegate)
 
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IKeyGeneratorSubscription, IKeyGeneratorDelegate)
+    ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServicePushMailboxSessionSubscription, IServicePushMailboxSessionDelegate)
 
     ZS_DECLARE_TYPEDEF_PTR(std::list<ILocationPtr>, LocationList)
     ZS_DECLARE_TYPEDEF_PTR(std::list<IServiceIdentitySessionPtr>, ServiceIdentitySessionList)

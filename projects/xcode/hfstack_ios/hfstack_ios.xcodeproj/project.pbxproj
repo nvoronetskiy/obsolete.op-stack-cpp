@@ -437,6 +437,7 @@
 		00AF4E43171E40AD00DCA0A8 /* MessageFactoryPeer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageFactoryPeer.h; sourceTree = "<group>"; };
 		00AF4E44171E40AD00DCA0A8 /* PeerServicesGetRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerServicesGetRequest.h; sourceTree = "<group>"; };
 		00AF4E45171E40AD00DCA0A8 /* PeerServicesGetResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PeerServicesGetResult.h; sourceTree = "<group>"; };
+		00C2B4CD192F9BEC00D7E76C /* IServicePushMailbox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServicePushMailbox.h; sourceTree = "<group>"; };
 		00C59C0817AB4F250063A110 /* stack_IFinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnection.h; sourceTree = "<group>"; };
 		00C59C0917AB4F250063A110 /* stack_IFinderConnectionRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnectionRelayChannel.h; sourceTree = "<group>"; };
 		00C59C0A17AB4F3D0063A110 /* stack_FinderConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderConnection.cpp; sourceTree = "<group>"; };
@@ -577,6 +578,7 @@
 				0063BA5A16CA92CF00E6DB4D /* IServiceIdentity.h */,
 				00AF4DF1171E3DC700DCA0A8 /* IServiceLockbox.h */,
 				0084000E18501686009F6934 /* IServiceNamespaceGrant.h */,
+				00C2B4CD192F9BEC00D7E76C /* IServicePushMailbox.h */,
 				0063BA5C16CA92CF00E6DB4D /* IServiceSalt.h */,
 				004B8D5F189C03C500D4F6A8 /* ISettings.h */,
 				0063BA5D16CA92CF00E6DB4D /* IStack.h */,
