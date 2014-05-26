@@ -88,7 +88,18 @@ namespace openpeer
       typedef String ValueType;
       typedef std::list<ValueType> ValueList;
 
+      typedef String IdentityURI;
+
       ZS_DECLARE_TYPEDEF_PTR(std::list<IPeerPtr>, PeerList)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<IdentityURI>, IdentityList)
+
+      struct PushDestination
+      {
+        PeerList mDeliverPeers;
+        IdentityList mDeliverIdentities;
+      };
+
+      ZS_DECLARE_PTR(PushDestination)
 
       struct PushStatePeerDetail
       {
@@ -127,6 +138,10 @@ namespace openpeer
         Time mExpires;                    // optional, system will assign a long life time if not specified
 
         IPeerPtr mFrom;                   // the peer that sent the message
+
+        PushDestinationPtr mTo;
+        PushDestinationPtr mCC;
+        PushDestinationPtr mBCC;
 
         PushStateDetailListPtr mPushDetails;   // detailed related state information about the push
       };
@@ -177,7 +192,9 @@ namespace openpeer
 
       virtual IServicePushMailboxSendQueryPtr sendMessage(
                                                           IServicePushMailboxSendQueryDelegatePtr delegate,
-                                                          const PeerList &toPeers,
+                                                          const PushDestination &to,
+                                                          const PushDestination &cc,
+                                                          const PushDestination &bcc,
                                                           const PushMessage &message,
                                                           bool copyToSentFolder = true
                                                           ) = 0;
