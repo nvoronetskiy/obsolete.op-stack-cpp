@@ -142,7 +142,7 @@ namespace openpeer
       ElementPtr resultEl = Element::create("LocationInfo");
 
       OPIHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
-      OPIHelper::debugAppend(resultEl, "IP addres", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
+      OPIHelper::debugAppend(resultEl, "IP address", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
       OPIHelper::debugAppend(resultEl, "device ID", mDeviceID);
       OPIHelper::debugAppend(resultEl, "user agent", mUserAgent);
       OPIHelper::debugAppend(resultEl, "os", mOS);
