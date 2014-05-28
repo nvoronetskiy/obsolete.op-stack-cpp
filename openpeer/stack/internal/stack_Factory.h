@@ -72,6 +72,7 @@ namespace openpeer
                       public IServiceIdentitySessionFactory,
                       public IServiceLockboxSessionFactory,
                       public IServiceNamespaceGrantSessionFactory,
+                      public IServicePushMailboxSessionFactory,
                       public IServiceSaltFetchSignedSaltQueryFactory
       {
       public:

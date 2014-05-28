@@ -1071,7 +1071,7 @@ namespace openpeer
           reason = IHTTP::toString(IHTTP::toStatusCode(errorCode));
         }
         if (0 != mLastError) {
-          ZS_LOG_WARNING(Detail, debug("erorr already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
+          ZS_LOG_WARNING(Detail, debug("error already set thus ignoring new error") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
           return;
         }
 

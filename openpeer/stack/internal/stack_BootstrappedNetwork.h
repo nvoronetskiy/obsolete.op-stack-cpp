@@ -43,6 +43,7 @@
 #include <openpeer/stack/IServiceIdentity.h>
 #include <openpeer/stack/IServiceLockbox.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
+#include <openpeer/stack/IServicePushMailbox.h>
 #include <openpeer/stack/IServiceSalt.h>
 #include <openpeer/stack/IMessageSource.h>
 #include <openpeer/stack/IMessageMonitor.h>
@@ -173,6 +174,7 @@ namespace openpeer
                                   public IServiceCertificates,
                                   public IServiceIdentity,
                                   public IServiceLockbox,
+                                  public IServicePushMailbox,
                                   public IServiceSalt,
                                   public IBootstrappedNetworkForAccount,
                                   public IBootstrappedNetworkForServices,
@@ -313,6 +315,17 @@ namespace openpeer
         #pragma mark
 
         static IServiceLockboxPtr createServiceLockboxFrom(IBootstrappedNetworkPtr bootstrappedNetwork);
+
+        // (duplicate) virtual PUID getID() const;
+
+        // (duplicate) virtual IBootstrappedNetworkPtr getBootstrappedNetwork() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark BootstrappedNetwork => IServicePushMailbox
+        #pragma mark
+
+        static IServicePushMailboxPtr createServicePushMailboxFrom(IBootstrappedNetworkPtr bootstrappedNetwork);
 
         // (duplicate) virtual PUID getID() const;
 

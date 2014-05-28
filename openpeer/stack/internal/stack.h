@@ -60,6 +60,7 @@
 #include <openpeer/stack/internal/stack_ServiceIdentitySession.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceSaltFetchSignedSaltQuery.h>
 #include <openpeer/stack/internal/stack_Settings.h>
 #include <openpeer/stack/internal/stack_Stack.h>

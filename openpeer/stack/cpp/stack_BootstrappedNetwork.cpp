@@ -603,6 +603,20 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark BootstrappedNetwork => IServicePushMailbox
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServicePushMailboxPtr BootstrappedNetwork::createServicePushMailboxFrom(IBootstrappedNetworkPtr bootstrappedNetwork)
+      {
+        return BootstrappedNetwork::convert(bootstrappedNetwork);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark BootstrappedNetwork => IServiceSalt
       #pragma mark
 

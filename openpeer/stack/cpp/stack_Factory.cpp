@@ -987,6 +987,33 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IServicePushMailboxSessionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServicePushMailboxSessionFactory &IServicePushMailboxSessionFactory::singleton()
+      {
+        return Factory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServicePushMailboxSessionPtr IServicePushMailboxSessionFactory::create(
+                                                                             IServicePushMailboxSessionDelegatePtr delegate,
+                                                                             IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                                             IServicePushMailboxPtr servicePushMailbox,
+                                                                             IServiceNamespaceGrantSessionPtr grantSession,
+                                                                             IServiceLockboxSessionPtr lockboxSession
+                                                                             )
+      {
+        if (this) {}
+        return ServicePushMailboxSession::create(delegate, databaseDelegate, servicePushMailbox, grantSession, lockboxSession);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IServiceSaltFetchSignedSaltQueryFactory
       #pragma mark
 

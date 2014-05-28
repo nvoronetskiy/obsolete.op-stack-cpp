@@ -142,6 +142,7 @@ namespace openpeer
       ZS_DECLARE_CLASS_PTR(ServiceIdentitySession)
       ZS_DECLARE_CLASS_PTR(ServiceLockboxSession)
       ZS_DECLARE_CLASS_PTR(ServiceNamespaceGrantSession)
+      ZS_DECLARE_CLASS_PTR(ServicePushMailboxSession)
       ZS_DECLARE_CLASS_PTR(ServiceSaltFetchSignedSaltQuery)
       ZS_DECLARE_CLASS_PTR(Settings)
       ZS_DECLARE_CLASS_PTR(Stack)
