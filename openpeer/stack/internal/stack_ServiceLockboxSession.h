@@ -139,6 +139,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IServiceLockboxSessionForServicePushMailbox
+      #pragma mark
+
+      interaction IServiceLockboxSessionForServicePushMailbox
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServicePushMailbox, ForServicePushMailbox)
+
+        virtual PUID getID() const = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServiceLockboxSession
       #pragma mark
 
@@ -148,6 +163,7 @@ namespace openpeer
                                     public IMessageSource,
                                     public IServiceLockboxSessionForAccount,
                                     public IServiceLockboxSessionForServiceIdentity,
+                                    public IServiceLockboxSessionForServicePushMailbox,
                                     public IWakeDelegate,
                                     public IBootstrappedNetworkDelegate,
                                     public IKeyGeneratorDelegate,
@@ -203,6 +219,7 @@ namespace openpeer
         static ServiceLockboxSessionPtr convert(IServiceLockboxSessionPtr session);
         static ServiceLockboxSessionPtr convert(ForAccountPtr session);
         static ServiceLockboxSessionPtr convert(ForServiceIdentityPtr session);
+        static ServiceLockboxSessionPtr convert(ForServicePushMailboxPtr session);
 
       protected:
         //---------------------------------------------------------------------
@@ -305,6 +322,13 @@ namespace openpeer
         virtual void notifyStateChanged();
 
         virtual UseRecursiveLockPtr getLockPtr() const {return mLockPtr;}
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceLockboxSession => IServiceLockboxSessionForServicePushMailbox
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const;
 
         //---------------------------------------------------------------------
         #pragma mark

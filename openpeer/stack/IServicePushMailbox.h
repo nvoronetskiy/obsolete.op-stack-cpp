@@ -68,8 +68,11 @@ namespace openpeer
       enum SessionStates
       {
         SessionState_Pending,
-        SessionState_PendingPeerFilesGeneration,
-        SessionState_Ready,
+        SessionState_Connecting,
+        SessionState_Connected,
+        SessionState_GoingToSleep,
+        SessionState_Sleeping,
+        SessionState_ShuttingDown,
         SessionState_Shutdown,
       };
       static const char *toString(SessionStates state);
@@ -165,7 +168,7 @@ namespace openpeer
                                      String *lastErrorReason
                                      ) const = 0;
 
-      virtual void cancel() = 0;
+      virtual void shutdown() = 0;
 
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                  const char *deviceToken,
@@ -196,6 +199,8 @@ namespace openpeer
                                                           const PushMessage &message,
                                                           bool copyToSentFolder = true
                                                           ) = 0;
+
+      virtual void recheckNow() = 0;
 
       virtual void markPushMessageRead(const char *messageID) = 0;
       virtual void deletePushMessage(const char *messageID) = 0;

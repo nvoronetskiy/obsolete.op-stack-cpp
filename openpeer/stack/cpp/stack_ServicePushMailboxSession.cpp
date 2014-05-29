@@ -34,9 +34,11 @@
 
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+#include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
@@ -88,19 +90,28 @@ namespace openpeer
                                                            BootstrappedNetworkPtr network,
                                                            IServicePushMailboxSessionDelegatePtr delegate,
                                                            IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                                           IServicePushMailboxPtr servicePushMailbox,
                                                            ServiceNamespaceGrantSessionPtr grantSession,
-                                                           IServiceLockboxSessionPtr lockboxSession
+                                                           ServiceLockboxSessionPtr lockboxSession
                                                            ) :
         zsLib::MessageQueueAssociator(queue),
-        mLockPtr(new RecursiveLock),
-        mLock(*mLockPtr),
-        mDelegate(delegate ? IServicePushMailboxSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServicePushMailboxSessionDelegatePtr()),
+
+        SharedRecursiveLock(SharedRecursiveLock::create()),
+
+
+        mDB(databaseDelegate),
+
+        mCurrentState(SessionState_Pending),
+
         mBootstrappedNetwork(network),
+        mLockbox(lockboxSession),
         mGrantSession(grantSession),
-        mCurrentState(SessionState_Pending)
+
+        mInactivityTimeout(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT))),
+        mLastActivity(zsLib::now())
       {
         ZS_LOG_BASIC(log("created"))
+
+        mDefaultSubscription = mSubscriptions.subscribe(delegate, IStackForInternal::queueDelegate());
       }
 
       //-----------------------------------------------------------------------
@@ -116,7 +127,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::init()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
       }
@@ -151,7 +162,12 @@ namespace openpeer
                                                                      IServiceLockboxSessionPtr lockboxSession
                                                                      )
       {
-        return ServicePushMailboxSessionPtr();
+        ZS_THROW_INVALID_ARGUMENT_IF(!databaseDelegate) // must not be NULL
+
+        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
+        pThis->mThisWeak = pThis;
+        pThis->init();
+        return pThis;
       }
 
       //-----------------------------------------------------------------------
@@ -161,15 +177,39 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      IServicePushMailboxSessionSubscriptionPtr ServicePushMailboxSession::subscribe(IServicePushMailboxSessionDelegatePtr delegate)
+      IServicePushMailboxSessionSubscriptionPtr ServicePushMailboxSession::subscribe(IServicePushMailboxSessionDelegatePtr originalDelegate)
       {
-        return IServicePushMailboxSessionSubscriptionPtr();
+        ZS_LOG_DETAIL(log("subscribing to socket state"))
+
+        AutoRecursiveLock lock(*this);
+        if (!originalDelegate) return mDefaultSubscription;
+
+        IServicePushMailboxSessionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate);
+
+        IServicePushMailboxSessionDelegatePtr delegate = mSubscriptions.delegate(subscription);
+
+        if (delegate) {
+          ServicePushMailboxSessionPtr pThis = mThisWeak.lock();
+
+          if (SessionState_Pending != mCurrentState) {
+            delegate->onServicePushMailboxSessionStateChanged(pThis, mCurrentState);
+          }
+#define WARNING_NOTIFY_ABOUT_FOLDERS_THAT_ARE_MONITORED_AND_HAVE_ALREADY_NOTIFIED 1
+#define WARNING_NOTIFY_ABOUT_FOLDERS_THAT_ARE_MONITORED_AND_HAVE_ALREADY_NOTIFIED 2
+        }
+
+        if (isShutdown()) {
+          mSubscriptions.clear();
+        }
+
+        return subscription;
       }
 
       //-----------------------------------------------------------------------
       IServicePushMailboxPtr ServicePushMailboxSession::getService() const
       {
-        return IServicePushMailboxPtr();
+        AutoRecursiveLock lock(*this);
+        return BootstrappedNetwork::convert(mBootstrappedNetwork);
       }
 
       //-----------------------------------------------------------------------
@@ -178,12 +218,17 @@ namespace openpeer
                                                                                     String *lastErrorReason
                                                                                     ) const
       {
-        return SessionState_Pending;
+        AutoRecursiveLock lock(*this);
+        return mCurrentState;
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::cancel()
+      void ServicePushMailboxSession::shutdown()
       {
+        ZS_LOG_DEBUG(log("shutdown called"))
+
+        AutoRecursiveLock lock(*this);
+        cancel();
       }
 
       //-----------------------------------------------------------------------
@@ -235,6 +280,20 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::recheckNow()
+      {
+        ZS_LOG_DEBUG(log("recheck now called"))
+
+        AutoRecursiveLock lock(*this);
+        mLastActivity = zsLib::now();
+
+#define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 1
+#define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 2
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+      }
+
+      //-----------------------------------------------------------------------
       void ServicePushMailboxSession::markPushMessageRead(const char *messageID)
       {
       }
@@ -255,7 +314,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::onWake()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("on wake"))
         step();
       }
@@ -273,7 +332,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("bootstrapper reported complete"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -290,7 +349,27 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("namespace grant session wait is ready to be obtained (if needed)"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IServiceNamespaceGrantSessionQueryDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onServiceNamespaceGrantSessionForServicesQueryComplete(
+                                                                                             IServiceNamespaceGrantSessionQueryPtr query,
+                                                                                             ElementPtr namespaceGrantChallengeBundleEl
+                                                                                             )
+      {
+        ZS_LOG_DEBUG(log("namespace grant session wait is ready to be obtained (if needed)"))
+
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -301,12 +380,6 @@ namespace openpeer
       #pragma mark
       #pragma mark ServicePushMailboxSession => (internal)
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      RecursiveLock &ServicePushMailboxSession::getLock() const
-      {
-        return mLock;
-      }
 
       //-----------------------------------------------------------------------
       Log::Params ServicePushMailboxSession::log(const char *message) const
@@ -325,13 +398,16 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr ServicePushMailboxSession::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("ServicePushMailboxSession");
 
         IHelper::debugAppend(resultEl, "id", mID);
 
-        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
+        IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+
+        IHelper::debugAppend(resultEl, "db", (bool)mDB);
 
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
@@ -339,11 +415,16 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
         IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        IHelper::debugAppend(resultEl, "lockbox", mLockbox ? mLockbox->getID() : 0);
+
         IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->getID() : 0);
         IHelper::debugAppend(resultEl, "grant query", mGrantQuery ? mGrantQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait", mGrantWait ? mGrantWait->getID() : 0);
 
         IHelper::debugAppend(resultEl, "obtained lock", mObtainedLock);
+
+        IHelper::debugAppend(resultEl, "inactivty timeout (s)", mInactivityTimeout);
+        IHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
         return resultEl;
       }
@@ -351,8 +432,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::step()
       {
-        if (isShutdown()) {
-          ZS_LOG_DEBUG(log("step - already shutdown"))
+        if ((isShuttingDown()) ||
+            (isShutdown())) {
+          ZS_LOG_DEBUG(log("step - already shutting down / shutdown"))
           cancel();
           return;
         }
@@ -364,8 +446,6 @@ namespace openpeer
 
         if (!stepGrantLockClear()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
-
-        setState(SessionState_Ready);
 
       post_step:
         postStep();
@@ -466,14 +546,9 @@ namespace openpeer
         mCurrentState = state;
 
         ServicePushMailboxSessionPtr pThis = mThisWeak.lock();
-        if ((pThis) &&
-            (mDelegate)) {
-          try {
-            ZS_LOG_DEBUG(debug("attempting to report state to delegate"))
-            mDelegate->onServicePushMailboxSessionStateChanged(pThis, mCurrentState);
-          } catch (IServicePushMailboxSessionDelegateProxy::Exceptions::DelegateGone &) {
-            ZS_LOG_WARNING(Detail, log("delegate gone"))
-          }
+        if (pThis) {
+          ZS_LOG_DEBUG(debug("attempting to report state to delegate"))
+          mSubscriptions.delegate()->onServicePushMailboxSessionStateChanged(pThis, mCurrentState);
         }
       }
 
@@ -494,6 +569,11 @@ namespace openpeer
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, log("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::cancel()
+      {
       }
 
       //-----------------------------------------------------------------------
@@ -523,10 +603,13 @@ namespace openpeer
     {
       switch (state)
       {
-        case SessionState_Pending:                      return "Pending";
-        case SessionState_PendingPeerFilesGeneration:   return "Pending Peer File Generation";
-        case SessionState_Ready:                        return "Ready";
-        case SessionState_Shutdown:                     return "Shutdown";
+        case SessionState_Pending:              return "Pending";
+        case SessionState_Connecting:           return "Connecting";
+        case SessionState_Connected:            return "Connected";
+        case SessionState_GoingToSleep:         return "Going to sleep";
+        case SessionState_Sleeping:             return "Sleeping";
+        case SessionState_ShuttingDown:         return "Shutting down";
+        case SessionState_Shutdown:             return "Shutdown";
       }
       return "UNDEFINED";
     }

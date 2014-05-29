@@ -302,6 +302,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      BootstrappedNetworkPtr BootstrappedNetwork::convert(IServicePushMailboxPtr network)
+      {
+        return dynamic_pointer_cast<BootstrappedNetwork>(network);
+      }
+
+      //-----------------------------------------------------------------------
       BootstrappedNetworkPtr BootstrappedNetwork::convert(IServiceSaltPtr network)
       {
         return dynamic_pointer_cast<BootstrappedNetwork>(network);
@@ -503,11 +509,12 @@ namespace openpeer
         String domain;
         String service;
         signedElement = stack::IHelper::getSignatureInfo(signedElement, &signatureEl, NULL, &id, &domain, &service);
-        
-#define FIX_VERY_BAD_HACK_TO_TEMPORARILY_DISABLE_SIGNATURE_VALIDATION 1
-#define FIX_VERY_BAD_HACK_TO_TEMPORARILY_DISABLE_SIGNATURE_VALIDATION 2
 
-        return true;
+        bool skipValidation = ISettings::getBool(OPENPEER_STACK_SETTING_BOOTSTREPPER_SKIP_SIGNATURE_VALIDATION);
+        if (skipValidation) {
+          ZS_LOG_WARNING(Basic, log("signature validation was intentionally skipped (skipping signature validation can compromise security)"))
+          return true;
+        }
 
         if (!signedElement) {
           ZS_LOG_WARNING(Detail, log("signature validation failed because no signed element found"))

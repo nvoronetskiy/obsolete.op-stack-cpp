@@ -38,11 +38,14 @@
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
+#include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 
 #include <openpeer/services/IWakeDelegate.h>
 
 #include <zsLib/MessageQueueAssociator.h>
+
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 
 namespace openpeer
 {
@@ -62,6 +65,7 @@ namespace openpeer
 
       class ServicePushMailboxSession : public Noop,
                                         public zsLib::MessageQueueAssociator,
+                                        public SharedRecursiveLock,
                                         public IServicePushMailboxSession,
                                         public IWakeDelegate,
                                         public IBootstrappedNetworkDelegate,
@@ -72,10 +76,9 @@ namespace openpeer
         friend interaction IServicePushMailboxSessionFactory;
         friend interaction IServicePushMailboxSession;
 
-        ZS_DECLARE_TYPEDEF_PTR(RecursiveLock, UseRecursiveLock)
-
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServicePushMailbox, UseServiceLockboxSession)
 
         typedef IServicePushMailboxSession::SessionStates SessionStates;
 
@@ -85,16 +88,14 @@ namespace openpeer
                                   BootstrappedNetworkPtr network,
                                   IServicePushMailboxSessionDelegatePtr delegate,
                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                  IServicePushMailboxPtr servicePushMailbox,
                                   ServiceNamespaceGrantSessionPtr grantSession,
-                                  IServiceLockboxSessionPtr lockboxSession
+                                  ServiceLockboxSessionPtr lockboxSession
                                   );
         
         ServicePushMailboxSession(Noop) :
           Noop(true),
           MessageQueueAssociator(IMessageQueuePtr()),
-          mLockPtr(new RecursiveLock),
-          mLock(*mLockPtr) {}
+          SharedRecursiveLock(SharedRecursiveLock::create()) {}
 
         void init();
 
@@ -130,7 +131,7 @@ namespace openpeer
                                        String *lastErrorReason
                                        ) const;
 
-        virtual void cancel();
+        virtual void shutdown();
 
         virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                    const char *deviceToken,
@@ -160,6 +161,8 @@ namespace openpeer
                                                             const PushMessage &message,
                                                             bool copyToSentFolder = true
                                                             );
+
+        virtual void recheckNow();
 
         virtual void markPushMessageRead(const char *messageID);
         virtual void deletePushMessage(const char *messageID);
@@ -201,13 +204,12 @@ namespace openpeer
         #pragma mark ServicePushMailboxSession => (internal)
         #pragma mark
 
-        virtual RecursiveLock &getLock() const;
-
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
 
         virtual ElementPtr toDebug() const;
 
+        bool isShuttingDown() const {return SessionState_ShuttingDown == mCurrentState;}
         bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
 
         void step();
@@ -221,6 +223,8 @@ namespace openpeer
         void setState(SessionStates state);
         void setError(WORD errorCode, const char *reason = NULL);
 
+        void cancel();
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -228,11 +232,12 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable UseRecursiveLockPtr mLockPtr;
-        UseRecursiveLock &mLock;
         ServicePushMailboxSessionWeakPtr mThisWeak;
 
-        IServicePushMailboxSessionDelegatePtr mDelegate;
+        IServicePushMailboxSessionDelegateSubscriptions mSubscriptions;
+        IServicePushMailboxSessionSubscriptionPtr mDefaultSubscription;
+
+        IServicePushMailboxDatabaseAbstractionDelegatePtr mDB;
 
         SessionStates mCurrentState;
 
@@ -240,11 +245,16 @@ namespace openpeer
         String mLastErrorReason;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
+        UseServiceLockboxSessionPtr mLockbox;
+
         UseServiceNamespaceGrantSessionPtr mGrantSession;
         IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
         IServiceNamespaceGrantSessionWaitPtr mGrantWait;
 
         AutoBool mObtainedLock;
+
+        Duration mInactivityTimeout;
+        Time mLastActivity;
       };
 
       //-----------------------------------------------------------------------
