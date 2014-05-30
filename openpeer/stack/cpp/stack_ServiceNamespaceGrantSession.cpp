@@ -492,14 +492,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServiceNamespaceGrantSessionQueryPtr ServiceNamespaceGrantSession::query(
                                                                                 IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                                                const NamespaceGrantChallengeInfo &challengeInfo,
-                                                                                const NamespaceInfoMap &namespaces
+                                                                                const NamespaceGrantChallengeInfo &challengeInfo
                                                                                 )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
         AutoRecursiveLock lock(*this);
-        QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate), challengeInfo, namespaces);
+        QueryPtr query = Query::create(mThisWeak.lock(), IServiceNamespaceGrantSessionQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate), challengeInfo);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("attempting to create grant query after shutdown") + ZS_PARAM("query id", query->getID()))
@@ -931,9 +930,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceNamespaceGrantSession::stepSendNamespaceGrantStartNotification()
       {
-        typedef NamespaceGrantStartNotify::NamespaceGrantChallengeInfoAndNamespacesList NamespaceGrantChallengeInfoAndNamespacesList;
-        typedef NamespaceGrantStartNotify::NamespaceGrantChallengeInfoAndNamespaces NamespaceGrantChallengeInfoAndNamespaces;
-
         if (!mBrowserWindowReady) {
           ZS_LOG_TRACE(log("all required namespaces have been granted"))
           return true;
@@ -949,17 +945,15 @@ namespace openpeer
         NamespaceGrantStartNotifyPtr request = NamespaceGrantStartNotify::create();
         request->domain(mBootstrappedNetwork->getDomain());
 
-        NamespaceGrantChallengeInfoAndNamespacesList process;
+        NamespaceGrantChallengeInfoList process;
 
         for (QueryMap::iterator iter = mQueriesInProcess.begin(); iter != mQueriesInProcess.end(); ++iter)
         {
           QueryPtr query = (*iter).second;
 
-          NamespaceGrantChallengeInfoAndNamespaces data(query->getChallengeInfo(), query->getNamespaces());
-
           ZS_LOG_DEBUG(log("going to process challenge") + ZS_PARAM("challenge ID", query->getChallengeInfo().mID))
 
-          process.push_back(NamespaceGrantChallengeInfoAndNamespaces(query->getChallengeInfo(), query->getNamespaces()));
+          process.push_back(query->getChallengeInfo());
         }
 
         request->challenges(process);
@@ -1176,14 +1170,12 @@ namespace openpeer
       ServiceNamespaceGrantSession::Query::Query(
                                                  ServiceNamespaceGrantSessionPtr outer,
                                                  IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                 const NamespaceGrantChallengeInfo &challengeInfo,
-                                                 const NamespaceInfoMap &namespaces
+                                                 const NamespaceGrantChallengeInfo &challengeInfo
                                                  ) :
         SharedRecursiveLock(*outer),
         mOuter(outer),
         mDelegate(delegate),
-        mChallengeInfo(challengeInfo),
-        mNamespaces(namespaces)
+        mChallengeInfo(challengeInfo)
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -1250,11 +1242,10 @@ namespace openpeer
       ServiceNamespaceGrantSession::QueryPtr ServiceNamespaceGrantSession::Query::create(
                                                                                          ServiceNamespaceGrantSessionPtr outer,
                                                                                          IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                                                         const NamespaceGrantChallengeInfo &challengeInfo,
-                                                                                         const NamespaceInfoMap &namespaces
+                                                                                         const NamespaceGrantChallengeInfo &challengeInfo
                                                                                          )
       {
-        QueryPtr pThis(new Query(outer, delegate, challengeInfo, namespaces));
+        QueryPtr pThis(new Query(outer, delegate, challengeInfo));
         pThis->mThisWeak = pThis;
         return pThis;
       }

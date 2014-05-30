@@ -113,7 +113,7 @@ namespace openpeer
         DocumentPtr NamespaceGrantStartNotify::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+          ElementPtr rootEl = ret->getFirstChildElement();
 
           ElementPtr browserEl = Element::create("browser");
 
@@ -125,46 +125,29 @@ namespace openpeer
           if (agentInfo.hasData()) {
             ElementPtr agentEl = MessageHelper::createElement(agentInfo);
             agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
-            root->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
           }
 
           if (mChallenges.size() > 0) {
             ElementPtr namespaceGrantChallengesEl = Element::create("namespaceGrantChallenges");
 
-            for (NamespaceGrantChallengeInfoAndNamespacesList::iterator iterChallenge = mChallenges.begin(); iterChallenge != mChallenges.end(); ++iterChallenge)
+            for (NamespaceGrantChallengeInfoList::iterator iterChallenge = mChallenges.begin(); iterChallenge != mChallenges.end(); ++iterChallenge)
             {
-              const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo = (*iterChallenge).first;
-              const NamespaceInfoMap &namespaces = (*iterChallenge).second;
+              const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo = (*iterChallenge);
 
-              if (namespaceGrantChallengeInfo.hasData()) {
-                ElementPtr namespaceGrantChallengeEl = MessageHelper::createElement(namespaceGrantChallengeInfo);
-                
-                ElementPtr namespacesEl = IMessageHelper::createElement("namespaces");
-                
-                for (NamespaceInfoMap::const_iterator iter = namespaces.begin(); iter != namespaces.end(); ++iter)
-                {
-                  const NamespaceInfo &namespaceInfo = (*iter).second;
-                  if (namespaceInfo.hasData()) {
-                    namespacesEl->adoptAsLastChild(MessageHelper::createElement(namespaceInfo));
-                  }
-                }
-                
-                if (namespacesEl->hasChildren()) {
-                  namespaceGrantChallengeEl->adoptAsLastChild(namespacesEl);
-                } else {
-                  namespaceGrantChallengeEl.reset();
-                }
-                
-                if (namespaceGrantChallengeEl) {
-                  namespaceGrantChallengesEl->adoptAsLastChild(namespaceGrantChallengeEl);
-                }
+              ElementPtr namespaceGrantChallengeEl = MessageHelper::createElement(namespaceGrantChallengeInfo);
+              if (!namespaceGrantChallengeEl) {
+                continue;
               }
-              if (namespaceGrantChallengesEl) {
-                root->adoptAsLastChild(namespaceGrantChallengesEl);
-              }
+
+              namespaceGrantChallengesEl->adoptAsLastChild(namespaceGrantChallengeEl);
+            }
+
+            if (namespaceGrantChallengesEl->hasChildren()) {
+              rootEl->adoptAsLastChild(namespaceGrantChallengesEl);
             }
           }
-          
+
           
           if (hasAttribute(AttributeType_BrowserVisibility)) {
             browserEl->adoptAsLastChild(IMessageHelper::createElementWithText("visibility", toString(mVisibility)));
@@ -179,7 +162,7 @@ namespace openpeer
           }
 
           if (browserEl->hasChildren()) {
-            root->adoptAsLastChild(browserEl);
+            rootEl->adoptAsLastChild(browserEl);
           }
 
           return ret;

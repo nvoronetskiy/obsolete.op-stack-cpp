@@ -125,22 +125,6 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
-      static void getNamespaces(NamespaceInfoMap &outNamespaces)
-      {
-        static const char *gPermissions[] = {
-          OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_CONTACTS_NAMESPACE,
-          NULL
-        };
-
-        for (int index = 0; NULL != gPermissions[index]; ++index)
-        {
-          NamespaceInfo info;
-          info.mURL = gPermissions[index];
-          outNamespaces[info.mURL] = info;
-        }
-      }
-      
-      //-----------------------------------------------------------------------
       static char getSafeSplitChar(const String &identifier)
       {
         const char *testChars = ",; :./\\*#!$%&@?~+=-_|^<>[]{}()";
@@ -1429,13 +1413,10 @@ namespace openpeer
           return true;
         }
 
-        NamespaceGrantChallengeInfo challengeInfo = result->namespaceGrantChallengeInfo();
+        mRolodexChallengeInfo = result->namespaceGrantChallengeInfo();
 
-        if (challengeInfo.mID.hasData()) {
-          // a namespace grant challenge was issue
-          NamespaceInfoMap namespaces;
-          getNamespaces(namespaces);
-          mGrantQuery = mGrantSession->query(mThisWeak.lock(), challengeInfo, namespaces);
+        if (mRolodexChallengeInfo.mID.hasData()) {
+          mGrantQuery = mGrantSession->query(mThisWeak.lock(), mRolodexChallengeInfo);
         }
 
         step();
@@ -1639,42 +1620,65 @@ namespace openpeer
         ElementPtr resultEl = Element::create("ServiceIdentitySession");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
         IHelper::debugAppend(resultEl, "reported", toString(mLastReportedState));
+
         IHelper::debugAppend(resultEl, "error code", mLastError);
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "associated lockbox", (bool)mAssociatedLockbox.lock());
         IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
+
         IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
+
         IHelper::debugAppend(resultEl, "provider", UseBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
         IHelper::debugAppend(resultEl, "identity", UseBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
         IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
+
         IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
         IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? string(mGrantWait->getID()) : String());
+        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
+
         IHelper::debugAppend(resultEl, "identity access lockbox update monitor", (bool)mIdentityAccessLockboxUpdateMonitor);
         IHelper::debugAppend(resultEl, "identity lookup update monitor", (bool)mIdentityLookupUpdateMonitor);
         IHelper::debugAppend(resultEl, "identity access rolodex credentials get monitor", (bool)mIdentityAccessRolodexCredentialsGetMonitor);
         IHelper::debugAppend(resultEl, "rolodex access monitor", (bool)mRolodexAccessMonitor);
         IHelper::debugAppend(resultEl, "rolodex grant monitor", (bool)mRolodexNamespaceGrantChallengeValidateMonitor);
         IHelper::debugAppend(resultEl, "rolodex contacts get monitor", (bool)mRolodexContactsGetMonitor);
+
         IHelper::debugAppend(resultEl, mLockboxInfo.hasData() ? mLockboxInfo.toDebug() : ElementPtr());
+
         IHelper::debugAppend(resultEl, "browser window ready", mBrowserWindowReady);
         IHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
         IHelper::debugAppend(resultEl, "browser closed", mBrowserWindowClosed);
+
         IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+
         IHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
         IHelper::debugAppend(resultEl, "lockbox updated", mLockboxUpdated);
         IHelper::debugAppend(resultEl, "identity lookup updated", mIdentityLookupUpdated);
         IHelper::debugAppend(resultEl, mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.toDebug() : ElementPtr());
+
         IHelper::debugAppend(resultEl, "outer frame url", mOuterFrameURLUponReload);
+
         IHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
+
         IHelper::debugAppend(resultEl, "rolodex not supported", mRolodexNotSupportedForIdentity);
         IHelper::debugAppend(resultEl, mRolodexInfo.hasData() ? mRolodexInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "rolodex grant challenge id", mRolodexChallengeInfo.hasData() ? mRolodexChallengeInfo.toDebug() : ElementPtr());
+
         IHelper::debugAppend(resultEl, "download timer", (bool)mTimer);
+
+        IHelper::debugAppend(resultEl, "frozen version", mFrozenVersion);
+
+        IHelper::debugAppend(resultEl, "last version download", mLastVersionDownloaded);
         IHelper::debugAppend(resultEl, "force refresh", mForceRefresh);
+
         IHelper::debugAppend(resultEl, "fresh download", mFreshDownload);
         IHelper::debugAppend(resultEl, "pending identities", mIdentities.size());
+
         IHelper::debugAppend(resultEl, "failures in a row", mFailuresInARow);
         IHelper::debugAppend(resultEl, "next retry (seconds)", mNextRetryAfterFailureTime);
 
@@ -2290,10 +2294,7 @@ namespace openpeer
           return false;
         }
 
-        NamespaceInfoMap namespaces;
-        getNamespaces(namespaces);
-
-        for (NamespaceInfoMap::iterator iter = namespaces.begin(); iter != namespaces.end(); ++iter)
+        for (NamespaceInfoMap::iterator iter = mRolodexChallengeInfo.mNamespaces.begin(); iter != mRolodexChallengeInfo.mNamespaces.end(); ++iter)
         {
           NamespaceInfo &namespaceInfo = (*iter).second;
 

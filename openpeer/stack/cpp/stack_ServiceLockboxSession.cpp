@@ -716,9 +716,7 @@ namespace openpeer
 
         if (challengeInfo.mID.hasData()) {
           // a namespace grant challenge was issue
-          NamespaceInfoMap namespaces;
-          getNamespaces(namespaces);
-          mGrantQuery = mGrantSession->query(mThisWeak.lock(), challengeInfo, namespaces);
+          mGrantQuery = mGrantSession->query(mThisWeak.lock(), challengeInfo);
         }
 
         step();

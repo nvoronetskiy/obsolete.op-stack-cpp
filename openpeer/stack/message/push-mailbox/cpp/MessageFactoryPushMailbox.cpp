@@ -36,6 +36,7 @@
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <openpeer/stack/message/push-mailbox/AccessResult.h>
+#include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateResult.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -113,23 +114,24 @@ namespace openpeer
         {
           switch ((MessageFactoryPushMailbox::Methods)method)
           {
-            case Method_Invalid:              return "";
+            case Method_Invalid:                          return "";
 
-            case Method_Access:               return "access";
+            case Method_Access:                           return "access";
+            case Method_NamespaceGrantChallengeValidate:  return "namespace-grant-challenge-validate";
           }
           return "";
         }
 
         //---------------------------------------------------------------------
         MessagePtr MessageFactoryPushMailbox::create(
-                                                    ElementPtr root,
+                                                    ElementPtr rootEl,
                                                     IMessageSourcePtr messageSource
                                                     )
         {
-          if (!root) return MessagePtr();
+          if (!rootEl) return MessagePtr();
 
-          Message::MessageTypes msgType = IMessageHelper::getMessageType(root);
-          Methods msgMethod = (MessageFactoryPushMailbox::Methods)toMethod(IMessageHelper::getAttribute(root, "method"));
+          Message::MessageTypes msgType = IMessageHelper::getMessageType(rootEl);
+          Methods msgMethod = (MessageFactoryPushMailbox::Methods)toMethod(IMessageHelper::getAttribute(rootEl, "method"));
 
           switch (msgType) {
             case Message::MessageType_Invalid:                return MessagePtr();
@@ -140,6 +142,7 @@ namespace openpeer
                 case Method_Invalid:                          return MessagePtr();
 
                 case Method_Access:                           return MessagePtr();
+                case Method_NamespaceGrantChallengeValidate:  return MessagePtr();
               }
               break;
             }
@@ -148,7 +151,8 @@ namespace openpeer
               switch (msgMethod) {
                 case Method_Invalid:                          return MessagePtr();
 
-                case Method_Access:                           return AccessResult::create(root, messageSource);
+                case Method_Access:                           return AccessResult::create(rootEl, messageSource);
+                case Method_NamespaceGrantChallengeValidate:  return NamespaceGrantChallengeValidateResult::create(rootEl, messageSource);
               }
               break;
             }

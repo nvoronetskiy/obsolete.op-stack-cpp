@@ -119,8 +119,12 @@ namespace openpeer
         bool hasData() const;
         ElementPtr toDebug() const;
       };
-      typedef std::map<Service::ServiceID, Service> ServiceMap;
-      typedef std::map<Service::Type, ServiceMap> ServiceTypeMap;
+
+      typedef std::map<Service::ServiceID, Service> TServiceMap;
+      ZS_DECLARE_TYPEDEF_PTR(TServiceMap, ServiceMap)
+
+      typedef std::map<Service::Type, ServiceMap> TServiceTypeMap;
+      ZS_DECLARE_TYPEDEF_PTR(TServiceTypeMap, ServiceTypeMap)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -141,7 +145,9 @@ namespace openpeer
         bool hasData() const;
         ElementPtr toDebug() const;
       };
-      typedef std::map<Certificate::CertificateID, Certificate> CertificateMap;
+
+      typedef std::map<Certificate::CertificateID, Certificate> TCertificateMap;
+      ZS_DECLARE_TYPEDEF_PTR(TCertificateMap, CertificateMap)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -177,7 +183,8 @@ namespace openpeer
         bool hasData() const;
         ElementPtr toDebug() const;
       };
-      typedef std::list<Finder> FinderList;
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<Finder>, FinderList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -319,32 +326,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark NamespaceGrantChallengeInfo
-      #pragma mark
-
-      struct NamespaceGrantChallengeInfo
-      {
-        String mID;
-        String mName;
-        String mImageURL;
-        String mServiceURL;
-        String mDomains;
-
-        NamespaceGrantChallengeInfo() {}
-        bool hasData() const;
-        ElementPtr toDebug() const;
-
-        void mergeFrom(
-                       const NamespaceGrantChallengeInfo &source,
-                       bool overwriteExisting = true
-                       );
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark NamespaceInfo
       #pragma mark
 
@@ -365,7 +346,38 @@ namespace openpeer
                        );
       };
 
-      typedef std::map<NamespaceInfo::NamespaceURL, NamespaceInfo> NamespaceInfoMap;
+      typedef std::map<NamespaceInfo::NamespaceURL, NamespaceInfo> TNamespaceInfoMap;
+      ZS_DECLARE_TYPEDEF_PTR(TNamespaceInfoMap, NamespaceInfoMap)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark NamespaceGrantChallengeInfo
+      #pragma mark
+
+      struct NamespaceGrantChallengeInfo
+      {
+        String mID;
+        String mName;
+        String mImageURL;
+        String mServiceURL;
+        String mDomains;
+
+        NamespaceInfoMap mNamespaces;
+
+        NamespaceGrantChallengeInfo() {}
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        void mergeFrom(
+                       const NamespaceGrantChallengeInfo &source,
+                       bool overwriteExisting = true
+                       );
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<NamespaceGrantChallengeInfo>, NamespaceGrantChallengeInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -544,8 +556,10 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(MessageFactoryPushMailbox)
         ZS_DECLARE_CLASS_PTR(AccessRequest)
         ZS_DECLARE_CLASS_PTR(AccessResult)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantChallengeValidateRequest)
+        ZS_DECLARE_CLASS_PTR(NamespaceGrantChallengeValidateResult)
       }
-      
+
       namespace peer_salt
       {
         ZS_DECLARE_CLASS_PTR(MessageFactoryPeerSalt)

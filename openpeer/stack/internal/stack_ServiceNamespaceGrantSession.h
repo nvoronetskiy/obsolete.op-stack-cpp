@@ -72,14 +72,13 @@ namespace openpeer
         virtual String getGrantID() const = 0;
 
         virtual IServiceNamespaceGrantSessionWaitPtr obtainWaitToProceed(
-                                                                                    IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionWaitDelegatePtr()
-                                                                                    ) = 0;  // returns IServiceNamespaceGrantSessionWaitPtr() (i.e. NULL) if not obtain to wait at this time
+                                                                         IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionWaitDelegatePtr()
+                                                                         ) = 0;  // returns IServiceNamespaceGrantSessionWaitPtr() (i.e. NULL) if not obtain to wait at this time
 
         virtual IServiceNamespaceGrantSessionQueryPtr query(
-                                                                       IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                                       const NamespaceGrantChallengeInfo &challengeInfo,
-                                                                       const NamespaceInfoMap &namespaces
-                                                                       ) = 0;
+                                                            IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
+                                                            const NamespaceGrantChallengeInfo &challengeInfo
+                                                            ) = 0;
 
         virtual bool isNamespaceURLInNamespaceGrantChallengeBundle(
                                                                    ElementPtr bundle,
@@ -262,10 +261,9 @@ namespace openpeer
         virtual IServiceNamespaceGrantSessionWaitPtr obtainWaitToProceed(IServiceNamespaceGrantSessionWaitDelegatePtr waitForWaitUponFailingToObtainDelegate = IServiceNamespaceGrantSessionWaitDelegatePtr());
 
         virtual IServiceNamespaceGrantSessionQueryPtr query(
-                                                                       IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                                                       const NamespaceGrantChallengeInfo &challengeInfo,
-                                                                       const NamespaceInfoMap &namespaces
-                                                                       );
+                                                            IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
+                                                            const NamespaceGrantChallengeInfo &challengeInfo
+                                                            );
 
         virtual bool isNamespaceURLInNamespaceGrantChallengeBundle(
                                                                    ElementPtr bundle,
@@ -392,8 +390,7 @@ namespace openpeer
           Query(
                 ServiceNamespaceGrantSessionPtr outer,
                 IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                const NamespaceGrantChallengeInfo &challengeInfo,
-                const NamespaceInfoMap &namespaces
+                const NamespaceGrantChallengeInfo &challengeInfo
                 );
 
         public:
@@ -421,14 +418,12 @@ namespace openpeer
           static QueryPtr create(
                                  ServiceNamespaceGrantSessionPtr outer,
                                  IServiceNamespaceGrantSessionQueryDelegatePtr delegate,
-                                 const NamespaceGrantChallengeInfo &challengeInfo,
-                                 const NamespaceInfoMap &namespaces
+                                 const NamespaceGrantChallengeInfo &challengeInfo
                                  );
 
           // (duplicate) virtual PUID getID() const;
 
           const NamespaceGrantChallengeInfo &getChallengeInfo() const {return mChallengeInfo;}
-          const NamespaceInfoMap &getNamespaces() const {return mNamespaces;}
 
           void notifyComplete(ElementPtr bundleEl);
 
@@ -448,7 +443,6 @@ namespace openpeer
           IServiceNamespaceGrantSessionQueryDelegatePtr mDelegate;
 
           NamespaceGrantChallengeInfo mChallengeInfo;
-          NamespaceInfoMap mNamespaces;
 
           ElementPtr mNamespaceGrantChallengeBundleEl;
         };

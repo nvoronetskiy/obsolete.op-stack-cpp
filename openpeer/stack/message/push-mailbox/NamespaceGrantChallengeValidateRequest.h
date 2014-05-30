@@ -31,8 +31,8 @@
 
 #pragma once
 
-#include <openpeer/stack/message/IMessageFactory.h>
-
+#include <openpeer/stack/message/MessageRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
 {
@@ -42,47 +42,37 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageFactoryPushMailbox
-        #pragma mark
-
-        class MessageFactoryPushMailbox : public IMessageFactory
+        class NamespaceGrantChallengeValidateRequest : public MessageRequest
         {
         public:
-          enum Methods
-          {
-            Method_Invalid = Message::Method_Invalid,
-
-            Method_Access,
-            Method_NamespaceGrantChallengeValidate,
-
-            Method_Last = Method_Access,
-          };
-
-        protected:
-          static MessageFactoryPushMailboxPtr create();
+          friend class PeerIdentifyResult;
 
         public:
-          static MessageFactoryPushMailboxPtr singleton();
+          enum AttributeTypes
+          {
+            AttributeType_NamespaceGrantChallengeBundle,
+          };
 
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark MessageFactoryPushMailbox => IMessageFactory
-          #pragma mark
+        public:
+          static NamespaceGrantChallengeValidateRequestPtr convert(MessagePtr message);
 
-          virtual const char *getHandler() const;
+          static NamespaceGrantChallengeValidateRequestPtr create();
 
-          virtual Message::Methods toMethod(const char *method) const;
-          virtual const char *toString(Message::Methods method) const;
+          virtual DocumentPtr encode();
 
-          virtual MessagePtr create(
-                                    ElementPtr root,
-                                    IMessageSourcePtr messageSource
-                                    );
+          virtual Methods method() const                              {return (Message::Methods)MessageFactoryPushMailbox::Method_NamespaceGrantChallengeValidate;}
+
+          virtual IMessageFactoryPtr factory() const                  {return MessageFactoryPushMailbox::singleton();}
+
+          bool hasAttribute(AttributeTypes type) const;
+
+          const ElementPtr &namespaceGrantChallengeBundle() const {return mNamespaceGrantChallengeBundle;}
+          void namespaceGrantChallengeBundle(ElementPtr val);
+
+        protected:
+          NamespaceGrantChallengeValidateRequest();
+
+          ElementPtr mNamespaceGrantChallengeBundle;
         };
       }
     }

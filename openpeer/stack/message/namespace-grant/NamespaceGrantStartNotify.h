@@ -68,9 +68,6 @@ namespace openpeer
 
           static const char *toString(BrowserVisibilities visibility);
 
-          typedef std::pair<NamespaceGrantChallengeInfo, NamespaceInfoMap> NamespaceGrantChallengeInfoAndNamespaces;
-          typedef std::list<NamespaceGrantChallengeInfoAndNamespaces> NamespaceGrantChallengeInfoAndNamespacesList;
-
         public:
           static NamespaceGrantStartNotifyPtr convert(MessagePtr message);
 
@@ -87,8 +84,8 @@ namespace openpeer
           const AgentInfo &agentInfo() const                {return mAgentInfo;}
           void agentInfo(const AgentInfo &val)              {mAgentInfo = val;}
 
-          const NamespaceGrantChallengeInfoAndNamespacesList &challenges() const    {return mChallenges;}
-          void challenges(const NamespaceGrantChallengeInfoAndNamespacesList &val)  {mChallenges = val;}
+          const NamespaceGrantChallengeInfoList &challenges() const    {return mChallenges;}
+          void challenges(const NamespaceGrantChallengeInfoList &val)  {mChallenges = val;}
 
           BrowserVisibilities browserVisibility() const     {return mVisibility;}
           void browserVisibility(BrowserVisibilities val)   {mVisibility = val;}
@@ -104,7 +101,7 @@ namespace openpeer
 
           AgentInfo mAgentInfo;
 
-          NamespaceGrantChallengeInfoAndNamespacesList mChallenges;
+          NamespaceGrantChallengeInfoList mChallenges;
 
           BrowserVisibilities mVisibility;
           int mPopup;

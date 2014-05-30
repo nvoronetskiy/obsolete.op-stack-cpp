@@ -547,6 +547,7 @@ namespace openpeer
         // rolodex related
         AutoBool mRolodexNotSupportedForIdentity;
         RolodexInfo mRolodexInfo;
+        NamespaceGrantChallengeInfo mRolodexChallengeInfo;
 
         TimerPtr mTimer;
 

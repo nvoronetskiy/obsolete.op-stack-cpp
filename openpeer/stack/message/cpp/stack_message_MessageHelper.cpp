@@ -720,6 +720,32 @@ namespace openpeer
             namespaceGrantChallengeEl->adoptAsLastChild(IMessageHelper::createElementWithText("domains", info.mName));
           }
 
+          if (info.mNamespaces.size() > 0) {
+            ElementPtr namespacesEl = Element::create("namespaces");
+
+            for (NamespaceInfoMap::const_iterator iter = info.mNamespaces.begin(); iter != info.mNamespaces.end(); ++iter) {
+              const String &url = (*iter).first;
+              const NamespaceInfo &namespaceInfo = (*iter).second;
+
+              if (!url.hasData()) {
+                continue;
+              }
+              if (!namespaceInfo.hasData()) {
+                continue;
+              }
+              ElementPtr namespaceEl = MessageHelper::createElementWithID("namespace", url);
+              if (namespaceInfo.mLastUpdated != Time()) {
+                namespaceEl->setAttribute("updated", services::IHelper::timeToString(namespaceInfo.mLastUpdated));
+              }
+
+              namespacesEl->adoptAsLastChild(namespaceEl);
+            }
+
+            if (namespacesEl->hasChildren()) {
+              namespaceGrantChallengeEl->adoptAsLastChild(namespacesEl);
+            }
+          }
+
           return namespaceGrantChallengeEl;
         }
         
@@ -1901,6 +1927,23 @@ namespace openpeer
           info.mImageURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("image"));
           info.mServiceURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("url"));
           info.mDomains = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("domains"));
+
+          ElementPtr namespacesEl = elem->findFirstChildElement("namespaces");
+          if (namespacesEl) {
+            ElementPtr namespaceEl = namespacesEl->findFirstChildElement("namespace");
+            while (namespaceEl) {
+
+              NamespaceInfo namespaceInfo;
+              namespaceInfo.mURL = MessageHelper::getAttributeID(namespaceEl);
+              namespaceInfo.mLastUpdated = services::IHelper::stringToTime(MessageHelper::getAttribute(namespaceEl, "updated"));
+
+              if (namespaceInfo.hasData()) {
+                info.mNamespaces[namespaceInfo.mURL] = namespaceInfo;
+              }
+
+              namespaceEl = namespaceEl->findNextSiblingElement("namespace");
+            }
+          }
 
           return info;
         }

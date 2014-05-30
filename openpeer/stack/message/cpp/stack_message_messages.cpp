@@ -401,6 +401,27 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(NamespaceInfoMap &result, const NamespaceInfoMap &source, bool overwrite)
+      {
+        if (source.size() < 1) return;
+        if (result.size() > 0) {
+          if (!overwrite) return;
+        }
+
+        for (NamespaceInfoMap::const_iterator iter = source.begin(); iter != source.end(); ++iter)
+        {
+          NamespaceInfoMap::iterator found = result.find(iter->first);
+          if (found == result.end()) {
+            result[iter->first] = iter->second;
+          } else {
+            (found->second).mergeFrom(iter->second, overwrite);
+          }
+        }
+
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static void merge(ElementPtr &result, const ElementPtr &source, bool overwrite)
       {
         if (!source) return;
@@ -561,51 +582,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark message::NamespaceGrantChallengeInfo
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool NamespaceGrantChallengeInfo::hasData() const
-      {
-        return ((mID.hasData()) ||
-                (mName.hasData()) ||
-                (mImageURL.hasData()) ||
-                (mServiceURL.hasData()) ||
-                (mDomains.hasData()));
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr NamespaceGrantChallengeInfo::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::NamespaceGrantChallengeInfo");
-
-        IHelper::debugAppend(resultEl, "grant challenge ID", mID);
-        IHelper::debugAppend(resultEl, "service name", mName);
-        IHelper::debugAppend(resultEl, "image url", mImageURL);
-        IHelper::debugAppend(resultEl, "service url", mServiceURL);
-        IHelper::debugAppend(resultEl, "domains", mDomains);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      void NamespaceGrantChallengeInfo::mergeFrom(
-                                                  const NamespaceGrantChallengeInfo &source,
-                                                  bool overwriteExisting
-                                                  )
-      {
-        merge(mID, source.mID, overwriteExisting);
-        merge(mName, source.mName, overwriteExisting);
-        merge(mImageURL, source.mImageURL, overwriteExisting);
-        merge(mServiceURL, source.mServiceURL, overwriteExisting);
-        merge(mDomains, source.mDomains, overwriteExisting);
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark message::NamespaceInfo
       #pragma mark
 
@@ -635,6 +611,54 @@ namespace openpeer
       {
         merge(mURL, source.mURL, overwriteExisting);
         merge(mLastUpdated, source.mLastUpdated, overwriteExisting);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::NamespaceGrantChallengeInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool NamespaceGrantChallengeInfo::hasData() const
+      {
+        return ((mID.hasData()) ||
+                (mName.hasData()) ||
+                (mImageURL.hasData()) ||
+                (mServiceURL.hasData()) ||
+                (mDomains.hasData()) ||
+                (mNamespaces.size() > 0));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr NamespaceGrantChallengeInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::NamespaceGrantChallengeInfo");
+
+        IHelper::debugAppend(resultEl, "grant challenge ID", mID);
+        IHelper::debugAppend(resultEl, "service name", mName);
+        IHelper::debugAppend(resultEl, "image url", mImageURL);
+        IHelper::debugAppend(resultEl, "service url", mServiceURL);
+        IHelper::debugAppend(resultEl, "domains", mDomains);
+        IHelper::debugAppend(resultEl, "namespaces", mNamespaces.size());
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      void NamespaceGrantChallengeInfo::mergeFrom(
+                                                  const NamespaceGrantChallengeInfo &source,
+                                                  bool overwriteExisting
+                                                  )
+      {
+        merge(mID, source.mID, overwriteExisting);
+        merge(mName, source.mName, overwriteExisting);
+        merge(mImageURL, source.mImageURL, overwriteExisting);
+        merge(mServiceURL, source.mServiceURL, overwriteExisting);
+        merge(mDomains, source.mDomains, overwriteExisting);
+        merge(mNamespaces, source.mNamespaces, overwriteExisting);
       }
 
       //-----------------------------------------------------------------------

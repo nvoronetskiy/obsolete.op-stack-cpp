@@ -10,6 +10,8 @@
 		000CBEB017A2F75A0075E86C /* stack_FinderRelayChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */; };
 		001BB9C0183B8FF400F14A64 /* stack_javascript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */; };
 		0020FC42193654540065C965 /* stack_ServicePushMailboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */; };
+		002F75A91938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002F75A81938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp */; };
+		002F75AC19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002F75AB19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp */; };
 		00384C44175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */; };
 		00384C51175BFF9500113845 /* MessageFactoryRolodex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C47175BFF9500113845 /* MessageFactoryRolodex.cpp */; };
 		00384C52175BFF9500113845 /* RolodexAccessRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00384C48175BFF9500113845 /* RolodexAccessRequest.cpp */; };
@@ -164,6 +166,10 @@
 		001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_javascript.cpp; sourceTree = "<group>"; };
 		0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession.cpp; sourceTree = "<group>"; };
 		0020FC43193654630065C965 /* stack_ServicePushMailboxSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession.h; sourceTree = "<group>"; };
+		002F75A81938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NamespaceGrantChallengeValidateRequest.cpp; sourceTree = "<group>"; };
+		002F75AA1938BA6800AA1CB2 /* NamespaceGrantChallengeValidateRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NamespaceGrantChallengeValidateRequest.h; sourceTree = "<group>"; };
+		002F75AB19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NamespaceGrantChallengeValidateResult.cpp; sourceTree = "<group>"; };
+		002F75AD19392E5200AA1CB2 /* NamespaceGrantChallengeValidateResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NamespaceGrantChallengeValidateResult.h; sourceTree = "<group>"; };
 		00384C42175BFEE900113845 /* stack_ServiceNamespaceGrantSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServiceNamespaceGrantSession.h; sourceTree = "<group>"; };
 		00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServiceNamespaceGrantSession.cpp; sourceTree = "<group>"; };
 		00384C47175BFF9500113845 /* MessageFactoryRolodex.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessageFactoryRolodex.cpp; sourceTree = "<group>"; };
@@ -1014,6 +1020,8 @@
 				00AA456819380FB5001D3AA2 /* MessageFactoryPushMailbox.h */,
 				00AA456419380FB5001D3AA2 /* AccessRequest.h */,
 				00AA456D19382154001D3AA2 /* AccessResult.h */,
+				002F75AA1938BA6800AA1CB2 /* NamespaceGrantChallengeValidateRequest.h */,
+				002F75AD19392E5200AA1CB2 /* NamespaceGrantChallengeValidateResult.h */,
 			);
 			path = "push-mailbox";
 			sourceTree = "<group>";
@@ -1024,6 +1032,8 @@
 				00AA456719380FB5001D3AA2 /* MessageFactoryPushMailbox.cpp */,
 				00AA456619380FB5001D3AA2 /* AccessRequest.cpp */,
 				00AA456B19382142001D3AA2 /* AccessResult.cpp */,
+				002F75A81938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp */,
+				002F75AB19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp */,
 			);
 			path = cpp;
 			sourceTree = "<group>";
@@ -1245,6 +1255,7 @@
 				00AF4E47171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp in Sources */,
 				00AA456C19382142001D3AA2 /* AccessResult.cpp in Sources */,
 				00AF4E48171E40AD00DCA0A8 /* PeerServicesGetResult.cpp in Sources */,
+				002F75A91938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp in Sources */,
 				0051C4691745D1110095FD98 /* IdentityAccessWindowRequest.cpp in Sources */,
 				0051C46A1745D1110095FD98 /* IdentityAccessWindowResult.cpp in Sources */,
 				005F60B31756B07700BC3DD6 /* stack_Cache.cpp in Sources */,
@@ -1273,6 +1284,7 @@
 				0077F3B817AC1FDD009399FD /* ChannelMapResult.cpp in Sources */,
 				0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */,
 				005E6C1C17AD66C1002D8335 /* ChannelMapNotify.cpp in Sources */,
+				002F75AC19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
