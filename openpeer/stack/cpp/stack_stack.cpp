@@ -43,6 +43,7 @@
 #include <openpeer/stack/message/peer-finder/MessageFactoryPeerFinder.h>
 #include <openpeer/stack/message/peer-salt/MessageFactoryPeerSalt.h>
 #include <openpeer/stack/message/peer-to-peer/MessageFactoryPeerToPeer.h>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 #include <openpeer/stack/internal/stack_Settings.h>
 
@@ -83,6 +84,7 @@ namespace openpeer
       using message::peer_finder::MessageFactoryPeerFinder;
       using message::peer_salt::MessageFactoryPeerSalt;
       using message::peer_to_peer::MessageFactoryPeerToPeer;
+      using message::push_mailbox::MessageFactoryPushMailbox;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -155,6 +157,7 @@ namespace openpeer
         MessageFactoryPeerFinder::singleton();
         MessageFactoryPeerSalt::singleton();
         MessageFactoryPeerToPeer::singleton();
+        MessageFactoryPushMailbox::singleton();
       }
 
       //-----------------------------------------------------------------------

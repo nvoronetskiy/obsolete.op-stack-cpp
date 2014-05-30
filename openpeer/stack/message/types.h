@@ -539,6 +539,13 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(SessionKeepAliveResult)
       }
 
+      namespace push_mailbox
+      {
+        ZS_DECLARE_CLASS_PTR(MessageFactoryPushMailbox)
+        ZS_DECLARE_CLASS_PTR(AccessRequest)
+        ZS_DECLARE_CLASS_PTR(AccessResult)
+      }
+      
       namespace peer_salt
       {
         ZS_DECLARE_CLASS_PTR(MessageFactoryPeerSalt)

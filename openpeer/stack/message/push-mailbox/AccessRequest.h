@@ -31,10 +31,8 @@
 
 #pragma once
 
-#include <openpeer/stack/message/MessageResult.h>
-#include <openpeer/stack/message/identity-lockbox/MessageFactoryIdentityLockbox.h>
-
-#include <list>
+#include <openpeer/stack/message/MessageRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
 {
@@ -42,49 +40,57 @@ namespace openpeer
   {
     namespace message
     {
-      namespace identity_lockbox
+      namespace push_mailbox
       {
-        class LockboxAccessResult : public MessageResult
+        class AccessRequest : public MessageRequest
         {
+        public:
+          friend class PeerIdentifyResult;
+
         public:
           enum AttributeTypes
           {
-            AttributeType_LockboxInfo = AttributeType_Last + 1,
-            AttributeType_NamespaceGrantChallengeInfo,
-            AttributeType_Identities,
+            AttributeType_LockboxInfo,
+            AttributeType_AgentInfo,
+            AttributeType_GrantID,
+            AttributeType_PeerFiles,
           };
 
         public:
-          static LockboxAccessResultPtr convert(MessagePtr message);
+          static AccessRequestPtr convert(MessagePtr message);
 
-          static LockboxAccessResultPtr create(
-                                               ElementPtr rootEl,
-                                               IMessageSourcePtr messageSource
-                                               );
+          static AccessRequestPtr create();
 
-          virtual Methods method() const                  {return (Message::Methods)MessageFactoryIdentityLockbox::Method_LockboxAccess;}
+          virtual DocumentPtr encode();
 
-          virtual IMessageFactoryPtr factory() const      {return MessageFactoryIdentityLockbox::singleton();}
+          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_Access;}
+
+          virtual IMessageFactoryPtr factory() const        {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const LockboxInfo &lockboxInfo() const          {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)        {mLockboxInfo = val;}
+          const LockboxInfo &lockboxInfo() const            {return mLockboxInfo;}
+          void lockboxInfo(const LockboxInfo &val)          {mLockboxInfo = val;}
 
-          const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
-          void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
+          const AgentInfo &agentInfo() const              {return mAgentInfo;}
+          void agentInfo(const AgentInfo &val)            {mAgentInfo = val;}
 
-          const IdentityInfoList &identities() const      {return mIdentities;}
-          void identities(const IdentityInfoList &val)    {mIdentities = val;}
+          const String &grantID() const                   {return mGrantID;}
+          void grantID(const String &val)                 {mGrantID = val;}
+
+          IPeerFilesPtr peerFiles() const                 {return mPeerFiles;}
+          void peerFiles(IPeerFilesPtr peerFiles)         {mPeerFiles = peerFiles;}
 
         protected:
-          LockboxAccessResult();
+          AccessRequest();
 
           LockboxInfo mLockboxInfo;
 
-          NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
+          AgentInfo mAgentInfo;
 
-          IdentityInfoList mIdentities;
+          String mGrantID;
+
+          IPeerFilesPtr mPeerFiles;
         };
       }
     }

@@ -94,17 +94,16 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         PeerIdentifyRequestPtr PeerIdentifyRequest::create(
-                                                           ElementPtr root,
+                                                           ElementPtr rootEl,
                                                            IMessageSourcePtr messageSource
                                                            )
         {
           PeerIdentifyRequestPtr ret(new PeerIdentifyRequest);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
 
           try
           {
-            ret->mID = IMessageHelper::getAttributeID(root);
-
-            ElementPtr peerIdentityProofBundleEl = root->findFirstChildElementChecked("peerIdentityProofBundle");
+            ElementPtr peerIdentityProofBundleEl = rootEl->findFirstChildElementChecked("peerIdentityProofBundle");
             ElementPtr peerIdentityProofEl = peerIdentityProofBundleEl->findFirstChildElementChecked("peerIdentityProof");
 
             ElementPtr peerEl = peerIdentityProofEl->findFirstChildElementChecked("peer");

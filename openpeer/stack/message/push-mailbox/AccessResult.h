@@ -32,9 +32,7 @@
 #pragma once
 
 #include <openpeer/stack/message/MessageResult.h>
-#include <openpeer/stack/message/identity-lockbox/MessageFactoryIdentityLockbox.h>
-
-#include <list>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
 {
@@ -42,49 +40,42 @@ namespace openpeer
   {
     namespace message
     {
-      namespace identity_lockbox
+      namespace push_mailbox
       {
-        class LockboxAccessResult : public MessageResult
+        class AccessResult : public MessageResult
         {
         public:
           enum AttributeTypes
           {
-            AttributeType_LockboxInfo = AttributeType_Last + 1,
-            AttributeType_NamespaceGrantChallengeInfo,
-            AttributeType_Identities,
+            AttributeType_NamespaceGrantChallengeInfo = MessageResult::AttributeType_Last + 1,
+            AttributeType_PeerChallengeID,
+            AttributeType_PeerValidate,
           };
 
         public:
-          static LockboxAccessResultPtr convert(MessagePtr message);
+          static AccessResultPtr convert(MessagePtr message);
 
-          static LockboxAccessResultPtr create(
-                                               ElementPtr rootEl,
-                                               IMessageSourcePtr messageSource
-                                               );
+          static AccessResultPtr create(
+                                        ElementPtr root,
+                                        IMessageSourcePtr messageSource
+                                        );
 
-          virtual Methods method() const                  {return (Message::Methods)MessageFactoryIdentityLockbox::Method_LockboxAccess;}
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_Access;}
 
-          virtual IMessageFactoryPtr factory() const      {return MessageFactoryIdentityLockbox::singleton();}
+          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
-
-          const LockboxInfo &lockboxInfo() const          {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)        {mLockboxInfo = val;}
 
           const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
           void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
 
-          const IdentityInfoList &identities() const      {return mIdentities;}
-          void identities(const IdentityInfoList &val)    {mIdentities = val;}
-
         protected:
-          LockboxAccessResult();
-
-          LockboxInfo mLockboxInfo;
+          AccessResult();
 
           NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 
-          IdentityInfoList mIdentities;
+          String mPeerChallengeID;
+          int mPeerValidate;
         };
       }
     }

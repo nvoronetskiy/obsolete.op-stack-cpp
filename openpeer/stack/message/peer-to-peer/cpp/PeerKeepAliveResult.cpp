@@ -74,16 +74,15 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         PeerKeepAliveResultPtr PeerKeepAliveResult::create(
-                                                           ElementPtr root,
+                                                           ElementPtr rootEl,
                                                            IMessageSourcePtr messageSource
                                                            )
         {
           PeerKeepAliveResultPtr ret(new PeerKeepAliveResult);
 
-          ret->mID = IMessageHelper::getAttributeID(root);
-          ret->mTime = IMessageHelper::getAttributeEpoch(root);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mExpires = IHelper::stringToTime(IMessageHelper::getElementText(root->findFirstChildElement("expires")));
+          ret->mExpires = IHelper::stringToTime(IMessageHelper::getElementText(rootEl->findFirstChildElement("expires")));
 
           return ret;
         }

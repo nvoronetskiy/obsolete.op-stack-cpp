@@ -29,16 +29,20 @@
 
  */
 
-#include <openpeer/stack/message/identity-lockbox/LockboxAccessRequest.h>
+#include <openpeer/stack/message/push-mailbox/AccessRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+
 #include <openpeer/stack/internal/stack_Stack.h>
+#include <openpeer/stack/IPeerFiles.h>
+#include <openpeer/stack/IPeerFilePublic.h>
 
 #include <openpeer/services/IHelper.h>
 
+//#include <zsLib/Stringize.h>
+//#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
-#include <zsLib/helpers.h>
 
-#define OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
+#define OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -50,76 +54,74 @@ namespace openpeer
     {
       using services::IHelper;
 
-      namespace identity_lockbox
+      namespace push_mailbox
       {
+        using internal::MessageHelper;
+
         typedef stack::internal::IStackForInternal UseStack;
 
         using zsLib::Seconds;
-        using internal::MessageHelper;
-        using stack::internal::IStackForInternal;
 
         //---------------------------------------------------------------------
-        LockboxAccessRequestPtr LockboxAccessRequest::convert(MessagePtr message)
+        static Log::Params slog(const char *message)
         {
-          return dynamic_pointer_cast<LockboxAccessRequest>(message);
+          return Log::Params(message, "AccessRequest");
         }
 
         //---------------------------------------------------------------------
-        LockboxAccessRequest::LockboxAccessRequest()
+        AccessRequestPtr AccessRequest::convert(MessagePtr message)
         {
+          return dynamic_pointer_cast<AccessRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        LockboxAccessRequestPtr LockboxAccessRequest::create()
+        AccessRequest::AccessRequest()
         {
-          LockboxAccessRequestPtr ret(new LockboxAccessRequest);
+          mAppID.clear();
+        }
+
+        //---------------------------------------------------------------------
+        AccessRequestPtr AccessRequest::create()
+        {
+          AccessRequestPtr ret(new AccessRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool LockboxAccessRequest::hasAttribute(AttributeTypes type) const
+        bool AccessRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_IdentityInfo:      return mIdentityInfo.hasData();
             case AttributeType_LockboxInfo:       return mLockboxInfo.hasData();
             case AttributeType_AgentInfo:         return mAgentInfo.hasData();
-            case AttributeType_GrantID:           return mGrantID.hasData();
-            case AttributeType_NamespaceInfos:    return (mNamespaceInfos.size() > 0);
-            default:                              break;
+            default:                            break;
           }
           return false;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr LockboxAccessRequest::encode()
+        DocumentPtr AccessRequest::encode()
         {
+          IPeerFilePublicPtr peerFilePublic;
+          if (mPeerFiles) {
+            peerFilePublic =  mPeerFiles->getPeerFilePublic();
+          }
+          
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
           String clientNonce = IHelper::randomString(32);
-          IdentityInfo identityInfo;
-
-          identityInfo.mURI = mIdentityInfo.mURI;
-          identityInfo.mProvider = mIdentityInfo.mProvider;
-
-          identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":lockbox-access"));
-          }
 
           LockboxInfo lockboxInfo;
-          lockboxInfo.mDomain = mLockboxInfo.mDomain;
-          lockboxInfo.mAccountID = mLockboxInfo.mAccountID;
-          lockboxInfo.mHash = mLockboxInfo.mHash;
-          lockboxInfo.mResetFlag = mLockboxInfo.mResetFlag;
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
-          if (identityInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(identityInfo));
+          lockboxInfo.mAccountID = mLockboxInfo.mAccountID;
+          lockboxInfo.mAccessToken = mLockboxInfo.mAccessToken;
+          if (mLockboxInfo.mAccessSecret.hasData()) {
+            lockboxInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
+            lockboxInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mLockboxInfo.mAccessSecret), "lockbox-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mAccessSecretProofExpires) + ":" + lockboxInfo.mAccessToken + ":push-mailbox-access"));
           }
 
+          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
             rootEl->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
           }
@@ -130,26 +132,23 @@ namespace openpeer
           if (agentInfo.hasData()) {
             rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
           }
-
+          
           if (mGrantID.hasData()) {
             rootEl->adoptAsLastChild(IMessageHelper::createElementWithID("grant", mGrantID));
           }
 
-          if (hasAttribute(AttributeType_NamespaceInfos)) {
-            ElementPtr namespacesEl = IMessageHelper::createElement("namespaces");
-
-            for (NamespaceInfoMap::iterator iter = mNamespaceInfos.begin(); iter != mNamespaceInfos.end(); ++iter)
-            {
-              const NamespaceInfo &namespaceInfo = (*iter).second;
-              namespacesEl->adoptAsLastChild(MessageHelper::createElement(namespaceInfo));
-            }
-
-            if (namespacesEl->hasChildren()) {
-              rootEl->adoptAsLastChild(namespacesEl);
-            }
+          if (peerFilePublic) {
+            String peerURI = peerFilePublic->getPeerURI();
+            ElementPtr uriEl = MessageHelper::createElementWithText("uri", peerURI);
+            ElementPtr peerEl = Element::create("peer");
+            peerEl->adoptAsLastChild(uriEl);
+            rootEl->adoptAsLastChild(peerEl);
           }
+
           return ret;
         }
+
+
       }
     }
   }

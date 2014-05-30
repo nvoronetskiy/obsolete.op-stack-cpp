@@ -88,9 +88,10 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_LockboxInfo:           return mLockboxInfo.hasData();
-            case AttributeType_Identities:            return (mIdentities.size() > 0);
-            default:                                  break;
+            case AttributeType_LockboxInfo:                   return mLockboxInfo.hasData();
+            case AttributeType_NamespaceGrantChallengeInfo:   return mNamespaceGrantChallengeInfo.hasData();
+            case AttributeType_Identities:                    return (mIdentities.size() > 0);
+            default:                                          break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }

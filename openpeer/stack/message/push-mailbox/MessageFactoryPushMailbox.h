@@ -29,8 +29,9 @@
 
  */
 
-#include <openpeer/stack/message/peer-to-peer/PeerKeepAliveRequest.h>
-#include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+#pragma once
+
+#include <openpeer/stack/message/IMessageFactory.h>
 
 
 namespace openpeer
@@ -39,53 +40,49 @@ namespace openpeer
   {
     namespace message
     {
-      namespace peer_to_peer
+      namespace push_mailbox
       {
         //---------------------------------------------------------------------
-        PeerKeepAliveRequestPtr PeerKeepAliveRequest::convert(MessagePtr message)
-        {
-          return dynamic_pointer_cast<PeerKeepAliveRequest>(message);
-        }
-
         //---------------------------------------------------------------------
-        PeerKeepAliveRequest::PeerKeepAliveRequest()
-        {
-          mAppID.clear();
-        }
-
         //---------------------------------------------------------------------
-        PeerKeepAliveRequestPtr PeerKeepAliveRequest::create()
-        {
-          PeerKeepAliveRequestPtr ret(new PeerKeepAliveRequest);
-          return ret;
-        }
-
         //---------------------------------------------------------------------
-        PeerKeepAliveRequestPtr PeerKeepAliveRequest::create(
-                                                             ElementPtr rootEl,
-                                                             IMessageSourcePtr messageSource
-                                                             )
+        #pragma mark
+        #pragma mark MessageFactoryPushMailbox
+        #pragma mark
+
+        class MessageFactoryPushMailbox : public IMessageFactory
         {
-          PeerKeepAliveRequestPtr ret(new PeerKeepAliveRequest);
+        public:
+          enum Methods
+          {
+            Method_Invalid = Message::Method_Invalid,
 
-          IMessageHelper::fill(*ret, rootEl, messageSource);
+            Method_Access,
 
-          return ret;
-        }
+            Method_Last = Method_Access,
+          };
 
-        //---------------------------------------------------------------------
-        bool PeerKeepAliveRequest::hasAttribute(AttributeTypes type) const
-        {
-          return false;
-        }
+        protected:
+          static MessageFactoryPushMailboxPtr create();
 
-        //---------------------------------------------------------------------
-        DocumentPtr PeerKeepAliveRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          return ret;
-        }
+        public:
+          static MessageFactoryPushMailboxPtr singleton();
 
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark MessageFactoryPushMailbox => IMessageFactory
+          #pragma mark
+
+          virtual const char *getHandler() const;
+
+          virtual Message::Methods toMethod(const char *method) const;
+          virtual const char *toString(Message::Methods method) const;
+
+          virtual MessagePtr create(
+                                    ElementPtr root,
+                                    IMessageSourcePtr messageSource
+                                    );
+        };
       }
     }
   }

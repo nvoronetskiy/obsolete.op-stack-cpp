@@ -29,8 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/peer-to-peer/PeerIdentifyResult.h>
-#include <openpeer/stack/message/peer-to-peer/PeerIdentifyRequest.h>
+#include <openpeer/stack/message/push-mailbox/AccessResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -41,73 +40,60 @@ namespace openpeer
   {
     namespace message
     {
-      namespace peer_to_peer
+      namespace push_mailbox
       {
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
         using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        PeerIdentifyResultPtr PeerIdentifyResult::convert(MessagePtr message)
+        AccessResultPtr AccessResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerIdentifyResult>(message);
+          return dynamic_pointer_cast<AccessResult>(message);
         }
 
         //---------------------------------------------------------------------
-        PeerIdentifyResult::PeerIdentifyResult()
+        AccessResult::AccessResult() :
+          mPeerValidate(-1)
         {
-          mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        PeerIdentifyResultPtr PeerIdentifyResult::create(PeerIdentifyRequestPtr request)
+        AccessResultPtr AccessResult::create(
+                                             ElementPtr rootEl,
+                                             IMessageSourcePtr messageSource
+                                             )
         {
-          PeerIdentifyResultPtr ret(new PeerIdentifyResult);
-
-          ret->mDomain = request->domain();
-          ret->mID = request->messageID();
-          ret->mAppID = request->appID();
-
-          return ret;
-        }
-
-        //---------------------------------------------------------------------
-        PeerIdentifyResultPtr PeerIdentifyResult::create(
-                                                         ElementPtr rootEl,
-                                                         IMessageSourcePtr messageSource
-                                                         )
-        {
-          PeerIdentifyResultPtr ret(new PeerIdentifyResult);
+          AccessResultPtr ret(new AccessResult);
 
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mLocationInfo = MessageHelper::createLocation(rootEl->findFirstChildElement("location"), messageSource);
+          ret->mNamespaceGrantChallengeInfo = MessageHelper::createNamespaceGrantChallenge(rootEl->findFirstChildElement("namespaceGrantChallenge"));
+
+          ElementPtr peerEl = rootEl->findFirstChildElement("peer");
+          if (peerEl) {
+            ret->mPeerChallengeID = MessageHelper::getAttributeID(peerEl);
+
+            String validate = IMessageHelper::getElementText(peerEl->findFirstChildElement("validate"));
+            if (!validate.isEmpty()) {
+              ret->mPeerValidate = ("true" == validate ? 1 : 0);
+            }
+          }
 
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool PeerIdentifyResult::hasAttribute(AttributeTypes type) const
+        bool AccessResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_LocationInfo:    return mLocationInfo ? mLocationInfo->hasData() : false;
-            default:                            break;
+            case AttributeType_NamespaceGrantChallengeInfo:     return mNamespaceGrantChallengeInfo.hasData();
+            case AttributeType_PeerChallengeID:                 return mPeerChallengeID.hasData();
+            case AttributeType_PeerValidate:                    return (mPeerValidate >= 0);
+            default:                                            break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
-        }
-
-        //---------------------------------------------------------------------
-        DocumentPtr PeerIdentifyResult::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
-
-          if (hasAttribute(AttributeType_LocationInfo)) {
-            root->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
-          }
-
-          return ret;
         }
 
       }
