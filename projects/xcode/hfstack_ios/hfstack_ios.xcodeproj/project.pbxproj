@@ -111,6 +111,8 @@
 		006FB4D8175E5FDE000C53A8 /* LockboxNamespaceGrantChallengeValidateResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4D6175E5FDE000C53A8 /* LockboxNamespaceGrantChallengeValidateResult.cpp */; };
 		006FB4DD175EA3C8000C53A8 /* IdentityAccessRolodexCredentialsGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4DB175EA3C8000C53A8 /* IdentityAccessRolodexCredentialsGetRequest.cpp */; };
 		006FB4DE175EA3C8000C53A8 /* IdentityAccessRolodexCredentialsGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4DC175EA3C8000C53A8 /* IdentityAccessRolodexCredentialsGetResult.cpp */; };
+		00760BD4193D32B600C7435C /* MessagesDataGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00760BD3193D32B600C7435C /* MessagesDataGetRequest.cpp */; };
+		00760BD7193D351B00C7435C /* MessagesDataGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00760BD6193D351B00C7435C /* MessagesDataGetResult.cpp */; };
 		0077F3B717AC1FDD009399FD /* ChannelMapRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F3B517AC1FDD009399FD /* ChannelMapRequest.cpp */; };
 		0077F3B817AC1FDD009399FD /* ChannelMapResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F3B617AC1FDD009399FD /* ChannelMapResult.cpp */; };
 		0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F46F17AD4CAB009399FD /* PeerLocationFindNotify.cpp */; };
@@ -409,6 +411,10 @@
 		006FB4DC175EA3C8000C53A8 /* IdentityAccessRolodexCredentialsGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IdentityAccessRolodexCredentialsGetResult.cpp; sourceTree = "<group>"; };
 		006FB4DF175EA3F0000C53A8 /* IdentityAccessRolodexCredentialsGetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IdentityAccessRolodexCredentialsGetRequest.h; sourceTree = "<group>"; };
 		006FB4E0175EA3F0000C53A8 /* IdentityAccessRolodexCredentialsGetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IdentityAccessRolodexCredentialsGetResult.h; sourceTree = "<group>"; };
+		00760BD3193D32B600C7435C /* MessagesDataGetRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessagesDataGetRequest.cpp; sourceTree = "<group>"; };
+		00760BD5193D32EA00C7435C /* MessagesDataGetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MessagesDataGetRequest.h; sourceTree = "<group>"; };
+		00760BD6193D351B00C7435C /* MessagesDataGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessagesDataGetResult.cpp; sourceTree = "<group>"; };
+		00760BD8193D352700C7435C /* MessagesDataGetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MessagesDataGetResult.h; sourceTree = "<group>"; };
 		0077F3B517AC1FDD009399FD /* ChannelMapRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ChannelMapRequest.cpp; sourceTree = "<group>"; };
 		0077F3B617AC1FDD009399FD /* ChannelMapResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ChannelMapResult.cpp; sourceTree = "<group>"; };
 		0077F3B917AC1FEC009399FD /* ChannelMapRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChannelMapRequest.h; sourceTree = "<group>"; };
@@ -1054,6 +1060,8 @@
 				00E0A564193CC2DB0085C456 /* FolderUpdateResult.h */,
 				00E0A567193CC5060085C456 /* FolderGetRequest.h */,
 				00E0A56A193D23ED0085C456 /* FolderGetResult.h */,
+				00760BD5193D32EA00C7435C /* MessagesDataGetRequest.h */,
+				00760BD8193D352700C7435C /* MessagesDataGetResult.h */,
 			);
 			path = "push-mailbox";
 			sourceTree = "<group>";
@@ -1074,6 +1082,8 @@
 				00E0A560193CC2C90085C456 /* FolderUpdateResult.cpp */,
 				00E0A565193CC4F50085C456 /* FolderGetRequest.cpp */,
 				00E0A568193D23DE0085C456 /* FolderGetResult.cpp */,
+				00760BD3193D32B600C7435C /* MessagesDataGetRequest.cpp */,
+				00760BD6193D351B00C7435C /* MessagesDataGetResult.cpp */,
 			);
 			path = cpp;
 			sourceTree = "<group>";
@@ -1280,6 +1290,7 @@
 				00AF4E02171E3E4A00DCA0A8 /* IdentityAccessCompleteNotify.cpp in Sources */,
 				00AF4E03171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateRequest.cpp in Sources */,
 				00AF4E04171E3E4A00DCA0A8 /* IdentityAccessLockboxUpdateResult.cpp in Sources */,
+				00760BD4193D32B600C7435C /* MessagesDataGetRequest.cpp in Sources */,
 				00F28E0D18D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp in Sources */,
 				00AF4E05171E3E4A00DCA0A8 /* IdentityAccessStartNotify.cpp in Sources */,
 				00AF4E07171E3E4A00DCA0A8 /* IdentityLookupUpdateRequest.cpp in Sources */,
@@ -1301,6 +1312,7 @@
 				00AA456C19382142001D3AA2 /* AccessResult.cpp in Sources */,
 				00AF4E48171E40AD00DCA0A8 /* PeerServicesGetResult.cpp in Sources */,
 				00FA4401193CB75300DA1530 /* PeerValidateResult.cpp in Sources */,
+				00760BD7193D351B00C7435C /* MessagesDataGetResult.cpp in Sources */,
 				002F75A91938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp in Sources */,
 				0051C4691745D1110095FD98 /* IdentityAccessWindowRequest.cpp in Sources */,
 				0051C46A1745D1110095FD98 /* IdentityAccessWindowResult.cpp in Sources */,

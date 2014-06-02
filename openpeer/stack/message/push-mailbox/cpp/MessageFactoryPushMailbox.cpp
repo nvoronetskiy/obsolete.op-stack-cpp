@@ -41,6 +41,7 @@
 #include <openpeer/stack/message/push-mailbox/FoldersGetResult.h>
 #include <openpeer/stack/message/push-mailbox/FolderUpdateResult.h>
 #include <openpeer/stack/message/push-mailbox/FolderGetResult.h>
+#include <openpeer/stack/message/push-mailbox/MessagesDataGetResult.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -181,7 +182,7 @@ namespace openpeer
                 case Method_FoldersGet:                       return FoldersGetResult::create(rootEl, messageSource);
                 case Method_FolderUpdate:                     return FolderUpdateResult::create(rootEl, messageSource);
                 case Method_FolderGet:                        return FolderGetResult::create(rootEl, messageSource);
-                case Method_MessagesDataGet:                  return MessagePtr();
+                case Method_MessagesDataGet:                  return MessagesDataGetResult::create(rootEl, messageSource);
                 case Method_MessagesMetaDataGet:              return MessagePtr();
                 case Method_MessageUpdate:                    return MessagePtr();
                 case Method_ListFetch:                        return MessagePtr();

@@ -81,7 +81,7 @@ namespace openpeer
                 if (info.hasData()) {
                   ret->mMessages.push_back(info);
                 }
-                messageEl = messageEl->findFirstChildElement("message");
+                messageEl = messageEl->findNextSiblingElement("message");
               }
             }
           }
@@ -96,7 +96,7 @@ namespace openpeer
           {
             case AttributeType_FolderInfo:        return mFolderInfo.hasData();
             case AttributeType_Messages:          return (mMessages.size() > 0);
-            default:                                            break;
+            default:                              break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }

@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessagesDataGetRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -43,44 +43,55 @@ namespace openpeer
       namespace push_mailbox
       {
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        MessagesDataGetRequestPtr MessagesDataGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
+          return dynamic_pointer_cast<MessagesDataGetRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
+        MessagesDataGetRequest::MessagesDataGetRequest()
         {
           mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
+        MessagesDataGetRequestPtr MessagesDataGetRequest::create()
         {
-          FolderGetRequestPtr ret(new FolderGetRequest);
+          MessagesDataGetRequestPtr ret(new MessagesDataGetRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
+        bool MessagesDataGetRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
+            case AttributeType_MessageIDs:        return mMessageIDs.size() > 0;
             default:                              break;
           }
           return false;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
+        DocumentPtr MessagesDataGetRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
+          ElementPtr messagesEl = Element::create("messages");
+
+          if (hasAttribute(AttributeType_MessageIDs)) {
+            for (MessageIDList::const_iterator iter = mMessageIDs.begin(); iter != mMessageIDs.end(); ++iter) {
+              const MessageID &messageID = (*iter);
+              if (messageID.hasData()) {
+                ElementPtr messageEl = IMessageHelper::createElementWithTextAndJSONEncode("message", messageID);
+                messagesEl->adoptAsLastChild(messageEl);
+              }
+            }
+          }
+
+          if (messagesEl->hasChildren()) {
+            rootEl->adoptAsFirstChild(messagesEl);
           }
 
           return ret;

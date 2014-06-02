@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessagesDataGetResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -42,50 +42,57 @@ namespace openpeer
     {
       namespace push_mailbox
       {
+        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+        using message::internal::MessageHelper;
+
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        MessagesDataGetResultPtr MessagesDataGetResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
+          return dynamic_pointer_cast<MessagesDataGetResult>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
+        MessagesDataGetResult::MessagesDataGetResult()
         {
-          mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
+        MessagesDataGetResultPtr MessagesDataGetResult::create(
+                                                               ElementPtr rootEl,
+                                                               IMessageSourcePtr messageSource
+                                                               )
         {
-          FolderGetRequestPtr ret(new FolderGetRequest);
+          MessagesDataGetResultPtr ret(new MessagesDataGetResult);
+
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
+          ElementPtr messagesEl = rootEl->findFirstChildElement("messages");
+
+          if (messagesEl) {
+            ElementPtr messageEl = messagesEl->findFirstChildElement("message");
+            while (messageEl) {
+              MessageInfo info = MessageInfo::create(messageEl);
+              if (info.hasData()) {
+                ret->mMessages.push_back(info);
+              }
+              messageEl = messageEl->findNextSiblingElement("message");
+            }
+          }
+
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
+        bool MessagesDataGetResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
+            case AttributeType_Messages:          return (mMessages.size() > 0);
             default:                              break;
           }
-          return false;
+          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
-
-        //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr rootEl = ret->getFirstChildElement();
-
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
-          }
-
-          return ret;
-        }
-
 
       }
     }

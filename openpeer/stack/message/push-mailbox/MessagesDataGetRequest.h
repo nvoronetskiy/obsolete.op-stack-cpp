@@ -29,10 +29,10 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
-#include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+#pragma once
 
-#include <zsLib/XML.h>
+#include <openpeer/stack/message/MessageRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
 {
@@ -42,51 +42,41 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        class MessagesDataGetRequest : public MessageRequest
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
-        }
+        public:
+          friend class PeerIdentifyResult;
 
-        //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
-        {
-          mAppID.clear();
-        }
-
-        //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
-        {
-          FolderGetRequestPtr ret(new FolderGetRequest);
-          return ret;
-        }
-
-        //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
-        {
-          switch (type)
+        public:
+          enum AttributeTypes
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
-            default:                              break;
-          }
-          return false;
-        }
+            AttributeType_MessageIDs,
+          };
 
-        //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr rootEl = ret->getFirstChildElement();
+          typedef String MessageID;
+          typedef std::list<MessageID> MessageIDList;
 
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
-          }
+        public:
+          static MessagesDataGetRequestPtr convert(MessagePtr message);
 
-          return ret;
-        }
+          static MessagesDataGetRequestPtr create();
 
+          virtual DocumentPtr encode();
 
+          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_MessagesDataGet;}
+
+          virtual IMessageFactoryPtr factory() const        {return MessageFactoryPushMailbox::singleton();}
+
+          bool hasAttribute(AttributeTypes type) const;
+
+          const MessageIDList &messageIDs() const           {return mMessageIDs;}
+          void messageIDs(const MessageIDList &val)         {mMessageIDs = val;}
+
+        protected:
+          MessagesDataGetRequest();
+
+          MessageIDList mMessageIDs;
+        };
       }
     }
   }
