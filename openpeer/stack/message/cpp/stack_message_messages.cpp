@@ -111,6 +111,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(DWORD &result, DWORD source, bool overwrite)
+      {
+        if (0 == source) return;
+        if (0 != result) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static void merge(ULONG &result, ULONG source, bool overwrite)
       {
         if (0 == source) return;
@@ -202,6 +212,26 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
+      static void merge(std::list<String> &result, const std::list<String> &source, bool overwrite)
+      {
+        if (source.size() < 1) return;
+        if (result.size() > 0) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
+      static void merge(MessageInfo::FlagInfoMap &result, const MessageInfo::FlagInfoMap &source, bool overwrite)
+      {
+        if (source.size() < 1) return;
+        if (result.size() > 0) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static ElementPtr getProtocolsDebugValueString(const Finder::ProtocolList &protocols)
       {
         if (protocols.size() < 1) return ElementPtr();
@@ -221,92 +251,83 @@ namespace openpeer
         
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::AgentInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool AgentInfo::hasData() const
+      {
+        return ((mUserAgent.hasData()) ||
+                (mName.hasData()) ||
+                (mImageURL.hasData()) ||
+                (mAgentURL.hasData()));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr AgentInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::AgentInfo");
+
+        IHelper::debugAppend(resultEl, "user agent", mUserAgent);
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "image url", mImageURL);
+        IHelper::debugAppend(resultEl, "agent url", mAgentURL);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      void AgentInfo::mergeFrom(
+                                const AgentInfo &source,
+                                bool overwriteExisting
+                                )
+      {
+        merge(mUserAgent, source.mUserAgent, overwriteExisting);
+        merge(mName, source.mName, overwriteExisting);
+        merge(mImageURL, source.mImageURL, overwriteExisting);
+        merge(mAgentURL, source.mAgentURL, overwriteExisting);
+      }
+
+      //-----------------------------------------------------------------------
+      AgentInfo AgentInfo::create(ElementPtr elem)
+      {
+        AgentInfo info;
+
+        if (!elem) return info;
+
+        info.mUserAgent = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("userAgent"));
+        info.mName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("name"));
+        info.mImageURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("image"));
+        info.mAgentURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("url"));
+
+        return info;
+      }
       
       //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark message::Service
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool Service::hasData() const
+      ElementPtr AgentInfo::createElement() const
       {
-        return ((mID.hasData()) ||
-                (mType.hasData()) ||
-                (mVersion.hasData()) ||
-                (mMethods.size() > 0));
-      }
+        ElementPtr agentEl = Element::create("agent");
 
-      //-----------------------------------------------------------------------
-      ElementPtr Service::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::Service");
-
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "type", mType);
-        IHelper::debugAppend(resultEl, "version", mVersion);
-        IHelper::debugAppend(resultEl, "methods", mMethods.size());
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      bool Service::Method::hasData() const
-      {
-        return ((mName.hasData()) ||
-                (mURI.hasData()) ||
-                (mUsername.hasData()) ||
-                (mPassword.hasData()));
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr Service::Method::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::Service::Method");
-
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "uri", mURI);
-        IHelper::debugAppend(resultEl, "username", mUsername);
-        IHelper::debugAppend(resultEl, "password", mPassword);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      Service Service::create(ElementPtr serviceEl)
-      {
-        Service service;
-
-        if (!serviceEl) return service;
-
-        service.mID = IMessageHelper::getAttributeID(serviceEl);
-        service.mType = IMessageHelper::getElementText(serviceEl->findFirstChildElement("type"));
-        service.mVersion = IMessageHelper::getElementText(serviceEl->findFirstChildElement("version"));
-
-        ElementPtr methodsEl = serviceEl->findFirstChildElement("methods");
-        if (methodsEl) {
-          ElementPtr methodEl = methodsEl->findFirstChildElement("method");
-          while (methodEl) {
-            Service::Method method;
-            method.mName = IMessageHelper::getElementText(methodEl->findFirstChildElement("name"));
-
-            String uri = IMessageHelper::getElementText(methodEl->findFirstChildElement("uri"));
-            String host = IMessageHelper::getElementText(methodEl->findFirstChildElement("host"));
-
-            method.mURI = (host.hasData() ? host : uri);
-            method.mUsername = IMessageHelper::getElementText(methodEl->findFirstChildElement("username"));
-            method.mPassword = IMessageHelper::getElementText(methodEl->findFirstChildElement("password"));
-
-            if (method.hasData()) {
-              service.mMethods[method.mName] = method;
-            }
-
-            methodEl = methodEl->findNextSiblingElement("method");
-          }
+        if (mUserAgent.hasData()) {
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("userAgent", mUserAgent));
         }
-        return service;
+        if (mName.hasData()) {
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("name", mName));
+        }
+        if (mImageURL.hasData()) {
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("image", mImageURL));
+        }
+        if (mAgentURL.hasData()) {
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("url", mAgentURL));
+        }
+
+        return agentEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1061,82 +1082,467 @@ namespace openpeer
         return info;
       }
 
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark message::AgentInfo
-      #pragma mark
 
       //-----------------------------------------------------------------------
-      bool AgentInfo::hasData() const
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::MessageInfo
+      #pragma mark
+
+//      struct MessageInfo
+//      {
+//        struct PushInfo
+//        {
+//          typedef String Value;
+//          typedef std::list<Value> ValueList;
+//
+//          String mType;
+//
+//          ValueList mValues;
+//          ElementPtr mCustom;
+//        };
+//
+//        struct FlagInfo
+//        {
+//          struct URIInfo
+//          {
+//            String mURI;
+//
+//            WORD mErrorCode;
+//            String mErrorReason;
+//          };
+//          typedef std::list<URIInfo> URIInfoList;
+//
+//          enum Flags
+//          {
+//            Flag_Read,
+//            Flag_Answered,
+//            Flag_Flagged,
+//            Flag_Deleted,
+//            Flag_Draft,
+//            Flag_Recent,
+//            Flag_Delivered,
+//            Flag_Send,
+//            Flag_Pushed,
+//            Flag_Error,
+//          };
+//          static Flags toFlag(const char *flagName);
+//          static const char *toString(Flags flag);
+//
+//          Flags mFlag;
+//          URIInfoList mFlagURIInfos;
+//
+//          FlagInfo() : mFlag(Flag_Read) {}
+//        };
+//
+//        typedef std::map<FlagInfo::Flags, FlagInfo> FlagInfoMap;
+//
+//        String mID;
+//
+//        DWORD mChannelID;
+//
+//        String mTo;
+//        String mCC;
+//        String mBCC;
+//
+//        String mFrom;
+//
+//        String mMimeType;
+//        String mEncoding;
+//
+//        PushInfo mPushInfo;
+//
+//        Time mTime;
+//        Time mExpires;
+//
+//        size_t mLength;
+//
+//        FlagInfoMap mFlags;
+//
+//        MessageInfo() :
+//        mChannelID(0),
+//        mLength(0) {}
+//
+//        bool hasData() const;
+//        ElementPtr toDebug() const;
+//
+//        void mergeFrom(
+//                       const MessageInfo &source,
+//                       bool overwriteExisting = true
+//                       );
+//        
+//        static MessageInfo create(ElementPtr elem);
+//        ElementPtr createElement() const;
+//      };
+//
+      //-----------------------------------------------------------------------
+      bool MessageInfo::hasData() const
       {
-        return ((mUserAgent.hasData()) ||
-                (mName.hasData()) ||
-                (mImageURL.hasData()) ||
-                (mAgentURL.hasData()));
+        return ((mID.hasData()) ||
+
+                (mVersion.hasData()) ||
+
+                (0 != mChannelID) ||
+
+                (mTo.hasData()) ||
+                (mCC.hasData()) ||
+                (mBCC.hasData()) ||
+
+                (mFrom.hasData()) ||
+
+                (mMimeType.hasData()) ||
+                (mEncoding.hasData()) ||
+
+                (mPushInfo.hasData()) ||
+
+                (Time() != mTime) ||
+                (Time() != mExpires) ||
+
+                (0 != mLength) ||
+
+                (mFlags.size() > 0));
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr AgentInfo::toDebug() const
+      ElementPtr MessageInfo::toDebug() const
       {
-        ElementPtr resultEl = Element::create("message::AgentInfo");
+        ElementPtr resultEl = Element::create("message::MessageInfo");
 
-        IHelper::debugAppend(resultEl, "user agent", mUserAgent);
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "image url", mImageURL);
-        IHelper::debugAppend(resultEl, "agent url", mAgentURL);
+        IHelper::debugAppend(resultEl, "id", mID);
+
+        IHelper::debugAppend(resultEl, "version", mVersion);
+
+        IHelper::debugAppend(resultEl, "channel ID", mChannelID);
+
+        IHelper::debugAppend(resultEl, "to", mTo);
+        IHelper::debugAppend(resultEl, "cc", mCC);
+        IHelper::debugAppend(resultEl, "bcc", mBCC);
+
+        IHelper::debugAppend(resultEl, "from", mFrom);
+
+        IHelper::debugAppend(resultEl, "mimeType", mMimeType);
+        IHelper::debugAppend(resultEl, "encoding", mEncoding);
+
+        IHelper::debugAppend(resultEl, mPushInfo.toDebug());
+
+        IHelper::debugAppend(resultEl, "time", mTime);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+
+        IHelper::debugAppend(resultEl, "length", mLength);
+
+        IHelper::debugAppend(resultEl, "flags", mFlags.size());
 
         return resultEl;
       }
 
       //-----------------------------------------------------------------------
-      void AgentInfo::mergeFrom(
-                                const AgentInfo &source,
-                                bool overwriteExisting
-                                )
+      void MessageInfo::mergeFrom(
+                                  const MessageInfo &source,
+                                  bool overwriteExisting
+                                  )
       {
-        merge(mUserAgent, source.mUserAgent, overwriteExisting);
-        merge(mName, source.mName, overwriteExisting);
-        merge(mImageURL, source.mImageURL, overwriteExisting);
-        merge(mAgentURL, source.mAgentURL, overwriteExisting);
+        merge(mID, source.mID, overwriteExisting);
+
+        merge(mVersion, source.mVersion, overwriteExisting);
+
+        merge(mChannelID, source.mChannelID, overwriteExisting);
+
+        merge(mTo, source.mTo, overwriteExisting);
+        merge(mCC, source.mCC, overwriteExisting);
+        merge(mBCC, source.mBCC, overwriteExisting);
+
+        merge(mFrom, source.mFrom, overwriteExisting);
+
+        merge(mMimeType, source.mMimeType, overwriteExisting);
+        merge(mEncoding, source.mEncoding, overwriteExisting);
+
+        mPushInfo.mergeFrom(source.mPushInfo, overwriteExisting);
+
+        merge(mTime, source.mTime, overwriteExisting);
+        merge(mExpires, source.mExpires, overwriteExisting);
+
+        merge(mLength, source.mLength, overwriteExisting);
+
+        merge(mFlags, source.mFlags, overwriteExisting);
       }
 
       //-----------------------------------------------------------------------
-      AgentInfo AgentInfo::create(ElementPtr elem)
+      ElementPtr MessageInfo::createElement() const
       {
-        AgentInfo info;
+        ElementPtr messageEl = Element::create("message");
+
+        if (mID.hasData()) {
+          messageEl->setAttribute("id", mID);
+        }
+
+        if (mVersion.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
+        }
+
+        if (0 != mChannelID) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("channel", mID));
+        }
+
+        if (mTo.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("to", mTo));
+        }
+        if (mCC.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("cc", mCC));
+        }
+        if (mBCC.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("bcc", mBCC));
+        }
+
+        if (mFrom.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("from", mFrom));
+        }
+
+        if (mMimeType.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("mimeType", mMimeType));
+        }
+
+        if (mEncoding.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("encoding", mEncoding));
+        }
+
+        if (mPushInfo.hasData()) {
+          ElementPtr pushEl = Element::create("push");
+
+          if (mPushInfo.mType.hasData()) {
+            pushEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", mPushInfo.mType));
+          }
+          if (mPushInfo.mValues.size() > 0) {
+            ElementPtr valuesEl = Element::create("values");
+
+            for (PushInfo::ValueList::const_iterator iter = mPushInfo.mValues.begin(); iter != mPushInfo.mValues.end(); ++iter) {
+              const String &value = (*iter);
+              valuesEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("value", value));
+            }
+
+            if (valuesEl->hasChildren()) {
+              pushEl->adoptAsLastChild(valuesEl);
+            }
+          }
+
+          if ((bool)mPushInfo.mCustom) {
+            ElementPtr customEl = Element::create("custom");
+            customEl->adoptAsLastChild(mPushInfo.mCustom->clone());
+            if (customEl->hasChildren()) {
+              pushEl->adoptAsLastChild(customEl);
+            }
+          }
+
+          if (pushEl->hasChildren()) {
+            messageEl->adoptAsLastChild(pushEl);
+          }
+        }
+
+        if (Time() != mTime) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("time", IHelper::timeToString(mTime)));
+        }
+
+        if (Time() != mExpires) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(mExpires)));
+        }
+
+        if (0 != mLength) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("length", string(mLength)));
+        }
+
+        if (mFlags.size() > 0) {
+          ElementPtr flagsEl = Element::create("flags");
+
+          for (MessageInfo::FlagInfoMap::const_iterator iter = mFlags.begin(); iter != mFlags.end(); ++iter) {
+            const FlagInfo &info = (*iter).second;
+
+            ElementPtr flagEl = IMessageHelper::createElementWithText("flag", FlagInfo::toString(info.mFlag));
+
+            ElementPtr detailsEl = Element::create("details");
+
+            if (info.mFlagURIInfos.size() > 0) {
+              for (MessageInfo::FlagInfo::URIInfoList::const_iterator uriIter = info.mFlagURIInfos.begin(); uriIter != info.mFlagURIInfos.end(); ++uriIter) {
+
+                ElementPtr detailEl = Element::create("detail");
+
+                const FlagInfo::URIInfo &uriInfo = (*uriIter);
+
+                if (uriInfo.mURI.hasData()) {
+                  detailEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("to", uriInfo.mURI));
+                }
+
+                if ((0 != uriInfo.mErrorCode) ||
+                    (uriInfo.mErrorReason.hasData())) {
+                  ElementPtr errorEl = uriInfo.mErrorReason.hasData() ? IMessageHelper::createElementWithTextAndJSONEncode("error", uriInfo.mErrorReason) : Element::create("error");
+
+                  if (0 != uriInfo.mErrorCode) {
+                    errorEl->setAttribute("id", string(uriInfo.mErrorCode));
+                  }
+
+                  detailEl->adoptAsLastChild(errorEl);
+                }
+
+                if (detailEl->hasChildren()) {
+                  detailsEl->adoptAsLastChild(detailEl);
+                }
+              }
+            }
+
+            if (detailsEl->hasChildren()) {
+              flagEl->adoptAsLastChild(detailsEl);
+            }
+
+            flagsEl->adoptAsLastChild(flagEl);
+          }
+
+          if (flagsEl->hasChildren()) {
+            messageEl->adoptAsLastChild(flagsEl);
+          }
+        }
+
+        return messageEl;
+      }
+
+      //-----------------------------------------------------------------------
+      MessageInfo MessageInfo::create(ElementPtr elem)
+      {
+        MessageInfo info;
 
         if (!elem) return info;
 
-        info.mUserAgent = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("userAgent"));
-        info.mName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("name"));
-        info.mImageURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("image"));
-        info.mAgentURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("url"));
+        info.mID = IMessageHelper::getAttributeID(elem);
+
+        info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
+
+        try {
+          info.mChannelID = Numeric<decltype(info.mChannelID)>(IMessageHelper::getElementText(elem->findFirstChildElement("channel")));
+        } catch(Numeric<decltype(info.mChannelID)>::ValueOutOfRange &) {
+        }
+
+        info.mTo = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("to"));
+        info.mCC = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("cc"));
+        info.mBCC = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("bcc"));
+
+        info.mFrom = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("from"));
+
+        info.mMimeType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("mimeType"));
+        info.mEncoding = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("encoding"));
+
+
+        ElementPtr pushEl = elem->findFirstChildElement("push");
+        if (pushEl) {
+          info.mPushInfo.mType = IMessageHelper::getElementTextAndDecode(pushEl->findFirstChildElement("type"));
+
+          ElementPtr valuesEl = pushEl->findFirstChildElement("values");
+          if (valuesEl) {
+            ElementPtr valueEl = valuesEl->findFirstChildElement("value");
+            while (valueEl) {
+              String value = IMessageHelper::getElementTextAndDecode(valueEl);
+              if (value.hasData()) {
+                info.mPushInfo.mValues.push_back(value);
+              }
+
+              valueEl = valueEl->findNextSiblingElement("value");
+            }
+          }
+
+          ElementPtr customEl = pushEl->findFirstChildElement("custom");
+
+          if (customEl) {
+            ElementPtr dataEl = customEl->getFirstChildElement();
+            if (dataEl) {
+              info.mPushInfo.mCustom = dataEl->clone()->toElement();
+            }
+          }
+        }
+
+        info.mTime = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("time")));
+        info.mExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
+
+        try {
+          info.mLength = Numeric<decltype(info.mLength)>(IMessageHelper::getElementText(elem->findFirstChildElement("length")));
+        } catch(Numeric<decltype(info.mLength)>::ValueOutOfRange &) {
+        }
+
+        ElementPtr flagsEl = elem->findFirstChildElement("flags");
+        if (flagsEl) {
+          ElementPtr flagEl = flagsEl->findFirstChildElement("flag");
+
+          while (flagEl) {
+            FlagInfo flagInfo;
+
+            flagInfo.mFlag = FlagInfo::toFlag(IMessageHelper::getElementText(flagEl));
+
+            ElementPtr detailsEl = flagsEl->findFirstChildElement("details");
+            if (detailsEl) {
+              ElementPtr detailEl = detailsEl->findFirstChildElement("detail");
+              while (detailEl) {
+
+                FlagInfo::URIInfo uriInfo;
+
+                uriInfo.mURI = IMessageHelper::getElementTextAndDecode(detailEl->findFirstChildElement("to"));
+
+                ElementPtr errorEl = detailEl->findFirstChildElement("error");
+
+                if (errorEl) {
+                  try {
+                    uriInfo.mErrorCode = Numeric<decltype(uriInfo.mErrorCode)>(IMessageHelper::getAttributeID(errorEl));
+                  } catch(Numeric<decltype(uriInfo.mErrorCode)>::ValueOutOfRange &) {
+                  }
+                  uriInfo.mErrorReason = IMessageHelper::getElementTextAndDecode(errorEl);
+                }
+
+                detailEl = detailEl->findNextSiblingElement("detail");
+              }
+            }
+
+            flagEl = flagEl->findNextSiblingElement("flag");
+          }
+        }
 
         return info;
       }
-      
+
       //-----------------------------------------------------------------------
-      ElementPtr AgentInfo::createElement() const
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::MessageInfo::PushInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool MessageInfo::PushInfo::hasData() const
       {
-        ElementPtr agentEl = Element::create("agent");
+        return ((mType.hasData()) ||
 
-        if (mUserAgent.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("userAgent", mUserAgent));
-        }
-        if (mName.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("name", mName));
-        }
-        if (mImageURL.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("image", mImageURL));
-        }
-        if (mAgentURL.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("url", mAgentURL));
-        }
+                (mValues.size() > 0) ||
 
-        return agentEl;
+                ((bool)mCustom));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr MessageInfo::PushInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::MessageInfo::PushInfo");
+
+        IHelper::debugAppend(resultEl, "type", mType);
+        IHelper::debugAppend(resultEl, "mValues", mValues.size());
+        IHelper::debugAppend(resultEl, "custom", (bool)mCustom);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      void MessageInfo::PushInfo::mergeFrom(
+                                            const PushInfo &source,
+                                            bool overwriteExisting
+                                            )
+      {
+        merge(mType, source.mType, overwriteExisting);
+        merge(mValues, source.mValues, overwriteExisting);
+        merge(mCustom, source.mCustom, overwriteExisting);
       }
 
       //-----------------------------------------------------------------------
@@ -1330,6 +1736,93 @@ namespace openpeer
         }
 
         return namespaceGrantChallengeEl;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::Service
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool Service::hasData() const
+      {
+        return ((mID.hasData()) ||
+                (mType.hasData()) ||
+                (mVersion.hasData()) ||
+                (mMethods.size() > 0));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr Service::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::Service");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "type", mType);
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "methods", mMethods.size());
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Service::Method::hasData() const
+      {
+        return ((mName.hasData()) ||
+                (mURI.hasData()) ||
+                (mUsername.hasData()) ||
+                (mPassword.hasData()));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr Service::Method::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::Service::Method");
+
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "uri", mURI);
+        IHelper::debugAppend(resultEl, "username", mUsername);
+        IHelper::debugAppend(resultEl, "password", mPassword);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      Service Service::create(ElementPtr serviceEl)
+      {
+        Service service;
+
+        if (!serviceEl) return service;
+
+        service.mID = IMessageHelper::getAttributeID(serviceEl);
+        service.mType = IMessageHelper::getElementText(serviceEl->findFirstChildElement("type"));
+        service.mVersion = IMessageHelper::getElementText(serviceEl->findFirstChildElement("version"));
+
+        ElementPtr methodsEl = serviceEl->findFirstChildElement("methods");
+        if (methodsEl) {
+          ElementPtr methodEl = methodsEl->findFirstChildElement("method");
+          while (methodEl) {
+            Service::Method method;
+            method.mName = IMessageHelper::getElementText(methodEl->findFirstChildElement("name"));
+
+            String uri = IMessageHelper::getElementText(methodEl->findFirstChildElement("uri"));
+            String host = IMessageHelper::getElementText(methodEl->findFirstChildElement("host"));
+
+            method.mURI = (host.hasData() ? host : uri);
+            method.mUsername = IMessageHelper::getElementText(methodEl->findFirstChildElement("username"));
+            method.mPassword = IMessageHelper::getElementText(methodEl->findFirstChildElement("password"));
+
+            if (method.hasData()) {
+              service.mMethods[method.mName] = method;
+            }
+
+            methodEl = methodEl->findNextSiblingElement("method");
+          }
+        }
+        return service;
       }
 
       //-----------------------------------------------------------------------

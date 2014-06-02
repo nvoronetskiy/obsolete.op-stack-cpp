@@ -62,12 +62,6 @@ namespace openpeer
         using zsLib::Seconds;
 
         //---------------------------------------------------------------------
-        static Log::Params slog(const char *message)
-        {
-          return Log::Params(message, "PeerValidateRequest");
-        }
-
-        //---------------------------------------------------------------------
         PeerValidateRequestPtr PeerValidateRequest::convert(MessagePtr message)
         {
           return dynamic_pointer_cast<PeerValidateRequest>(message);

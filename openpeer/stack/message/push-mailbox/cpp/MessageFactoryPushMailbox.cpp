@@ -40,6 +40,7 @@
 #include <openpeer/stack/message/push-mailbox/PeerValidateResult.h>
 #include <openpeer/stack/message/push-mailbox/FoldersGetResult.h>
 #include <openpeer/stack/message/push-mailbox/FolderUpdateResult.h>
+#include <openpeer/stack/message/push-mailbox/FolderGetResult.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -179,7 +180,7 @@ namespace openpeer
                 case Method_PeerValidate:                     return PeerValidateResult::create(rootEl, messageSource);
                 case Method_FoldersGet:                       return FoldersGetResult::create(rootEl, messageSource);
                 case Method_FolderUpdate:                     return FolderUpdateResult::create(rootEl, messageSource);
-                case Method_FolderGet:                        return MessagePtr();
+                case Method_FolderGet:                        return FolderGetResult::create(rootEl, messageSource);
                 case Method_MessagesDataGet:                  return MessagePtr();
                 case Method_MessagesMetaDataGet:              return MessagePtr();
                 case Method_MessageUpdate:                    return MessagePtr();

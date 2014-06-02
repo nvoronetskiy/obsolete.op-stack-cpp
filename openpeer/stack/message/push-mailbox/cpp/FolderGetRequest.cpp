@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderUpdateRequest.h>
+#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <openpeer/stack/internal/stack_Stack.h>
@@ -42,8 +42,6 @@
 //#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
 
-namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
-
 namespace openpeer
 {
   namespace stack
@@ -53,26 +51,26 @@ namespace openpeer
       namespace push_mailbox
       {
         //---------------------------------------------------------------------
-        FolderUpdateRequestPtr FolderUpdateRequest::convert(MessagePtr message)
+        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderUpdateRequest>(message);
+          return dynamic_pointer_cast<FolderGetRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderUpdateRequest::FolderUpdateRequest()
+        FolderGetRequest::FolderGetRequest()
         {
           mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        FolderUpdateRequestPtr FolderUpdateRequest::create()
+        FolderGetRequestPtr FolderGetRequest::create()
         {
-          FolderUpdateRequestPtr ret(new FolderUpdateRequest);
+          FolderGetRequestPtr ret(new FolderGetRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderUpdateRequest::hasAttribute(AttributeTypes type) const
+        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
@@ -83,7 +81,7 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr FolderUpdateRequest::encode()
+        DocumentPtr FolderGetRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();

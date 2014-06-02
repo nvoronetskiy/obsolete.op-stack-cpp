@@ -61,12 +61,6 @@ namespace openpeer
         using zsLib::Seconds;
 
         //---------------------------------------------------------------------
-        static Log::Params slog(const char *message)
-        {
-          return Log::Params(message, "FoldersGetRequest");
-        }
-
-        //---------------------------------------------------------------------
         FoldersGetRequestPtr FoldersGetRequest::convert(MessagePtr message)
         {
           return dynamic_pointer_cast<FoldersGetRequest>(message);

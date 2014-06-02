@@ -85,48 +85,28 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Service
+      #pragma mark AgentInfo
       #pragma mark
 
-      struct Service
+      struct AgentInfo
       {
-        ZS_DECLARE_STRUCT_PTR(Method)
-        ZS_DECLARE_TYPEDEF_PTR(std::list<MethodPtr>, MethodList)
+        String mUserAgent;
+        String mName;
+        String mImageURL;
+        String mAgentURL;
 
-        typedef String ServiceID;
-        typedef String Type;
-
-        struct Method
-        {
-          typedef String MethodName;
-
-          MethodName mName;
-          String mURI;
-          String mUsername;
-          String mPassword;
-
-          bool hasData() const;
-          ElementPtr toDebug() const;
-        };
-        typedef std::map<Method::MethodName, Method> MethodMap;
-
-        ServiceID mID;
-        String mType;
-        String mVersion;
-
-        MethodMap mMethods;
-
+        AgentInfo() {}
         bool hasData() const;
         ElementPtr toDebug() const;
 
-        static Service create(ElementPtr elem);
+        void mergeFrom(
+                       const AgentInfo &source,
+                       bool overwriteExisting = true
+                       );
+
+        static AgentInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
-
-      typedef std::map<Service::ServiceID, Service> TServiceMap;
-      ZS_DECLARE_TYPEDEF_PTR(TServiceMap, ServiceMap)
-
-      typedef std::map<Service::Type, ServiceMap> TServiceTypeMap;
-      ZS_DECLARE_TYPEDEF_PTR(TServiceTypeMap, ServiceTypeMap)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -361,28 +341,106 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark AgentInfo
+      #pragma mark MessageInfo
       #pragma mark
 
-      struct AgentInfo
+      struct MessageInfo
       {
-        String mUserAgent;
-        String mName;
-        String mImageURL;
-        String mAgentURL;
+        struct PushInfo
+        {
+          typedef String Value;
+          typedef std::list<Value> ValueList;
 
-        AgentInfo() {}
+          String mType;
+
+          ValueList mValues;
+          ElementPtr mCustom;
+
+          bool hasData() const;
+          ElementPtr toDebug() const;
+
+          void mergeFrom(
+                         const PushInfo &source,
+                         bool overwriteExisting = true
+                         );
+        };
+
+        struct FlagInfo
+        {
+          struct URIInfo
+          {
+            String mURI;
+
+            WORD mErrorCode;
+            String mErrorReason;
+          };
+          typedef std::list<URIInfo> URIInfoList;
+
+          enum Flags
+          {
+            Flag_Read,
+            Flag_Answered,
+            Flag_Flagged,
+            Flag_Deleted,
+            Flag_Draft,
+            Flag_Recent,
+            Flag_Delivered,
+            Flag_Send,
+            Flag_Pushed,
+            Flag_Error,
+          };
+          static Flags toFlag(const char *flagName);
+          static const char *toString(Flags flag);
+
+          Flags mFlag;
+          URIInfoList mFlagURIInfos;
+
+          FlagInfo() : mFlag(Flag_Read) {}
+        };
+
+        typedef std::map<FlagInfo::Flags, FlagInfo> FlagInfoMap;
+
+        String mID;
+
+        String mVersion;
+
+        DWORD mChannelID;
+
+        String mTo;
+        String mCC;
+        String mBCC;
+
+        String mFrom;
+
+        String mMimeType;
+        String mEncoding;
+
+        PushInfo mPushInfo;
+
+        Time mTime;
+        Time mExpires;
+
+        size_t mLength;
+
+        FlagInfoMap mFlags;
+
+        MessageInfo() :
+          mChannelID(0),
+          mLength(0) {}
+
         bool hasData() const;
         ElementPtr toDebug() const;
 
         void mergeFrom(
-                       const AgentInfo &source,
+                       const MessageInfo &source,
                        bool overwriteExisting = true
                        );
 
-        static AgentInfo create(ElementPtr elem);
+        static MessageInfo create(ElementPtr elem);
         ElementPtr createElement() const;
       };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<MessageInfo>, MessageInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -447,6 +505,54 @@ namespace openpeer
       };
 
       ZS_DECLARE_TYPEDEF_PTR(std::list<NamespaceGrantChallengeInfo>, NamespaceGrantChallengeInfoList)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Service
+      #pragma mark
+
+      struct Service
+      {
+        ZS_DECLARE_STRUCT_PTR(Method)
+        ZS_DECLARE_TYPEDEF_PTR(std::list<MethodPtr>, MethodList)
+
+        typedef String ServiceID;
+        typedef String Type;
+
+        struct Method
+        {
+          typedef String MethodName;
+
+          MethodName mName;
+          String mURI;
+          String mUsername;
+          String mPassword;
+
+          bool hasData() const;
+          ElementPtr toDebug() const;
+        };
+        typedef std::map<Method::MethodName, Method> MethodMap;
+
+        ServiceID mID;
+        String mType;
+        String mVersion;
+
+        MethodMap mMethods;
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        static Service create(ElementPtr elem);
+      };
+
+      typedef std::map<Service::ServiceID, Service> TServiceMap;
+      ZS_DECLARE_TYPEDEF_PTR(TServiceMap, ServiceMap)
+
+      typedef std::map<Service::Type, ServiceMap> TServiceTypeMap;
+      ZS_DECLARE_TYPEDEF_PTR(TServiceTypeMap, ServiceTypeMap)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
