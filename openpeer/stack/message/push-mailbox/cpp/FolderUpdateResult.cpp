@@ -29,20 +29,10 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/FolderUpdateResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
-#include <openpeer/stack/internal/stack_Stack.h>
-#include <openpeer/stack/IPeerFiles.h>
-#include <openpeer/stack/IPeerFilePublic.h>
-
-#include <openpeer/services/IHelper.h>
-
-//#include <zsLib/Stringize.h>
-//#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
-
-namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
 namespace openpeer
 {
@@ -50,71 +40,45 @@ namespace openpeer
   {
     namespace message
     {
-      using services::IHelper;
-
       namespace push_mailbox
       {
-        using internal::MessageHelper;
+        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-        typedef stack::internal::IStackForInternal UseStack;
-
-        using zsLib::Seconds;
+        using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        static Log::Params slog(const char *message)
+        FolderUpdateResultPtr FolderUpdateResult::convert(MessagePtr message)
         {
-          return Log::Params(message, "FoldersGetRequest");
+          return dynamic_pointer_cast<FolderUpdateResult>(message);
         }
 
         //---------------------------------------------------------------------
-        FoldersGetRequestPtr FoldersGetRequest::convert(MessagePtr message)
+        FolderUpdateResult::FolderUpdateResult()
         {
-          return dynamic_pointer_cast<FoldersGetRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FoldersGetRequest::FoldersGetRequest()
+        FolderUpdateResultPtr FolderUpdateResult::create(
+                                                         ElementPtr rootEl,
+                                                         IMessageSourcePtr messageSource
+                                                         )
         {
-          mAppID.clear();
-        }
+          FolderUpdateResultPtr ret(new FolderUpdateResult);
 
-        //---------------------------------------------------------------------
-        FoldersGetRequestPtr FoldersGetRequest::create()
-        {
-          FoldersGetRequestPtr ret(new FoldersGetRequest);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FoldersGetRequest::hasAttribute(AttributeTypes type) const
+        bool FolderUpdateResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_Version:         return mVersion.hasData();
-            default:                            break;
+            default:                                            break;
           }
-          return false;
+          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
-
-        //---------------------------------------------------------------------
-        DocumentPtr FoldersGetRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr rootEl = ret->getFirstChildElement();
-
-          ElementPtr foldersEl = Element::create("folders");
-
-          if (mVersion.hasData()) {
-            foldersEl->adoptAsLastChild(MessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
-          }
-
-          if (foldersEl->hasChildren()) {
-            rootEl->adoptAsLastChild(foldersEl);
-          }
-
-          return ret;
-        }
-
 
       }
     }

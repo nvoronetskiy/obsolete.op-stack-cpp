@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/FolderUpdateRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <openpeer/stack/internal/stack_Stack.h>
@@ -41,6 +41,8 @@
 //#include <zsLib/Stringize.h>
 //#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
+
+#define OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -63,53 +65,48 @@ namespace openpeer
         //---------------------------------------------------------------------
         static Log::Params slog(const char *message)
         {
-          return Log::Params(message, "FoldersGetRequest");
+          return Log::Params(message, "FolderUpdateRequest");
         }
 
         //---------------------------------------------------------------------
-        FoldersGetRequestPtr FoldersGetRequest::convert(MessagePtr message)
+        FolderUpdateRequestPtr FolderUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FoldersGetRequest>(message);
+          return dynamic_pointer_cast<FolderUpdateRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FoldersGetRequest::FoldersGetRequest()
+        FolderUpdateRequest::FolderUpdateRequest()
         {
           mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        FoldersGetRequestPtr FoldersGetRequest::create()
+        FolderUpdateRequestPtr FolderUpdateRequest::create()
         {
-          FoldersGetRequestPtr ret(new FoldersGetRequest);
+          FolderUpdateRequestPtr ret(new FolderUpdateRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FoldersGetRequest::hasAttribute(AttributeTypes type) const
+        bool FolderUpdateRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_Version:         return mVersion.hasData();
-            default:                            break;
+            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
+            default:                              break;
           }
           return false;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr FoldersGetRequest::encode()
+        DocumentPtr FolderUpdateRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          ElementPtr foldersEl = Element::create("folders");
-
-          if (mVersion.hasData()) {
-            foldersEl->adoptAsLastChild(MessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
-          }
-
-          if (foldersEl->hasChildren()) {
-            rootEl->adoptAsLastChild(foldersEl);
+          if (hasAttribute(AttributeType_FolderInfo)) {
+            ElementPtr folderInfoEl = mFolderInfo.createElement();
+            rootEl->adoptAsLastChild(folderInfoEl);
           }
 
           return ret;
