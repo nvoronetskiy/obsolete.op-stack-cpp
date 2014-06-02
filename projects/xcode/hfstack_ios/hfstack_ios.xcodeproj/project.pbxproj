@@ -147,6 +147,8 @@
 		00F28E0C18D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0518D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp */; };
 		00F28E0D18D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0618D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp */; };
 		00F28E0E18D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */; };
+		00FA43FE193CAE2A00DA1530 /* PeerValidateRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA43FD193CAE2A00DA1530 /* PeerValidateRequest.cpp */; };
+		00FA4401193CB75300DA1530 /* PeerValidateResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA4400193CB75300DA1530 /* PeerValidateResult.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -479,6 +481,10 @@
 		00F28E0518D48867007E9FE4 /* stack_PublicationRepository_Publisher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_Publisher.cpp; sourceTree = "<group>"; };
 		00F28E0618D48867007E9FE4 /* stack_PublicationRepository_Remover.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_Remover.cpp; sourceTree = "<group>"; };
 		00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_PublicationRepository_SubscriptionLocal.cpp; sourceTree = "<group>"; };
+		00FA43FD193CAE2A00DA1530 /* PeerValidateRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerValidateRequest.cpp; sourceTree = "<group>"; };
+		00FA43FF193CAE3900DA1530 /* PeerValidateRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerValidateRequest.h; sourceTree = "<group>"; };
+		00FA4400193CB75300DA1530 /* PeerValidateResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerValidateResult.cpp; sourceTree = "<group>"; };
+		00FA4402193CB7FD00DA1530 /* PeerValidateResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerValidateResult.h; sourceTree = "<group>"; };
 		00FF149117AB4ED600F5DEB8 /* stack_FinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderConnection.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -1028,6 +1034,8 @@
 				00AA456D19382154001D3AA2 /* AccessResult.h */,
 				002F75AA1938BA6800AA1CB2 /* NamespaceGrantChallengeValidateRequest.h */,
 				002F75AD19392E5200AA1CB2 /* NamespaceGrantChallengeValidateResult.h */,
+				00FA43FF193CAE3900DA1530 /* PeerValidateRequest.h */,
+				00FA4402193CB7FD00DA1530 /* PeerValidateResult.h */,
 				0063C5EB193BA0A90051ADA8 /* FoldersGetRequest.h */,
 				0063C5EE193BA4F80051ADA8 /* FoldersGetResult.h */,
 			);
@@ -1042,6 +1050,8 @@
 				00AA456B19382142001D3AA2 /* AccessResult.cpp */,
 				002F75A81938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp */,
 				002F75AB19392E3600AA1CB2 /* NamespaceGrantChallengeValidateResult.cpp */,
+				00FA43FD193CAE2A00DA1530 /* PeerValidateRequest.cpp */,
+				00FA4400193CB75300DA1530 /* PeerValidateResult.cpp */,
 				0063C5E9193BA0960051ADA8 /* FoldersGetRequest.cpp */,
 				0063C5EC193BA4E60051ADA8 /* FoldersGetResult.cpp */,
 			);
@@ -1218,6 +1228,7 @@
 				0063BBAB16CA92D000E6DB4D /* PeerGetRequest.cpp in Sources */,
 				00F28E0918D48867007E9FE4 /* stack_PublicationRepository_PeerCache.cpp in Sources */,
 				0063BBAC16CA92D000E6DB4D /* PeerGetResult.cpp in Sources */,
+				00FA43FE193CAE2A00DA1530 /* PeerValidateRequest.cpp in Sources */,
 				0063BBAD16CA92D000E6DB4D /* PeerPublishNotify.cpp in Sources */,
 				0063BBAF16CA92D000E6DB4D /* PeerPublishRequest.cpp in Sources */,
 				0063BBB016CA92D000E6DB4D /* PeerPublishResult.cpp in Sources */,
@@ -1266,6 +1277,7 @@
 				00AF4E47171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp in Sources */,
 				00AA456C19382142001D3AA2 /* AccessResult.cpp in Sources */,
 				00AF4E48171E40AD00DCA0A8 /* PeerServicesGetResult.cpp in Sources */,
+				00FA4401193CB75300DA1530 /* PeerValidateResult.cpp in Sources */,
 				002F75A91938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp in Sources */,
 				0051C4691745D1110095FD98 /* IdentityAccessWindowRequest.cpp in Sources */,
 				0051C46A1745D1110095FD98 /* IdentityAccessWindowResult.cpp in Sources */,

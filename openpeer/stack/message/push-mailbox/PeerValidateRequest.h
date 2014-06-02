@@ -42,7 +42,7 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        class AccessRequest : public MessageRequest
+        class PeerValidateRequest : public MessageRequest
         {
         public:
           friend class PeerIdentifyResult;
@@ -50,45 +50,33 @@ namespace openpeer
         public:
           enum AttributeTypes
           {
-            AttributeType_LockboxInfo,
-            AttributeType_AgentInfo,
-            AttributeType_GrantID,
+            AttributeType_PeerChallengeID,
             AttributeType_PeerFiles,
           };
 
         public:
-          static AccessRequestPtr convert(MessagePtr message);
+          static PeerValidateRequestPtr convert(MessagePtr message);
 
-          static AccessRequestPtr create();
+          static PeerValidateRequestPtr create();
 
           virtual DocumentPtr encode();
 
-          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_Access;}
+          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_PeerValidate;}
 
           virtual IMessageFactoryPtr factory() const        {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const LockboxInfo &lockboxInfo() const            {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)          {mLockboxInfo = val;}
-
-          const AgentInfo &agentInfo() const                {return mAgentInfo;}
-          void agentInfo(const AgentInfo &val)              {mAgentInfo = val;}
-
-          const String &grantID() const                     {return mGrantID;}
-          void grantID(const String &val)                   {mGrantID = val;}
+          const String &peerChallengeID() const             {return mPeerChallengeID;}
+          void peerChallengeID(const String &val)           {mPeerChallengeID = val;}
 
           IPeerFilesPtr peerFiles() const                   {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)           {mPeerFiles = peerFiles;}
 
         protected:
-          AccessRequest();
+          PeerValidateRequest();
 
-          LockboxInfo mLockboxInfo;
-
-          AgentInfo mAgentInfo;
-
-          String mGrantID;
+          String mPeerChallengeID;
 
           IPeerFilesPtr mPeerFiles;
         };

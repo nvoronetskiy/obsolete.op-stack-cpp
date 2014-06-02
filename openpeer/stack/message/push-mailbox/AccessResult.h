@@ -69,6 +69,12 @@ namespace openpeer
           const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
           void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
 
+          const String &peerChallengeID() const                                     {return mPeerChallengeID;}
+          void peerChallengeID(const String &val)                                   {mPeerChallengeID = val;}
+
+          bool peerValidate() const                                                 {return mPeerValidate > 0;}
+          void peerValidate(bool val)                                               {mPeerValidate = (val ? 1 : 0);}
+
         protected:
           AccessResult();
 

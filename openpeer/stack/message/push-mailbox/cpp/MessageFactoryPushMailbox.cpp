@@ -37,6 +37,7 @@
 
 #include <openpeer/stack/message/push-mailbox/AccessResult.h>
 #include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateResult.h>
+#include <openpeer/stack/message/push-mailbox/PeerValidateResult.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -173,7 +174,7 @@ namespace openpeer
 
                 case Method_Access:                           return AccessResult::create(rootEl, messageSource);
                 case Method_NamespaceGrantChallengeValidate:  return NamespaceGrantChallengeValidateResult::create(rootEl, messageSource);
-                case Method_PeerValidate:                     return MessagePtr();
+                case Method_PeerValidate:                     return PeerValidateResult::create(rootEl, messageSource);
                 case Method_FoldersGet:                       return MessagePtr();
                 case Method_FolderUpdate:                     return MessagePtr();
                 case Method_FolderGet:                        return MessagePtr();

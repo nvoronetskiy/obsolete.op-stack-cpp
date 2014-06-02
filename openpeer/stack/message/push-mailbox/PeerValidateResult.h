@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <openpeer/stack/message/MessageRequest.h>
+#include <openpeer/stack/message/MessageResult.h>
 #include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
@@ -42,55 +42,29 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        class AccessRequest : public MessageRequest
+        class PeerValidateResult : public MessageResult
         {
-        public:
-          friend class PeerIdentifyResult;
-
         public:
           enum AttributeTypes
           {
-            AttributeType_LockboxInfo,
-            AttributeType_AgentInfo,
-            AttributeType_GrantID,
-            AttributeType_PeerFiles,
           };
 
         public:
-          static AccessRequestPtr convert(MessagePtr message);
+          static PeerValidateResultPtr convert(MessagePtr message);
 
-          static AccessRequestPtr create();
+          static PeerValidateResultPtr create(
+                                                                 ElementPtr root,
+                                                                 IMessageSourcePtr messageSource
+                                                                 );
 
-          virtual DocumentPtr encode();
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_PeerValidate;}
 
-          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_Access;}
-
-          virtual IMessageFactoryPtr factory() const        {return MessageFactoryPushMailbox::singleton();}
+          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const LockboxInfo &lockboxInfo() const            {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)          {mLockboxInfo = val;}
-
-          const AgentInfo &agentInfo() const                {return mAgentInfo;}
-          void agentInfo(const AgentInfo &val)              {mAgentInfo = val;}
-
-          const String &grantID() const                     {return mGrantID;}
-          void grantID(const String &val)                   {mGrantID = val;}
-
-          IPeerFilesPtr peerFiles() const                   {return mPeerFiles;}
-          void peerFiles(IPeerFilesPtr peerFiles)           {mPeerFiles = peerFiles;}
-
         protected:
-          AccessRequest();
-
-          LockboxInfo mLockboxInfo;
-
-          AgentInfo mAgentInfo;
-
-          String mGrantID;
-
-          IPeerFilesPtr mPeerFiles;
+          PeerValidateResult();
         };
       }
     }
