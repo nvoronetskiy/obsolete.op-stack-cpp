@@ -69,7 +69,7 @@ namespace openpeer
 
           ElementPtr serviceEl = servicesEl->findFirstChildElement("service");
           while (serviceEl) {
-            Service service = MessageHelper::createService(serviceEl);
+            Service service = Service::create(serviceEl);
             if (service.hasData()) {
               ret->mServices[service.mID] = service;
 

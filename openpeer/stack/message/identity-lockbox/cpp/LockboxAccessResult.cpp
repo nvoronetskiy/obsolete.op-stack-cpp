@@ -65,14 +65,14 @@ namespace openpeer
           LockboxAccessResultPtr ret(new LockboxAccessResult);
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mLockboxInfo = MessageHelper::createLockbox(rootEl->findFirstChildElement("lockbox"));
-          ret->mNamespaceGrantChallengeInfo = MessageHelper::createNamespaceGrantChallenge(rootEl->findFirstChildElement("namespaceGrantChallenge"));
+          ret->mLockboxInfo = LockboxInfo::create(rootEl->findFirstChildElement("lockbox"));
+          ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
 
           ElementPtr identitiesEl = rootEl->findFirstChildElement("identities");
           if (identitiesEl) {
             ElementPtr identityEl = identitiesEl->findFirstChildElement("identity");
             while (identityEl) {
-              IdentityInfo info = MessageHelper::createIdentity(identityEl);
+              IdentityInfo info = IdentityInfo::create(identityEl);
               if (info.hasData()) {
                 ret->mIdentities.push_back(info);
               }

@@ -65,7 +65,7 @@ namespace openpeer
           IdentityAccessRolodexCredentialsGetResultPtr ret(new IdentityAccessRolodexCredentialsGetResult);
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mRolodexInfo = MessageHelper::createRolodex(rootEl->findFirstChildElement("rolodex"));
+          ret->mRolodexInfo = RolodexInfo::create(rootEl->findFirstChildElement("rolodex"));
 
           return ret;
         }

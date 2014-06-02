@@ -140,14 +140,14 @@ namespace openpeer
 
           root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            root->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           ElementPtr identitiesEl = IMessageHelper::createElement("identities");
           for (IdentityInfoList::iterator iter = identities.begin(); iter != identities.end(); ++iter)
           {
             IdentityInfo &listIdentity = (*iter);
-            identitiesEl->adoptAsLastChild(MessageHelper::createElement(listIdentity));
+            identitiesEl->adoptAsLastChild(listIdentity.createElement());
           }
 
           if (identitiesEl->hasChildren()) {

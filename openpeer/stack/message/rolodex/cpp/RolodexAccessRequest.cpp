@@ -109,7 +109,7 @@ namespace openpeer
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(identityInfo));
+            rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
           RolodexInfo rolodexInfo;
@@ -118,7 +118,7 @@ namespace openpeer
           rolodexInfo.mRefreshFlag = mRolodexInfo.mRefreshFlag;
 
           if (rolodexInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(rolodexInfo));
+            rootEl->adoptAsLastChild(rolodexInfo.createElement());
           }
 
           AgentInfo agentInfo;
@@ -126,7 +126,7 @@ namespace openpeer
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (mAgentInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            rootEl->adoptAsLastChild(agentInfo.createElement());
           }
 
           if (mGrantID.hasData()) {

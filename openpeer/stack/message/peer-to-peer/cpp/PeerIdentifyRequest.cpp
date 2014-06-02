@@ -138,7 +138,7 @@ namespace openpeer
             }
 
             ret->mFindSecret = IMessageHelper::getElementTextAndDecode(peerIdentityProofEl->findFirstChildElement("findSecret"));
-            ret->mLocationInfo = MessageHelper::createLocation(peerIdentityProofEl->findFirstChildElement("location"), messageSource);
+            ret->mLocationInfo = LocationInfo::create(peerIdentityProofEl->findFirstChildElement("location"), messageSource);
 
             UsePeerPtr remotePeer = IPeerForMessages::create(account, ret->mPeerFilePublic);
             if (!remotePeer) {
@@ -233,7 +233,7 @@ namespace openpeer
           }
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            peerIdentityProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
+            peerIdentityProofEl->adoptAsLastChild(mLocationInfo->createElement());
           }
 
           peerIdentityProofEl->adoptAsLastChild(peerFilePublic->saveToElement());

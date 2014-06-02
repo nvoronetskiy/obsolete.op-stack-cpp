@@ -241,7 +241,7 @@ namespace openpeer
 
             ElementPtr locationEl = findProofEl->findFirstChildElement("location");
             if (locationEl) {
-              ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource, ret->mPeerSecret);
+              ret->mLocationInfo = LocationInfo::create(locationEl, messageSource, ret->mPeerSecret);
             }
 
             UseLocationPtr location;
@@ -438,7 +438,7 @@ namespace openpeer
           }
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            ElementPtr locationEl = internal::MessageHelper::createElement(*mLocationInfo, mPeerSecret);
+            ElementPtr locationEl = mLocationInfo->createElement(mPeerSecret);
             findProofEl->adoptAsLastChild(locationEl);
           }
 

@@ -107,7 +107,7 @@ namespace openpeer
 
           root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(identityInfo));
+            root->adoptAsLastChild(identityInfo.createElement());
           }
 
           return ret;

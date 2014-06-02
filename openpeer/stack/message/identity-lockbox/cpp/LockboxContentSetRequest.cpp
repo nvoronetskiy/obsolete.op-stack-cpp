@@ -104,7 +104,7 @@ namespace openpeer
 
           root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            root->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           ElementPtr namespacesEl = IMessageHelper::createElement("namespaces");

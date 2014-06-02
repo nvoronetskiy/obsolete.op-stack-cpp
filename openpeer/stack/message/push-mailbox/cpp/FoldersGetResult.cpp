@@ -29,11 +29,12 @@
 
  */
 
-#include <openpeer/stack/message/identity-lockbox/LockboxIdentitiesUpdateResult.h>
+#include <openpeer/stack/message/push-mailbox/FoldersGetResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/XML.h>
-#include <zsLib/helpers.h>
 
 namespace openpeer
 {
@@ -41,39 +42,48 @@ namespace openpeer
   {
     namespace message
     {
-      namespace identity_lockbox
+      namespace push_mailbox
       {
-        using internal::MessageHelper;
+        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+        using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResultPtr LockboxIdentitiesUpdateResult::convert(MessagePtr message)
+        FoldersGetResultPtr FoldersGetResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<LockboxIdentitiesUpdateResult>(message);
+          return dynamic_pointer_cast<FoldersGetResult>(message);
         }
 
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResult::LockboxIdentitiesUpdateResult()
+        FoldersGetResult::FoldersGetResult()
         {
         }
 
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResultPtr LockboxIdentitiesUpdateResult::create(
-                                                                               ElementPtr root,
-                                                                               IMessageSourcePtr messageSource
-                                                                               )
+        FoldersGetResultPtr FoldersGetResult::create(
+                                                     ElementPtr rootEl,
+                                                     IMessageSourcePtr messageSource
+                                                     )
         {
-          LockboxIdentitiesUpdateResultPtr ret(new LockboxIdentitiesUpdateResult);
-          IMessageHelper::fill(*ret, root, messageSource);
+          FoldersGetResultPtr ret(new FoldersGetResult);
 
-          ElementPtr identitiesEl = root->findFirstChildElement("identities");
-          if (identitiesEl) {
-            ElementPtr identityEl = identitiesEl->findFirstChildElement("identity");
-            while (identityEl) {
-              IdentityInfo info = IdentityInfo::create(identityEl);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
+          ElementPtr foldersEl = rootEl->findFirstChildElement("folders");
+
+          if (foldersEl) {
+            ret->mVersion = MessageHelper::getElementTextAndDecode(foldersEl->findFirstChildElement("version"));
+            ret->mUpdateNext = services::IHelper::stringToTime(MessageHelper::getElementText(foldersEl->findFirstChildElement("updateNext")));
+
+            ElementPtr folderEl = foldersEl->findFirstChildElement("folder");
+            while (folderEl) {
+              FolderInfo info = FolderInfo::create(folderEl);
+
               if (info.hasData()) {
-                ret->mIdentities.push_back(info);
+                ret->mFolders.push_back(info);
               }
-              identityEl = identityEl->findNextSiblingElement("identity");
+
+              folderEl = folderEl->findNextSiblingElement("folder");
             }
           }
 
@@ -81,15 +91,18 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        bool LockboxIdentitiesUpdateResult::hasAttribute(AttributeTypes type) const
+        bool FoldersGetResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_Identities:            return (mIdentities.size() > 0);
-            default:                                  break;
+            case AttributeType_Version:           return mVersion.hasData();
+            case AttributeType_UpdateNext:        return Time() != mUpdateNext;
+            case AttributeType_Folders:           return (mFolders.size() > 0);
+            default:                              break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
+
       }
     }
   }

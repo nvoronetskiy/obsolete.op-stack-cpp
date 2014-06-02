@@ -29,11 +29,22 @@
 
  */
 
-#include <openpeer/stack/message/identity-lockbox/LockboxIdentitiesUpdateResult.h>
+#include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
+#include <openpeer/stack/internal/stack_Stack.h>
+#include <openpeer/stack/IPeerFiles.h>
+#include <openpeer/stack/IPeerFilePublic.h>
+
+#include <openpeer/services/IHelper.h>
+
+//#include <zsLib/Stringize.h>
+//#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
-#include <zsLib/helpers.h>
+
+#define OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
+
+namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
 namespace openpeer
 {
@@ -41,55 +52,72 @@ namespace openpeer
   {
     namespace message
     {
-      namespace identity_lockbox
+      using services::IHelper;
+
+      namespace push_mailbox
       {
         using internal::MessageHelper;
 
+        typedef stack::internal::IStackForInternal UseStack;
+
+        using zsLib::Seconds;
+
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResultPtr LockboxIdentitiesUpdateResult::convert(MessagePtr message)
+        static Log::Params slog(const char *message)
         {
-          return dynamic_pointer_cast<LockboxIdentitiesUpdateResult>(message);
+          return Log::Params(message, "FoldersGetRequest");
         }
 
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResult::LockboxIdentitiesUpdateResult()
+        FoldersGetRequestPtr FoldersGetRequest::convert(MessagePtr message)
         {
+          return dynamic_pointer_cast<FoldersGetRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        LockboxIdentitiesUpdateResultPtr LockboxIdentitiesUpdateResult::create(
-                                                                               ElementPtr root,
-                                                                               IMessageSourcePtr messageSource
-                                                                               )
+        FoldersGetRequest::FoldersGetRequest()
         {
-          LockboxIdentitiesUpdateResultPtr ret(new LockboxIdentitiesUpdateResult);
-          IMessageHelper::fill(*ret, root, messageSource);
+          mAppID.clear();
+        }
 
-          ElementPtr identitiesEl = root->findFirstChildElement("identities");
-          if (identitiesEl) {
-            ElementPtr identityEl = identitiesEl->findFirstChildElement("identity");
-            while (identityEl) {
-              IdentityInfo info = IdentityInfo::create(identityEl);
-              if (info.hasData()) {
-                ret->mIdentities.push_back(info);
-              }
-              identityEl = identityEl->findNextSiblingElement("identity");
-            }
+        //---------------------------------------------------------------------
+        FoldersGetRequestPtr FoldersGetRequest::create()
+        {
+          FoldersGetRequestPtr ret(new FoldersGetRequest);
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        bool FoldersGetRequest::hasAttribute(AttributeTypes type) const
+        {
+          switch (type)
+          {
+            case AttributeType_Version:         return mVersion.hasData();
+            default:                            break;
+          }
+          return false;
+        }
+
+        //---------------------------------------------------------------------
+        DocumentPtr FoldersGetRequest::encode()
+        {
+          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
+          ElementPtr rootEl = ret->getFirstChildElement();
+
+          ElementPtr foldersEl = Element::create("folders");
+
+          if (mVersion.hasData()) {
+            foldersEl->adoptAsLastChild(MessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
+          }
+
+          if (foldersEl->hasChildren()) {
+            rootEl->adoptAsLastChild(foldersEl);
           }
 
           return ret;
         }
 
-        //---------------------------------------------------------------------
-        bool LockboxIdentitiesUpdateResult::hasAttribute(AttributeTypes type) const
-        {
-          switch (type)
-          {
-            case AttributeType_Identities:            return (mIdentities.size() > 0);
-            default:                                  break;
-          }
-          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
-        }
+
       }
     }
   }

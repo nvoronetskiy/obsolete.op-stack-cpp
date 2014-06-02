@@ -68,7 +68,7 @@ namespace openpeer
 
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mNamespaceGrantChallengeInfo = MessageHelper::createNamespaceGrantChallenge(rootEl->findFirstChildElement("namespaceGrantChallenge"));
+          ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
 
           ElementPtr peerEl = rootEl->findFirstChildElement("peer");
           if (peerEl) {

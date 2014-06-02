@@ -94,7 +94,9 @@ namespace openpeer
           {
             case AttributeType_LockboxInfo:       return mLockboxInfo.hasData();
             case AttributeType_AgentInfo:         return mAgentInfo.hasData();
-            default:                            break;
+            case AttributeType_GrantID:           return mGrantID.hasData();
+            case AttributeType_PeerFiles:         return (bool)mPeerFiles;
+            default:                              break;
           }
           return false;
         }
@@ -123,14 +125,14 @@ namespace openpeer
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            rootEl->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           AgentInfo agentInfo = UseStack::agentInfo();
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            rootEl->adoptAsLastChild(agentInfo.createElement());
           }
           
           if (mGrantID.hasData()) {

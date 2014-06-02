@@ -174,11 +174,11 @@ namespace openpeer
           root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
 
           if (lockboxInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            root->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           if (identityInfo.hasData()) {
-            ElementPtr identityEl = MessageHelper::createElement(identityInfo, true);
+            ElementPtr identityEl = identityInfo.createElement(true);
             root->adoptAsLastChild(identityEl);
           }
 

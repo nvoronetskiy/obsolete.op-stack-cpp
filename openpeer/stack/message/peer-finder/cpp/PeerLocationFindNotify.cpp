@@ -113,7 +113,7 @@ namespace openpeer
 
             ElementPtr locationEl = findProofEl->findFirstChildElement("location");
             if (locationEl) {
-              ret->mLocationInfo = internal::MessageHelper::createLocation(locationEl, messageSource);
+              ret->mLocationInfo = LocationInfo::create(locationEl, messageSource);
             }
 
             if (!ret->mLocationInfo) {
@@ -227,7 +227,7 @@ namespace openpeer
           findProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("iceFinal", mFinal ? "true":"false"));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            findProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
+            findProofEl->adoptAsLastChild(mLocationInfo->createElement());
           }
 
           findProofBundleEl->adoptAsLastChild(findProofEl);

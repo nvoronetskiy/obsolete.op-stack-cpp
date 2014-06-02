@@ -118,6 +118,16 @@ namespace openpeer
 
             case Method_Access:                           return "access";
             case Method_NamespaceGrantChallengeValidate:  return "namespace-grant-challenge-validate";
+            case Method_PeerValidate:                     return "peer-validate";
+            case Method_FoldersGet:                       return "folders-get";
+            case Method_FolderUpdate:                     return "folder-update";
+            case Method_FolderGet:                        return "folder-get";
+            case Method_MessagesDataGet:                  return "messages-data-get";
+            case Method_MessagesMetaDataGet:              return "messages-metadata-get";
+            case Method_MessageUpdate:                    return "message-update";
+            case Method_ListFetch:                        return "list-fetch";
+            case Method_Changed:                          return "changed";
+            case Method_RegisterPush:                     return "register-push";
           }
           return "";
         }
@@ -143,6 +153,16 @@ namespace openpeer
 
                 case Method_Access:                           return MessagePtr();
                 case Method_NamespaceGrantChallengeValidate:  return MessagePtr();
+                case Method_PeerValidate:                     return MessagePtr();
+                case Method_FoldersGet:                       return MessagePtr();
+                case Method_FolderUpdate:                     return MessagePtr();
+                case Method_FolderGet:                        return MessagePtr();
+                case Method_MessagesDataGet:                  return MessagePtr();
+                case Method_MessagesMetaDataGet:              return MessagePtr();
+                case Method_MessageUpdate:                    return MessagePtr();
+                case Method_ListFetch:                        return MessagePtr();
+                case Method_Changed:                          return MessagePtr();
+                case Method_RegisterPush:                     return MessagePtr();
               }
               break;
             }
@@ -153,6 +173,16 @@ namespace openpeer
 
                 case Method_Access:                           return AccessResult::create(rootEl, messageSource);
                 case Method_NamespaceGrantChallengeValidate:  return NamespaceGrantChallengeValidateResult::create(rootEl, messageSource);
+                case Method_PeerValidate:                     return MessagePtr();
+                case Method_FoldersGet:                       return MessagePtr();
+                case Method_FolderUpdate:                     return MessagePtr();
+                case Method_FolderGet:                        return MessagePtr();
+                case Method_MessagesDataGet:                  return MessagePtr();
+                case Method_MessagesMetaDataGet:              return MessagePtr();
+                case Method_MessageUpdate:                    return MessagePtr();
+                case Method_ListFetch:                        return MessagePtr();
+                case Method_Changed:                          return MessagePtr();
+                case Method_RegisterPush:                     return MessagePtr();
               }
               break;
             }

@@ -55,30 +55,11 @@ namespace openpeer
         {
         public:
           ZS_DECLARE_TYPEDEF_PTR(stack::internal::ILocationForMessages, UseLocation)
-          ZS_DECLARE_TYPEDEF_PTR(stack::internal::IPeerForMessages, UsePeer)
 
         public:
           typedef IPublicationMetaData::PublishToRelationshipsMap PublishToRelationshipsMap;
           typedef Message::Methods Methods;
           typedef Message::MessageTypes MessageTypes;
-
-          static ElementPtr createElement(
-                                          const Candidate &candidate,
-                                          const char *encryptionPassphrase = NULL
-                                          );
-          static ElementPtr createElement(
-                                          const LocationInfo &candidate,
-                                          const char *encryptionPassphrase = NULL
-                                          );
-          static ElementPtr createElement(
-                                          const IdentityInfo &identity,
-                                          bool forcePriorityWeightOutput = false
-                                          );
-          static ElementPtr createElement(const LockboxInfo &info);
-          static ElementPtr createElement(const AgentInfo &info);
-          static ElementPtr createElement(const NamespaceGrantChallengeInfo &info);
-          static ElementPtr createElement(const NamespaceInfo &info);
-          static ElementPtr createElement(const RolodexInfo &info);
 
           static ElementPtr createElement(
                                           const PublishToRelationshipsMap &relationships,
@@ -105,23 +86,6 @@ namespace openpeer
 
           static WORD getErrorCode(ElementPtr root);
           static String getErrorReason(ElementPtr root);
-
-          static LocationInfoPtr createLocation(
-                                                ElementPtr elem,
-                                                IMessageSourcePtr messageSource,
-                                                const char *encryptionPassphrase = NULL
-                                                );
-          static Candidate    createCandidate(
-                                              ElementPtr elem,
-                                              const char *encryptionPassphrase = NULL
-                                              );
-          static Finder                       createFinder(ElementPtr elem);
-          static Service                      createService(ElementPtr serviceEl);
-          static IdentityInfo                 createIdentity(ElementPtr elem);
-          static LockboxInfo                  createLockbox(ElementPtr elem);
-          static AgentInfo                    createAgent(ElementPtr elem);
-          static NamespaceGrantChallengeInfo  createNamespaceGrantChallenge(ElementPtr elem);
-          static RolodexInfo                  createRolodex(ElementPtr elem);
         };
       }
     }

@@ -72,7 +72,7 @@ namespace openpeer
           if (identitiesEl) {
             ElementPtr identityEl = identitiesEl->findFirstChildElement("identity");
             while (identityEl) {
-              IdentityInfo info = MessageHelper::createIdentity(identityEl);
+              IdentityInfo info = IdentityInfo::create(identityEl);
               if (info.hasData()) {
                 ret->mIdentities.push_back(info);
               }
@@ -80,7 +80,7 @@ namespace openpeer
             }
           }
 
-          ret->mRolodexInfo = MessageHelper::createRolodex(rootEl->findFirstChildElement("rolodex"));
+          ret->mRolodexInfo = RolodexInfo::create(rootEl->findFirstChildElement("rolodex"));
 
           return ret;
         }

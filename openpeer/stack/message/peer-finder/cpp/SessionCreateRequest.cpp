@@ -134,7 +134,7 @@ namespace openpeer
           sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            sessionProofEl->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
+            sessionProofEl->adoptAsLastChild(mLocationInfo->createElement());
           }
 
           sessionProofEl->adoptAsLastChild(peerFilePublic->saveToElement());

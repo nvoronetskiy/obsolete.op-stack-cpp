@@ -118,6 +118,8 @@ namespace openpeer
 
         bool hasData() const;
         ElementPtr toDebug() const;
+
+        static Service create(ElementPtr elem);
       };
 
       typedef std::map<Service::ServiceID, Service> TServiceMap;
@@ -182,9 +184,61 @@ namespace openpeer
 
         bool hasData() const;
         ElementPtr toDebug() const;
+
+        static Finder create(ElementPtr elem);
       };
 
       ZS_DECLARE_TYPEDEF_PTR(std::list<Finder>, FinderList)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark FolderInfo
+      #pragma mark
+
+      struct FolderInfo
+      {
+        enum Dispositions
+        {
+          Disposition_NA, // not applicable
+          Disposition_Update,
+          Disposition_Remove,
+          Disposition_Reset,
+        };
+
+        static const char *toString(Dispositions diposition);
+        static Dispositions toDisposition(const char *str);
+
+        Dispositions mDisposition;
+        String mName;
+        String mRenamed;
+        String mVersion;
+        ULONG mUnread;
+        ULONG mTotal;
+
+        Time mUpdateNext;
+
+        FolderInfo() :
+          mDisposition(Disposition_NA),
+          mUnread(0),
+          mTotal(0)
+        {}
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        void mergeFrom(
+                       const FolderInfo &source,
+                       bool overwriteExisting = true
+                       );
+
+        static FolderInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<FolderInfo>, FolderInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -260,6 +314,9 @@ namespace openpeer
                        const IdentityInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static IdentityInfo create(ElementPtr elem);
+        ElementPtr createElement(bool forcePriorityWeightOutput = false) const;
       };
 
       //-----------------------------------------------------------------------
@@ -294,6 +351,9 @@ namespace openpeer
                        const LockboxInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static LockboxInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
       //-----------------------------------------------------------------------
@@ -319,6 +379,9 @@ namespace openpeer
                        const AgentInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static AgentInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
       //-----------------------------------------------------------------------
@@ -344,6 +407,9 @@ namespace openpeer
                        const NamespaceInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static NamespaceInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
       typedef std::map<NamespaceInfo::NamespaceURL, NamespaceInfo> TNamespaceInfoMap;
@@ -375,6 +441,9 @@ namespace openpeer
                        const NamespaceGrantChallengeInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static NamespaceGrantChallengeInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
       ZS_DECLARE_TYPEDEF_PTR(std::list<NamespaceGrantChallengeInfo>, NamespaceGrantChallengeInfoList)
@@ -410,6 +479,9 @@ namespace openpeer
                        const RolodexInfo &source,
                        bool overwriteExisting = true
                        );
+
+        static RolodexInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
       
       //-----------------------------------------------------------------------
@@ -558,6 +630,25 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(AccessResult)
         ZS_DECLARE_CLASS_PTR(NamespaceGrantChallengeValidateRequest)
         ZS_DECLARE_CLASS_PTR(NamespaceGrantChallengeValidateResult)
+        ZS_DECLARE_CLASS_PTR(PeerValidateRequest)
+        ZS_DECLARE_CLASS_PTR(PeerValidateResult)
+        ZS_DECLARE_CLASS_PTR(FoldersGetRequest)
+        ZS_DECLARE_CLASS_PTR(FoldersGetResult)
+        ZS_DECLARE_CLASS_PTR(FolderUpdateRequest)
+        ZS_DECLARE_CLASS_PTR(FolderUpdateResult)
+        ZS_DECLARE_CLASS_PTR(FolderGetRequest)
+        ZS_DECLARE_CLASS_PTR(FolderGetResult)
+        ZS_DECLARE_CLASS_PTR(MessagesDataGetRequest)
+        ZS_DECLARE_CLASS_PTR(MessagesDataGetResult)
+        ZS_DECLARE_CLASS_PTR(MessagesMetaDataGetRequest)
+        ZS_DECLARE_CLASS_PTR(MessagesMetaDataGetResult)
+        ZS_DECLARE_CLASS_PTR(MessageUpdateRequest)
+        ZS_DECLARE_CLASS_PTR(MessageUpdateResult)
+        ZS_DECLARE_CLASS_PTR(ListFetchRequest)
+        ZS_DECLARE_CLASS_PTR(ListFetchResult)
+        ZS_DECLARE_CLASS_PTR(ChangedNotify)
+        ZS_DECLARE_CLASS_PTR(RegisterPushRequest)
+        ZS_DECLARE_CLASS_PTR(RegisterPushResult)
       }
 
       namespace peer_salt

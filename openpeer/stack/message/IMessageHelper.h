@@ -86,11 +86,6 @@ namespace openpeer
                                               const String &idValue
                                               );
 
-        static ElementPtr createElement(
-                                        const IdentityInfo &identity,
-                                        bool forcePriorityWeightOutput = false
-                                        );
-
         static TextPtr createText(const String &textVal);
 
         static String getElementText(ElementPtr node);
@@ -101,18 +96,6 @@ namespace openpeer
                          ElementPtr inRoot,
                          IMessageSourcePtr fromSource
                          );
-
-        static ElementPtr createElement(
-                                        const Candidate &candidate,
-                                        const char *encryptionPassphrase = NULL
-                                        );
-
-        static Candidate createCandidate(
-                                         ElementPtr elem,
-                                         const char *encryptionPassphrase = NULL
-                                         );
-
-        static IdentityInfo createIdentity(ElementPtr elem);
       };
     }
   }

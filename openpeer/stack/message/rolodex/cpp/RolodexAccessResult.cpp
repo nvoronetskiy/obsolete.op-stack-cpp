@@ -65,8 +65,8 @@ namespace openpeer
           RolodexAccessResultPtr ret(new RolodexAccessResult);
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mRolodexInfo = MessageHelper::createRolodex(rootEl->findFirstChildElement("rolodex"));
-          ret->mNamespaceGrantChallengeInfo = MessageHelper::createNamespaceGrantChallenge(rootEl->findFirstChildElement("namespaceGrantChallenge"));
+          ret->mRolodexInfo = RolodexInfo::create(rootEl->findFirstChildElement("rolodex"));
+          ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
 
           return ret;
         }

@@ -127,13 +127,13 @@ namespace openpeer
           }
 
           if (agentInfo.hasData()) {
-            ElementPtr agentEl = MessageHelper::createElement(agentInfo);
+            ElementPtr agentEl = agentInfo.createElement();
             agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
             root->adoptAsLastChild(agentEl);
           }
 
           if (identityInfo.hasData()) {
-            root->adoptAsLastChild(MessageHelper::createElement(identityInfo));
+            root->adoptAsLastChild(identityInfo.createElement());
           }
 
           if (hasAttribute(AttributeType_BrowserVisibility)) {

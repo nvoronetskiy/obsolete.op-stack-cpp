@@ -65,8 +65,8 @@ namespace openpeer
           IdentityAccessCompleteNotifyPtr ret(new IdentityAccessCompleteNotify);
           IMessageHelper::fill(*ret, root, messageSource);
 
-          ret->mIdentityInfo = MessageHelper::createIdentity(root->findFirstChildElement("identity"));
-          ret->mLockboxInfo = MessageHelper::createLockbox(root->findFirstChildElement("lockbox"));
+          ret->mIdentityInfo = IdentityInfo::create(root->findFirstChildElement("identity"));
+          ret->mLockboxInfo = LockboxInfo::create(root->findFirstChildElement("lockbox"));
 
           return ret;
         }

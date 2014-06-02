@@ -71,7 +71,7 @@ namespace openpeer
           while (finderBundleEl) {
             ElementPtr finderEl = finderBundleEl->findFirstChildElement("finder");
             if (finderEl) {
-              Finder finder = MessageHelper::createFinder(finderEl);
+              Finder finder = Finder::create(finderEl);
               if (finder.hasData()) {
                 ret->mFinders.push_back(finder);
               }

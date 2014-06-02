@@ -104,7 +104,7 @@ namespace openpeer
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (rolodexInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(rolodexInfo));
+            rootEl->adoptAsLastChild(rolodexInfo.createElement());
           }
 
           return ret;

@@ -123,9 +123,9 @@ namespace openpeer
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {
-            ElementPtr agentEl = MessageHelper::createElement(agentInfo);
+            ElementPtr agentEl = agentInfo.createElement();
             agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
-            rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            rootEl->adoptAsLastChild(agentEl);
           }
 
           if (mChallenges.size() > 0) {
@@ -135,7 +135,7 @@ namespace openpeer
             {
               const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo = (*iterChallenge);
 
-              ElementPtr namespaceGrantChallengeEl = MessageHelper::createElement(namespaceGrantChallengeInfo);
+              ElementPtr namespaceGrantChallengeEl = namespaceGrantChallengeInfo.createElement();
               if (!namespaceGrantChallengeEl) {
                 continue;
               }

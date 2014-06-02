@@ -59,6 +59,16 @@ namespace openpeer
 
             Method_Access,
             Method_NamespaceGrantChallengeValidate,
+            Method_PeerValidate,
+            Method_FoldersGet,
+            Method_FolderUpdate,
+            Method_FolderGet,
+            Method_MessagesDataGet,
+            Method_MessagesMetaDataGet,
+            Method_MessageUpdate,
+            Method_ListFetch,
+            Method_Changed,
+            Method_RegisterPush,
 
             Method_Last = Method_Access,
           };

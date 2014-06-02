@@ -117,18 +117,18 @@ namespace openpeer
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(identityInfo));
+            rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
           if (lockboxInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            rootEl->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           AgentInfo agentInfo = UseStack::agentInfo();
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(agentInfo));
+            rootEl->adoptAsLastChild(agentInfo.createElement());
           }
 
           if (mGrantID.hasData()) {
@@ -141,7 +141,7 @@ namespace openpeer
             for (NamespaceInfoMap::iterator iter = mNamespaceInfos.begin(); iter != mNamespaceInfos.end(); ++iter)
             {
               const NamespaceInfo &namespaceInfo = (*iter).second;
-              namespacesEl->adoptAsLastChild(MessageHelper::createElement(namespaceInfo));
+              namespacesEl->adoptAsLastChild(namespaceInfo.createElement());
             }
 
             if (namespacesEl->hasChildren()) {

@@ -103,7 +103,7 @@ namespace openpeer
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
-            rootEl->adoptAsLastChild(MessageHelper::createElement(lockboxInfo));
+            rootEl->adoptAsLastChild(lockboxInfo.createElement());
           }
 
           if (mNamespaceGrantChallengeBundle) {

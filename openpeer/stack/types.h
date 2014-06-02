@@ -91,6 +91,7 @@ namespace openpeer
     ZS_DECLARE_TYPEDEF_PTR(services::SecureByteBlock, SecureByteBlock)
 
     ZS_DECLARE_INTERACTION_PTR(ILocation)
+    ZS_DECLARE_INTERACTION_PTR(IMessageSource)
 
     ZS_DECLARE_STRUCT_PTR(Candidate)
     ZS_DECLARE_STRUCT_PTR(LocationInfo)
@@ -120,6 +121,12 @@ namespace openpeer
       Candidate(const IICESocket::Candidate &candidate);
       bool hasData() const;
       ElementPtr toDebug() const;
+
+      static Candidate create(
+                              ElementPtr elem,
+                              const char *encryptionPassphrase = NULL
+                              );
+      ElementPtr createElement(const char *encryptionPassphrase = NULL) const;
     };
 
     //-----------------------------------------------------------------------
@@ -150,6 +157,14 @@ namespace openpeer
 
       static LocationInfoPtr create();
 
+      static LocationInfoPtr create(
+                                    ElementPtr elem,
+                                    IMessageSourcePtr messageSource,
+                                    const char *encryptionPassphrase = NULL
+                                    );
+
+      ElementPtr createElement(const char *encryptionPassphrase = NULL) const;
+
     protected:
       LocationInfo() {}
       LocationInfo(const LocationInfo &info) {} // not legal
@@ -164,7 +179,6 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IKeyGenerator)
     ZS_DECLARE_INTERACTION_PTR(IMessageIncoming)
     ZS_DECLARE_INTERACTION_PTR(IMessageMonitor)
-    ZS_DECLARE_INTERACTION_PTR(IMessageSource)
     ZS_DECLARE_INTERACTION_PTR(ILocation)
     ZS_DECLARE_INTERACTION_PTR(IPeerFiles)
     ZS_DECLARE_INTERACTION_PTR(IPeerFilePublic)

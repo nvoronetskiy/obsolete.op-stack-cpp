@@ -81,7 +81,7 @@ namespace openpeer
 
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mLocationInfo = MessageHelper::createLocation(rootEl->findFirstChildElement("location"), messageSource);
+          ret->mLocationInfo = LocationInfo::create(rootEl->findFirstChildElement("location"), messageSource);
 
           return ret;
         }
@@ -104,7 +104,7 @@ namespace openpeer
           ElementPtr root = ret->getFirstChildElement();
 
           if (hasAttribute(AttributeType_LocationInfo)) {
-            root->adoptAsLastChild(MessageHelper::createElement(*mLocationInfo));
+            root->adoptAsLastChild(mLocationInfo->createElement());
           }
 
           return ret;
