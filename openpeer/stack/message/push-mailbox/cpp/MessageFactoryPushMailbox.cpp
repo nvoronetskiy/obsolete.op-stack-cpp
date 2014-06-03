@@ -45,6 +45,7 @@
 #include <openpeer/stack/message/push-mailbox/MessagesMetaDataGetResult.h>
 #include <openpeer/stack/message/push-mailbox/MessageUpdateResult.h>
 #include <openpeer/stack/message/push-mailbox/ListFetchResult.h>
+#include <openpeer/stack/message/push-mailbox/RegisterPushResult.h>
 
 #include <openpeer/stack/IHelper.h>
 
@@ -189,7 +190,7 @@ namespace openpeer
                 case Method_MessagesMetaDataGet:              return MessagesMetaDataGetResult::create(rootEl, messageSource);
                 case Method_MessageUpdate:                    return MessageUpdateResult::create(rootEl, messageSource);
                 case Method_ListFetch:                        return ListFetchResult::create(rootEl, messageSource);
-                case Method_Changed:                          return MessagePtr();
+                case Method_Changed:                          return RegisterPushResult::create(rootEl, messageSource);
                 case Method_RegisterPush:                     return MessagePtr();
               }
               break;

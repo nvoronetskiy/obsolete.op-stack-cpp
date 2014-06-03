@@ -72,7 +72,7 @@ namespace openpeer
           if (messagesEl) {
             ElementPtr messageEl = messagesEl->findFirstChildElement("message");
             while (messageEl) {
-              MessageInfo info = MessageInfo::create(messageEl);
+              PushMessageInfo info = PushMessageInfo::create(messageEl);
               if (info.hasData()) {
                 ret->mMessages.push_back(info);
               }

@@ -66,13 +66,13 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const MessageInfo &messageInfo() const             {return mMessageInfo;}
-          void messageInfo(const MessageInfo &val)           {mMessageInfo = val;}
+          const PushMessageInfo &messageInfo() const        {return mMessageInfo;}
+          void messageInfo(const PushMessageInfo &val)      {mMessageInfo = val;}
 
         protected:
           MessageUpdateRequest();
 
-          MessageInfo mMessageInfo;
+          PushMessageInfo mMessageInfo;
         };
       }
     }

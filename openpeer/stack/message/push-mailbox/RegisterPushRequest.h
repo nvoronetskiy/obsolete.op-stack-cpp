@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <openpeer/stack/message/MessageResult.h>
+#include <openpeer/stack/message/MessageRequest.h>
 #include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
@@ -42,35 +42,57 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        class MessagesDataGetResult : public MessageResult
+        class RegisterPushRequest : public MessageRequest
         {
+        public:
+          friend class PeerIdentifyResult;
+
         public:
           enum AttributeTypes
           {
-            AttributeType_Messages = MessageResult::AttributeType_Last + 1,
+            AttributeType_PushServiceType,
+            AttributeType_Token,
+            AttributeType_Subscriptions,
+          };
+
+          enum PushServiceTypes
+          {
+            PushServiceType_NA,
+
+            PushServiceType_APNS,
+            PushServiceType_GCM,
           };
 
         public:
-          static MessagesDataGetResultPtr convert(MessagePtr message);
+          static RegisterPushRequestPtr convert(MessagePtr message);
 
-          static MessagesDataGetResultPtr create(
-                                                 ElementPtr root,
-                                                 IMessageSourcePtr messageSource
-                                                 );
+          static RegisterPushRequestPtr create();
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_MessagesDataGet;}
+          virtual DocumentPtr encode();
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
+          virtual Methods method() const                          {return (Message::Methods)MessageFactoryPushMailbox::Method_RegisterPush;}
+
+          virtual IMessageFactoryPtr factory() const              {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const PushMessageInfoList &messages() const     {return mMessages;}
-          void messages(const PushMessageInfoList &val)   {mMessages = val;}
+          const PushServiceTypes &pushServiceType() const         {return mPushServiceType;}
+          void pushServiceType(const PushServiceTypes &val)       {mPushServiceType = val;}
+
+          const String &token() const                             {return mToken;}
+          void token(const String &val)                           {mToken = val;}
+
+          const PushSubscriptionInfoList &subscriptions() const   {return mSubscriptions;}
+          void subscriptions(const PushSubscriptionInfoList &val) {mSubscriptions = val;}
 
         protected:
-          MessagesDataGetResult();
+          RegisterPushRequest();
 
-          PushMessageInfoList mMessages;
+          PushServiceTypes mPushServiceType;
+
+          String mToken;
+
+          PushSubscriptionInfoList mSubscriptions;
         };
       }
     }

@@ -42,35 +42,29 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        class MessagesDataGetResult : public MessageResult
+        class RegisterPushResult : public MessageResult
         {
         public:
           enum AttributeTypes
           {
-            AttributeType_Messages = MessageResult::AttributeType_Last + 1,
           };
 
         public:
-          static MessagesDataGetResultPtr convert(MessagePtr message);
+          static RegisterPushResultPtr convert(MessagePtr message);
 
-          static MessagesDataGetResultPtr create(
-                                                 ElementPtr root,
-                                                 IMessageSourcePtr messageSource
-                                                 );
+          static RegisterPushResultPtr create(
+                                               ElementPtr root,
+                                               IMessageSourcePtr messageSource
+                                               );
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_MessagesDataGet;}
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_RegisterPush;}
 
           virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const PushMessageInfoList &messages() const     {return mMessages;}
-          void messages(const PushMessageInfoList &val)   {mMessages = val;}
-
         protected:
-          MessagesDataGetResult();
-
-          PushMessageInfoList mMessages;
+          RegisterPushResult();
         };
       }
     }

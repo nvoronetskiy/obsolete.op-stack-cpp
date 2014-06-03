@@ -222,7 +222,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static void merge(MessageInfo::FlagInfoMap &result, const MessageInfo::FlagInfoMap &source, bool overwrite)
+      static void merge(PushMessageInfo::FlagInfoMap &result, const PushMessageInfo::FlagInfoMap &source, bool overwrite)
       {
         if (source.size() < 1) return;
         if (result.size() > 0) {
@@ -232,7 +232,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static void merge(MessageInfo::FolderInfoList &result, const MessageInfo::FolderInfoList &source, bool overwrite)
+      static void merge(PushMessageInfo::FolderInfoList &result, const PushMessageInfo::FolderInfoList &source, bool overwrite)
       {
         if (source.size() < 1) return;
         if (result.size() > 0) {
@@ -1098,12 +1098,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark message::MessageInfo
+      #pragma mark message::PushMessageInfo
       #pragma mark
 
 
       //-----------------------------------------------------------------------
-      bool MessageInfo::hasData() const
+      bool PushMessageInfo::hasData() const
       {
         return ((mID.hasData()) ||
 
@@ -1133,9 +1133,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr MessageInfo::toDebug() const
+      ElementPtr PushMessageInfo::toDebug() const
       {
-        ElementPtr resultEl = Element::create("message::MessageInfo");
+        ElementPtr resultEl = Element::create("message::PushMessageInfo");
 
         IHelper::debugAppend(resultEl, "id", mID);
 
@@ -1167,8 +1167,8 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void MessageInfo::mergeFrom(
-                                  const MessageInfo &source,
+      void PushMessageInfo::mergeFrom(
+                                  const PushMessageInfo &source,
                                   bool overwriteExisting
                                   )
       {
@@ -1200,7 +1200,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr MessageInfo::createElement() const
+      ElementPtr PushMessageInfo::createElement() const
       {
         ElementPtr messageEl = Element::create("message");
 
@@ -1285,7 +1285,7 @@ namespace openpeer
         if (mFolders.size() > 0) {
           ElementPtr foldersEl = Element::create("folders");
 
-          for (MessageInfo::FolderInfoList::const_iterator iter = mFolders.begin(); iter != mFolders.end(); ++iter) {
+          for (PushMessageInfo::FolderInfoList::const_iterator iter = mFolders.begin(); iter != mFolders.end(); ++iter) {
             const FolderInfo &info = (*iter);
 
             ElementPtr folderEl = Element::create("folder");
@@ -1316,7 +1316,7 @@ namespace openpeer
         if (mFlags.size() > 0) {
           ElementPtr flagsEl = Element::create("flags");
 
-          for (MessageInfo::FlagInfoMap::const_iterator iter = mFlags.begin(); iter != mFlags.end(); ++iter) {
+          for (PushMessageInfo::FlagInfoMap::const_iterator iter = mFlags.begin(); iter != mFlags.end(); ++iter) {
             const FlagInfo &info = (*iter).second;
 
             ElementPtr flagEl = (FlagInfo::Flag_NA != info.mFlag ? IMessageHelper::createElementWithText("flag", FlagInfo::toString(info.mFlag)) : Element::create("flag"));
@@ -1328,7 +1328,7 @@ namespace openpeer
             ElementPtr detailsEl = Element::create("details");
 
             if (info.mFlagURIInfos.size() > 0) {
-              for (MessageInfo::FlagInfo::URIInfoList::const_iterator uriIter = info.mFlagURIInfos.begin(); uriIter != info.mFlagURIInfos.end(); ++uriIter) {
+              for (PushMessageInfo::FlagInfo::URIInfoList::const_iterator uriIter = info.mFlagURIInfos.begin(); uriIter != info.mFlagURIInfos.end(); ++uriIter) {
 
                 ElementPtr detailEl = Element::create("detail");
 
@@ -1374,9 +1374,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      MessageInfo MessageInfo::create(ElementPtr elem)
+      PushMessageInfo PushMessageInfo::create(ElementPtr elem)
       {
-        MessageInfo info;
+        PushMessageInfo info;
 
         if (!elem) return info;
 
@@ -1507,11 +1507,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark message::MessageInfo::FlagInfo
+      #pragma mark message::PushMessageInfo::FlagInfo
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageInfo::FlagInfo::Dispositions MessageInfo::FlagInfo::toDisposition(const char *disposition)
+      PushMessageInfo::FlagInfo::Dispositions PushMessageInfo::FlagInfo::toDisposition(const char *disposition)
       {
         if (!disposition) return Disposition_NA;
 
@@ -1525,7 +1525,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      const char *MessageInfo::FlagInfo::toString(Dispositions disposition)
+      const char *PushMessageInfo::FlagInfo::toString(Dispositions disposition)
       {
         switch (disposition) {
           case Disposition_NA:          return "";
@@ -1538,7 +1538,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      MessageInfo::FlagInfo::Flags MessageInfo::FlagInfo::toFlag(const char *flagName)
+      PushMessageInfo::FlagInfo::Flags PushMessageInfo::FlagInfo::toFlag(const char *flagName)
       {
         if (!flagName) return Flag_NA;
 
@@ -1559,7 +1559,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      const char *MessageInfo::FlagInfo::toString(Flags flag)
+      const char *PushMessageInfo::FlagInfo::toString(Flags flag)
       {
         switch (flag) {
           case Flag_NA:         return "";
@@ -1579,7 +1579,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool MessageInfo::FlagInfo::hasData() const
+      bool PushMessageInfo::FlagInfo::hasData() const
       {
         return ((Disposition_NA != mDisposition) ||
 
@@ -1593,11 +1593,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark message::MessageInfo::FlagInfo::URIInfo
+      #pragma mark message::PushMessageInfo::FlagInfo::URIInfo
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool MessageInfo::FlagInfo::URIInfo::hasData() const
+      bool PushMessageInfo::FlagInfo::URIInfo::hasData() const
       {
         return ((mURI.hasData()) ||
 
@@ -1615,7 +1615,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      MessageInfo::FolderInfo::Dispositions MessageInfo::FolderInfo::toDisposition(const char *disposition)
+      PushMessageInfo::FolderInfo::Dispositions PushMessageInfo::FolderInfo::toDisposition(const char *disposition)
       {
         if (!disposition) return Disposition_NA;
 
@@ -1628,7 +1628,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      const char *MessageInfo::FolderInfo::toString(Dispositions disposition)
+      const char *PushMessageInfo::FolderInfo::toString(Dispositions disposition)
       {
         switch (disposition) {
           case Disposition_NA:          return "";
@@ -1640,7 +1640,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      MessageInfo::FolderInfo::Where MessageInfo::FolderInfo::toWhere(const char *where)
+      PushMessageInfo::FolderInfo::Where PushMessageInfo::FolderInfo::toWhere(const char *where)
       {
         if (!where) return Where_NA;
 
@@ -1653,7 +1653,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      const char *MessageInfo::FolderInfo::toString(Where where)
+      const char *PushMessageInfo::FolderInfo::toString(Where where)
       {
         switch (where) {
           case Where_NA:          return "";
@@ -1665,7 +1665,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool MessageInfo::FolderInfo::hasData() const
+      bool PushMessageInfo::FolderInfo::hasData() const
       {
         return ((Disposition_NA != mDisposition) ||
 
@@ -1683,7 +1683,7 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      bool MessageInfo::PushInfo::hasData() const
+      bool PushMessageInfo::PushInfo::hasData() const
       {
         return ((mType.hasData()) ||
 
@@ -1693,9 +1693,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr MessageInfo::PushInfo::toDebug() const
+      ElementPtr PushMessageInfo::PushInfo::toDebug() const
       {
-        ElementPtr resultEl = Element::create("message::MessageInfo::PushInfo");
+        ElementPtr resultEl = Element::create("message::PushMessageInfo::PushInfo");
 
         IHelper::debugAppend(resultEl, "type", mType);
         IHelper::debugAppend(resultEl, "mValues", mValues.size());
@@ -1705,14 +1705,195 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void MessageInfo::PushInfo::mergeFrom(
-                                            const PushInfo &source,
-                                            bool overwriteExisting
-                                            )
+      void PushMessageInfo::PushInfo::mergeFrom(
+                                                const PushInfo &source,
+                                                bool overwriteExisting
+                                                )
       {
         merge(mType, source.mType, overwriteExisting);
         merge(mValues, source.mValues, overwriteExisting);
         merge(mCustom, source.mCustom, overwriteExisting);
+      }
+
+//      struct PushSubscriptionInfo
+//      {
+//        String mFolder;
+//
+//        String mType;
+//
+//        String mMapped;
+//
+//        bool mUnreadBadge;
+//
+//        String mSound;
+//
+//        String mAction;
+//
+//        String mLaunchImage;
+//
+//        ULONG mPriority;
+//
+//        PushSubscriptionInfo() :
+//        mUnreadBadge(false),
+//        mPriority(0) {}
+//
+//        bool hasData() const;
+//        ElementPtr toDebug() const;
+//
+//        void mergeFrom(
+//                       const PushSubscriptionInfo &source,
+//                       bool overwriteExisting = true
+//                       );
+//
+//        static PushSubscriptionInfo create(ElementPtr elem);
+//        ElementPtr createElement() const;
+//      };
+//      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::PushSubscriptionInfo::FlagInfo::URIInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool PushSubscriptionInfo::hasData() const
+      {
+        return ((mFolder.hasData()) ||
+
+                (mType.hasData()) ||
+
+                (mMapped.hasData()) ||
+
+                (mUnreadBadge) ||
+
+                (mSound.hasData()) ||
+
+                (mAction.hasData()) ||
+
+                (mLaunchImage.hasData()) ||
+
+                (0 != mPriority));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr PushSubscriptionInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::PushSubscriptionInfo");
+
+        IHelper::debugAppend(resultEl, "folder", mFolder);
+
+        IHelper::debugAppend(resultEl, "type", mType);
+
+        IHelper::debugAppend(resultEl, "mapped", mMapped);
+
+        IHelper::debugAppend(resultEl, "unread badge", mUnreadBadge);
+
+        IHelper::debugAppend(resultEl, "sound", mSound);
+
+        IHelper::debugAppend(resultEl, "action", mAction);
+
+        IHelper::debugAppend(resultEl, "launch image", mLaunchImage);
+
+        IHelper::debugAppend(resultEl, "priority", mPriority);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      void PushSubscriptionInfo::mergeFrom(
+                                           const PushSubscriptionInfo &source,
+                                           bool overwriteExisting
+                                           )
+      {
+        merge(mFolder, source.mFolder, overwriteExisting);
+
+        merge(mType, source.mType, overwriteExisting);
+
+        merge(mMapped, source.mMapped, overwriteExisting);
+
+        merge(mUnreadBadge, source.mUnreadBadge, overwriteExisting);
+
+        merge(mSound, source.mSound, overwriteExisting);
+
+        merge(mAction, source.mAction, overwriteExisting);
+
+        merge(mLaunchImage, source.mLaunchImage, overwriteExisting);
+
+        merge(mPriority, source.mPriority, overwriteExisting);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr PushSubscriptionInfo::createElement() const
+      {
+        ElementPtr subscriptionEl = Element::create("subscription");
+
+        if (mFolder.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("folder", mFolder));
+        }
+
+        if (mType.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", mType));
+        }
+
+        if (mMapped.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("mapped", mMapped));
+        }
+
+        if (mUnreadBadge) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("unreadBadge", mUnreadBadge ? "true" : "false"));
+        }
+
+        if (mSound.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("sound", mSound));
+        }
+
+        if (mAction.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("action", mAction));
+        }
+
+        if (mLaunchImage.hasData()) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("launchImage", mLaunchImage));
+        }
+
+        if (0 != mPriority) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("priority", string(mPriority)));
+        }
+
+        return subscriptionEl;
+      }
+
+      //-----------------------------------------------------------------------
+      PushSubscriptionInfo PushSubscriptionInfo::create(ElementPtr elem)
+      {
+        PushSubscriptionInfo info;
+
+        if (!elem) return info;
+
+        info.mFolder = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("folder"));
+
+        info.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
+
+        info.mMapped = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("mapped"));
+
+        try {
+          info.mUnreadBadge = Numeric<decltype(info.mUnreadBadge)>(IMessageHelper::getElementText(elem->findFirstChildElement("unreadBadge")));
+        } catch(Numeric<decltype(info.mUnreadBadge)>::ValueOutOfRange &) {
+        }
+
+        info.mSound = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sound"));
+
+        info.mAction = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("action"));
+
+        info.mLaunchImage = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("launchImage"));
+
+        try {
+          info.mPriority = Numeric<decltype(info.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElement("priority")));
+        } catch(Numeric<decltype(info.mPriority)>::ValueOutOfRange &) {
+        }
+
+        return info;
       }
 
       //-----------------------------------------------------------------------

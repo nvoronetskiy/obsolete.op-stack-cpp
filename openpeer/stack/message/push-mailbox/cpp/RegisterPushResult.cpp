@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetResult.h>
+#include <openpeer/stack/message/push-mailbox/RegisterPushResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -47,56 +47,35 @@ namespace openpeer
         using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        FolderGetResultPtr FolderGetResult::convert(MessagePtr message)
+        RegisterPushResultPtr RegisterPushResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderGetResult>(message);
+          return dynamic_pointer_cast<RegisterPushResult>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderGetResult::FolderGetResult()
+        RegisterPushResult::RegisterPushResult()
         {
         }
 
         //---------------------------------------------------------------------
-        FolderGetResultPtr FolderGetResult::create(
-                                                   ElementPtr rootEl,
-                                                   IMessageSourcePtr messageSource
-                                                   )
+        RegisterPushResultPtr RegisterPushResult::create(
+                                                         ElementPtr rootEl,
+                                                         IMessageSourcePtr messageSource
+                                                         )
         {
-          FolderGetResultPtr ret(new FolderGetResult);
+          RegisterPushResultPtr ret(new RegisterPushResult);
 
           IMessageHelper::fill(*ret, rootEl, messageSource);
-
-          ElementPtr folderEl = rootEl->findFirstChildElement("foldder");
-
-          ret->mFolderInfo = FolderInfo::create(folderEl);
-
-          if (folderEl) {
-            ElementPtr messagesEl = folderEl->findFirstChildElement("messages");
-
-            if (messagesEl) {
-              ElementPtr messageEl = messagesEl->findFirstChildElement("message");
-              while (messageEl) {
-                PushMessageInfo info = PushMessageInfo::create(messageEl);
-                if (info.hasData()) {
-                  ret->mMessages.push_back(info);
-                }
-                messageEl = messageEl->findNextSiblingElement("message");
-              }
-            }
-          }
 
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderGetResult::hasAttribute(AttributeTypes type) const
+        bool RegisterPushResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
-            case AttributeType_Messages:          return (mMessages.size() > 0);
-            default:                              break;
+            default:                                            break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }

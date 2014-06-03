@@ -59,24 +59,24 @@ namespace openpeer
                                            IMessageSourcePtr messageSource
                                            );
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_FolderGet;}
+          virtual Methods method() const                {return (Message::Methods)MessageFactoryPushMailbox::Method_FolderGet;}
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
+          virtual IMessageFactoryPtr factory() const    {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const FolderInfo &folderInfo() const        {return mFolderInfo;}
-          void folderInfo(const FolderInfo &val)      {mFolderInfo = val;}
+          const FolderInfo &folderInfo() const          {return mFolderInfo;}
+          void folderInfo(const FolderInfo &val)        {mFolderInfo = val;}
 
-          const MessageInfoList &messages() const     {return mMessages;}
-          void messages(const MessageInfoList &val)   {mMessages = val;}
+          const PushMessageInfoList &messages() const   {return mMessages;}
+          void messages(const PushMessageInfoList &val) {mMessages = val;}
 
         protected:
           FolderGetResult();
 
           FolderInfo mFolderInfo;
 
-          MessageInfoList mMessages;
+          PushMessageInfoList mMessages;
         };
       }
     }

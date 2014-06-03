@@ -341,10 +341,74 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark MessageInfo
+      #pragma mark NamespaceInfo
       #pragma mark
 
-      struct MessageInfo
+      struct NamespaceInfo
+      {
+        typedef String NamespaceURL;
+
+        NamespaceURL mURL;
+        Time mLastUpdated;
+
+        NamespaceInfo() {}
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        void mergeFrom(
+                       const NamespaceInfo &source,
+                       bool overwriteExisting = true
+                       );
+
+        static NamespaceInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      typedef std::map<NamespaceInfo::NamespaceURL, NamespaceInfo> TNamespaceInfoMap;
+      ZS_DECLARE_TYPEDEF_PTR(TNamespaceInfoMap, NamespaceInfoMap)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark NamespaceGrantChallengeInfo
+      #pragma mark
+
+      struct NamespaceGrantChallengeInfo
+      {
+        String mID;
+        String mName;
+        String mImageURL;
+        String mServiceURL;
+        String mDomains;
+
+        NamespaceInfoMap mNamespaces;
+
+        NamespaceGrantChallengeInfo() {}
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        void mergeFrom(
+                       const NamespaceGrantChallengeInfo &source,
+                       bool overwriteExisting = true
+                       );
+
+        static NamespaceGrantChallengeInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<NamespaceGrantChallengeInfo>, NamespaceGrantChallengeInfoList)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark PushMessageInfo
+      #pragma mark
+
+      struct PushMessageInfo
       {
         struct PushInfo
         {
@@ -484,7 +548,7 @@ namespace openpeer
 
         FlagInfoMap mFlags;
 
-        MessageInfo() :
+        PushMessageInfo() :
           mChannelID(0),
           mLength(0) {}
 
@@ -492,79 +556,59 @@ namespace openpeer
         ElementPtr toDebug() const;
 
         void mergeFrom(
-                       const MessageInfo &source,
+                       const PushMessageInfo &source,
                        bool overwriteExisting = true
                        );
 
-        static MessageInfo create(ElementPtr elem);
+        static PushMessageInfo create(ElementPtr elem);
         ElementPtr createElement() const;
       };
 
-      ZS_DECLARE_TYPEDEF_PTR(std::list<MessageInfo>, MessageInfoList)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushMessageInfo>, PushMessageInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark NamespaceInfo
+      #pragma mark PushSubscriptionInfo
       #pragma mark
 
-      struct NamespaceInfo
+      struct PushSubscriptionInfo
       {
-        typedef String NamespaceURL;
+        String mFolder;
 
-        NamespaceURL mURL;
-        Time mLastUpdated;
+        String mType;
 
-        NamespaceInfo() {}
+        String mMapped;
+
+        bool mUnreadBadge;
+
+        String mSound;
+
+        String mAction;
+
+        String mLaunchImage;
+
+        ULONG mPriority;
+
+        PushSubscriptionInfo() :
+          mUnreadBadge(false),
+          mPriority(0) {}
+
         bool hasData() const;
         ElementPtr toDebug() const;
 
         void mergeFrom(
-                       const NamespaceInfo &source,
+                       const PushSubscriptionInfo &source,
                        bool overwriteExisting = true
                        );
 
-        static NamespaceInfo create(ElementPtr elem);
+        static PushSubscriptionInfo create(ElementPtr elem);
         ElementPtr createElement() const;
       };
 
-      typedef std::map<NamespaceInfo::NamespaceURL, NamespaceInfo> TNamespaceInfoMap;
-      ZS_DECLARE_TYPEDEF_PTR(TNamespaceInfoMap, NamespaceInfoMap)
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark NamespaceGrantChallengeInfo
-      #pragma mark
-
-      struct NamespaceGrantChallengeInfo
-      {
-        String mID;
-        String mName;
-        String mImageURL;
-        String mServiceURL;
-        String mDomains;
-
-        NamespaceInfoMap mNamespaces;
-
-        NamespaceGrantChallengeInfo() {}
-        bool hasData() const;
-        ElementPtr toDebug() const;
-
-        void mergeFrom(
-                       const NamespaceGrantChallengeInfo &source,
-                       bool overwriteExisting = true
-                       );
-
-        static NamespaceGrantChallengeInfo create(ElementPtr elem);
-        ElementPtr createElement() const;
-      };
-
-      ZS_DECLARE_TYPEDEF_PTR(std::list<NamespaceGrantChallengeInfo>, NamespaceGrantChallengeInfoList)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushSubscriptionInfo>, PushSubscriptionInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
