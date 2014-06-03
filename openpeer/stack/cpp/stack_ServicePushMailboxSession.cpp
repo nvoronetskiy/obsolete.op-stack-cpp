@@ -378,6 +378,369 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<AccessResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         AccessResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("access result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              AccessResultPtr ignore,          // will always be NULL
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("access error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<NamespaceGrantChallengeValidateResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         NamespaceGrantChallengeValidateResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("namespace grant challenge validate result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              NamespaceGrantChallengeValidateResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("namespace grant challenge validate error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<PeerValidateResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         PeerValidateResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("peer validate result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              PeerValidateResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("peer validate error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<FoldersGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         FoldersGetResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("folders get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              FoldersGetResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("folders get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<FolderUpdateResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         FolderUpdateResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("folder update result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              FolderUpdateResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("folder update error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<FolderGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         FolderGetResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("folder get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              FolderGetResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("folder get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<MessagesDataGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         MessagesDataGetResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("messages data get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              MessagesDataGetResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("messages data get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<MessagesMetaDataGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         MessagesMetaDataGetResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("messages meta data get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              MessagesMetaDataGetResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("messages meta data get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<MessageUpdateResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         MessageUpdateResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("message update result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              MessageUpdateResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("message update error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<ListFetchResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         ListFetchResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("list fetch result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              ListFetchResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("list fetch error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<RegisterPushResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         RegisterPushResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("list fetch result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              RegisterPushResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("list fetch error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        AutoRecursiveLock lock(*this);
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServicePushMailboxSession => (internal)
       #pragma mark
 
@@ -573,6 +936,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::cancel()
+      {
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::handleChanged(ChangedNotifyPtr notify)
       {
       }
 
