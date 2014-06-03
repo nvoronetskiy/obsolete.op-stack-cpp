@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessageUpdateResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -42,49 +42,43 @@ namespace openpeer
     {
       namespace push_mailbox
       {
+        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+        using message::internal::MessageHelper;
+
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        MessageUpdateResultPtr MessageUpdateResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
+          return dynamic_pointer_cast<MessageUpdateResult>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
+        MessageUpdateResult::MessageUpdateResult()
         {
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
+        MessageUpdateResultPtr MessageUpdateResult::create(
+                                                           ElementPtr rootEl,
+                                                           IMessageSourcePtr messageSource
+                                                           )
         {
-          FolderGetRequestPtr ret(new FolderGetRequest);
+          MessageUpdateResultPtr ret(new MessageUpdateResult);
+
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
+        bool MessageUpdateResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
-            default:                              break;
+            default:                                            break;
           }
-          return false;
+          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
-
-        //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr rootEl = ret->getFirstChildElement();
-
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
-          }
-
-          return ret;
-        }
-
 
       }
     }

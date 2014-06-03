@@ -29,10 +29,10 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
-#include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+#pragma once
 
-#include <zsLib/XML.h>
+#include <openpeer/stack/message/MessageResult.h>
+#include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
 {
@@ -42,50 +42,30 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        class MessageUpdateResult : public MessageResult
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
-        }
-
-        //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
-        {
-        }
-
-        //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
-        {
-          FolderGetRequestPtr ret(new FolderGetRequest);
-          return ret;
-        }
-
-        //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
-        {
-          switch (type)
+        public:
+          enum AttributeTypes
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
-            default:                              break;
-          }
-          return false;
-        }
+          };
 
-        //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr rootEl = ret->getFirstChildElement();
+        public:
+          static MessageUpdateResultPtr convert(MessagePtr message);
 
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
-          }
+          static MessageUpdateResultPtr create(
+                                               ElementPtr root,
+                                               IMessageSourcePtr messageSource
+                                               );
 
-          return ret;
-        }
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_MessageUpdate;}
 
+          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
 
+          bool hasAttribute(AttributeTypes type) const;
+
+        protected:
+          MessageUpdateResult();
+        };
       }
     }
   }

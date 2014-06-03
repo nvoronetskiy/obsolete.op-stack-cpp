@@ -373,11 +373,26 @@ namespace openpeer
 
             WORD mErrorCode;
             String mErrorReason;
+
+            bool hasData() const;
           };
           typedef std::list<URIInfo> URIInfoList;
 
+          enum Dispositions
+          {
+            Disposition_NA,
+
+            Disposition_Subscribe,
+            Disposition_Update,
+            Disposition_Remove,
+          };
+          static Dispositions toDisposition(const char *disposition);
+          static const char *toString(Dispositions disposition);
+
           enum Flags
           {
+            Flag_NA,
+
             Flag_Read,
             Flag_Answered,
             Flag_Flagged,
@@ -385,20 +400,63 @@ namespace openpeer
             Flag_Draft,
             Flag_Recent,
             Flag_Delivered,
-            Flag_Send,
+            Flag_Sent,
             Flag_Pushed,
             Flag_Error,
           };
           static Flags toFlag(const char *flagName);
           static const char *toString(Flags flag);
 
+          Dispositions mDisposition;
+
           Flags mFlag;
           URIInfoList mFlagURIInfos;
 
-          FlagInfo() : mFlag(Flag_Read) {}
+          FlagInfo() :
+            mDisposition(Disposition_NA),
+            mFlag(Flag_NA) {}
+
+          bool hasData() const;
         };
 
         typedef std::map<FlagInfo::Flags, FlagInfo> FlagInfoMap;
+
+        struct FolderInfo
+        {
+          enum Dispositions
+          {
+            Disposition_NA,
+
+            Disposition_Update,
+            Disposition_Remove,
+          };
+
+          static Dispositions toDisposition(const char *disposition);
+          static const char *toString(Dispositions disposition);
+
+          enum Where
+          {
+            Where_NA,
+
+            Where_Local,
+            Where_Remote,
+          };
+
+          static Where toWhere(const char *where);
+          static const char *toString(Where where);
+
+          Dispositions mDisposition;
+          Where mWhere;
+
+          String mName;
+
+          FolderInfo() :
+            mDisposition(Disposition_NA),
+            mWhere(Where_NA) {}
+
+          bool hasData() const;
+        };
+        typedef std::list<FolderInfo> FolderInfoList;
 
         String mID;
 
@@ -421,6 +479,8 @@ namespace openpeer
         Time mExpires;
 
         size_t mLength;
+
+        FolderInfoList mFolders;
 
         FlagInfoMap mFlags;
 

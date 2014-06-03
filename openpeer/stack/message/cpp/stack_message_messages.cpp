@@ -232,6 +232,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(MessageInfo::FolderInfoList &result, const MessageInfo::FolderInfoList &source, bool overwrite)
+      {
+        if (source.size() < 1) return;
+        if (result.size() > 0) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static ElementPtr getProtocolsDebugValueString(const Finder::ProtocolList &protocols)
       {
         if (protocols.size() < 1) return ElementPtr();
@@ -1091,92 +1101,7 @@ namespace openpeer
       #pragma mark message::MessageInfo
       #pragma mark
 
-//      struct MessageInfo
-//      {
-//        struct PushInfo
-//        {
-//          typedef String Value;
-//          typedef std::list<Value> ValueList;
-//
-//          String mType;
-//
-//          ValueList mValues;
-//          ElementPtr mCustom;
-//        };
-//
-//        struct FlagInfo
-//        {
-//          struct URIInfo
-//          {
-//            String mURI;
-//
-//            WORD mErrorCode;
-//            String mErrorReason;
-//          };
-//          typedef std::list<URIInfo> URIInfoList;
-//
-//          enum Flags
-//          {
-//            Flag_Read,
-//            Flag_Answered,
-//            Flag_Flagged,
-//            Flag_Deleted,
-//            Flag_Draft,
-//            Flag_Recent,
-//            Flag_Delivered,
-//            Flag_Send,
-//            Flag_Pushed,
-//            Flag_Error,
-//          };
-//          static Flags toFlag(const char *flagName);
-//          static const char *toString(Flags flag);
-//
-//          Flags mFlag;
-//          URIInfoList mFlagURIInfos;
-//
-//          FlagInfo() : mFlag(Flag_Read) {}
-//        };
-//
-//        typedef std::map<FlagInfo::Flags, FlagInfo> FlagInfoMap;
-//
-//        String mID;
-//
-//        DWORD mChannelID;
-//
-//        String mTo;
-//        String mCC;
-//        String mBCC;
-//
-//        String mFrom;
-//
-//        String mMimeType;
-//        String mEncoding;
-//
-//        PushInfo mPushInfo;
-//
-//        Time mTime;
-//        Time mExpires;
-//
-//        size_t mLength;
-//
-//        FlagInfoMap mFlags;
-//
-//        MessageInfo() :
-//        mChannelID(0),
-//        mLength(0) {}
-//
-//        bool hasData() const;
-//        ElementPtr toDebug() const;
-//
-//        void mergeFrom(
-//                       const MessageInfo &source,
-//                       bool overwriteExisting = true
-//                       );
-//        
-//        static MessageInfo create(ElementPtr elem);
-//        ElementPtr createElement() const;
-//      };
-//
+
       //-----------------------------------------------------------------------
       bool MessageInfo::hasData() const
       {
@@ -1201,6 +1126,8 @@ namespace openpeer
                 (Time() != mExpires) ||
 
                 (0 != mLength) ||
+
+                (mFolders.size() > 0) ||
 
                 (mFlags.size() > 0));
       }
@@ -1231,6 +1158,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "expires", mExpires);
 
         IHelper::debugAppend(resultEl, "length", mLength);
+
+        IHelper::debugAppend(resultEl, "folders", mFolders.size());
 
         IHelper::debugAppend(resultEl, "flags", mFlags.size());
 
@@ -1264,6 +1193,8 @@ namespace openpeer
         merge(mExpires, source.mExpires, overwriteExisting);
 
         merge(mLength, source.mLength, overwriteExisting);
+
+        merge(mFolders, source.mFolders, overwriteExisting);
 
         merge(mFlags, source.mFlags, overwriteExisting);
       }
@@ -1351,13 +1282,48 @@ namespace openpeer
           messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("length", string(mLength)));
         }
 
+        if (mFolders.size() > 0) {
+          ElementPtr foldersEl = Element::create("folders");
+
+          for (MessageInfo::FolderInfoList::const_iterator iter = mFolders.begin(); iter != mFolders.end(); ++iter) {
+            const FolderInfo &info = (*iter);
+
+            ElementPtr folderEl = Element::create("folder");
+
+            if (FolderInfo::Disposition_NA != info.mDisposition) {
+              folderEl->setAttribute("disposition", FolderInfo::toString(info.mDisposition));
+            }
+
+            if (FolderInfo::Where_NA != info.mWhere) {
+              folderEl->setAttribute("where", FolderInfo::toString(info.mWhere));
+            }
+
+            if (info.mName.hasData()) {
+              folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("name", info.mName));
+            }
+
+            if ((folderEl->hasChildren()) ||
+                (folderEl->hasAttributes())) {
+              foldersEl->adoptAsLastChild(folderEl);
+            }
+          }
+
+          if (foldersEl->hasChildren()) {
+            messageEl->adoptAsLastChild(foldersEl);
+          }
+        }
+
         if (mFlags.size() > 0) {
           ElementPtr flagsEl = Element::create("flags");
 
           for (MessageInfo::FlagInfoMap::const_iterator iter = mFlags.begin(); iter != mFlags.end(); ++iter) {
             const FlagInfo &info = (*iter).second;
 
-            ElementPtr flagEl = IMessageHelper::createElementWithText("flag", FlagInfo::toString(info.mFlag));
+            ElementPtr flagEl = (FlagInfo::Flag_NA != info.mFlag ? IMessageHelper::createElementWithText("flag", FlagInfo::toString(info.mFlag)) : Element::create("flag"));
+
+            if (FlagInfo::Disposition_NA != info.mDisposition) {
+              flagEl->setAttribute("disposition", FlagInfo::toString(info.mDisposition));
+            }
 
             ElementPtr detailsEl = Element::create("details");
 
@@ -1393,7 +1359,10 @@ namespace openpeer
               flagEl->adoptAsLastChild(detailsEl);
             }
 
-            flagsEl->adoptAsLastChild(flagEl);
+            if ((flagEl->hasChildren()) ||
+                (flagEl->hasAttributes())) {
+              flagsEl->adoptAsLastChild(flagEl);
+            }
           }
 
           if (flagsEl->hasChildren()) {
@@ -1465,6 +1434,25 @@ namespace openpeer
         } catch(Numeric<decltype(info.mLength)>::ValueOutOfRange &) {
         }
 
+        ElementPtr foldersEl = elem->findFirstChildElement("folders");
+        if (foldersEl) {
+          ElementPtr folderEl = foldersEl->findFirstChildElement("folder");
+
+          while (folderEl) {
+            FolderInfo folderInfo;
+
+            folderInfo.mDisposition = FolderInfo::toDisposition(IMessageHelper::getAttribute(folderEl, "disposition"));
+            folderInfo.mWhere = FolderInfo::toWhere(IMessageHelper::getAttribute(folderEl, "where"));
+            folderInfo.mName = IMessageHelper::getElementTextAndDecode(folderEl->findFirstChildElement("name"));
+
+            if (folderInfo.hasData()) {
+              info.mFolders.push_back(folderInfo);
+            }
+
+            folderEl = folderEl->findNextSiblingElement("folder");
+          }
+        }
+
         ElementPtr flagsEl = elem->findFirstChildElement("flags");
         if (flagsEl) {
           ElementPtr flagEl = flagsEl->findFirstChildElement("flag");
@@ -1472,7 +1460,8 @@ namespace openpeer
           while (flagEl) {
             FlagInfo flagInfo;
 
-            flagInfo.mFlag = FlagInfo::toFlag(IMessageHelper::getElementText(flagEl));
+            flagInfo.mDisposition = FlagInfo::toDisposition(IMessageHelper::getAttribute(flagEl, "disposition"));
+            flagInfo.mFlag = FlagInfo::toFlag(flagEl->getText(true, false));
 
             ElementPtr detailsEl = flagsEl->findFirstChildElement("details");
             if (detailsEl) {
@@ -1493,8 +1482,17 @@ namespace openpeer
                   uriInfo.mErrorReason = IMessageHelper::getElementTextAndDecode(errorEl);
                 }
 
+                if (uriInfo.hasData()) {
+                  flagInfo.mFlagURIInfos.push_back(uriInfo);
+                }
+
                 detailEl = detailEl->findNextSiblingElement("detail");
               }
+            }
+
+            if ((FlagInfo::Flag_NA != flagInfo.mFlag) &&
+                (flagInfo.hasData())) {
+              info.mFlags[flagInfo.mFlag] = flagInfo;
             }
 
             flagEl = flagEl->findNextSiblingElement("flag");
@@ -1504,6 +1502,178 @@ namespace openpeer
         return info;
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::MessageInfo::FlagInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      MessageInfo::FlagInfo::Dispositions MessageInfo::FlagInfo::toDisposition(const char *disposition)
+      {
+        if (!disposition) return Disposition_NA;
+
+        if ('\0' == *disposition) return Disposition_NA;
+
+        if (0 == strcmp(disposition, "subscribe")) return Disposition_Subscribe;
+        if (0 == strcmp(disposition, "update")) return Disposition_Update;
+        if (0 == strcmp(disposition, "remove")) return Disposition_Remove;
+
+        return Disposition_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      const char *MessageInfo::FlagInfo::toString(Dispositions disposition)
+      {
+        switch (disposition) {
+          case Disposition_NA:          return "";
+
+          case Disposition_Subscribe:   return "subscribe";
+          case Disposition_Update:      return "update";
+          case Disposition_Remove:      return "remove";
+        }
+        return "UNDEFINED";
+      }
+
+      //-----------------------------------------------------------------------
+      MessageInfo::FlagInfo::Flags MessageInfo::FlagInfo::toFlag(const char *flagName)
+      {
+        if (!flagName) return Flag_NA;
+
+        if ('\0' == *flagName) return Flag_NA;
+
+        if (0 == strcmp(flagName, "read")) return Flag_Read;
+        if (0 == strcmp(flagName, "answered")) return Flag_Answered;
+        if (0 == strcmp(flagName, "flagged")) return Flag_Flagged;
+        if (0 == strcmp(flagName, "deleted")) return Flag_Deleted;
+        if (0 == strcmp(flagName, "draft")) return Flag_Draft;
+        if (0 == strcmp(flagName, "recent")) return Flag_Recent;
+        if (0 == strcmp(flagName, "delivered")) return Flag_Delivered;
+        if (0 == strcmp(flagName, "sent")) return Flag_Sent;
+        if (0 == strcmp(flagName, "pushed")) return Flag_Pushed;
+        if (0 == strcmp(flagName, "error")) return Flag_Error;
+
+        return Flag_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      const char *MessageInfo::FlagInfo::toString(Flags flag)
+      {
+        switch (flag) {
+          case Flag_NA:         return "";
+
+          case Flag_Read:       return "read";
+          case Flag_Answered:   return "answered";
+          case Flag_Flagged:    return "flagged";
+          case Flag_Deleted:    return "deleted";
+          case Flag_Draft:      return "draft";
+          case Flag_Recent:     return "recent";
+          case Flag_Delivered:  return "delivered";
+          case Flag_Sent:       return "sent";
+          case Flag_Pushed:     return "pushed";
+          case Flag_Error:      return "error";
+        }
+        return "UNDEFINED";
+      }
+
+      //-----------------------------------------------------------------------
+      bool MessageInfo::FlagInfo::hasData() const
+      {
+        return ((Disposition_NA != mDisposition) ||
+
+                (Flag_NA != mFlag) ||
+
+                (mFlagURIInfos.size() > 0));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::MessageInfo::FlagInfo::URIInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool MessageInfo::FlagInfo::URIInfo::hasData() const
+      {
+        return ((mURI.hasData()) ||
+
+                (0 != mErrorCode) ||
+
+                (mErrorReason.hasData()));
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::MessageInfo::FolderInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      MessageInfo::FolderInfo::Dispositions MessageInfo::FolderInfo::toDisposition(const char *disposition)
+      {
+        if (!disposition) return Disposition_NA;
+
+        if ('\0' == *disposition) return Disposition_NA;
+
+        if (0 == strcmp(disposition, "update")) return Disposition_Update;
+        if (0 == strcmp(disposition, "remove")) return Disposition_Remove;
+
+        return Disposition_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      const char *MessageInfo::FolderInfo::toString(Dispositions disposition)
+      {
+        switch (disposition) {
+          case Disposition_NA:          return "";
+
+          case Disposition_Update:      return "update";
+          case Disposition_Remove:      return "remove";
+        }
+        return "UNDEFINED";
+      }
+
+      //-----------------------------------------------------------------------
+      MessageInfo::FolderInfo::Where MessageInfo::FolderInfo::toWhere(const char *where)
+      {
+        if (!where) return Where_NA;
+
+        if ('\0' == *where) return Where_NA;
+
+        if (0 == strcmp(where, "local")) return Where_Local;
+        if (0 == strcmp(where, "remote")) return Where_Remote;
+
+        return Where_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      const char *MessageInfo::FolderInfo::toString(Where where)
+      {
+        switch (where) {
+          case Where_NA:          return "";
+
+          case Where_Local:       return "local";
+          case Where_Remote:      return "remote";
+        }
+        return "UNDEFINED";
+      }
+
+      //-----------------------------------------------------------------------
+      bool MessageInfo::FolderInfo::hasData() const
+      {
+        return ((Disposition_NA != mDisposition) ||
+
+                (Where_NA != mWhere) ||
+
+                (mName.hasData()));
+      }
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

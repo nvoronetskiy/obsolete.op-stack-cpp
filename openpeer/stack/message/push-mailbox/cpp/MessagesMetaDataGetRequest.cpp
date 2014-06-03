@@ -51,7 +51,6 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessagesMetaDataGetRequest::MessagesMetaDataGetRequest()
         {
-          mAppID.clear();
         }
 
         //---------------------------------------------------------------------

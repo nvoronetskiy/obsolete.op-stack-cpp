@@ -69,7 +69,6 @@ namespace openpeer
         //---------------------------------------------------------------------
         NamespaceGrantChallengeValidateRequest::NamespaceGrantChallengeValidateRequest()
         {
-          mAppID.clear();
         }
 
         //---------------------------------------------------------------------

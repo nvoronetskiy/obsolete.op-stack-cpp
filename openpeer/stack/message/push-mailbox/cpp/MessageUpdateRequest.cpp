@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/MessageUpdateRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -43,43 +43,43 @@ namespace openpeer
       namespace push_mailbox
       {
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::convert(MessagePtr message)
+        MessageUpdateRequestPtr MessageUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderGetRequest>(message);
+          return dynamic_pointer_cast<MessageUpdateRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequest::FolderGetRequest()
+        MessageUpdateRequest::MessageUpdateRequest()
         {
         }
 
         //---------------------------------------------------------------------
-        FolderGetRequestPtr FolderGetRequest::create()
+        MessageUpdateRequestPtr MessageUpdateRequest::create()
         {
-          FolderGetRequestPtr ret(new FolderGetRequest);
+          MessageUpdateRequestPtr ret(new MessageUpdateRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FolderGetRequest::hasAttribute(AttributeTypes type) const
+        bool MessageUpdateRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_FolderInfo:        return mFolderInfo.hasData();
+            case AttributeType_MessageInfo:       return mMessageInfo.hasData();
             default:                              break;
           }
           return false;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr FolderGetRequest::encode()
+        DocumentPtr MessageUpdateRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          if (hasAttribute(AttributeType_FolderInfo)) {
-            ElementPtr folderInfoEl = mFolderInfo.createElement();
-            rootEl->adoptAsLastChild(folderInfoEl);
+          if (hasAttribute(AttributeType_MessageInfo)) {
+            ElementPtr messageInfoEl = mMessageInfo.createElement();
+            rootEl->adoptAsLastChild(messageInfoEl);
           }
 
           return ret;
