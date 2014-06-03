@@ -125,6 +125,7 @@
 		00A7BAC9193D5FE3003EDD1A /* ListFetchResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */; };
 		00A7BACC193D7065003EDD1A /* RegisterPushRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BACB193D7065003EDD1A /* RegisterPushRequest.cpp */; };
 		00A7BACF193D7544003EDD1A /* RegisterPushResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BACE193D7544003EDD1A /* RegisterPushResult.cpp */; };
+		00A7BAD2193DFF28003EDD1A /* ChangedNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAD1193DFF28003EDD1A /* ChangedNotify.cpp */; };
 		00AA456919380FB5001D3AA2 /* AccessRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AA456619380FB5001D3AA2 /* AccessRequest.cpp */; };
 		00AA456A19380FB5001D3AA2 /* MessageFactoryPushMailbox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AA456719380FB5001D3AA2 /* MessageFactoryPushMailbox.cpp */; };
 		00AA456C19382142001D3AA2 /* AccessResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AA456B19382142001D3AA2 /* AccessResult.cpp */; };
@@ -449,6 +450,8 @@
 		00A7BACD193D7097003EDD1A /* RegisterPushRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RegisterPushRequest.h; sourceTree = "<group>"; };
 		00A7BACE193D7544003EDD1A /* RegisterPushResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RegisterPushResult.cpp; sourceTree = "<group>"; };
 		00A7BAD0193D7551003EDD1A /* RegisterPushResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RegisterPushResult.h; sourceTree = "<group>"; };
+		00A7BAD1193DFF28003EDD1A /* ChangedNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ChangedNotify.cpp; sourceTree = "<group>"; };
+		00A7BAD3193DFF34003EDD1A /* ChangedNotify.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChangedNotify.h; sourceTree = "<group>"; };
 		00AA456419380FB5001D3AA2 /* AccessRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AccessRequest.h; sourceTree = "<group>"; };
 		00AA456619380FB5001D3AA2 /* AccessRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AccessRequest.cpp; sourceTree = "<group>"; };
 		00AA456719380FB5001D3AA2 /* MessageFactoryPushMailbox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessageFactoryPushMailbox.cpp; sourceTree = "<group>"; };
@@ -1092,6 +1095,7 @@
 				00760BE4193D4C6600C7435C /* MessageUpdateResult.h */,
 				00A7BAC7193D5E61003EDD1A /* ListFetchRequest.h */,
 				00A7BACA193D5FF2003EDD1A /* ListFetchResult.h */,
+				00A7BAD3193DFF34003EDD1A /* ChangedNotify.h */,
 				00A7BACD193D7097003EDD1A /* RegisterPushRequest.h */,
 				00A7BAD0193D7551003EDD1A /* RegisterPushResult.h */,
 			);
@@ -1122,6 +1126,7 @@
 				00760BE2193D4C5500C7435C /* MessageUpdateResult.cpp */,
 				00A7BAC5193D5E4D003EDD1A /* ListFetchRequest.cpp */,
 				00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */,
+				00A7BAD1193DFF28003EDD1A /* ChangedNotify.cpp */,
 				00A7BACB193D7065003EDD1A /* RegisterPushRequest.cpp */,
 				00A7BACE193D7544003EDD1A /* RegisterPushResult.cpp */,
 			);
@@ -1345,6 +1350,7 @@
 				00AF4E2F171E3F3F00DCA0A8 /* LockboxAccessRequest.cpp in Sources */,
 				00AF4E30171E3F3F00DCA0A8 /* LockboxAccessResult.cpp in Sources */,
 				00AF4E34171E3F3F00DCA0A8 /* LockboxContentGetRequest.cpp in Sources */,
+				00A7BAD2193DFF28003EDD1A /* ChangedNotify.cpp in Sources */,
 				00AF4E35171E3F3F00DCA0A8 /* LockboxContentGetResult.cpp in Sources */,
 				00AF4E36171E3F3F00DCA0A8 /* LockboxContentSetRequest.cpp in Sources */,
 				00AF4E37171E3F3F00DCA0A8 /* LockboxContentSetResult.cpp in Sources */,

@@ -151,10 +151,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static void merge(FolderInfo::Dispositions &result, FolderInfo::Dispositions source, bool overwrite)
+      static void merge(PushMessageFolderInfo::Dispositions &result, PushMessageFolderInfo::Dispositions source, bool overwrite)
       {
-        if (FolderInfo::Disposition_NA == source) return;
-        if (FolderInfo::Disposition_NA != result) {
+        if (PushMessageFolderInfo::Disposition_NA == source) return;
+        if (PushMessageFolderInfo::Disposition_NA != result) {
           if (!overwrite) return;
         }
         result = source;
@@ -455,143 +455,6 @@ namespace openpeer
         }
 
         return ret;
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark message::FolderInfo
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      const char *FolderInfo::toString(Dispositions disposition)
-      {
-        switch (disposition)
-        {
-          case Disposition_NA:        return "";
-          case Disposition_Update:    return "update";
-          case Disposition_Remove:    return "remove";
-          case Disposition_Reset:     return "reset";
-        }
-        return "";
-      }
-
-      //-----------------------------------------------------------------------
-      FolderInfo::Dispositions FolderInfo::toDisposition(const char *inStr)
-      {
-        if (!inStr) return Disposition_NA;
-        String str(inStr);
-        if ("update" == str) return Disposition_Update;
-        if ("remove" == str) return Disposition_Remove;
-        if ("reset" == str) return Disposition_Reset;
-        return Disposition_NA;
-      }
-
-      //-----------------------------------------------------------------------
-      bool FolderInfo::hasData() const
-      {
-        return (mDisposition != Disposition_NA) ||
-               (mName.hasData()) ||
-               (mRenamed.hasData()) ||
-               (mVersion.hasData()) ||
-               (mUnread != 0) ||
-               (mTotal != 0) ||
-               (Time() != mUpdateNext);
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr FolderInfo::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::FolderInfo");
-
-        IHelper::debugAppend(resultEl, "disposition", mDisposition != Disposition_NA ? String(toString(mDisposition)) : String());
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "rename", mRenamed);
-        IHelper::debugAppend(resultEl, "version", mVersion);
-        IHelper::debugAppend(resultEl, "unread", mUnread);
-        IHelper::debugAppend(resultEl, "total", mTotal);
-        IHelper::debugAppend(resultEl, "update next", mUpdateNext);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      void FolderInfo::mergeFrom(
-                                 const FolderInfo &source,
-                                 bool overwriteExisting
-                                 )
-      {
-        merge(mDisposition, source.mDisposition, overwriteExisting);
-
-        merge(mName, source.mName, overwriteExisting);
-        merge(mRenamed, source.mRenamed, overwriteExisting);
-        merge(mVersion, source.mVersion, overwriteExisting);
-
-        merge(mUnread, source.mUnread, overwriteExisting);
-        merge(mTotal, source.mTotal, overwriteExisting);
-
-        merge(mUpdateNext, source.mUpdateNext, overwriteExisting);
-      }
-
-      //-----------------------------------------------------------------------
-      FolderInfo FolderInfo::create(ElementPtr elem)
-      {
-        FolderInfo info;
-
-        if (!elem) return info;
-
-        info.mDisposition = toDisposition(IMessageHelper::getAttribute(elem, "disposition"));
-        info.mName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("name"));
-        info.mRenamed = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("rename"));
-        info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
-
-        try {
-          info.mUnread = Numeric<decltype(info.mUnread)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
-        } catch (Numeric<decltype(info.mUnread)>::ValueOutOfRange &) {
-        }
-        try {
-          info.mTotal = Numeric<decltype(info.mTotal)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
-        } catch (Numeric<decltype(info.mTotal)>::ValueOutOfRange &) {
-        }
-
-        info.mUpdateNext = services::IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("updateNext")));
-
-        return info;
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr FolderInfo::createElement() const
-      {
-        ElementPtr folderEl = Element::create("folder");
-
-        if (Disposition_NA != mDisposition) {
-          folderEl->setAttribute("disposition", toString(mDisposition));
-        }
-        if (mName.hasData()) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("name", mName));
-        }
-        if (mRenamed.hasData()) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("rename", mRenamed));
-        }
-        if (mVersion.hasData()) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
-        }
-        if (mVersion.hasData()) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("unread", string(mUnread)));
-        }
-        if (0 != mUnread) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("unread", string(mUnread)));
-        }
-        if (0 != mTotal) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("total", string(mTotal)));
-        }
-        if (Time() != mUpdateNext) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", services::IHelper::timeToString(mUpdateNext)));
-        }
-
-        return folderEl;
       }
 
       //-----------------------------------------------------------------------
@@ -1715,40 +1578,143 @@ namespace openpeer
         merge(mCustom, source.mCustom, overwriteExisting);
       }
 
-//      struct PushSubscriptionInfo
-//      {
-//        String mFolder;
-//
-//        String mType;
-//
-//        String mMapped;
-//
-//        bool mUnreadBadge;
-//
-//        String mSound;
-//
-//        String mAction;
-//
-//        String mLaunchImage;
-//
-//        ULONG mPriority;
-//
-//        PushSubscriptionInfo() :
-//        mUnreadBadge(false),
-//        mPriority(0) {}
-//
-//        bool hasData() const;
-//        ElementPtr toDebug() const;
-//
-//        void mergeFrom(
-//                       const PushSubscriptionInfo &source,
-//                       bool overwriteExisting = true
-//                       );
-//
-//        static PushSubscriptionInfo create(ElementPtr elem);
-//        ElementPtr createElement() const;
-//      };
-//      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::PushMessageFolderInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      const char *PushMessageFolderInfo::toString(Dispositions disposition)
+      {
+        switch (disposition)
+        {
+          case Disposition_NA:        return "";
+          case Disposition_Update:    return "update";
+          case Disposition_Remove:    return "remove";
+          case Disposition_Reset:     return "reset";
+        }
+        return "";
+      }
+
+      //-----------------------------------------------------------------------
+      PushMessageFolderInfo::Dispositions PushMessageFolderInfo::toDisposition(const char *inStr)
+      {
+        if (!inStr) return Disposition_NA;
+        String str(inStr);
+        if ("update" == str) return Disposition_Update;
+        if ("remove" == str) return Disposition_Remove;
+        if ("reset" == str) return Disposition_Reset;
+        return Disposition_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      bool PushMessageFolderInfo::hasData() const
+      {
+        return (mDisposition != Disposition_NA) ||
+               (mName.hasData()) ||
+               (mRenamed.hasData()) ||
+               (mVersion.hasData()) ||
+               (mUnread != 0) ||
+               (mTotal != 0) ||
+               (Time() != mUpdateNext);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr PushMessageFolderInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::PushMessageFolderInfo");
+
+        IHelper::debugAppend(resultEl, "disposition", mDisposition != Disposition_NA ? String(toString(mDisposition)) : String());
+        IHelper::debugAppend(resultEl, "name", mName);
+        IHelper::debugAppend(resultEl, "rename", mRenamed);
+        IHelper::debugAppend(resultEl, "version", mVersion);
+        IHelper::debugAppend(resultEl, "unread", mUnread);
+        IHelper::debugAppend(resultEl, "total", mTotal);
+        IHelper::debugAppend(resultEl, "update next", mUpdateNext);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      void PushMessageFolderInfo::mergeFrom(
+                                            const PushMessageFolderInfo &source,
+                                            bool overwriteExisting
+                                            )
+      {
+        merge(mDisposition, source.mDisposition, overwriteExisting);
+
+        merge(mName, source.mName, overwriteExisting);
+        merge(mRenamed, source.mRenamed, overwriteExisting);
+        merge(mVersion, source.mVersion, overwriteExisting);
+
+        merge(mUnread, source.mUnread, overwriteExisting);
+        merge(mTotal, source.mTotal, overwriteExisting);
+
+        merge(mUpdateNext, source.mUpdateNext, overwriteExisting);
+      }
+
+      //-----------------------------------------------------------------------
+      PushMessageFolderInfo PushMessageFolderInfo::create(ElementPtr elem)
+      {
+        PushMessageFolderInfo info;
+
+        if (!elem) return info;
+
+        info.mDisposition = toDisposition(IMessageHelper::getAttribute(elem, "disposition"));
+        info.mName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("name"));
+        info.mRenamed = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("rename"));
+        info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
+
+        try {
+          info.mUnread = Numeric<decltype(info.mUnread)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
+        } catch (Numeric<decltype(info.mUnread)>::ValueOutOfRange &) {
+        }
+        try {
+          info.mTotal = Numeric<decltype(info.mTotal)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
+        } catch (Numeric<decltype(info.mTotal)>::ValueOutOfRange &) {
+        }
+
+        info.mUpdateNext = services::IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("updateNext")));
+
+        return info;
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr PushMessageFolderInfo::createElement() const
+      {
+        ElementPtr folderEl = Element::create("folder");
+
+        if (Disposition_NA != mDisposition) {
+          folderEl->setAttribute("disposition", toString(mDisposition));
+        }
+        if (mName.hasData()) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("name", mName));
+        }
+        if (mRenamed.hasData()) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("rename", mRenamed));
+        }
+        if (mVersion.hasData()) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("version", mVersion));
+        }
+        if (mVersion.hasData()) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("unread", string(mUnread)));
+        }
+        if (0 != mUnread) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("unread", string(mUnread)));
+        }
+        if (0 != mTotal) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("total", string(mTotal)));
+        }
+        if (Time() != mUpdateNext) {
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", services::IHelper::timeToString(mUpdateNext)));
+        }
+
+        return folderEl;
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

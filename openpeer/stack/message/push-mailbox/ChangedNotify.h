@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <openpeer/stack/message/MessageRequest.h>
+#include <openpeer/stack/message/MessageNotify.h>
 #include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
 namespace openpeer
@@ -42,37 +42,47 @@ namespace openpeer
     {
       namespace push_mailbox
       {
-        class FolderUpdateRequest : public MessageRequest
+        class ChangedNotify : public MessageNotify
         {
-        public:
-          friend class PeerIdentifyResult;
-
         public:
           enum AttributeTypes
           {
-            AttributeType_FolderInfo,
+            AttributeType_FoldersVersion,
+            AttributeType_Folders,
+            AttributeType_Messages,
           };
 
         public:
-          static FolderUpdateRequestPtr convert(MessagePtr message);
+          static ChangedNotifyPtr convert(MessagePtr message);
 
-          static FolderUpdateRequestPtr create();
+          static ChangedNotifyPtr create(
+                                         ElementPtr root,
+                                         IMessageSourcePtr messageSource
+                                         );
 
-          virtual DocumentPtr encode();
+          virtual Methods method() const                      {return (Message::Methods)MessageFactoryPushMailbox::Method_Changed;}
 
-          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPushMailbox::Method_FolderUpdate;}
-
-          virtual IMessageFactoryPtr factory() const        {return MessageFactoryPushMailbox::singleton();}
+          virtual IMessageFactoryPtr factory() const          {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const PushMessageFolderInfo &folderInfo() const   {return mFolderInfo;}
-          void folderInfo(const PushMessageFolderInfo &val) {mFolderInfo = val;}
+          const String &version() const                       {return mVersion;}
+          void version(const String &val)                     {mVersion = val;}
+
+          const PushMessageFolderInfoList &folders() const    {return mFolders;}
+          void folders(const PushMessageFolderInfoList &val)  {mFolders = val;}
+
+          const PushMessageInfoList &messages() const         {return mMessages;}
+          void messages(const PushMessageInfoList &val)       {mMessages = val;}
 
         protected:
-          FolderUpdateRequest();
+          ChangedNotify();
 
-          PushMessageFolderInfo mFolderInfo;
+          String mVersion;
+
+          PushMessageFolderInfoList mFolders;
+
+          PushMessageInfoList mMessages;
         };
       }
     }

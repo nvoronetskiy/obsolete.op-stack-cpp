@@ -29,10 +29,8 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/FoldersGetResult.h>
+#include <openpeer/stack/message/push-mailbox/ChangedNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
-
-#include <openpeer/services/IHelper.h>
 
 #include <zsLib/XML.h>
 
@@ -49,23 +47,23 @@ namespace openpeer
         using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        FoldersGetResultPtr FoldersGetResult::convert(MessagePtr message)
+        ChangedNotifyPtr ChangedNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FoldersGetResult>(message);
+          return dynamic_pointer_cast<ChangedNotify>(message);
         }
 
         //---------------------------------------------------------------------
-        FoldersGetResult::FoldersGetResult()
+        ChangedNotify::ChangedNotify()
         {
         }
 
         //---------------------------------------------------------------------
-        FoldersGetResultPtr FoldersGetResult::create(
-                                                     ElementPtr rootEl,
-                                                     IMessageSourcePtr messageSource
-                                                     )
+        ChangedNotifyPtr ChangedNotify::create(
+                                               ElementPtr rootEl,
+                                               IMessageSourcePtr messageSource
+                                               )
         {
-          FoldersGetResultPtr ret(new FoldersGetResult);
+          ChangedNotifyPtr ret(new ChangedNotify);
 
           IMessageHelper::fill(*ret, rootEl, messageSource);
 
@@ -73,17 +71,27 @@ namespace openpeer
 
           if (foldersEl) {
             ret->mVersion = MessageHelper::getElementTextAndDecode(foldersEl->findFirstChildElement("version"));
-            ret->mUpdateNext = services::IHelper::stringToTime(MessageHelper::getElementText(foldersEl->findFirstChildElement("updateNext")));
 
             ElementPtr folderEl = foldersEl->findFirstChildElement("folder");
             while (folderEl) {
               PushMessageFolderInfo info = PushMessageFolderInfo::create(folderEl);
-
               if (info.hasData()) {
                 ret->mFolders.push_back(info);
               }
-
               folderEl = folderEl->findNextSiblingElement("folder");
+            }
+          }
+
+          ElementPtr messagesEl = rootEl->findFirstChildElement("messages");
+
+          if (messagesEl) {
+            ElementPtr messageEl = messagesEl->findFirstChildElement("message");
+            while (messageEl) {
+              PushMessageInfo info = PushMessageInfo::create(messageEl);
+              if (info.hasData()) {
+                ret->mMessages.push_back(info);
+              }
+              messageEl = messageEl->findNextSiblingElement("message");
             }
           }
 
@@ -91,16 +99,14 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        bool FoldersGetResult::hasAttribute(AttributeTypes type) const
+        bool ChangedNotify::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_Version:           return mVersion.hasData();
-            case AttributeType_UpdateNext:        return Time() != mUpdateNext;
-            case AttributeType_Folders:           return (mFolders.size() > 0);
+            case AttributeType_Messages:          return (mMessages.size() > 0);
             default:                              break;
           }
-          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
+          return false;
         }
 
       }

@@ -66,13 +66,13 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const FolderInfo &folderInfo() const              {return mFolderInfo;}
-          void folderInfo(const FolderInfo &val)            {mFolderInfo = val;}
+          const PushMessageFolderInfo &folderInfo() const   {return mFolderInfo;}
+          void folderInfo(const PushMessageFolderInfo &val) {mFolderInfo = val;}
 
         protected:
           FolderGetRequest();
 
-          FolderInfo mFolderInfo;
+          PushMessageFolderInfo mFolderInfo;
         };
       }
     }

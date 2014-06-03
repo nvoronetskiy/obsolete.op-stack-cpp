@@ -60,20 +60,20 @@ namespace openpeer
                                             IMessageSourcePtr messageSource
                                             );
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_FoldersGet;}
+          virtual Methods method() const                      {return (Message::Methods)MessageFactoryPushMailbox::Method_FoldersGet;}
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPushMailbox::singleton();}
+          virtual IMessageFactoryPtr factory() const          {return MessageFactoryPushMailbox::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const String &version() const               {return mVersion;}
-          void folders(const String &val)             {mVersion = val;}
+          const String &version() const                       {return mVersion;}
+          void folders(const String &val)                     {mVersion = val;}
 
-          const Time &updateNext() const              {return mUpdateNext;}
-          void updateNext(const Time &val)            {mUpdateNext = val;}
+          const Time &updateNext() const                      {return mUpdateNext;}
+          void updateNext(const Time &val)                    {mUpdateNext = val;}
 
-          const FolderInfoList &folders() const       {return mFolders;}
-          void folders(const FolderInfoList &val)     {mFolders = val;}
+          const PushMessageFolderInfoList &folders() const    {return mFolders;}
+          void folders(const PushMessageFolderInfoList &val)  {mFolders = val;}
 
         protected:
           FoldersGetResult();
@@ -81,7 +81,7 @@ namespace openpeer
           String mVersion;
           Time mUpdateNext;
 
-          FolderInfoList mFolders;
+          PushMessageFolderInfoList mFolders;
         };
       }
     }

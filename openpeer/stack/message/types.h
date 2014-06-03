@@ -175,56 +175,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark FolderInfo
-      #pragma mark
-
-      struct FolderInfo
-      {
-        enum Dispositions
-        {
-          Disposition_NA, // not applicable
-          Disposition_Update,
-          Disposition_Remove,
-          Disposition_Reset,
-        };
-
-        static const char *toString(Dispositions diposition);
-        static Dispositions toDisposition(const char *str);
-
-        Dispositions mDisposition;
-        String mName;
-        String mRenamed;
-        String mVersion;
-        ULONG mUnread;
-        ULONG mTotal;
-
-        Time mUpdateNext;
-
-        FolderInfo() :
-          mDisposition(Disposition_NA),
-          mUnread(0),
-          mTotal(0)
-        {}
-
-        bool hasData() const;
-        ElementPtr toDebug() const;
-
-        void mergeFrom(
-                       const FolderInfo &source,
-                       bool overwriteExisting = true
-                       );
-
-        static FolderInfo create(ElementPtr elem);
-        ElementPtr createElement() const;
-      };
-
-      ZS_DECLARE_TYPEDEF_PTR(std::list<FolderInfo>, FolderInfoList)
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark IdentityInfo
       #pragma mark
 
@@ -566,6 +516,55 @@ namespace openpeer
 
       ZS_DECLARE_TYPEDEF_PTR(std::list<PushMessageInfo>, PushMessageInfoList)
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark PushMessageFolderInfo
+      #pragma mark
+
+      struct PushMessageFolderInfo
+      {
+        enum Dispositions
+        {
+          Disposition_NA, // not applicable
+          Disposition_Update,
+          Disposition_Remove,
+          Disposition_Reset,
+        };
+
+        static const char *toString(Dispositions diposition);
+        static Dispositions toDisposition(const char *str);
+
+        Dispositions mDisposition;
+        String mName;
+        String mRenamed;
+        String mVersion;
+        ULONG mUnread;
+        ULONG mTotal;
+
+        Time mUpdateNext;
+
+        PushMessageFolderInfo() :
+          mDisposition(Disposition_NA),
+          mUnread(0),
+          mTotal(0) {}
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        void mergeFrom(
+                       const PushMessageFolderInfo &source,
+                       bool overwriteExisting = true
+                       );
+
+        static PushMessageFolderInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushMessageFolderInfo>, PushMessageFolderInfoList)
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

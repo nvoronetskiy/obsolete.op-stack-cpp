@@ -69,7 +69,7 @@ namespace openpeer
 
           ElementPtr folderEl = rootEl->findFirstChildElement("foldder");
 
-          ret->mFolderInfo = FolderInfo::create(folderEl);
+          ret->mFolderInfo = PushMessageFolderInfo::create(folderEl);
 
           if (folderEl) {
             ElementPtr messagesEl = folderEl->findFirstChildElement("messages");
