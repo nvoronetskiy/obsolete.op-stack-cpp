@@ -65,11 +65,11 @@ namespace openpeer
       #pragma mark
 
       //---------------------------------------------------------------------
-      static Log::Params Finder_slog(const char *message)
+      static Log::Params Server_slog(const char *message)
       {
-        return Log::Params(message, "Finder");
+        return Log::Params(message, "Server");
       }
-      
+
       //-----------------------------------------------------------------------
       static void merge(String &result, const String &source, bool overwrite)
       {
@@ -242,16 +242,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static ElementPtr getProtocolsDebugValueString(const Finder::ProtocolList &protocols)
+      static ElementPtr getProtocolsDebugValueString(const Server::ProtocolList &protocols)
       {
         if (protocols.size() < 1) return ElementPtr();
 
-        ElementPtr resultEl = Element::create("Finder::ProtocolList");
+        ElementPtr resultEl = Element::create("Server::ProtocolList");
 
-        for (Finder::ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
+        for (Server::ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
         {
-          ElementPtr protocolEl = Element::create("Finder::Protocol");
-          const Finder::Protocol &protocol = (*iter);
+          ElementPtr protocolEl = Element::create("Server::Protocol");
+          const Server::Protocol &protocol = (*iter);
 
           IHelper::debugAppend(protocolEl, "transport", protocol.mTransport);
           IHelper::debugAppend(protocolEl, "host", protocol.mHost);
@@ -368,93 +368,6 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
 
         return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark message::Finder
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool Finder::hasData() const
-      {
-        return (mID.hasData()) ||
-               (mProtocols.size() > 0) ||
-               ((bool)mPublicKey) ||
-               (mPriority != 0) ||
-               (mWeight != 0) ||
-               (mRegion.hasData()) ||
-               (Time() != mCreated) ||
-               (Time() != mExpires);
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr Finder::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::Finder");
-
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, getProtocolsDebugValueString(mProtocols));
-        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
-        IHelper::debugAppend(resultEl, "priority", mPriority);
-        IHelper::debugAppend(resultEl, "weight", mWeight);
-        IHelper::debugAppend(resultEl, "region", mRegion);
-        IHelper::debugAppend(resultEl, "created", mCreated);
-        IHelper::debugAppend(resultEl, "expires", mExpires);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      Finder Finder::create(ElementPtr elem)
-      {
-        Finder ret;
-
-        if (!elem) return ret;
-
-        ret.mID = IMessageHelper::getAttributeID(elem);
-
-        ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
-        if (protocolsEl) {
-          ElementPtr protocolEl = protocolsEl->findFirstChildElement("protocol");
-          while (protocolEl) {
-            Finder::Protocol protocol;
-            protocol.mTransport = IMessageHelper::getElementText(protocolEl->findFirstChildElement("transport"));
-            protocol.mHost = IMessageHelper::getElementText(protocolEl->findFirstChildElement("host"));
-
-            if ((protocol.mTransport.hasData()) ||
-                (protocol.mHost.hasData())) {
-              ret.mProtocols.push_back(protocol);
-            }
-
-            protocolEl = protocolEl->findNextSiblingElement("protocol");
-          }
-        }
-
-        ret.mRegion = IMessageHelper::getElementText(elem->findFirstChildElement("region"));
-        ret.mCreated = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
-        ret.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
-
-        try
-        {
-          ret.mPublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(IMessageHelper::getElementText(elem->findFirstChildElementChecked("key")->findFirstChildElementChecked("x509Data"))));
-          try {
-            ret.mPriority = Numeric<decltype(ret.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("priority")));
-          } catch(Numeric<decltype(ret.mPriority)>::ValueOutOfRange &) {
-          }
-          try {
-            ret.mWeight = Numeric<decltype(ret.mWeight)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("weight")));
-          } catch(Numeric<decltype(ret.mWeight)>::ValueOutOfRange &) {
-          }
-        }
-        catch(CheckFailed &) {
-          ZS_LOG_BASIC(Finder_slog("createFinder XML check failure"))
-        }
-
-        return ret;
       }
 
       //-----------------------------------------------------------------------
@@ -2053,6 +1966,96 @@ namespace openpeer
         }
 
         return namespaceGrantChallengeEl;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark message::Server
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool Server::hasData() const
+      {
+        return (mID.hasData()) ||
+               (mType.hasData()) ||
+               (mProtocols.size() > 0) ||
+               ((bool)mPublicKey) ||
+               (mPriority != 0) ||
+               (mWeight != 0) ||
+               (mRegion.hasData()) ||
+               (Time() != mCreated) ||
+               (Time() != mExpires);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr Server::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::Server");
+
+        IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "type", mType);
+        IHelper::debugAppend(resultEl, getProtocolsDebugValueString(mProtocols));
+        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
+        IHelper::debugAppend(resultEl, "priority", mPriority);
+        IHelper::debugAppend(resultEl, "weight", mWeight);
+        IHelper::debugAppend(resultEl, "region", mRegion);
+        IHelper::debugAppend(resultEl, "created", mCreated);
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      Server Server::create(ElementPtr elem)
+      {
+        Server ret;
+
+        if (!elem) return ret;
+
+        ret.mID = IMessageHelper::getAttributeID(elem);
+        ret.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
+
+        ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
+        if (protocolsEl) {
+          ElementPtr protocolEl = protocolsEl->findFirstChildElement("protocol");
+          while (protocolEl) {
+            Server::Protocol protocol;
+            protocol.mTransport = IMessageHelper::getElementTextAndDecode(protocolEl->findFirstChildElement("transport"));
+            protocol.mHost = IMessageHelper::getElementTextAndDecode(protocolEl->findFirstChildElement("host"));
+
+            if ((protocol.mTransport.hasData()) ||
+                (protocol.mHost.hasData())) {
+              ret.mProtocols.push_back(protocol);
+            }
+
+            protocolEl = protocolEl->findNextSiblingElement("protocol");
+          }
+        }
+
+        ret.mRegion = IMessageHelper::getElementText(elem->findFirstChildElement("region"));
+        ret.mCreated = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
+        ret.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
+
+        try
+        {
+          ret.mPublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(IMessageHelper::getElementText(elem->findFirstChildElementChecked("key")->findFirstChildElementChecked("x509Data"))));
+          try {
+            ret.mPriority = Numeric<decltype(ret.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("priority")));
+          } catch(Numeric<decltype(ret.mPriority)>::ValueOutOfRange &) {
+          }
+          try {
+            ret.mWeight = Numeric<decltype(ret.mWeight)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("weight")));
+          } catch(Numeric<decltype(ret.mWeight)>::ValueOutOfRange &) {
+          }
+        }
+        catch(CheckFailed &) {
+          ZS_LOG_BASIC(Server_slog("check failure"))
+        }
+
+        return ret;
       }
 
       //-----------------------------------------------------------------------

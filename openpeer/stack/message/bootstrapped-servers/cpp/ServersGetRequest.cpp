@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetRequest.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/Stringize.h>
@@ -41,32 +41,33 @@ namespace openpeer
   {
     namespace message
     {
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
         //---------------------------------------------------------------------
-        FindersGetRequestPtr FindersGetRequest::convert(MessagePtr message)
+        ServersGetRequestPtr ServersGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FindersGetRequest>(message);
+          return dynamic_pointer_cast<ServersGetRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        FindersGetRequest::FindersGetRequest() :
+        ServersGetRequest::ServersGetRequest() :
           mTotalFinders(0)
         {
         }
 
         //---------------------------------------------------------------------
-        FindersGetRequestPtr FindersGetRequest::create()
+        ServersGetRequestPtr ServersGetRequest::create()
         {
-          FindersGetRequestPtr ret(new FindersGetRequest);
+          ServersGetRequestPtr ret(new ServersGetRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool FindersGetRequest::hasAttribute(AttributeTypes type) const
+        bool ServersGetRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
+            case AttributeType_Type:          return mType.hasData();
             case AttributeType_TotalServers:  return (mTotalFinders > 0);
             default:                          break;
           }
@@ -74,13 +75,16 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr FindersGetRequest::encode()
+        DocumentPtr ServersGetRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+          ElementPtr rootEl = ret->getFirstChildElement();
 
+          if (hasAttribute(AttributeType_Type)) {
+            rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("type", mType));
+          }
           if (hasAttribute(AttributeType_TotalServers)) {
-            root->adoptAsLastChild(IMessageHelper::createElementWithNumber("servers", string(mTotalFinders)));
+            rootEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("servers", string(mTotalFinders)));
           }
           return ret;
         }

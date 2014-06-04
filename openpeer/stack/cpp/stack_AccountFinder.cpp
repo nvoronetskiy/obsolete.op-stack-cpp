@@ -302,7 +302,7 @@ namespace openpeer
       }
 
       //---------------------------------------------------------------------
-      Finder AccountFinder::getCurrentFinder(
+      Server AccountFinder::getCurrentFinder(
                                              String *outServerAgent,
                                              IPAddress *outIPAddress
                                              ) const

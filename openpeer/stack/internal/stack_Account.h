@@ -38,7 +38,7 @@
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 
 #include <openpeer/stack/message/peer-finder/PeerLocationFindResult.h>
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetResult.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
 
 #include <openpeer/stack/IAccount.h>
 #include <openpeer/stack/IPeer.h>
@@ -75,7 +75,7 @@ namespace openpeer
 
       ZS_DECLARE_USING_PTR(message::peer_finder, PeerLocationFindRequest)
       ZS_DECLARE_USING_PTR(message::peer_finder, PeerLocationFindResult)
-      ZS_DECLARE_USING_PTR(message::bootstrapped_finder, FindersGetResult)
+      ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetResult)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -94,7 +94,7 @@ namespace openpeer
         virtual IPeerFilesPtr getPeerFiles() const = 0;
 
         virtual bool extractNextFinder(
-                                       Finder &outFinder,
+                                       Server &outFinder,
                                        IPAddress &outFinderIP
                                        ) = 0;
       };
@@ -309,7 +309,7 @@ namespace openpeer
                       public IBackgroundingDelegate,
                       public IKeyGeneratorDelegate,
                       public IMessageMonitorResultDelegate<PeerLocationFindResult>,
-                      public IMessageMonitorResultDelegate<FindersGetResult>
+                      public IMessageMonitorResultDelegate<ServersGetResult>
       {
       public:
         friend interaction IAccountFactory;
@@ -417,7 +417,7 @@ namespace openpeer
         // (duplicate) virtual IPeerFilesPtr getPeerFiles() const;
 
         virtual bool extractNextFinder(
-                                       Finder &outFinder,
+                                       Server &outFinder,
                                        IPAddress &outFinderIP
                                        );
 
@@ -608,12 +608,12 @@ namespace openpeer
 
         virtual bool handleMessageMonitorResultReceived(
                                                         IMessageMonitorPtr monitor,
-                                                        FindersGetResultPtr result
+                                                        ServersGetResultPtr result
                                                         );
 
         virtual bool handleMessageMonitorErrorResultReceived(
                                                              IMessageMonitorPtr monitor,
-                                                             FindersGetResultPtr ignore, // will always be NULL
+                                                             ServersGetResultPtr ignore, // will always be NULL
                                                              MessageResultPtr result
                                                              );
 
@@ -834,7 +834,7 @@ namespace openpeer
         Time mFinderRetryAfter;
         Duration mLastRetryFinderAfterDuration;
 
-        FinderList mAvailableFinders;
+        ServerList mAvailableFinders;
         IDNS::SRVResultPtr mAvailableFinderSRVResult;
         IMessageMonitorPtr mFindersGetMonitor;
         IDNSQueryPtr mFinderDNSLookup;

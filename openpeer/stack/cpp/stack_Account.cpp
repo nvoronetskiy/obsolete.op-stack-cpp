@@ -51,7 +51,7 @@
 //#include <openpeer/stack/message/peer-finder/PeerLocationFindNotify.h>
 #include <openpeer/stack/message/peer-finder/ChannelMapNotify.h>
 
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetRequest.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
 
 #include <openpeer/stack/ICache.h>
 #include <openpeer/stack/IPeerFilePublic.h>
@@ -113,8 +113,8 @@ namespace openpeer
       using message::peer_finder::ChannelMapNotify;
       using message::peer_finder::ChannelMapNotifyPtr;
 
-      using message::bootstrapped_finder::FindersGetRequest;
-      using message::bootstrapped_finder::FindersGetRequestPtr;
+      using message::bootstrapped_servers::ServersGetRequest;
+      using message::bootstrapped_servers::ServersGetRequestPtr;
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -137,11 +137,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static String getMultiplexedJsonTCPTransport(const Finder &finder)
+      static String getMultiplexedJsonTCPTransport(const Server &server)
       {
-        for (Finder::ProtocolList::const_iterator iter = finder.mProtocols.begin(); iter != finder.mProtocols.end(); ++iter)
+        for (Server::ProtocolList::const_iterator iter = server.mProtocols.begin(); iter != server.mProtocols.end(); ++iter)
         {
-          const Finder::Protocol &protocol = (*iter);
+          const Server::Protocol &protocol = (*iter);
 
           if (OPENPEER_STACK_ACCOUNT_MULTIPLEXED_JSON_TCP_TRANSPORT_PROTOCOL_TYPE == protocol.mTransport) {
             return protocol.mHost;
@@ -378,7 +378,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       bool Account::extractNextFinder(
-                                      Finder &outFinder,
+                                      Server &outFinder,
                                       IPAddress &outFinderIP
                                       )
       {
@@ -543,7 +543,7 @@ namespace openpeer
             return info;
           }
 
-          Finder finder = mFinder->getCurrentFinder(&(info->mUserAgent), &(info->mIPAddress));
+          Server finder = mFinder->getCurrentFinder(&(info->mUserAgent), &(info->mIPAddress));
 
           info->mDeviceID = finder.mID;
           info->mHost = getMultiplexedJsonTCPTransport(finder);
@@ -1517,7 +1517,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::handleMessageMonitorResultReceived(
                                                        IMessageMonitorPtr monitor,
-                                                       FindersGetResultPtr result
+                                                       ServersGetResultPtr result
                                                        )
       {
         ZS_LOG_DEBUG(log("finders get received result") + IMessageMonitor::toDebug(monitor))
@@ -1532,7 +1532,7 @@ namespace openpeer
         mFindersGetMonitor->cancel();
         mFindersGetMonitor.reset();
 
-        mAvailableFinders = result->finders();
+        mAvailableFinders = result->servers();
         if (mAvailableFinders.size() < 1) {
           ZS_LOG_ERROR(Detail, log("finders get failed to return any finders"))
           handleFinderRelatedFailure();
@@ -1546,7 +1546,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool Account::handleMessageMonitorErrorResultReceived(
                                                             IMessageMonitorPtr monitor,
-                                                            FindersGetResultPtr ignore,
+                                                            ServersGetResultPtr ignore,
                                                             MessageResultPtr result
                                                             )
       {
@@ -2361,18 +2361,19 @@ namespace openpeer
 
           ZS_THROW_BAD_STATE_IF(!network)
 
-          FindersGetRequestPtr request = FindersGetRequest::create();
+          ServersGetRequestPtr request = ServersGetRequest::create();
           request->domain(getDomain());
+          request->type("finder");
           request->totalFinders(OPENPEER_STACK_FINDERS_GET_TOTAL_SERVERS_TO_GET);
 
-          mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<FindersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-finders", "finders-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
+          mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-servers", "servers-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
 
           ZS_LOG_DEBUG(log("attempting to get finders"))
           return false;
         }
 
         if (!mAvailableFinderSRVResult) {
-          Finder &finder = mAvailableFinders.front();
+          Server &finder = mAvailableFinders.front();
           String srv = getMultiplexedJsonTCPTransport(finder);
           if (srv.isEmpty()) {
             ZS_LOG_ERROR(Detail, log("finder missing SRV name"))

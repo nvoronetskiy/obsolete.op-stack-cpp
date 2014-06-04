@@ -39,6 +39,7 @@
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
+#include <openpeer/services/ITCPMessaging.h>
 
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
@@ -107,7 +108,10 @@ namespace openpeer
         mGrantSession(grantSession),
 
         mInactivityTimeout(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT))),
-        mLastActivity(zsLib::now())
+        mLastActivity(zsLib::now()),
+
+        mDefaultLastRetryDuration(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS))),
+        mLastRetryDuration(mDefaultLastRetryDuration)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -301,6 +305,27 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::deletePushMessage(const char *messageID)
       {
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => ITimerDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onTimer(TimerPtr timer)
+      {
+        AutoRecursiveLock lock(*this);
+        ZS_LOG_DEBUG(log("on timer"))
+
+        if (timer == mRetryTimer) {
+          mRetryTimer->cancel();
+          mRetryTimer.reset();
+        }
+        step();
       }
 
       //-----------------------------------------------------------------------
@@ -807,6 +832,11 @@ namespace openpeer
         if (!stepBootstrapper()) goto post_step;
         if (!stepGrantLock()) goto post_step;
 
+        if (!stepLockboxAccess()) goto post_step;
+        if (!stepShouldConnect()) goto post_step;
+        if (!stepConnect()) goto post_step;
+        if (!stepAccess()) goto post_step;
+
         if (!stepGrantLockClear()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
 
@@ -874,6 +904,256 @@ namespace openpeer
         return true;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepLockboxAccess()
+      {
+        ZS_LOG_TRACE(log("step - lockbox access"))
+
+        WORD errorCode = 0;
+        String reason;
+        switch (mLockbox->getState(&errorCode, &reason)) {
+          case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
+          case IServiceLockboxSession::SessionState_Ready:
+          {
+            break;
+          }
+          case IServiceLockboxSession::SessionState_Shutdown:
+          {
+            ZS_LOG_ERROR(Detail, log("lockbox session shutdown thus shutting down mailbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
+            setError(errorCode, reason);
+            cancel();
+            return false;
+          }
+        }
+
+        if (mLockboxInfo.mAccessSecret.hasData()) {
+          ZS_LOG_TRACE(log("already have lockbox acess secret"))
+          return true;
+        }
+
+        mLockboxInfo = mLockbox->getLockboxInfo();
+
+        if (mLockboxInfo.mAccessSecret.hasData()) {
+          ZS_LOG_DEBUG(log("obtained lockbox access secret"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("waiting on lockbox to login"))
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepShouldConnect()
+      {
+        ZS_LOG_TRACE(log("step should connect"))
+
+        Time now = zsLib::now();
+
+        bool shouldConnect = (mLastActivity + mInactivityTimeout > now);
+
+        if (!shouldConnect) {
+          if (!mTCPMessaging) {
+            setState(SessionState_Sleeping);
+            ZS_LOG_TRACE(log("no need for connection and TCP messaging is already shutdown"))
+            return false;
+          }
+
+          // attempt to shutdown the TCP messaging channel
+          ZS_LOG_TRACE(log("telling TCP messaging to shutdown (due to inactivity)"))
+          mTCPMessaging->shutdown();
+
+          if (ITCPMessaging::SessionState_Shutdown != mTCPMessaging->getState()) {
+            ZS_LOG_TRACE(log("waiting to shutdown TCP messaging"))
+            setState(SessionState_GoingToSleep);
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("TCP messaging is now shutdown"))
+
+          mTCPMessaging.reset();
+          setState(SessionState_Sleeping);
+          return false;
+        }
+
+        ZS_LOG_TRACE(log("connection is required due to activity"))
+
+        if (Time() != mDoNotRetryConnectionBefore) {
+          if (now < mDoNotRetryConnectionBefore) {
+            if (!mRetryTimer) {
+              Duration difference = mDoNotRetryConnectionBefore - now;
+              if (difference < Seconds(1))
+                difference = Seconds(1);
+
+              ZS_LOG_DEBUG(log("needs to reconnect via TCP but must try again in the later") + ZS_PARAM("wait time (s)", difference))
+              mRetryTimer = Timer::create(mThisWeak.lock(), difference, false);
+
+              return false;
+            }
+
+            ZS_LOG_TRACE(log("waiting to retry TCP connection later"))
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("okay to retry connection now"))
+          mDoNotRetryConnectionBefore = Time();
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepDNS()
+      {
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepConnect()
+      {
+        ZS_LOG_TRACE(log("step connect"))
+
+        if (mRetryTimer) {
+          ZS_LOG_DEBUG(log("cancelling retry timer"))
+          mRetryTimer->cancel();
+          mRetryTimer.reset();
+        }
+
+        if (mTCPMessaging) {
+          WORD errorCode = 0;
+          String reason;
+          switch (mTCPMessaging->getState(&errorCode, &reason)) {
+            case ITCPMessaging::SessionState_Pending:
+            {
+              ZS_LOG_TRACE(log("waiting for TCP messaging to connect"))
+              setState(SessionState_Connecting);
+              return false;
+            }
+            case ITCPMessaging::SessionState_Connected:
+            {
+              ZS_LOG_TRACE(log("TCP messaging is connected"))
+
+              mLastRetryDuration = mDefaultLastRetryDuration;
+              mDoNotRetryConnectionBefore = Time();
+              break;
+            }
+            case ITCPMessaging::SessionState_ShuttingDown:
+            case ITCPMessaging::SessionState_Shutdown:
+            {
+              mDoNotRetryConnectionBefore = zsLib::now() + mLastRetryDuration;
+              ZS_LOG_WARNING(Detail, log("TCP messaging unexpectedly shutdown thus will retry again later") + ZS_PARAM("later", mDoNotRetryConnectionBefore) + ZS_PARAM("duration (s)", mLastRetryDuration))
+              mLastRetryDuration = mLastRetryDuration + mLastRetryDuration;
+
+              Duration maxDuration = Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS));
+              if (mLastRetryDuration > maxDuration) {
+                mLastRetryDuration = maxDuration;
+              }
+
+#define WARNING_CLEAR_OUT_SESSION_STATE 1
+#define WARNING_CLEAR_OUT_SESSION_STATE 2
+
+              setState(SessionState_Connecting);
+              return false;
+            }
+          }
+        }
+
+        if (mTCPReceiveStream) {
+          mTCPReceiveStream->cancel();
+          mTCPReceiveStream.reset();
+        }
+        if (mTCPSendStream) {
+          mTCPSendStream->cancel();
+          mTCPSendStream.reset();
+        }
+
+        mTCPReceiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
+
+        IPAddress bogus;
+
+        mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mTCPReceiveStream, mTCPSendStream, true, bogus);
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepAccess()
+      {
+//        if (mLockboxAccessMonitor) {
+//          ZS_LOG_TRACE(log("waiting for lockbox access monitor to complete"))
+//          return false;
+//        }
+//
+//        if (mLockboxInfo.mAccessToken.hasData()) {
+//          ZS_LOG_TRACE(log("already have a lockbox access key"))
+//          return true;
+//        }
+//
+//        setState(SessionState_Pending);
+//
+//        LockboxAccessRequestPtr request = LockboxAccessRequest::create();
+//        request->domain(mBootstrappedNetwork->getDomain());
+//
+//        if (mLoginIdentity) {
+//          IdentityInfo identityInfo = mLoginIdentity->getIdentityInfo();
+//          request->identityInfo(identityInfo);
+//
+//          LockboxInfo lockboxInfo = mLoginIdentity->getLockboxInfo();
+//          mLockboxInfo.mergeFrom(lockboxInfo);
+//
+//          if (!IHelper::isValidDomain(mLockboxInfo.mDomain)) {
+//            ZS_LOG_DEBUG(log("domain from identity is invalid, reseting to default domain") + ZS_PARAM("domain", mLockboxInfo.mDomain))
+//
+//            mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
+//
+//            // account/keying information must also be incorrect if domain is not valid
+//            mLockboxInfo.mKey.reset();
+//          }
+//
+//          if (mBootstrappedNetwork->getDomain() != mLockboxInfo.mDomain) {
+//            ZS_LOG_DEBUG(log("default bootstrapper is not to be used for this lockbox as an altenative lockbox must be used thus preparing replacement bootstrapper"))
+//
+//            mBootstrappedNetwork = BootstrappedNetwork::convert(IBootstrappedNetwork::prepare(mLockboxInfo.mDomain, mThisWeak.lock()));
+//            return false;
+//          }
+//
+//          if (mForceNewAccount) {
+//            ZS_LOG_DEBUG(log("forcing a new lockbox account to be created for the identity"))
+//            get(mForceNewAccount) = false;
+//            mLockboxInfo.mKey.reset();
+//          }
+//
+//          if (!mLockboxInfo.mKey) {
+//            mLockboxInfo.mAccountID.clear();
+//            mLockboxInfo.mKey.reset();
+//            mLockboxInfo.mHash.clear();
+//            mLockboxInfo.mResetFlag = true;
+//
+//            mLockboxInfo.mKey = IHelper::random(32);
+//
+//            ZS_LOG_DEBUG(log("created new lockbox key") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
+//          }
+//
+//          ZS_THROW_BAD_STATE_IF(!mLockboxInfo.mKey)
+//
+//          ZS_LOG_DEBUG(log("creating lockbox key hash") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
+//          mLockboxInfo.mHash = IHelper::convertToHex(*IHelper::hash(*mLockboxInfo.mKey));
+//        }
+//
+//        mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
+//
+//        request->grantID(mGrantSession->getGrantID());
+//        request->lockboxInfo(mLockboxInfo);
+//
+//        NamespaceInfoMap namespaces;
+//        getNamespaces(namespaces);
+//        request->namespaceURLs(namespaces);
+//
+//        mLockboxAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
+//        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
+
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepGrantLockClear()
       {

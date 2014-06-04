@@ -53,11 +53,17 @@
 #include <openpeer/stack/message/push-mailbox/ListFetchResult.h>
 #include <openpeer/stack/message/push-mailbox/RegisterPushResult.h>
 
+#include <openpeer/services/IDNS.h>
+#include <openpeer/services/ITCPMessaging.h>
+#include <openpeer/services/ITransportStream.h>
 #include <openpeer/services/IWakeDelegate.h>
 
 #include <zsLib/MessageQueueAssociator.h>
+#include <zsLib/Timer.h>
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-max-retry-connection-in-seconds"
 
 namespace openpeer
 {
@@ -66,6 +72,10 @@ namespace openpeer
     namespace internal
     {
       interaction IBootstrappedNetworkForServices;
+
+      ZS_DECLARE_USING_PTR(openpeer::services, IDNSDelegate)
+      ZS_DECLARE_USING_PTR(openpeer::services, ITCPMessagingDelegate)
+      ZS_DECLARE_USING_PTR(openpeer::services, ITransportStreamReaderDelegate)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -79,6 +89,10 @@ namespace openpeer
                                         public zsLib::MessageQueueAssociator,
                                         public SharedRecursiveLock,
                                         public IServicePushMailboxSession,
+                                        public ITimerDelegate,
+                                        public ITCPMessagingDelegate,
+                                        public ITransportStreamReaderDelegate,
+                                        public IDNSDelegate,
                                         public IWakeDelegate,
                                         public IBootstrappedNetworkDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
@@ -202,6 +216,37 @@ namespace openpeer
 
         virtual void markPushMessageRead(const char *messageID);
         virtual void deletePushMessage(const char *messageID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ITCPMessagingDelegate
+        #pragma mark
+
+        virtual void onTCPMessagingStateChanged(
+                                                ITCPMessagingPtr messaging,
+                                                ITCPMessagingDelegate::SessionStates state
+                                                );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ITransportStreamReaderDelegate
+        #pragma mark
+
+        virtual void onTransportStreamReaderReady(ITransportStreamReaderPtr reader);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => IDNSDelegate
+        #pragma mark
+
+        virtual void onLookupCompleted(IDNSQueryPtr query);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -427,6 +472,13 @@ namespace openpeer
         void step();
         bool stepBootstrapper();
         bool stepGrantLock();
+
+        bool stepLockboxAccess();
+        bool stepShouldConnect();
+        bool stepDNS();
+        bool stepConnect();
+        bool stepAccess();
+
         bool stepGrantLockClear();
         bool stepGrantChallenge();
 
@@ -459,7 +511,13 @@ namespace openpeer
         String mLastErrorReason;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
+
+        ITCPMessagingPtr mTCPMessaging;
+        ITransportStreamPtr mTCPReceiveStream;
+        ITransportStreamPtr mTCPSendStream;
+
         UseServiceLockboxSessionPtr mLockbox;
+        LockboxInfo mLockboxInfo;
 
         UseServiceNamespaceGrantSessionPtr mGrantSession;
         IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
@@ -469,6 +527,11 @@ namespace openpeer
 
         Duration mInactivityTimeout;
         Time mLastActivity;
+
+        Duration mDefaultLastRetryDuration;
+        Duration mLastRetryDuration;
+        Time mDoNotRetryConnectionBefore;
+        TimerPtr mRetryTimer;
       };
 
       //-----------------------------------------------------------------------

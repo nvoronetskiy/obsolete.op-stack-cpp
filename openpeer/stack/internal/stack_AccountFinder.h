@@ -101,7 +101,7 @@ namespace openpeer
                                                Duration duration
                                                ) const = 0;
 
-        virtual Finder getCurrentFinder(
+        virtual Server getCurrentFinder(
                                         String *outServerAgent = NULL,
                                         IPAddress *outIPAddress = NULL
                                         ) const = 0;
@@ -194,7 +194,7 @@ namespace openpeer
                                                Duration timeout
                                                ) const;
 
-        virtual Finder getCurrentFinder(
+        virtual Server getCurrentFinder(
                                         String *outServerAgent = NULL,
                                         IPAddress *outIPAddress = NULL
                                         ) const;
@@ -347,7 +347,7 @@ namespace openpeer
         IMessageMonitorPtr mSessionKeepAliveMonitor;
         IMessageMonitorPtr mSessionDeleteMonitor;
 
-        Finder mFinder;
+        Server mFinder;
         IPAddress mFinderIP;
         String mServerAgent;
         Time mSessionCreatedTime;

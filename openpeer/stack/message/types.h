@@ -136,45 +136,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Finder
-      #pragma mark
-
-      struct Finder
-      {
-        struct Protocol
-        {
-          String mTransport;
-          String mHost;
-        };
-        typedef std::list<Protocol> ProtocolList;
-
-        String mID;
-        ProtocolList mProtocols;
-        IRSAPublicKeyPtr mPublicKey;
-        WORD  mPriority;
-        WORD  mWeight;
-        String mRegion;
-        Time mCreated;
-        Time mExpires;
-
-        Finder() :
-          mPriority(0),
-          mWeight(0)
-        {}
-
-        bool hasData() const;
-        ElementPtr toDebug() const;
-
-        static Finder create(ElementPtr elem);
-      };
-
-      ZS_DECLARE_TYPEDEF_PTR(std::list<Finder>, FinderList)
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark IdentityInfo
       #pragma mark
 
@@ -614,6 +575,46 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark Server
+      #pragma mark
+
+      struct Server
+      {
+        struct Protocol
+        {
+          String mTransport;
+          String mHost;
+        };
+        typedef std::list<Protocol> ProtocolList;
+
+        String mID;
+        String mType;
+        ProtocolList mProtocols;
+        IRSAPublicKeyPtr mPublicKey;
+        WORD  mPriority;
+        WORD  mWeight;
+        String mRegion;
+        Time mCreated;
+        Time mExpires;
+
+        Server() :
+          mPriority(0),
+          mWeight(0)
+          {}
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        static Server create(ElementPtr elem);
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<Server>, ServerList)
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark Service
       #pragma mark
 
@@ -717,11 +718,11 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(ServicesGetResult)
       }
 
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
-        ZS_DECLARE_CLASS_PTR(MessageFactoryBootstrappedFinder)
-        ZS_DECLARE_CLASS_PTR(FindersGetRequest)
-        ZS_DECLARE_CLASS_PTR(FindersGetResult)
+        ZS_DECLARE_CLASS_PTR(MessageFactoryBootstrappedServers)
+        ZS_DECLARE_CLASS_PTR(ServersGetRequest)
+        ZS_DECLARE_CLASS_PTR(ServersGetResult)
       }
 
       namespace certificates

@@ -46,6 +46,7 @@
 #include <openpeer/stack/message/rolodex/RolodexContactsGetResult.h>
 
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
+#include <openpeer/stack/internal/stack_IServiceLockboxSessionForInternal.h>
 
 #include <openpeer/services/IWakeDelegate.h>
 
@@ -109,8 +110,6 @@ namespace openpeer
 
         virtual bool isAssociated() const = 0;
 
-        virtual void notifyStateChanged() = 0;
-
         virtual bool isLoginComplete() const = 0;
         virtual bool isShutdown() const = 0;
 
@@ -128,9 +127,11 @@ namespace openpeer
 
       class ServiceIdentitySession : public Noop,
                                      public zsLib::MessageQueueAssociator,
+                                     public SharedRecursiveLock,
                                      public IServiceIdentitySession,
                                      public IMessageSource,
                                      public IServiceIdentitySessionForServiceLockbox,
+                                     public IServiceLockboxSessionForInternalDelegate,
                                      public IWakeDelegate,
                                      public IBootstrappedNetworkDelegate,
                                      public zsLib::ITimerDelegate,
@@ -174,8 +175,7 @@ namespace openpeer
         ServiceIdentitySession(Noop) :
           Noop(true),
           MessageQueueAssociator(IMessageQueuePtr()),
-          mLockPtr(new RecursiveLock),
-          mLock(*mLockPtr) {}
+          SharedRecursiveLock(SharedRecursiveLock::create()) {}
 
         void init();
 
@@ -289,13 +289,18 @@ namespace openpeer
 
         virtual bool isAssociated() const;
 
-        virtual void notifyStateChanged();
-
         virtual bool isLoginComplete() const;
         virtual bool isShutdown() const;
 
         virtual IdentityInfo getIdentityInfo() const;
         virtual LockboxInfo getLockboxInfo() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceIdentitySession => IServiceLockboxSessionForInternalDelegate
+        #pragma mark
+
+        virtual void onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -452,8 +457,6 @@ namespace openpeer
         #pragma mark ServiceIdentitySession => (internal)
         #pragma mark
 
-        RecursiveLock &getLock() const;
-
         Log::Params log(const char *message) const;
         Log::Params debug(const char *message) const;
 
@@ -493,9 +496,6 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        mutable UseRecursiveLockPtr mLockPtr;
-        UseRecursiveLockPtr mAssociatedLockPtr;
-        UseRecursiveLock &mLock;
         ServiceIdentitySessionWeakPtr mThisWeak;
         ServiceIdentitySessionPtr mGraciousShutdownReference;
 
@@ -506,7 +506,9 @@ namespace openpeer
         String mLastErrorReason;
         
         IServiceIdentitySessionDelegatePtr mDelegate;
+
         UseServiceLockboxSessionWeakPtr mAssociatedLockbox;
+        IServiceLockboxSessionForInternalSubscriptionPtr mAssociatedLockboxSubscription;
         AutoBool mKillAssociation;
 
         IdentityInfo mIdentityInfo;

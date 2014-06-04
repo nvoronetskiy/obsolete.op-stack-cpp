@@ -293,8 +293,7 @@ namespace openpeer
                                                      const char *outerFrameURLUponReload
                                                      ) :
         zsLib::MessageQueueAssociator(queue),
-        mLockPtr(new RecursiveLock),
-        mLock(*mLockPtr),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mDelegate(delegate ? IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceIdentitySessionDelegatePtr()),
         mAssociatedLockbox(existingLockbox),
         mProviderBootstrappedNetwork(providerNetwork),
@@ -323,7 +322,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::init()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
+
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+
+        if (lockbox) {
+          ServiceIdentitySessionPtr pThis = mThisWeak.lock();
+          mAssociatedLockboxSubscription = lockbox->subscribe(pThis);
+        }
 
         if (mIdentityBootstrappedNetwork) {
           UseBootstrappedNetwork::prepare(mIdentityBootstrappedNetwork->getDomain(), mThisWeak.lock());
@@ -475,7 +481,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServiceIdentityPtr ServiceIdentitySession::getService() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (mIdentityBootstrappedNetwork) {
           return BootstrappedNetwork::convert(mIdentityBootstrappedNetwork);
         }
@@ -488,7 +494,7 @@ namespace openpeer
                                                                               String *outLastErrorReason
                                                                               ) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
@@ -497,7 +503,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::isDelegateAttached() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return ((bool)mDelegate);
       }
 
@@ -512,7 +518,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("attach delegate called") + ZS_PARAM("frame URL", outerFrameURLUponReload))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
         mOuterFrameURLUponReload = (outerFrameURLUponReload ? String(outerFrameURLUponReload) : String());
@@ -546,7 +552,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("attach delegate and preautothorize login called") + ZS_PARAM("access token", identityAccessToken) + ZS_PARAM("access secret", identityAccessSecret))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
 
@@ -569,14 +575,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServiceIdentitySession::getIdentityURI() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mIdentityInfo.mURI.hasData() ? mIdentityInfo.mURI : mIdentityInfo.mBase;
       }
 
       //-----------------------------------------------------------------------
       String ServiceIdentitySession::getIdentityProviderDomain() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (mActiveBootstrappedNetwork) {
           return mActiveBootstrappedNetwork->getDomain();
         }
@@ -586,7 +592,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::getIdentityInfo(IdentityInfo &outIdentityInfo) const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         outIdentityInfo = mPreviousLookupInfo;
         outIdentityInfo.mergeFrom(mIdentityInfo, true);
@@ -595,7 +601,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServiceIdentitySession::getInnerBrowserWindowFrameURL() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (!mActiveBootstrappedNetwork) {
           ZS_LOG_WARNING(Detail, log("attempted to get inner browser window frame URL but no active bootstrapper is ready yet"))
           return String();
@@ -610,7 +616,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::notifyBrowserWindowVisible()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("browser window visible"))
         get(mBrowserWindowVisible) = true;
         step();
@@ -619,7 +625,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::notifyBrowserWindowClosed()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("browser window close called"))
         get(mBrowserWindowClosed) = true;
         step();
@@ -628,7 +634,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       DocumentPtr ServiceIdentitySession::getNextMessageForInnerBrowerWindowFrame()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (mPendingMessagesToDeliver.size() < 1) return DocumentPtr();
 
         DocumentMessagePair resultPair = mPendingMessagesToDeliver.front();
@@ -687,7 +693,7 @@ namespace openpeer
           return;
         }
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("cannot handle message when shutdown"))
@@ -754,7 +760,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::startRolodexDownload(const char *inLastDownloadedVersion)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("allowing rolodex downloading to start"))
 
@@ -766,7 +772,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::refreshRolodexContacts()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("forcing rolodex server to refresh its contact list"))
 
@@ -782,7 +788,7 @@ namespace openpeer
                                                                 IdentityInfoListPtr &outRolodexContacts
                                                                 )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         bool refreshed = (Time() != mFreshDownload);
         mFreshDownload = Time();
@@ -809,7 +815,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::cancel()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("already shutdown"))
@@ -866,6 +872,11 @@ namespace openpeer
         mTimer.reset();
 
         setState(SessionState_Shutdown);
+
+        if (mAssociatedLockboxSubscription) {
+          mAssociatedLockboxSubscription->cancel();
+          mAssociatedLockboxSubscription.reset();
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -921,8 +932,7 @@ namespace openpeer
                                                                    NULL
                                                                    ));
         pThis->mThisWeak = pThis;
-        pThis->mAssociatedLockbox = lockbox;
-        pThis->mAssociatedLockPtr = lockbox->getLockPtr();
+        pThis->setLock(lockbox->getLock());
         pThis->mIdentityInfo.mURI = identityURI;
         pThis->mIdentityInfo.mReloginKey = String(reloginKey);
         pThis->init();
@@ -941,17 +951,23 @@ namespace openpeer
         //       associated yet). And if for some reason it was associated then
         //       they share the same lock anyway so it's still safe.
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("associate called"))
-        mAssociatedLockPtr = lockbox->getLockPtr();
+        setLock(lockbox->getLock());
         mAssociatedLockbox = lockbox;
+
+        if (lockbox) {
+          ServiceIdentitySessionPtr pThis = mThisWeak.lock();
+          mAssociatedLockboxSubscription = lockbox->subscribe(pThis);
+        }
+
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::killAssociation(ServiceLockboxSessionPtr peerContact)
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("kill associate called"))
 
@@ -965,6 +981,10 @@ namespace openpeer
 
         mAssociatedLockbox.reset();
         get(mKillAssociation) = true;
+        if (mAssociatedLockboxSubscription) {
+          mAssociatedLockboxSubscription->cancel();
+          mAssociatedLockboxSubscription.reset();
+        }
 
         if (mIdentityAccessLockboxUpdateMonitor) {
           mIdentityAccessLockboxUpdateMonitor->cancel();
@@ -990,43 +1010,52 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::isAssociated() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return (bool)mAssociatedLockbox.lock();
-      }
-
-      //-----------------------------------------------------------------------
-      void ServiceIdentitySession::notifyStateChanged()
-      {
-        ZS_LOG_DEBUG(log("notify state changed"))
-        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::isLoginComplete() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mIdentityInfo.mAccessToken.hasData();
       }
 
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::isShutdown() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return SessionState_Shutdown == mCurrentState;
       }
 
       //-----------------------------------------------------------------------
       IdentityInfo ServiceIdentitySession::getIdentityInfo() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mIdentityInfo;
       }
 
       //-----------------------------------------------------------------------
       LockboxInfo ServiceIdentitySession::getLockboxInfo() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         return mLockboxInfo;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServiceIdentitySession => IServiceLockboxSessionForInternalDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServiceIdentitySession::onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr inSession)
+      {
+        ZS_LOG_DEBUG(log("on service lockbox session state changed"))
+        AutoRecursiveLock lock(*this);
+        step();
       }
 
       //-----------------------------------------------------------------------
@@ -1040,7 +1069,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::onWake()
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("on step"))
         step();
       }
@@ -1058,7 +1087,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("bootstrapper reported complete"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1069,7 +1098,7 @@ namespace openpeer
       void ServiceIdentitySession::onTimer(TimerPtr timer)
       {
         ZS_LOG_DEBUG(log("on timer fired"))
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         mTimer.reset();
 
@@ -1089,7 +1118,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("namespace grant waits have completed, can try again to obtain a wait (if waiting)"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1109,7 +1138,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("namespace grant query completed"))
 
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         step();
       }
 
@@ -1127,7 +1156,7 @@ namespace openpeer
                                                                       IdentityAccessLockboxUpdateResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityAccessLockboxUpdateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1151,7 +1180,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityAccessLockboxUpdateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1179,7 +1208,7 @@ namespace openpeer
                                                                       IdentityLookupUpdateResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityLookupUpdateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1201,7 +1230,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityLookupUpdateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1229,7 +1258,7 @@ namespace openpeer
                                                                       IdentityAccessRolodexCredentialsGetResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityAccessRolodexCredentialsGetMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1257,7 +1286,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityAccessRolodexCredentialsGetMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1293,7 +1322,7 @@ namespace openpeer
                                                                       IdentityLookupResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityLookupMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1366,7 +1395,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mIdentityLookupMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1394,7 +1423,7 @@ namespace openpeer
                                                                       RolodexAccessResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexAccessMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1430,7 +1459,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexAccessMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1458,7 +1487,7 @@ namespace openpeer
                                                                       RolodexNamespaceGrantChallengeValidateResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexNamespaceGrantChallengeValidateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1478,7 +1507,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexNamespaceGrantChallengeValidateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1506,7 +1535,7 @@ namespace openpeer
                                                                       RolodexContactsGetResultPtr result
                                                                       )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexContactsGetMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1551,7 +1580,7 @@ namespace openpeer
                                                                            message::MessageResultPtr result
                                                                            )
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
         if (monitor != mRolodexContactsGetMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
@@ -1592,13 +1621,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      RecursiveLock &ServiceIdentitySession::getLock() const
-      {
-        if (mAssociatedLockPtr) return *mAssociatedLockPtr;
-        return mLock;
-      }
-
-      //-----------------------------------------------------------------------
       Log::Params ServiceIdentitySession::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("ServiceIdentitySession");
@@ -1615,7 +1637,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr ServiceIdentitySession::toDebug() const
       {
-        AutoRecursiveLock lock(getLock());
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("ServiceIdentitySession");
 
@@ -1628,7 +1650,9 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+
         IHelper::debugAppend(resultEl, "associated lockbox", (bool)mAssociatedLockbox.lock());
+        IHelper::debugAppend(resultEl, "associated lockbox subscription", (bool)mAssociatedLockboxSubscription);
         IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
 
         IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());

@@ -32,7 +32,7 @@
 #pragma once
 
 #include <openpeer/stack/message/MessageResult.h>
-#include <openpeer/stack/message/bootstrapped-finder/MessageFactoryBootstrappedFinder.h>
+#include <openpeer/stack/message/bootstrapped-servers/MessageFactoryBootstrappedServers.h>
 
 namespace openpeer
 {
@@ -40,37 +40,37 @@ namespace openpeer
   {
     namespace message
     {
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
-        class FindersGetResult : public MessageResult
+        class ServersGetResult : public MessageResult
         {
         public:
           enum AttributeTypes
           {
-            AttributeType_Finders = AttributeType_Last + 1,
+            AttributeType_Servers = AttributeType_Last + 1,
           };
 
         public:
-          static FindersGetResultPtr convert(MessagePtr message);
+          static ServersGetResultPtr convert(MessagePtr message);
 
-          static FindersGetResultPtr create(
+          static ServersGetResultPtr create(
                                             ElementPtr root,
                                             IMessageSourcePtr messageSource
                                             );
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryBootstrappedFinder::Method_FindersGet;}
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryBootstrappedServers::Method_FindersGet;}
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryBootstrappedFinder::singleton();}
+          virtual IMessageFactoryPtr factory() const  {return MessageFactoryBootstrappedServers::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const FinderList &finders() const           {return mFinders;}
-          void finders(const FinderList &val)         {mFinders = val;}
+          const ServerList &servers() const           {return mServers;}
+          void servers(const ServerList &val)         {mServers = val;}
 
         protected:
-          FindersGetResult();
+          ServersGetResult();
 
-          FinderList mFinders;
+          ServerList mServers;
         };
       }
     }

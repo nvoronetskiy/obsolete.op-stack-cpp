@@ -31,8 +31,8 @@
 
 #pragma once
 
-#include <openpeer/stack/message/MessageRequest.h>
-#include <openpeer/stack/message/bootstrapped-finder/MessageFactoryBootstrappedFinder.h>
+#include <openpeer/stack/message/IMessageFactory.h>
+
 
 namespace openpeer
 {
@@ -40,36 +40,49 @@ namespace openpeer
   {
     namespace message
     {
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
-        class FindersGetRequest : public MessageRequest
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageFactoryBootstrappedServers
+        #pragma mark
+
+        class MessageFactoryBootstrappedServers : public IMessageFactory
         {
         public:
-          enum AttributeTypes
+        public:
+          enum Methods
           {
-            AttributeType_TotalServers,
+            Method_Invalid = Message::Method_Invalid,
+
+            Method_FindersGet,
+
+            Method_Last = Method_FindersGet,
           };
 
-        public:
-          static FindersGetRequestPtr convert(MessagePtr message);
-
-          static FindersGetRequestPtr create();
-
-          virtual DocumentPtr encode();
-
-          virtual Methods method() const  {return (Message::Methods)MessageFactoryBootstrappedFinder::Method_FindersGet;}
-
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryBootstrappedFinder::singleton();}
-
-          bool hasAttribute(AttributeTypes type) const;
-
-          ULONG totalFinders() const       {return mTotalFinders;}
-          void totalFinders(ULONG val)     {mTotalFinders = val;}
-
         protected:
-          FindersGetRequest();
+          static MessageFactoryBootstrappedServersPtr create();
 
-          ULONG mTotalFinders;
+        public:
+          static MessageFactoryBootstrappedServersPtr singleton();
+
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark MessageFactoryBootstrappedServers => IMessageFactory
+          #pragma mark
+
+          virtual const char *getHandler() const;
+
+          virtual Message::Methods toMethod(const char *method) const;
+          virtual const char *toString(Message::Methods method) const;
+
+          virtual MessagePtr create(
+                                    ElementPtr root,
+                                    IMessageSourcePtr messageSource
+                                    );
         };
       }
     }

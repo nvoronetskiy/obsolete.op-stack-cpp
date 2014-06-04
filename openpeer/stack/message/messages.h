@@ -40,9 +40,9 @@
 #include <openpeer/stack/message/IMessageFactory.h>
 #include <openpeer/stack/message/IMessageFactoryManager.h>
 
-#include <openpeer/stack/message/bootstrapped-finder/MessageFactoryBootstrappedFinder.h>
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetRequest.h>
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetResult.h>
+#include <openpeer/stack/message/bootstrapped-servers/MessageFactoryBootstrappedServers.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
 
 #include <openpeer/stack/message/bootstrapper/MessageFactoryBootstrapper.h>
 #include <openpeer/stack/message/bootstrapper/ServicesGetRequest.h>

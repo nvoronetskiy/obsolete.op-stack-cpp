@@ -30,7 +30,7 @@
  */
 
 #include <openpeer/stack/internal/stack_Stack.h>
-#include <openpeer/stack/message/bootstrapped-finder/MessageFactoryBootstrappedFinder.h>
+#include <openpeer/stack/message/bootstrapped-servers/MessageFactoryBootstrappedServers.h>
 #include <openpeer/stack/message/bootstrapper/MessageFactoryBootstrapper.h>
 #include <openpeer/stack/message/certificates/MessageFactoryCertificates.h>
 #include <openpeer/stack/message/identity/MessageFactoryIdentity.h>
@@ -71,8 +71,8 @@ namespace openpeer
     {
       using services::IHelper;
 
-      using message::bootstrapped_finder::MessageFactoryBootstrappedFinder;
       using message::bootstrapper::MessageFactoryBootstrapper;
+      using message::bootstrapped_servers::MessageFactoryBootstrappedServers;
       using message::certificates::MessageFactoryCertificates;
       using message::identity::MessageFactoryIdentity;
       using message::identity_lookup::MessageFactoryIdentityLookup;
@@ -144,8 +144,8 @@ namespace openpeer
       {
         ZS_LOG_BASIC(log("created"))
 
-        MessageFactoryBootstrappedFinder::singleton();
         MessageFactoryBootstrapper::singleton();
+        MessageFactoryBootstrappedServers::singleton();
         MessageFactoryCertificates::singleton();
         MessageFactoryIdentity::singleton();
         MessageFactoryIdentityLookup::singleton();

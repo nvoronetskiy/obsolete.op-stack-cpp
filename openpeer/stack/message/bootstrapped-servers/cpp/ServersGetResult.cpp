@@ -29,10 +29,10 @@
 
  */
 
-#pragma once
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
+#include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
-#include <openpeer/stack/message/IMessageFactory.h>
-
+#include <zsLib/XML.h>
 
 namespace openpeer
 {
@@ -40,50 +40,60 @@ namespace openpeer
   {
     namespace message
     {
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageFactoryBootstrappedFinder
-        #pragma mark
+        using internal::MessageHelper;
 
-        class MessageFactoryBootstrappedFinder : public IMessageFactory
+        //---------------------------------------------------------------------
+        ServersGetResultPtr ServersGetResult::convert(MessagePtr message)
         {
-        public:
-        public:
-          enum Methods
+          return dynamic_pointer_cast<ServersGetResult>(message);
+        }
+
+        //---------------------------------------------------------------------
+        ServersGetResult::ServersGetResult()
+        {
+        }
+
+        //---------------------------------------------------------------------
+        ServersGetResultPtr ServersGetResult::create(
+                                                     ElementPtr root,
+                                                     IMessageSourcePtr messageSource
+                                                     )
+        {
+          ServersGetResultPtr ret(new ServersGetResult);
+          IMessageHelper::fill(*ret, root, messageSource);
+
+          ElementPtr serversEl = root->findFirstChildElement("servers");
+          if (!serversEl) return ret;
+
+          ElementPtr serverBundleEl = serversEl->findFirstChildElement("serverBundle");
+          while (serverBundleEl) {
+            ElementPtr serverEl = serverBundleEl->findFirstChildElement("server");
+            if (serverEl) {
+              Server server = Server::create(serverEl);
+              if (server.hasData()) {
+                ret->mServers.push_back(server);
+              }
+            }
+
+            serverBundleEl = serverBundleEl->findNextSiblingElement("serverBundle");
+          }
+
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        bool ServersGetResult::hasAttribute(AttributeTypes type) const
+        {
+          switch (type)
           {
-            Method_Invalid = Message::Method_Invalid,
+            case AttributeType_Servers:       return (mServers.size() > 0);
+            default:                          break;
+          }
+          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
+        }
 
-            Method_FindersGet,
-
-            Method_Last = Method_FindersGet,
-          };
-
-        protected:
-          static MessageFactoryBootstrappedFinderPtr create();
-
-        public:
-          static MessageFactoryBootstrappedFinderPtr singleton();
-
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark MessageFactoryBootstrappedFinder => IMessageFactory
-          #pragma mark
-
-          virtual const char *getHandler() const;
-
-          virtual Message::Methods toMethod(const char *method) const;
-          virtual const char *toString(Message::Methods method) const;
-
-          virtual MessagePtr create(
-                                    ElementPtr root,
-                                    IMessageSourcePtr messageSource
-                                    );
-        };
       }
     }
   }

@@ -29,8 +29,8 @@
 
  */
 
-#include <openpeer/stack/message/bootstrapped-finder/MessageFactoryBootstrappedFinder.h>
-#include <openpeer/stack/message/bootstrapped-finder/FindersGetResult.h>
+#include <openpeer/stack/message/bootstrapped-servers/MessageFactoryBootstrappedServers.h>
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
 #include <openpeer/stack/message/Message.h>
 #include <openpeer/stack/message/IMessageFactoryManager.h>
 
@@ -38,7 +38,7 @@
 
 #include <openpeer/stack/IHelper.h>
 
-#define OPENPEER_STACK_MESSAGE_MESSAGE_FACTORY_BOOTSTRAPPED_FINDER_HANDLER "bootstrapped-finders"
+#define OPENPEER_STACK_MESSAGE_MESSAGE_FACTORY_BOOTSTRAPPED_SERVER_HANDLER "bootstrapped-servers"
 
 
 namespace openpeer
@@ -47,28 +47,28 @@ namespace openpeer
   {
     namespace message
     {
-      namespace bootstrapped_finder
+      namespace bootstrapped_servers
       {
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark MessageFactoryBootstrappedFinder
+        #pragma mark MessageFactoryBootstrappedServers
         #pragma mark
 
         //---------------------------------------------------------------------
-        MessageFactoryBootstrappedFinderPtr MessageFactoryBootstrappedFinder::create()
+        MessageFactoryBootstrappedServersPtr MessageFactoryBootstrappedServers::create()
         {
-          MessageFactoryBootstrappedFinderPtr pThis(new MessageFactoryBootstrappedFinder);
+          MessageFactoryBootstrappedServersPtr pThis(new MessageFactoryBootstrappedServers);
           IMessageFactoryManager::registerFactory(pThis);
           return pThis;
         }
 
         //---------------------------------------------------------------------
-        MessageFactoryBootstrappedFinderPtr MessageFactoryBootstrappedFinder::singleton()
+        MessageFactoryBootstrappedServersPtr MessageFactoryBootstrappedServers::singleton()
         {
-          static SingletonLazySharedPtr<MessageFactoryBootstrappedFinder> singleton(create());
+          static SingletonLazySharedPtr<MessageFactoryBootstrappedServers> singleton(create());
           return singleton.singleton();
         }
 
@@ -81,18 +81,18 @@ namespace openpeer
         #pragma mark
 
         //---------------------------------------------------------------------
-        const char *MessageFactoryBootstrappedFinder::getHandler() const
+        const char *MessageFactoryBootstrappedServers::getHandler() const
         {
-          return OPENPEER_STACK_MESSAGE_MESSAGE_FACTORY_BOOTSTRAPPED_FINDER_HANDLER;
+          return OPENPEER_STACK_MESSAGE_MESSAGE_FACTORY_BOOTSTRAPPED_SERVER_HANDLER;
         }
 
         //---------------------------------------------------------------------
-        Message::Methods MessageFactoryBootstrappedFinder::toMethod(const char *inMethod) const
+        Message::Methods MessageFactoryBootstrappedServers::toMethod(const char *inMethod) const
         {
           typedef zsLib::ULONG ULONG;
           String methodStr(inMethod ? inMethod : "");
 
-          for (ULONG loop = (ULONG)(MessageFactoryBootstrappedFinder::Method_Invalid+1); loop <= ((ULONG)MessageFactoryBootstrappedFinder::Method_Last); ++loop)
+          for (ULONG loop = (ULONG)(MessageFactoryBootstrappedServers::Method_Invalid+1); loop <= ((ULONG)MessageFactoryBootstrappedServers::Method_Last); ++loop)
           {
             if (methodStr == toString((Message::Methods)loop)) {
               return (Message::Methods)loop;
@@ -102,9 +102,9 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        const char *MessageFactoryBootstrappedFinder::toString(Message::Methods method) const
+        const char *MessageFactoryBootstrappedServers::toString(Message::Methods method) const
         {
-          switch ((MessageFactoryBootstrappedFinder::Methods)method)
+          switch ((MessageFactoryBootstrappedServers::Methods)method)
           {
             case Method_Invalid:            return "";
 
@@ -114,7 +114,7 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        MessagePtr MessageFactoryBootstrappedFinder::create(
+        MessagePtr MessageFactoryBootstrappedServers::create(
                                                             ElementPtr root,
                                                             IMessageSourcePtr messageSource
                                                             )
@@ -122,7 +122,7 @@ namespace openpeer
           if (!root) return MessagePtr();
 
           Message::MessageTypes msgType = IMessageHelper::getMessageType(root);
-          Methods msgMethod = (MessageFactoryBootstrappedFinder::Methods)toMethod(IMessageHelper::getAttribute(root, "method"));
+          Methods msgMethod = (MessageFactoryBootstrappedServers::Methods)toMethod(IMessageHelper::getAttribute(root, "method"));
 
           switch (msgType) {
             case Message::MessageType_Invalid:                return MessagePtr();
@@ -133,7 +133,7 @@ namespace openpeer
               switch (msgMethod) {
                 case Method_Invalid:                          return MessagePtr();
 
-                case Method_FindersGet:                       return FindersGetResult::create(root, messageSource);
+                case Method_FindersGet:                       return ServersGetResult::create(root, messageSource);
               }
               break;
             }
