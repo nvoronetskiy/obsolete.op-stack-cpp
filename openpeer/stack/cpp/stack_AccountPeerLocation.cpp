@@ -450,9 +450,7 @@ namespace openpeer
           }
         }
 
-        boost::shared_array<char> output;
-        size_t length = 0;
-        output = document->writeAsJSON(&length);
+        SecureByteBlockPtr output = IHelper::writeAsJSON(document);
 
         if (ZS_IS_LOGGING(Detail)) {
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -460,7 +458,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("PEER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
+          ZS_LOG_BASIC(log("PEER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output->BytePtr()))))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -473,7 +471,7 @@ namespace openpeer
             if (!mDebugForceMessagesOverRelay) {
               ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
 
-              mMLSSendStream->write((const BYTE *)(output.get()), length);
+              mMLSSendStream->write(output->BytePtr(), output->SizeInBytes());
               return true;
             }
           }
@@ -482,7 +480,7 @@ namespace openpeer
         if (mOutgoingRelaySendStream) {
           if (mOutgoingRelaySendStream->isWriterReady()) {
             ZS_LOG_TRACE(log("message send via outgoing relay"))
-            mOutgoingRelaySendStream->write((const BYTE *)(output.get()), length);
+            mOutgoingRelaySendStream->write(output->BytePtr(), output->SizeInBytes());
             return true;
           }
         }
@@ -490,7 +488,7 @@ namespace openpeer
         if (mIncomingRelaySendStream) {
           if (mIncomingRelaySendStream->isWriterReady()) {
             ZS_LOG_TRACE(log("message send via incoming relay"))
-            mIncomingRelaySendStream->write((const BYTE *)(output.get()), length);
+            mIncomingRelaySendStream->write(output->BytePtr(), output->SizeInBytes());
             return true;
           }
         }

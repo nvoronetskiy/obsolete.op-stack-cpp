@@ -111,6 +111,30 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IMessageMonitorManagerForPushMailbox
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void IMessageMonitorManagerForPushMailbox::notifyMessageSendFailed(message::MessagePtr message)
+      {
+        MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
+        manager->notifyMessageSendFailed(message);
+      }
+
+      //-----------------------------------------------------------------------
+      void IMessageMonitorManagerForPushMailbox::notifyMessageSenderObjectGone(PUID objectID)
+      {
+        MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
+        manager->notifyMessageSenderObjectGone(objectID);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IMessageMonitorManagerForMessageMonitor
       #pragma mark
 

@@ -1493,6 +1493,7 @@ namespace openpeer
           mPeerFileKeyGenerator->cancel();
           mPeerFileKeyGenerator.reset();
 
+          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
           return true;
         }
 
@@ -1518,6 +1519,8 @@ namespace openpeer
 
         if (mPeerFiles) {
           ZS_LOG_DEBUG(log("peer files successfully loaded"))
+
+          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
 
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           ZS_THROW_BAD_STATE_IF(!peerFilePublic)

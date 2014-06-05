@@ -38,6 +38,7 @@
 #include <openpeer/stack/internal/stack_Stack.h>
 
 #include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/AccessRequest.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
@@ -64,6 +65,7 @@ namespace openpeer
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, AccessRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -539,7 +541,21 @@ namespace openpeer
         ZS_LOG_DEBUG(log("access result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mAccessMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        if (result->peerValidate()) {
+          mPeerChallengeID = result->peerChallengeID();
+        } else {
+          mPeerChallengeID.clear();
+        }
+
+        mNamespaceGrantChallengeInfo = result->namespaceGrantChallengeInfo();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -552,7 +568,17 @@ namespace openpeer
         ZS_LOG_ERROR(Debug, log("access error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mAccessMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("access request failed") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
       
       //-----------------------------------------------------------------------
@@ -956,8 +982,8 @@ namespace openpeer
         if (!stepBootstrapper()) goto post_step;
         if (!stepGrantLock()) goto post_step;
 
-        if (!stepLockboxAccess()) goto post_step;
         if (!stepShouldConnect()) goto post_step;
+        if (!stepLockboxAccess()) goto post_step;
         if (!stepConnect()) goto post_step;
         if (!stepAccess()) goto post_step;
 
@@ -1026,45 +1052,6 @@ namespace openpeer
 
         get(mObtainedLock) = true;
         return true;
-      }
-
-      //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::stepLockboxAccess()
-      {
-        ZS_LOG_TRACE(log("step - lockbox access"))
-
-        WORD errorCode = 0;
-        String reason;
-        switch (mLockbox->getState(&errorCode, &reason)) {
-          case IServiceLockboxSession::SessionState_Pending:
-          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
-          case IServiceLockboxSession::SessionState_Ready:
-          {
-            break;
-          }
-          case IServiceLockboxSession::SessionState_Shutdown:
-          {
-            ZS_LOG_ERROR(Detail, log("lockbox session shutdown thus shutting down mailbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
-            setError(errorCode, reason);
-            cancel();
-            return false;
-          }
-        }
-
-        if (mLockboxInfo.mAccessSecret.hasData()) {
-          ZS_LOG_TRACE(log("already have lockbox acess secret"))
-          return true;
-        }
-
-        mLockboxInfo = mLockbox->getLockboxInfo();
-
-        if (mLockboxInfo.mAccessSecret.hasData()) {
-          ZS_LOG_DEBUG(log("obtained lockbox access secret"))
-          return true;
-        }
-
-        ZS_LOG_TRACE(log("waiting on lockbox to login"))
-        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -1182,21 +1169,64 @@ namespace openpeer
           return true;
         }
 
-        IBootstrappedNetworkPtr network = BootstrappedNetwork::convert(mBootstrappedNetwork);
-
-        ZS_THROW_BAD_STATE_IF(!network)
-
         ServersGetRequestPtr request = ServersGetRequest::create();
-        request->domain(network->getDomain());
+        request->domain(mBootstrappedNetwork->getDomain());
         request->type(OPENPEER_STACK_SERVER_TYPE_PUSH_MAILBOX);
         request->totalFinders(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET));
 
-        mServersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-servers", "servers-get", request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS)));
+        mServersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "bootstrapped-servers", "servers-get", request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS)));
 
         ZS_LOG_DEBUG(log("attempting to get push mailbox servers"))
         return true;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepLockboxAccess()
+      {
+        ZS_LOG_TRACE(log("step - lockbox access"))
+
+        WORD errorCode = 0;
+        String reason;
+        switch (mLockbox->getState(&errorCode, &reason)) {
+          case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
+          case IServiceLockboxSession::SessionState_Ready:
+          {
+            break;
+          }
+          case IServiceLockboxSession::SessionState_Shutdown:
+          {
+            ZS_LOG_ERROR(Detail, log("lockbox session shutdown thus shutting down mailbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
+            setError(errorCode, reason);
+            cancel();
+            return false;
+          }
+        }
+
+        if (!mLockboxInfo.mAccessSecret.hasData()) {
+          mLockboxInfo = mLockbox->getLockboxInfo();
+          if (mLockboxInfo.mAccessSecret.hasData()) {
+            ZS_LOG_DEBUG(log("obtained lockbox access secret"))
+          }
+        }
+
+        if (!mPeerFiles) {
+          mPeerFiles = mLockbox->getPeerFiles();
+          if (mPeerFiles) {
+            ZS_LOG_DEBUG(log("obtained peer files"))
+          }
+        }
+
+        if ((mLockboxInfo.mAccessSecret.hasData()) &&
+            (mPeerFiles)) {
+          ZS_LOG_TRACE(log("now have lockbox acess secret and peeer files"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("waiting on lockbox to login"))
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepConnect()
       {
@@ -1245,11 +1275,13 @@ namespace openpeer
 
 #define CHANGE_WHEN_MLS_USED 1
 #define CHANGE_WHEN_MLS_USED 2
+
+        mReader = mWireStream->getReader();
+        mWriter = mWireStream->getWriter();
+
         mWireStream->getReader()->notifyReaderReadyToRead();
 
-        IPAddress bogus;
-
-        mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mWireStream, mWireStream, true, bogus);
+        mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mWireStream, mWireStream, true, mServerIP);
 
         return false;
       }
@@ -1257,6 +1289,28 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepAccess()
       {
+        if (mAccessMonitor) {
+          if (!mAccessMonitor->isComplete()) {
+            ZS_LOG_TRACE(log("waiting for access monitor to complete"))
+            return false;
+          }
+
+          // access monitor is complete
+          ZS_LOG_TRACE(log("access monitor is already complete"))
+          return true;
+        }
+
+
+        AccessRequestPtr request = AccessRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+        request->lockboxInfo(mLockboxInfo);
+        request->peerFiles(mPeerFiles);
+        request->grantID(mGrantSession->getGrantID());
+
+        mAccessMonitor = sendRequest(IMessageMonitorResultDelegate<AccessResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS)));
+//        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
+
+
 //        if (mLockboxAccessMonitor) {
 //          ZS_LOG_TRACE(log("waiting for lockbox access monitor to complete"))
 //          return false;
@@ -1437,6 +1491,16 @@ namespace openpeer
           mRetryTimer.reset();
         }
 
+        if (mServersGetMonitor) {
+          mServersGetMonitor->cancel();
+          mServersGetMonitor.reset();
+        }
+
+        if (mAccessMonitor) {
+          mAccessMonitor->cancel();
+          mAccessMonitor.reset();
+        }
+
       }
 
       //-----------------------------------------------------------------------
@@ -1467,9 +1531,79 @@ namespace openpeer
 
         mServerIP = IPAddress();
 
+        if (mAccessMonitor) {
+          mAccessMonitor->cancel();
+          mAccessMonitor.reset();
+        }
+
 #define WARNING_CLEAR_OUT_SESSION_STATE 1
 #define WARNING_CLEAR_OUT_SESSION_STATE 2
 
+      }
+
+      //---------------------------------------------------------------------
+      bool ServicePushMailboxSession::send(MessagePtr message) const
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!message)
+
+        AutoRecursiveLock lock(*this);
+        if (!message) {
+          ZS_LOG_ERROR(Detail, log("message to send was NULL"))
+          return false;
+        }
+
+        if (isShutdown()) {
+          ZS_LOG_WARNING(Detail, log("attempted to send a message but the location is shutdown"))
+          return false;
+        }
+
+        if (!mWriter) {
+          ZS_LOG_WARNING(Detail, log("requested to send a message but send stream is not ready"))
+          return false;
+        }
+
+        DocumentPtr document = message->encode();
+
+        SecureByteBlockPtr output = IHelper::writeAsJSON(document);
+
+        if (ZS_IS_LOGGING(Detail)) {
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log("PUSH MAILBOX SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output->BytePtr()))))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+          ZS_LOG_BASIC(log(">>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>>[oo]>"))
+          ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
+        }
+
+        mWriter->write(output->BytePtr(), output->SizeInBytes());
+        return true;
+      }
+
+      //---------------------------------------------------------------------
+      IMessageMonitorPtr ServicePushMailboxSession::sendRequest(
+                                                                IMessageMonitorDelegatePtr delegate,
+                                                                MessagePtr requestMessage,
+                                                                Duration timeout
+                                                                ) const
+      {
+        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
+        if (!monitor) {
+          ZS_LOG_WARNING(Detail, log("failed to create monitor"))
+          return IMessageMonitorPtr();
+        }
+
+        bool result = send(requestMessage);
+        if (!result) {
+          // notify that the message requester failed to send the message...
+          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
+          return monitor;
+        }
+
+        ZS_LOG_DEBUG(log("request successfully created"))
+        return monitor;
       }
 
       //-----------------------------------------------------------------------

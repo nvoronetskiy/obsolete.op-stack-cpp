@@ -1361,12 +1361,11 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!url)
 
-        size_t size = 0;
         SecureByteBlockPtr buffer;
 
         if (message) {
           DocumentPtr doc = message->encode();
-          buffer = IHelper::convertToBuffer(doc->writeAsJSON(&size), size);
+          buffer = IHelper::writeAsJSON(doc);
         }
 
         if (ZS_IS_LOGGING(Detail)) {
@@ -1407,7 +1406,7 @@ namespace openpeer
         } else {
           if ((IHelper::hasData(buffer) &&
                (!forceAsGetRequest))) {
-            query = IHTTP::post(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url, *buffer, size, OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
+            query = IHTTP::post(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url, buffer->BytePtr(), buffer->SizeInBytes(), OPENPEER_STACK_BOOTSTRAPPED_NETWORK_DEFAULT_MIME_TYPE);
           } else {
             query = IHTTP::get(mThisWeak.lock(), ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT), url);
           }

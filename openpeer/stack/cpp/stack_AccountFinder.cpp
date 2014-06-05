@@ -257,9 +257,7 @@ namespace openpeer
 
         DocumentPtr document = message->encode();
 
-        boost::shared_array<char> output;
-        size_t length = 0;
-        output = document->writeAsJSON(&length);
+        SecureByteBlockPtr output = IHelper::writeAsJSON(document);
 
         if (ZS_IS_LOGGING(Detail)) {
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -267,13 +265,13 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("MESSAGE INFO") + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("FINDER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output.get()))))
+          ZS_LOG_BASIC(log("FINDER SEND MESSAGE") + ZS_PARAM("json out", ((CSTR)(output->BytePtr()))))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
-        mSendStream->write((const BYTE *)(output.get()), length);
+        mSendStream->write(output->BytePtr(), output->SizeInBytes());
         return true;
       }
 

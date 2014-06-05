@@ -34,6 +34,8 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/services/IWakeDelegate.h>
 
+#include <zsLib/Timer.h>
+
 #include <map>
 
 namespace openpeer
@@ -109,6 +111,22 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IMessageMonitorManagerForPushMailbox
+      #pragma mark
+
+      interaction IMessageMonitorManagerForPushMailbox
+      {
+        static void notifyMessageSendFailed(message::MessagePtr message);
+        static void notifyMessageSenderObjectGone(PUID objectID);
+
+        virtual ~IMessageMonitorManagerForPushMailbox() {}  // need until virtual method added to make dynamic cast work
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark MessageMonitorManager
       #pragma mark
 
@@ -124,6 +142,7 @@ namespace openpeer
         friend interaction IMessageMonitorManagerForAccountFinder;
         friend interaction IMessageMonitorManagerForAccountPeerLocation;
         friend interaction IMessageMonitorManagerForMessageMonitor;
+        friend interaction IMessageMonitorManagerForPushMailbox;
 
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForMessageMonitorManager, UseMessageMonitor)
 
@@ -192,6 +211,16 @@ namespace openpeer
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark MessageMonitorManager => IMessageMonitorManagerForAccountPeerLocation
+        #pragma mark
+
+        // (duplicate) static MessageMonitorManagerPtr singleton();
+
+        // (duplicate) virtual void notifyMessageSendFailed(message::MessagePtr message);
+        // (duplicate) virtual void notifyMessageSenderObjectGone(PUID objectID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitorManager => IMessageMonitorManagerForPushMailbox
         #pragma mark
 
         // (duplicate) static MessageMonitorManagerPtr singleton();

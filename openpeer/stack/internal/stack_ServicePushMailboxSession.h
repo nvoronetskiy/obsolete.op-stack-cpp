@@ -38,6 +38,7 @@
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
+#include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 
@@ -64,6 +65,8 @@
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET "openpeer/stack/push-mailbox-total-servers-to-get"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-servers-get-timeout-in-seconds"
+
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-access-timeout-in-seconds"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
@@ -125,6 +128,8 @@ namespace openpeer
         typedef IServicePushMailboxSession::SessionStates SessionStates;
 
         ZS_DECLARE_TYPEDEF_PTR(services::IDNS::SRVResult, SRVResult)
+
+        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForPushMailbox, UseMessageMonitorManager)
 
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::AccessResult, AccessResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::NamespaceGrantChallengeValidateResult, NamespaceGrantChallengeValidateResult)
@@ -490,6 +495,7 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const;
 
+        bool isConnected() const {return SessionState_Connected == mCurrentState;}
         bool isShuttingDown() const {return SessionState_ShuttingDown == mCurrentState;}
         bool isShutdown() const {return SessionState_Shutdown == mCurrentState;}
 
@@ -497,9 +503,9 @@ namespace openpeer
         bool stepBootstrapper();
         bool stepGrantLock();
 
-        bool stepLockboxAccess();
         bool stepShouldConnect();
         bool stepDNS();
+        bool stepLockboxAccess();
         bool stepConnect();
         bool stepAccess();
 
@@ -513,6 +519,14 @@ namespace openpeer
 
         void cancel();
         void connectionFailure();
+
+        bool send(MessagePtr message) const;
+        IMessageMonitorPtr sendRequest(
+                                       IMessageMonitorDelegatePtr delegate,
+                                       MessagePtr requestMessage,
+                                       Duration timeout
+                                       ) const;
+        IMessageMonitorPtr sendRequest(MessagePtr requestMessage, const char *timeoutSettingName);
 
         virtual void handleChanged(ChangedNotifyPtr notify);
 
@@ -541,8 +555,12 @@ namespace openpeer
         ITCPMessagingPtr mTCPMessaging;
         ITransportStreamPtr mWireStream;
 
+        ITransportStreamReaderPtr mReader;
+        ITransportStreamWriterPtr mWriter;
+
         UseServiceLockboxSessionPtr mLockbox;
         LockboxInfo mLockboxInfo;
+        IPeerFilesPtr mPeerFiles;
 
         UseServiceNamespaceGrantSessionPtr mGrantSession;
         IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
@@ -563,7 +581,12 @@ namespace openpeer
         SRVResultPtr mServerSRV;
         IPAddress mServerIP;
 
+        String mPeerChallengeID;
+
+        NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
+
         IMessageMonitorPtr mServersGetMonitor;
+        IMessageMonitorPtr mAccessMonitor;
       };
 
       //-----------------------------------------------------------------------
