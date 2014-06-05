@@ -39,6 +39,8 @@
 
 #include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/AccessRequest.h>
+#include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateRequest.h>
+#include <openpeer/stack/message/push-mailbox/PeerValidateRequest.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
@@ -66,6 +68,8 @@ namespace openpeer
 
       ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, AccessRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, NamespaceGrantChallengeValidateRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, PeerValidateRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -110,12 +114,14 @@ namespace openpeer
 
         SharedRecursiveLock(SharedRecursiveLock::create()),
 
-
         mDB(databaseDelegate),
 
         mCurrentState(SessionState_Pending),
 
         mBootstrappedNetwork(network),
+
+        mSentViaObjectID(mID),
+
         mLockbox(lockboxSession),
         mGrantSession(grantSession),
 
@@ -554,6 +560,11 @@ namespace openpeer
 
         mNamespaceGrantChallengeInfo = result->namespaceGrantChallengeInfo();
 
+        if (mNamespaceGrantChallengeInfo.mID.hasData()) {
+          // a namespace grant challenge was issue
+          mGrantQuery = mGrantSession->query(mThisWeak.lock(), mNamespaceGrantChallengeInfo);
+        }
+
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
       }
@@ -565,7 +576,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("access error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("access error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mAccessMonitor) {
@@ -595,10 +606,18 @@ namespace openpeer
                                                                          NamespaceGrantChallengeValidateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("namespace grant challenge validate result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("namespace grant challenge validate result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mGrantMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        mGrantMonitor->cancel();
+        mGrantMonitor.reset();
+
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -608,10 +627,20 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("namespace grant challenge validate error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("namespace grant challenge validate error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mGrantMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("namespace grant request failed") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
       
       //-----------------------------------------------------------------------
@@ -628,10 +657,11 @@ namespace openpeer
                                                                          PeerValidateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("peer validate result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("peer validate result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -641,10 +671,21 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("peer validate error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("peer validate error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
-        return false;
+
+        if (monitor != mPeerValidateMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("peer validate request failed") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
       
       //-----------------------------------------------------------------------
@@ -661,7 +702,7 @@ namespace openpeer
                                                                          FoldersGetResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("folders get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("folders get result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -674,7 +715,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("folders get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("folders get error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -988,6 +1029,7 @@ namespace openpeer
         if (!stepAccess()) goto post_step;
 
         if (!stepGrantLockClear()) goto post_step;
+        if (!stepPeerValidate()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
 
       post_step:
@@ -1084,6 +1126,8 @@ namespace openpeer
 
           mTCPMessaging.reset();
           setState(SessionState_Sleeping);
+
+          connectionReset();
           return false;
         }
 
@@ -1300,6 +1344,7 @@ namespace openpeer
           return true;
         }
 
+        ZS_LOG_DEBUG(log("issuing lockbox access request"))
 
         AccessRequestPtr request = AccessRequest::create();
         request->domain(mBootstrappedNetwork->getDomain());
@@ -1308,82 +1353,6 @@ namespace openpeer
         request->grantID(mGrantSession->getGrantID());
 
         mAccessMonitor = sendRequest(IMessageMonitorResultDelegate<AccessResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS)));
-//        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
-
-
-//        if (mLockboxAccessMonitor) {
-//          ZS_LOG_TRACE(log("waiting for lockbox access monitor to complete"))
-//          return false;
-//        }
-//
-//        if (mLockboxInfo.mAccessToken.hasData()) {
-//          ZS_LOG_TRACE(log("already have a lockbox access key"))
-//          return true;
-//        }
-//
-//        setState(SessionState_Pending);
-//
-//        LockboxAccessRequestPtr request = LockboxAccessRequest::create();
-//        request->domain(mBootstrappedNetwork->getDomain());
-//
-//        if (mLoginIdentity) {
-//          IdentityInfo identityInfo = mLoginIdentity->getIdentityInfo();
-//          request->identityInfo(identityInfo);
-//
-//          LockboxInfo lockboxInfo = mLoginIdentity->getLockboxInfo();
-//          mLockboxInfo.mergeFrom(lockboxInfo);
-//
-//          if (!IHelper::isValidDomain(mLockboxInfo.mDomain)) {
-//            ZS_LOG_DEBUG(log("domain from identity is invalid, reseting to default domain") + ZS_PARAM("domain", mLockboxInfo.mDomain))
-//
-//            mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
-//
-//            // account/keying information must also be incorrect if domain is not valid
-//            mLockboxInfo.mKey.reset();
-//          }
-//
-//          if (mBootstrappedNetwork->getDomain() != mLockboxInfo.mDomain) {
-//            ZS_LOG_DEBUG(log("default bootstrapper is not to be used for this lockbox as an altenative lockbox must be used thus preparing replacement bootstrapper"))
-//
-//            mBootstrappedNetwork = BootstrappedNetwork::convert(IBootstrappedNetwork::prepare(mLockboxInfo.mDomain, mThisWeak.lock()));
-//            return false;
-//          }
-//
-//          if (mForceNewAccount) {
-//            ZS_LOG_DEBUG(log("forcing a new lockbox account to be created for the identity"))
-//            get(mForceNewAccount) = false;
-//            mLockboxInfo.mKey.reset();
-//          }
-//
-//          if (!mLockboxInfo.mKey) {
-//            mLockboxInfo.mAccountID.clear();
-//            mLockboxInfo.mKey.reset();
-//            mLockboxInfo.mHash.clear();
-//            mLockboxInfo.mResetFlag = true;
-//
-//            mLockboxInfo.mKey = IHelper::random(32);
-//
-//            ZS_LOG_DEBUG(log("created new lockbox key") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
-//          }
-//
-//          ZS_THROW_BAD_STATE_IF(!mLockboxInfo.mKey)
-//
-//          ZS_LOG_DEBUG(log("creating lockbox key hash") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
-//          mLockboxInfo.mHash = IHelper::convertToHex(*IHelper::hash(*mLockboxInfo.mKey));
-//        }
-//
-//        mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
-//
-//        request->grantID(mGrantSession->getGrantID());
-//        request->lockboxInfo(mLockboxInfo);
-//
-//        NamespaceInfoMap namespaces;
-//        getNamespaces(namespaces);
-//        request->namespaceURLs(namespaces);
-//
-//        mLockboxAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-//        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
-
         return false;
       }
       
@@ -1403,8 +1372,92 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepPeerValidate()
+      {
+        if (!mPeerChallengeID.isEmpty()) {
+          ZS_LOG_TRACE(log("peer validation is not required"))
+          return true;
+        }
+
+        if (mPeerValidateMonitor) {
+          if (!mPeerValidateMonitor->isComplete()) {
+            ZS_LOG_TRACE(log("waiting for peer validation to complete"))
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("peer validation completed"))
+
+          mPeerValidateMonitor->cancel();
+          mPeerValidateMonitor.reset();
+
+          mPeerChallengeID.clear();
+
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("issuing peer validate request"))
+
+        PeerValidateRequestPtr request = PeerValidateRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->peerChallengeID(mPeerChallengeID);
+        request->peerFiles(mPeerFiles);
+
+        mPeerValidateMonitor = sendRequest(IMessageMonitorResultDelegate<PeerValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS)));
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepGrantChallenge()
       {
+        if (mGrantMonitor) {
+          ZS_LOG_TRACE(log("waiting for lockbox namespace grant challenge validate monitor to complete"))
+          return false;
+        }
+
+        if (!mGrantQuery) {
+          ZS_LOG_TRACE(log("no grant challenge query thus continuing..."))
+          return true;
+        }
+
+        if (!mGrantQuery->isComplete()) {
+          ZS_LOG_TRACE(log("waiting for the grant query to complete"))
+          return false;
+        }
+
+        ElementPtr bundleEl = mGrantQuery->getNamespaceGrantChallengeBundle();
+        if (!bundleEl) {
+          ZS_LOG_ERROR(Detail, log("namespaces were no granted in challenge"))
+          setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access lockbox");
+          cancel();
+          return false;
+        }
+
+        const NamespaceInfoMap &namespaces = mNamespaceGrantChallengeInfo.mNamespaces;
+
+        for (NamespaceInfoMap::const_iterator iter = namespaces.begin(); iter != namespaces.end(); ++iter)
+        {
+          const NamespaceInfo &namespaceInfo = (*iter).second;
+
+          if (!mGrantSession->isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
+            ZS_LOG_WARNING(Detail, log("push mailbox was not granted required namespace") + ZS_PARAM("namespace", namespaceInfo.mURL))
+            setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to push mailbox");
+            cancel();
+            return false;
+          }
+        }
+
+        mGrantQuery->cancel();
+        mGrantQuery.reset();
+
+        ZS_LOG_DEBUG(log("all namespaces required were correctly granted, notify the push mailbox of the newly created access"))
+
+        NamespaceGrantChallengeValidateRequestPtr request = NamespaceGrantChallengeValidateRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->namespaceGrantChallengeBundle(bundleEl);
+
+        mGrantMonitor = sendRequest(IMessageMonitorResultDelegate<NamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_NAMESPACE_GRANT_TIMEOUT_IN_SECONDS)));
         return false;
       }
 
@@ -1478,7 +1531,7 @@ namespace openpeer
           }
         }
 
-        setState(SessionState_ShuttingDown);
+        setState(SessionState_Shutdown);
 
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
@@ -1486,21 +1539,7 @@ namespace openpeer
 
         mGracefulShutdownReference.reset();
 
-        if (mRetryTimer) {
-          mRetryTimer->cancel();
-          mRetryTimer.reset();
-        }
-
-        if (mServersGetMonitor) {
-          mServersGetMonitor->cancel();
-          mServersGetMonitor.reset();
-        }
-
-        if (mAccessMonitor) {
-          mAccessMonitor->cancel();
-          mAccessMonitor.reset();
-        }
-
+        connectionReset();
       }
 
       //-----------------------------------------------------------------------
@@ -1522,12 +1561,22 @@ namespace openpeer
           mLastRetryDuration = maxDuration;
         }
 
+        connectionReset();
+
+        mRetryTimer = Timer::create(mThisWeak.lock(), retryDuration, false);
+      }
+
+      //---------------------------------------------------------------------
+      void ServicePushMailboxSession::connectionReset()
+      {
+        // any message monitored via the message monitor that was sent over the previous connection will not be able to complete
+        UseMessageMonitorManager::notifyMessageSenderObjectGone(mSentViaObjectID);
+        mSentViaObjectID = 0; // reset since no longer sending via this object ID
+
         if (mRetryTimer) {
           mRetryTimer->cancel();
           mRetryTimer.reset();
         }
-
-        mRetryTimer = Timer::create(mThisWeak.lock(), retryDuration, false);
 
         mServerIP = IPAddress();
 
@@ -1536,9 +1585,29 @@ namespace openpeer
           mAccessMonitor.reset();
         }
 
+        if (mGrantQuery) {
+          mGrantQuery->cancel();
+          mGrantQuery.reset();
+        }
+
+        if (mGrantMonitor) {
+          mGrantMonitor->cancel();
+          mGrantMonitor.reset();
+        }
+
+        if (mPeerValidateMonitor) {
+          mPeerValidateMonitor->cancel();
+          mPeerValidateMonitor.reset();
+        }
+
+        if (mTCPMessaging) {
+          mTCPMessaging->shutdown();
+          mTCPMessaging.reset();
+        }
+
 #define WARNING_CLEAR_OUT_SESSION_STATE 1
 #define WARNING_CLEAR_OUT_SESSION_STATE 2
-
+        
       }
 
       //---------------------------------------------------------------------
@@ -1587,7 +1656,7 @@ namespace openpeer
                                                                 IMessageMonitorDelegatePtr delegate,
                                                                 MessagePtr requestMessage,
                                                                 Duration timeout
-                                                                ) const
+                                                                )
       {
         IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
         if (!monitor) {
@@ -1601,6 +1670,12 @@ namespace openpeer
           UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
           return monitor;
         }
+
+        if (0 == mSentViaObjectID) {
+          mSentViaObjectID = zsLib::createPUID();
+        }
+
+        UseMessageMonitorManager::trackSentViaObjectID(requestMessage, mSentViaObjectID);
 
         ZS_LOG_DEBUG(log("request successfully created"))
         return monitor;

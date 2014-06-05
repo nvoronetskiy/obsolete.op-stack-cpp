@@ -116,8 +116,15 @@ namespace openpeer
 
       interaction IMessageMonitorManagerForPushMailbox
       {
+        typedef PUID SentViaObjectID;
+
         static void notifyMessageSendFailed(message::MessagePtr message);
         static void notifyMessageSenderObjectGone(PUID objectID);
+
+        static void trackSentViaObjectID(
+                                         message::MessagePtr message,
+                                         SentViaObjectID sentViaObjectID
+                                         );
 
         virtual ~IMessageMonitorManagerForPushMailbox() {}  // need until virtual method added to make dynamic cast work
       };

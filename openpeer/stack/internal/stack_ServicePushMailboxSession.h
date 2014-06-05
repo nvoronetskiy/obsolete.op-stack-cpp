@@ -67,6 +67,8 @@
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-servers-get-timeout-in-seconds"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-access-timeout-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_NAMESPACE_GRANT_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-namespace-grant-timeout-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-peer-validate-timeout-in-seconds"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
@@ -510,6 +512,7 @@ namespace openpeer
         bool stepAccess();
 
         bool stepGrantLockClear();
+        bool stepPeerValidate();
         bool stepGrantChallenge();
 
         void postStep();
@@ -519,14 +522,14 @@ namespace openpeer
 
         void cancel();
         void connectionFailure();
+        void connectionReset();
 
         bool send(MessagePtr message) const;
         IMessageMonitorPtr sendRequest(
                                        IMessageMonitorDelegatePtr delegate,
                                        MessagePtr requestMessage,
                                        Duration timeout
-                                       ) const;
-        IMessageMonitorPtr sendRequest(MessagePtr requestMessage, const char *timeoutSettingName);
+                                       );
 
         virtual void handleChanged(ChangedNotifyPtr notify);
 
@@ -551,6 +554,8 @@ namespace openpeer
         String mLastErrorReason;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
+
+        PUID mSentViaObjectID;
 
         ITCPMessagingPtr mTCPMessaging;
         ITransportStreamPtr mWireStream;
@@ -587,6 +592,8 @@ namespace openpeer
 
         IMessageMonitorPtr mServersGetMonitor;
         IMessageMonitorPtr mAccessMonitor;
+        IMessageMonitorPtr mGrantMonitor;
+        IMessageMonitorPtr mPeerValidateMonitor;
       };
 
       //-----------------------------------------------------------------------

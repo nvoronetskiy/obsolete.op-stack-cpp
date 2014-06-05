@@ -131,6 +131,17 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void IMessageMonitorManagerForPushMailbox::trackSentViaObjectID(
+                                                                      message::MessagePtr message,
+                                                                      SentViaObjectID sentViaObjectID
+                                                                      )
+      {
+        MessageMonitorManagerPtr manager = MessageMonitorManager::singleton();
+        if (!manager) return;
+        manager->trackSentViaObjectID(message, sentViaObjectID);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
