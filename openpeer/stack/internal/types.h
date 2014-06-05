@@ -40,6 +40,11 @@
 #define OPENPEER_STACK_TRANSPORT_JSON_MLS_RUDP "json-mls/rudp"
 #define OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_MLS_TCP "multiplexed-json-mls/tcp"
 
+#define OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_TCP "multiplexed-json/tcp"
+
+#define OPENPEER_STACK_SERVER_TYPE_FINDER "finder"
+#define OPENPEER_STACK_SERVER_TYPE_PUSH_MAILBOX "push-mailbox"
+
 namespace openpeer
 {
   namespace stack

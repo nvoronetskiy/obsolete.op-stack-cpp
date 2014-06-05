@@ -37,6 +37,8 @@
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
+
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/ITCPMessaging.h>
@@ -61,13 +63,7 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
-      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxAccessRequest)
-      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxNamespaceGrantChallengeValidateRequest)
-      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxIdentitiesUpdateRequest)
-      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentGetRequest)
-      ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentSetRequest)
-
-      ZS_DECLARE_USING_PTR(message::peer, PeerServicesGetRequest)
+      ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -76,6 +72,20 @@ namespace openpeer
       #pragma mark
       #pragma mark (helpers)
       #pragma mark
+
+      //-----------------------------------------------------------------------
+      static String getMultiplexedJsonTCPTransport(const Server &server)
+      {
+        for (Server::ProtocolList::const_iterator iter = server.mProtocols.begin(); iter != server.mProtocols.end(); ++iter)
+        {
+          const Server::Protocol &protocol = (*iter);
+
+          if (OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_TCP == protocol.mTransport) {
+            return protocol.mHost;
+          }
+        }
+        return String();
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -333,6 +343,60 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ServicePushMailboxSession => ITCPMessagingDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onTCPMessagingStateChanged(
+                                                                 ITCPMessagingPtr messaging,
+                                                                 ITCPMessagingDelegate::SessionStates state
+                                                                 )
+      {
+        ZS_LOG_DEBUG(log("on TCP messaging state changed") + ITCPMessaging::toDebug(messaging) + ZS_PARAM("state", ITCPMessaging::toString(state)))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => ITransportStreamReaderDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onTransportStreamReaderReady(ITransportStreamReaderPtr reader)
+      {
+        ZS_LOG_DEBUG(log("on transport stream reader ready") + ZS_PARAM("id", reader->getID()))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IDNSDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onLookupCompleted(IDNSQueryPtr query)
+      {
+        ZS_LOG_DEBUG(log("on DNS lookup complete") + ZS_PARAM("id", query->getID()))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServicePushMailboxSession => IWakeDelegate
       #pragma mark
 
@@ -403,6 +467,66 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<ServersGetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
+                                                                         IMessageMonitorPtr monitor,
+                                                                         ServersGetResultPtr result
+                                                                         )
+      {
+        ZS_LOG_DEBUG(log("servers get result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+
+        AutoRecursiveLock lock(*this);
+        if (monitor != mServersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("servers get result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        mServersGetMonitor.reset();
+
+        mPushMailboxServers = result->servers();
+
+        if (mPushMailboxServers.size() < 1) {
+          ZS_LOG_ERROR(Detail, log("no push-mailbox servers were returned from servers-get") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          connectionFailure();
+          return true;
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
+                                                                              IMessageMonitorPtr monitor,
+                                                                              ServersGetResultPtr ignore,
+                                                                              message::MessageResultPtr result
+                                                                              )
+      {
+        ZS_LOG_ERROR(Debug, log("servers get error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+
+        AutoRecursiveLock lock(*this);
+        if (monitor != mServersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("error result received on servers get monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+
+        mServersGetMonitor.reset();
+        connectionFailure();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<AccessResult>
       #pragma mark
 
@@ -421,7 +545,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
                                                                               IMessageMonitorPtr monitor,
-                                                                              AccessResultPtr ignore,          // will always be NULL
+                                                                              AccessResultPtr ignore,
                                                                               message::MessageResultPtr result
                                                                               )
       {
@@ -980,17 +1104,6 @@ namespace openpeer
 
         if (Time() != mDoNotRetryConnectionBefore) {
           if (now < mDoNotRetryConnectionBefore) {
-            if (!mRetryTimer) {
-              Duration difference = mDoNotRetryConnectionBefore - now;
-              if (difference < Seconds(1))
-                difference = Seconds(1);
-
-              ZS_LOG_DEBUG(log("needs to reconnect via TCP but must try again in the later") + ZS_PARAM("wait time (s)", difference))
-              mRetryTimer = Timer::create(mThisWeak.lock(), difference, false);
-
-              return false;
-            }
-
             ZS_LOG_TRACE(log("waiting to retry TCP connection later"))
             return false;
           }
@@ -999,24 +1112,95 @@ namespace openpeer
           mDoNotRetryConnectionBefore = Time();
         }
 
+        if (!mTCPMessaging) {
+          setState(SessionState_Connecting);
+        } else {
+          if (ITCPMessaging::SessionState_Connected != mTCPMessaging->getState()) {
+            setState(SessionState_Connecting);
+          }
+        }
+
         return true;
       }
 
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepDNS()
       {
+        if (mServersGetMonitor) {
+          ZS_LOG_TRACE(log("waiting for services get result"))
+          return false;
+        }
+
+        if (mTCPMessaging) {
+          ZS_LOG_TRACE(log("already have a TCP connection thus no need to perform DNS"))
+          return true;
+        }
+
+        if (mServerLookup) {
+          if (!mServerLookup->isComplete()) {
+            ZS_LOG_TRACE(log("waiting for DNS query to complete"))
+            return false;
+          }
+
+          mServerSRV = mServerLookup->getSRV();
+
+          mServerLookup->cancel();
+          mServerLookup.reset();
+        }
+
+        if (!mServerIP.isEmpty()) {
+          ZS_LOG_TRACE(log("already have a server IP"))
+          return true;
+        }
+
+        if (mServerSRV) {
+          if (!IDNS::extractNextIP(mServerSRV, mServerIP)) {
+            mServerSRV = SRVResultPtr();
+          }
+
+          if (!mServerIP.isEmpty()) {
+            ZS_LOG_DEBUG(log("not have a server IP") + ZS_PARAM("IP", string(mServerIP)))
+            return true;
+          }
+        }
+
+        String srv;
+
+        while ((srv.isEmpty()) &&
+               (mPushMailboxServers.size() > 0)) {
+          Server server = mPushMailboxServers.front();
+          mPushMailboxServers.pop_front();
+
+          srv = getMultiplexedJsonTCPTransport(server);
+          if (srv.hasData()) {
+            mServerLookup = IDNS::lookupSRV(mThisWeak.lock(), srv, "push-mailbox", "tcp");
+          }
+        }
+
+        if (mServerLookup) {
+          ZS_LOG_DEBUG(log("waiting for DNS query to complete"))
+          return true;
+        }
+
+        IBootstrappedNetworkPtr network = BootstrappedNetwork::convert(mBootstrappedNetwork);
+
+        ZS_THROW_BAD_STATE_IF(!network)
+
+        ServersGetRequestPtr request = ServersGetRequest::create();
+        request->domain(network->getDomain());
+        request->type(OPENPEER_STACK_SERVER_TYPE_PUSH_MAILBOX);
+        request->totalFinders(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET));
+
+        mServersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-servers", "servers-get", request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS)));
+
+        ZS_LOG_DEBUG(log("attempting to get push mailbox servers"))
+        return true;
       }
 
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepConnect()
       {
         ZS_LOG_TRACE(log("step connect"))
-
-        if (mRetryTimer) {
-          ZS_LOG_DEBUG(log("cancelling retry timer"))
-          mRetryTimer->cancel();
-          mRetryTimer.reset();
-        }
 
         if (mTCPMessaging) {
           WORD errorCode = 0;
@@ -1025,7 +1209,6 @@ namespace openpeer
             case ITCPMessaging::SessionState_Pending:
             {
               ZS_LOG_TRACE(log("waiting for TCP messaging to connect"))
-              setState(SessionState_Connecting);
               return false;
             }
             case ITCPMessaging::SessionState_Connected:
@@ -1039,40 +1222,36 @@ namespace openpeer
             case ITCPMessaging::SessionState_ShuttingDown:
             case ITCPMessaging::SessionState_Shutdown:
             {
-              mDoNotRetryConnectionBefore = zsLib::now() + mLastRetryDuration;
-              ZS_LOG_WARNING(Detail, log("TCP messaging unexpectedly shutdown thus will retry again later") + ZS_PARAM("later", mDoNotRetryConnectionBefore) + ZS_PARAM("duration (s)", mLastRetryDuration))
-              mLastRetryDuration = mLastRetryDuration + mLastRetryDuration;
+              ZS_LOG_WARNING(Detail, log("TCP messaging unexepectedly shutdown") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
 
-              Duration maxDuration = Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS));
-              if (mLastRetryDuration > maxDuration) {
-                mLastRetryDuration = maxDuration;
-              }
+              mTCPMessaging.reset();
 
-#define WARNING_CLEAR_OUT_SESSION_STATE 1
-#define WARNING_CLEAR_OUT_SESSION_STATE 2
-
-              setState(SessionState_Connecting);
+              connectionFailure();
               return false;
             }
           }
+
+          return true;
         }
 
-        if (mTCPReceiveStream) {
-          mTCPReceiveStream->cancel();
-          mTCPReceiveStream.reset();
-        }
-        if (mTCPSendStream) {
-          mTCPSendStream->cancel();
-          mTCPSendStream.reset();
+        ZS_LOG_DEBUG(log("issuing TCP connection request to server") + ZS_PARAM("IP", string(mServerIP)))
+
+        if (mWireStream) {
+          mWireStream->cancel();
+          mWireStream.reset();
         }
 
-        mTCPReceiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
+        mWireStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
+
+#define CHANGE_WHEN_MLS_USED 1
+#define CHANGE_WHEN_MLS_USED 2
+        mWireStream->getReader()->notifyReaderReadyToRead();
 
         IPAddress bogus;
 
-        mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mTCPReceiveStream, mTCPSendStream, true, bogus);
+        mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mWireStream, mWireStream, true, bogus);
 
-        return true;
+        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -1217,6 +1396,80 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::cancel()
       {
+        if (isShutdown()) {
+          ZS_LOG_DEBUG(log("already shutdown"))
+          return;
+        }
+
+        ZS_LOG_DEBUG(log("shutting down"))
+        setState(SessionState_ShuttingDown);
+
+        if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
+
+        if (mGracefulShutdownReference) {
+
+#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_UPLOADED 1
+#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_UPLOADED 2
+
+#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_DOWNLOADED 1
+#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_DOWNLOADED 2
+
+          if (mTCPMessaging) {
+            mTCPMessaging->shutdown();
+
+            if (ITCPMessaging::SessionState_Shutdown != mTCPMessaging->getState()) {
+              ZS_LOG_DEBUG(log("waiting for TCP messaging to shutdown"))
+              return;
+            }
+          }
+        }
+
+        setState(SessionState_ShuttingDown);
+
+        if (mTCPMessaging) {
+          mTCPMessaging->shutdown();
+        }
+
+        mGracefulShutdownReference.reset();
+
+        if (mRetryTimer) {
+          mRetryTimer->cancel();
+          mRetryTimer.reset();
+        }
+
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::connectionFailure()
+      {
+        Duration retryDuration = mLastRetryDuration;
+        ZS_LOG_WARNING(Detail, log("connection failure") + ZS_PARAM("wait time (s)", retryDuration))
+
+        mDoNotRetryConnectionBefore = zsLib::now() + retryDuration;
+        ZS_LOG_WARNING(Detail, log("TCP messaging unexpectedly shutdown thus will retry again later") + ZS_PARAM("later", mDoNotRetryConnectionBefore) + ZS_PARAM("duration (s)", mLastRetryDuration))
+
+        if (retryDuration < Seconds(1))
+          retryDuration = Seconds(1);
+
+        mLastRetryDuration = retryDuration + retryDuration;
+
+        Duration maxDuration = Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS));
+        if (mLastRetryDuration > maxDuration) {
+          mLastRetryDuration = maxDuration;
+        }
+
+        if (mRetryTimer) {
+          mRetryTimer->cancel();
+          mRetryTimer.reset();
+        }
+
+        mRetryTimer = Timer::create(mThisWeak.lock(), retryDuration, false);
+
+        mServerIP = IPAddress();
+
+#define WARNING_CLEAR_OUT_SESSION_STATE 1
+#define WARNING_CLEAR_OUT_SESSION_STATE 2
+
       }
 
       //-----------------------------------------------------------------------

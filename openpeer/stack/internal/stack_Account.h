@@ -56,6 +56,7 @@
 #include <map>
 
 #define OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE "openpeer/stack/backgrounding-phase-account"
+#define OPENPEER_STACK_SETTING_FINDER_TOTAL_SERVERS_TO_GET "openpeer/stack/finder-total-servers-to-get"
 
 namespace openpeer
 {

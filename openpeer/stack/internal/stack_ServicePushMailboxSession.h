@@ -41,6 +41,7 @@
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 
+#include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
 #include <openpeer/stack/message/push-mailbox/AccessResult.h>
 #include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/push-mailbox/PeerValidateResult.h>
@@ -60,6 +61,9 @@
 
 #include <zsLib/MessageQueueAssociator.h>
 #include <zsLib/Timer.h>
+
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET "openpeer/stack/push-mailbox-total-servers-to-get"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-servers-get-timeout-in-seconds"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
@@ -97,6 +101,7 @@ namespace openpeer
                                         public IBootstrappedNetworkDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
                                         public IServiceNamespaceGrantSessionQueryDelegate,
+                                        public IMessageMonitorResultDelegate<message::bootstrapped_servers::ServersGetResult>,
                                         public IMessageMonitorResultDelegate<message::push_mailbox::AccessResult>,
                                         public IMessageMonitorResultDelegate<message::push_mailbox::NamespaceGrantChallengeValidateResult>,
                                         public IMessageMonitorResultDelegate<message::push_mailbox::PeerValidateResult>,
@@ -119,6 +124,8 @@ namespace openpeer
 
         typedef IServicePushMailboxSession::SessionStates SessionStates;
 
+        ZS_DECLARE_TYPEDEF_PTR(services::IDNS::SRVResult, SRVResult)
+
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::AccessResult, AccessResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::NamespaceGrantChallengeValidateResult, NamespaceGrantChallengeValidateResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::PeerValidateResult, PeerValidateResult)
@@ -131,6 +138,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchResult, ListFetchResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ChangedNotify, ChangedNotify)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushResult, RegisterPushResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::bootstrapped_servers::ServersGetResult, ServersGetResult)
 
       protected:
         ServicePushMailboxSession(
@@ -278,6 +286,22 @@ namespace openpeer
                                                                             IServiceNamespaceGrantSessionQueryPtr query,
                                                                             ElementPtr namespaceGrantChallengeBundleEl
                                                                             );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<ServersGetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        ServersGetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             ServersGetResultPtr ignore,          // will always be NULL
+                                                             message::MessageResultPtr result
+                                                             );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -488,6 +512,7 @@ namespace openpeer
         void setError(WORD errorCode, const char *reason = NULL);
 
         void cancel();
+        void connectionFailure();
 
         virtual void handleChanged(ChangedNotifyPtr notify);
 
@@ -499,6 +524,7 @@ namespace openpeer
 
         AutoPUID mID;
         ServicePushMailboxSessionWeakPtr mThisWeak;
+        ServicePushMailboxSessionPtr mGracefulShutdownReference;
 
         IServicePushMailboxSessionDelegateSubscriptions mSubscriptions;
         IServicePushMailboxSessionSubscriptionPtr mDefaultSubscription;
@@ -513,8 +539,7 @@ namespace openpeer
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
 
         ITCPMessagingPtr mTCPMessaging;
-        ITransportStreamPtr mTCPReceiveStream;
-        ITransportStreamPtr mTCPSendStream;
+        ITransportStreamPtr mWireStream;
 
         UseServiceLockboxSessionPtr mLockbox;
         LockboxInfo mLockboxInfo;
@@ -532,6 +557,13 @@ namespace openpeer
         Duration mLastRetryDuration;
         Time mDoNotRetryConnectionBefore;
         TimerPtr mRetryTimer;
+
+        ServerList mPushMailboxServers;
+        IDNSQueryPtr mServerLookup;
+        SRVResultPtr mServerSRV;
+        IPAddress mServerIP;
+
+        IMessageMonitorPtr mServersGetMonitor;
       };
 
       //-----------------------------------------------------------------------

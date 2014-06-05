@@ -77,7 +77,6 @@
 #define OPENPEER_STACK_PEER_LOCATION_INACTIVITY_TIMEOUT_IN_SECONDS (10*60)
 #define OPENPEER_STACK_PEER_LOCATION_KEEP_ALIVE_TIME_IN_SECONDS    (5*60)
 
-#define OPENPEER_STACK_FINDERS_GET_TOTAL_SERVERS_TO_GET (2)
 #define OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS (60)
 
 #define OPENPEER_STACK_ACCOUNT_TIMER_FIRES_IN_SECONDS (15)
@@ -85,7 +84,6 @@
 #define OPENPEER_STACK_ACCOUNT_FINDER_MAX_RETRY_AFTER_TIME_IN_SECONDS (60)
 
 #define OPENPEER_STACK_ACCOUNT_RUDP_TRANSPORT_PROTOCOL_TYPE "rudp/udp"
-#define OPENPEER_STACK_ACCOUNT_MULTIPLEXED_JSON_TCP_TRANSPORT_PROTOCOL_TYPE "multiplexed-json/tcp"
 
 #define OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY (IDHKeyDomain::KeyDomainPrecompiledType_2048)
 
@@ -143,7 +141,7 @@ namespace openpeer
         {
           const Server::Protocol &protocol = (*iter);
 
-          if (OPENPEER_STACK_ACCOUNT_MULTIPLEXED_JSON_TCP_TRANSPORT_PROTOCOL_TYPE == protocol.mTransport) {
+          if (OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_TCP == protocol.mTransport) {
             return protocol.mHost;
           }
         }
@@ -2363,8 +2361,8 @@ namespace openpeer
 
           ServersGetRequestPtr request = ServersGetRequest::create();
           request->domain(getDomain());
-          request->type("finder");
-          request->totalFinders(OPENPEER_STACK_FINDERS_GET_TOTAL_SERVERS_TO_GET);
+          request->type(OPENPEER_STACK_SERVER_TYPE_FINDER);
+          request->totalFinders(services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_TOTAL_SERVERS_TO_GET));
 
           mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-servers", "servers-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
 
