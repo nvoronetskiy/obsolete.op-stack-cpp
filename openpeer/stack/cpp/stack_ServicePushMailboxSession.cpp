@@ -66,6 +66,8 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
+      ZS_DECLARE_USING_PTR(openpeer::services, IBackgrounding)
+
       ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, AccessRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, NamespaceGrantChallengeValidateRequest)
@@ -152,6 +154,7 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
 
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE));
       }
 
       //-----------------------------------------------------------------------
@@ -398,6 +401,65 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IBackgroundingDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onBackgroundingGoingToBackground(
+                                                                       IBackgroundingSubscriptionPtr subscription,
+                                                                       IBackgroundingNotifierPtr notifier
+                                                                       )
+      {
+        ZS_LOG_DEBUG(log("going to background"))
+
+        AutoRecursiveLock lock(*this);
+
+        get(mBackgroundingEnabled) = true;
+
+        mBackgroundingNotifier = notifier;
+
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("going to background now"))
+
+        AutoRecursiveLock lock(*this);
+
+        mBackgroundingNotifier.reset();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("returning from background"))
+
+        AutoRecursiveLock lock(*this);
+
+        get(mBackgroundingEnabled) = false;
+        mBackgroundingNotifier.reset();
+
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription)
+      {
+        ZS_LOG_DEBUG(log("application will quit"))
+
+        AutoRecursiveLock lock(*this);
+
+        setError(IHTTP::HTTPStatusCode_ClientClosedRequest, "application is quitting");
+        cancel();
       }
 
       //-----------------------------------------------------------------------
@@ -1032,6 +1094,10 @@ namespace openpeer
         if (!stepPeerValidate()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
 
+        if (!stepBackgroundingReady()) goto post_step;
+
+        setState(SessionState_Connected);
+
       post_step:
         postStep();
 
@@ -1104,6 +1170,13 @@ namespace openpeer
         Time now = zsLib::now();
 
         bool shouldConnect = (mLastActivity + mInactivityTimeout > now);
+
+        if (mBackgroundingEnabled) {
+          if (!mBackgroundingNotifier) {
+            ZS_LOG_DEBUG(log("going to background thus should not be connected"))
+            shouldConnect = false;
+          }
+        }
 
         if (!shouldConnect) {
           if (!mTCPMessaging) {
@@ -1462,6 +1535,32 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepBackgroundingReady()
+      {
+        if (!mBackgroundingEnabled) {
+          ZS_LOG_TRACE(log("backgrounding not enabled"))
+          return true;
+        }
+
+        bool backgroundingReady = true;
+
+#define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 1
+#define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 2
+
+        if (backgroundingReady) {
+          ZS_LOG_DEBUG(log("backgrounding is now ready"))
+
+          mBackgroundingNotifier.reset();
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return false;
+        }
+
+        ZS_LOG_TRACE(log("backgrounding is not ready yet"))
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       void ServicePushMailboxSession::postStep()
       {
       }
@@ -1569,6 +1668,8 @@ namespace openpeer
       //---------------------------------------------------------------------
       void ServicePushMailboxSession::connectionReset()
       {
+        ZS_LOG_DEBUG(log("connection reset"))
+
         // any message monitored via the message monitor that was sent over the previous connection will not be able to complete
         UseMessageMonitorManager::notifyMessageSenderObjectGone(mSentViaObjectID);
         mSentViaObjectID = 0; // reset since no longer sending via this object ID

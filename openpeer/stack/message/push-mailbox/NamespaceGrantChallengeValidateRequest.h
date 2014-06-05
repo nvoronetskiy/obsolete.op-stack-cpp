@@ -66,8 +66,8 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const ElementPtr &namespaceGrantChallengeBundle() const {return mNamespaceGrantChallengeBundle;}
-          void namespaceGrantChallengeBundle(ElementPtr val);
+          const ElementPtr &namespaceGrantChallengeBundle() const     {return mNamespaceGrantChallengeBundle;}
+          void namespaceGrantChallengeBundle(ElementPtr val)          {mNamespaceGrantChallengeBundle = val;}
 
         protected:
           NamespaceGrantChallengeValidateRequest();

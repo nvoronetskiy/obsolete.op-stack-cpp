@@ -55,6 +55,7 @@
 #include <openpeer/stack/message/push-mailbox/ListFetchResult.h>
 #include <openpeer/stack/message/push-mailbox/RegisterPushResult.h>
 
+#include <openpeer/services/IBackgrounding.h>
 #include <openpeer/services/IDNS.h>
 #include <openpeer/services/ITCPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
@@ -62,6 +63,8 @@
 
 #include <zsLib/MessageQueueAssociator.h>
 #include <zsLib/Timer.h>
+
+#define OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE "openpeer/stack/backgrounding-phase-push-mailbox"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET "openpeer/stack/push-mailbox-total-servers-to-get"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-servers-get-timeout-in-seconds"
@@ -103,6 +106,7 @@ namespace openpeer
                                         public ITransportStreamReaderDelegate,
                                         public IDNSDelegate,
                                         public IWakeDelegate,
+                                        public IBackgroundingDelegate,
                                         public IBootstrappedNetworkDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
                                         public IServiceNamespaceGrantSessionQueryDelegate,
@@ -262,6 +266,22 @@ namespace openpeer
         #pragma mark
 
         virtual void onLookupCompleted(IDNSQueryPtr query);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => IBackgroundingDelegate
+        #pragma mark
+
+        virtual void onBackgroundingGoingToBackground(
+                                                      IBackgroundingSubscriptionPtr subscription,
+                                                      IBackgroundingNotifierPtr notifier
+                                                      );
+
+        virtual void onBackgroundingGoingToBackgroundNow(IBackgroundingSubscriptionPtr subscription);
+
+        virtual void onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription);
+
+        virtual void onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -515,6 +535,8 @@ namespace openpeer
         bool stepPeerValidate();
         bool stepGrantChallenge();
 
+        bool stepBackgroundingReady();
+
         void postStep();
 
         void setState(SessionStates state);
@@ -554,6 +576,10 @@ namespace openpeer
         String mLastErrorReason;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
+
+        IBackgroundingSubscriptionPtr mBackgroundingSubscription;
+        IBackgroundingNotifierPtr mBackgroundingNotifier;
+        AutoBool mBackgroundingEnabled;
 
         PUID mSentViaObjectID;
 
