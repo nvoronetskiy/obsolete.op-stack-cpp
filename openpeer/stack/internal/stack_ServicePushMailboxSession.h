@@ -57,6 +57,7 @@
 
 #include <openpeer/services/IBackgrounding.h>
 #include <openpeer/services/IDNS.h>
+#include <openpeer/services/IReachability.h>
 #include <openpeer/services/ITCPMessaging.h>
 #include <openpeer/services/ITransportStream.h>
 #include <openpeer/services/IWakeDelegate.h>
@@ -86,6 +87,7 @@ namespace openpeer
       interaction IBootstrappedNetworkForServices;
 
       ZS_DECLARE_USING_PTR(openpeer::services, IDNSDelegate)
+      ZS_DECLARE_USING_PTR(openpeer::services, IReachabilityDelegate)
       ZS_DECLARE_USING_PTR(openpeer::services, ITCPMessagingDelegate)
       ZS_DECLARE_USING_PTR(openpeer::services, ITransportStreamReaderDelegate)
 
@@ -107,6 +109,7 @@ namespace openpeer
                                         public IDNSDelegate,
                                         public IWakeDelegate,
                                         public IBackgroundingDelegate,
+                                        public IReachabilityDelegate,
                                         public IBootstrappedNetworkDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
                                         public IServiceNamespaceGrantSessionQueryDelegate,
@@ -136,6 +139,10 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(services::IDNS::SRVResult, SRVResult)
 
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForPushMailbox, UseMessageMonitorManager)
+
+        ZS_DECLARE_TYPEDEF_PTR(services::IReachability, IReachability)
+        ZS_DECLARE_TYPEDEF_PTR(services::IReachabilitySubscription, IReachabilitySubscription)
+        ZS_DECLARE_TYPEDEF_PTR(services::IReachability::InterfaceTypes, InterfaceTypes)
 
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::AccessResult, AccessResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::NamespaceGrantChallengeValidateResult, NamespaceGrantChallengeValidateResult)
@@ -282,6 +289,16 @@ namespace openpeer
         virtual void onBackgroundingReturningFromBackground(IBackgroundingSubscriptionPtr subscription);
 
         virtual void onBackgroundingApplicationWillQuit(IBackgroundingSubscriptionPtr subscription);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => IReachabilityDelegate
+        #pragma mark
+
+        virtual void onReachabilityChanged(
+                                           IReachabilitySubscriptionPtr subscription,
+                                           InterfaceTypes interfaceTypes
+                                           );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -537,6 +554,8 @@ namespace openpeer
 
         bool stepBackgroundingReady();
 
+        bool stepFullyConnected();
+
         void postStep();
 
         void setState(SessionStates state);
@@ -581,6 +600,8 @@ namespace openpeer
         IBackgroundingNotifierPtr mBackgroundingNotifier;
         AutoBool mBackgroundingEnabled;
 
+        IReachabilitySubscriptionPtr mReachabilitySubscription;
+
         PUID mSentViaObjectID;
 
         ITCPMessagingPtr mTCPMessaging;
@@ -599,6 +620,7 @@ namespace openpeer
 
         AutoBool mObtainedLock;
 
+        bool mRequiresConnection;
         Duration mInactivityTimeout;
         Time mLastActivity;
 

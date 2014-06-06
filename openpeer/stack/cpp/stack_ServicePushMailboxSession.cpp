@@ -127,6 +127,7 @@ namespace openpeer
         mLockbox(lockboxSession),
         mGrantSession(grantSession),
 
+        mRequiresConnection(true),
         mInactivityTimeout(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT))),
         mLastActivity(zsLib::now()),
 
@@ -155,6 +156,7 @@ namespace openpeer
 
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE));
+        mReachabilitySubscription = IReachability::subscribe(mThisWeak.lock());
       }
 
       //-----------------------------------------------------------------------
@@ -310,7 +312,10 @@ namespace openpeer
         ZS_LOG_DEBUG(log("recheck now called"))
 
         AutoRecursiveLock lock(*this);
-        mLastActivity = zsLib::now();
+
+        mRequiresConnection = true;
+
+        mDoNotRetryConnectionBefore = Time();
 
 #define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 1
 #define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 2
@@ -460,6 +465,29 @@ namespace openpeer
 
         setError(IHTTP::HTTPStatusCode_ClientClosedRequest, "application is quitting");
         cancel();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IReachabilityDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onReachabilityChanged(
+                                                            IReachabilitySubscriptionPtr subscription,
+                                                            InterfaceTypes interfaceTypes
+                                                            )
+      {
+        AutoRecursiveLock lock(*this);
+        ZS_LOG_DEBUG(log("on reachability changed") + ZS_PARAM("reachability", IReachability::toString(interfaceTypes)))
+
+        // as network reachability has changed, it's okay to recheck the connection immediately
+        mDoNotRetryConnectionBefore = Time();
+
+        step();
       }
 
       //-----------------------------------------------------------------------
@@ -1094,9 +1122,9 @@ namespace openpeer
         if (!stepPeerValidate()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
 
-        if (!stepBackgroundingReady()) goto post_step;
+        if (!stepFullyConnected()) goto post_step;
 
-        setState(SessionState_Connected);
+        if (!stepBackgroundingReady()) goto post_step;
 
       post_step:
         postStep();
@@ -1169,7 +1197,8 @@ namespace openpeer
 
         Time now = zsLib::now();
 
-        bool shouldConnect = (mLastActivity + mInactivityTimeout > now);
+        bool shouldConnect = ((mLastActivity + mInactivityTimeout > now) ||
+                              (mRequiresConnection));
 
         if (mBackgroundingEnabled) {
           if (!mBackgroundingNotifier) {
@@ -1535,6 +1564,22 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepFullyConnected()
+      {
+        ZS_LOG_TRACE(log("fully connected"))
+        setState(SessionState_Connected);
+
+        mLastRetryDuration = mDefaultLastRetryDuration;
+
+        if (mRequiresConnection) {
+          mRequiresConnection = false;
+          mLastActivity = zsLib::now();
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepBackgroundingReady()
       {
         if (!mBackgroundingEnabled) {
@@ -1639,6 +1684,18 @@ namespace openpeer
         mGracefulShutdownReference.reset();
 
         connectionReset();
+
+        mBackgroundingNotifier.reset();
+
+        if (mBackgroundingSubscription) {
+          mBackgroundingSubscription->cancel();
+          mBackgroundingSubscription.reset();
+        }
+
+        if (mReachabilitySubscription) {
+          mReachabilitySubscription->cancel();
+          mReachabilitySubscription.reset();
+        }
       }
 
       //-----------------------------------------------------------------------
