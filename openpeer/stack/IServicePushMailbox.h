@@ -171,6 +171,7 @@ namespace openpeer
       virtual void shutdown() = 0;
 
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
+                                                                 IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                                                  const char *deviceToken,
                                                                  const char *folder,        // what folder to monitor for push requests
                                                                  Time expires,              // how long should the registrration to the device last

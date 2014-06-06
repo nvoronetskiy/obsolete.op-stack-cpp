@@ -49,11 +49,13 @@ namespace openpeer
                               public IMessageMonitorResultDelegate<message::push_mailbox::RegisterPushResult>
         {
         public:
+          friend ServicePushMailboxSession;
 
         protected:
           RegisterQuery(
                         IMessageQueuePtr queue,
                         const SharedRecursiveLock &lock,
+                        ServicePushMailboxSessionPtr outer,
                         IServicePushMailboxRegisterQueryDelegatePtr delegate,
                         const PushSubscriptionInfo &subscriptionInfo
                         );
@@ -63,6 +65,7 @@ namespace openpeer
         public:
           ~RegisterQuery();
 
+        protected:
           //-------------------------------------------------------------------
           #pragma mark
           #pragma mark ServicePushMailboxSession::RegisterQuery => friend ServicePushMailboxSession
@@ -71,12 +74,18 @@ namespace openpeer
           static RegisterQueryPtr create(
                                          IMessageQueuePtr queue,
                                          const SharedRecursiveLock &lock,
+                                         ServicePushMailboxSessionPtr outer,
                                          IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                          const PushSubscriptionInfo &subscriptionInfo
                                          );
 
+          // (duplicate) virtual PUID getID() const;
+          // (duplicate) virtual void cancel();
+          // (duplciate) virtual void setError(WORD errorCode, const char *inReason);
+
           virtual const PushSubscriptionInfo &getSubscriptionInfo() const {return mSubscriptionInfo;}
 
+          virtual bool needsRequest() const;
           virtual void monitor(RegisterPushRequestPtr requestMessage);
 
           //-------------------------------------------------------------------
@@ -106,7 +115,7 @@ namespace openpeer
                                                                RegisterPushResultPtr ignore,          // will always be NULL
                                                                message::MessageResultPtr result
                                                                );
-          
+
         protected:
           //-------------------------------------------------------------------
           #pragma mark
@@ -118,8 +127,8 @@ namespace openpeer
 
           virtual ElementPtr toDebug() const;
 
-          void cancel();
-          void setError(WORD errorCode, const char *inReason);
+          virtual void cancel();
+          virtual void setError(WORD errorCode, const char *inReason);
 
         private:
           //-------------------------------------------------------------------
@@ -129,6 +138,8 @@ namespace openpeer
 
           AutoPUID mID;
           RegisterQueryWeakPtr mThisWeak;
+          ServicePushMailboxSessionWeakPtr mOuter;
+
           IServicePushMailboxRegisterQueryDelegatePtr mDelegate;
 
           AutoBool mComplete;

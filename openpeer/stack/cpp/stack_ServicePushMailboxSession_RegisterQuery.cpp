@@ -93,11 +93,13 @@ namespace openpeer
       ServicePushMailboxSession::RegisterQuery::RegisterQuery(
                                                               IMessageQueuePtr queue,
                                                               const SharedRecursiveLock &lock,
+                                                              ServicePushMailboxSessionPtr outer,
                                                               IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                                               const PushSubscriptionInfo &subscriptionInfo
                                                               ) :
         MessageQueueAssociator(queue),
         SharedRecursiveLock(lock),
+        mOuter(outer),
         mDelegate(IServicePushMailboxRegisterQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mSubscriptionInfo(subscriptionInfo)
       {
@@ -126,19 +128,31 @@ namespace openpeer
       ServicePushMailboxSession::RegisterQueryPtr ServicePushMailboxSession::RegisterQuery::create(
                                                                                                    IMessageQueuePtr queue,
                                                                                                    const SharedRecursiveLock &lock,
+                                                                                                   ServicePushMailboxSessionPtr outer,
                                                                                                    IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                                                                                    const PushSubscriptionInfo &subscriptionInfo
                                                                                                    )
       {
-        RegisterQueryPtr pThis(new RegisterQuery(queue, lock, delegate, subscriptionInfo));
+        RegisterQueryPtr pThis(new RegisterQuery(queue, lock, outer, delegate, subscriptionInfo));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::RegisterQuery::needsRequest() const
+      {
+        AutoRecursiveLock lock(*this);
+
+        if (mComplete) return false;
+        return !((bool)mRegisterMonitor);
+      }
+
+      //-----------------------------------------------------------------------
       void ServicePushMailboxSession::RegisterQuery::monitor(RegisterPushRequestPtr requestMessage)
       {
+        AutoRecursiveLock lock(*this);
+
         IMessageMonitorPtr monitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RegisterPushResult>::convert(mThisWeak.lock()), requestMessage, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REGISTER_PUSH_TIMEOUT_IN_SECONDS)));
         if (monitor) {
           ZS_LOG_DEBUG(log("monitoring register request") + IMessageMonitor::toDebug(monitor))
@@ -254,8 +268,9 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
 
-        IHelper::debugAppend(resultEl, "complete", mComplete);
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
 
+        IHelper::debugAppend(resultEl, "complete", mComplete);
         IHelper::debugAppend(resultEl, "error code", mLastError);
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
@@ -280,6 +295,12 @@ namespace openpeer
           }
         }
 
+        ServicePushMailboxSessionPtr outer = mOuter.lock();
+        if (outer) {
+          outer->notifyComplete(*this);
+          mOuter.reset();
+        }
+
         mDelegate.reset();
       }
 
@@ -287,6 +308,11 @@ namespace openpeer
       void ServicePushMailboxSession::RegisterQuery::setError(WORD errorCode, const char *inReason)
       {
         String reason(inReason ? String(inReason) : String());
+
+        if (mComplete) {
+          ZS_LOG_WARNING(Detail, log("cannot set error after already complete") + ZS_PARAM("new error", errorCode) + ZS_PARAM("new reason", reason))
+          return;
+        }
 
         if (reason.isEmpty()) {
           reason = IHTTP::toString(IHTTP::toStatusCode(errorCode));

@@ -132,6 +132,7 @@ namespace openpeer
         friend interaction IServicePushMailboxSession;
 
         ZS_DECLARE_CLASS_PTR(RegisterQuery)
+        ZS_DECLARE_TYPEDEF_PTR(std::list<RegisterQueryPtr>, RegisterQueryList)
 
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
@@ -214,6 +215,7 @@ namespace openpeer
         virtual void shutdown();
 
         virtual IServicePushMailboxRegisterQueryPtr registerDevice(
+                                                                   IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                                                    const char *deviceToken,
                                                                    const char *folder,
                                                                    Time expires,
@@ -248,6 +250,13 @@ namespace openpeer
 
         virtual void markPushMessageRead(const char *messageID);
         virtual void deletePushMessage(const char *messageID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => friend RegisterQuery
+        #pragma mark
+
+        virtual void notifyComplete(RegisterQuery &query);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -542,9 +551,10 @@ namespace openpeer
         bool stepPeerValidate();
         bool stepGrantChallenge();
 
-        bool stepBackgroundingReady();
-
         bool stepFullyConnected();
+        bool stepRegisterQueries();
+
+        bool stepBackgroundingReady();
 
         void postStep();
 
@@ -638,6 +648,9 @@ namespace openpeer
         IMessageMonitorPtr mAccessMonitor;
         IMessageMonitorPtr mGrantMonitor;
         IMessageMonitorPtr mPeerValidateMonitor;
+
+        String mDeviceToken;
+        RegisterQueryList mRegisterQueries;
       };
 
       //-----------------------------------------------------------------------

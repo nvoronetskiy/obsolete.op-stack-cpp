@@ -41,6 +41,7 @@
 #include <openpeer/stack/message/push-mailbox/AccessRequest.h>
 #include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateRequest.h>
 #include <openpeer/stack/message/push-mailbox/PeerValidateRequest.h>
+#include <openpeer/stack/message/push-mailbox/RegisterPushRequest.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
@@ -260,7 +261,8 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       IServicePushMailboxRegisterQueryPtr ServicePushMailboxSession::registerDevice(
-                                                                                    const char *deviceToken,
+                                                                                    IServicePushMailboxRegisterQueryDelegatePtr delegate,
+                                                                                    const char *inDeviceToken,
                                                                                     const char *folder,
                                                                                     Time expires,
                                                                                     const char *mappedType,
@@ -271,7 +273,41 @@ namespace openpeer
                                                                                     unsigned int priority
                                                                                     )
       {
-        return IServicePushMailboxRegisterQueryPtr();
+        AutoRecursiveLock lock(*this);
+
+        String deviceToken(inDeviceToken);
+
+        if (mDeviceToken.hasData()) {
+          ZS_THROW_INVALID_ARGUMENT_IF(deviceToken != mDeviceToken)  // this should never change within a single run
+        }
+
+        PushSubscriptionInfo info;
+        info.mFolder = String(folder);
+        info.mExpires = expires;
+        info.mMapped = String(mappedType);
+        info.mUnreadBadge = unreadBadge;
+        info.mSound = String(sound);
+        info.mAction = String(action);
+        info.mLaunchImage = String(launchImage);
+        info.mPriority = priority;
+
+        mDeviceToken = deviceToken;
+
+        ZS_LOG_DEBUG(log("registering device") + ZS_PARAM("token", mDeviceToken) + info.toDebug())
+
+        RegisterQueryPtr query = RegisterQuery::create(getAssociatedMessageQueue(), *this, mThisWeak.lock(), delegate, info);
+        if (isShutdown()) {
+          query->setError(IHTTP::HTTPStatusCode_Gone, "alreayd shutdown");
+          query->cancel();
+          return query;
+        }
+
+        mRegisterQueries.push_back(query);
+
+        mLastActivity = zsLib::now(); // register activity to cause connection to restart if not started
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return query;
       }
 
       //-----------------------------------------------------------------------
@@ -328,11 +364,29 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::markPushMessageRead(const char *messageID)
       {
+        AutoRecursiveLock lock(*this);
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::deletePushMessage(const char *messageID)
       {
+        AutoRecursiveLock lock(*this);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => friend RegisterQuery
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::notifyComplete(RegisterQuery &query)
+      {
+        ZS_LOG_DEBUG(log("notified query complete") + ZS_PARAM("query", query.getID()))
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
@@ -1535,7 +1589,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepFullyConnected()
       {
-        ZS_LOG_TRACE(log("fully connected"))
+        ZS_LOG_TRACE(log("step fully connected"))
         setState(SessionState_Connected);
 
         mLastRetryDuration = mDefaultLastRetryDuration;
@@ -1549,6 +1603,64 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepRegisterQueries()
+      {
+        ZS_LOG_TRACE(log("step register queries"))
+
+        if (mRegisterQueries.size() < 1) return true;
+
+        PushSubscriptionInfoList subscriptions;
+        RegisterQueryList queriesNeedingRequest;
+
+        for (RegisterQueryList::iterator iter_doNotUse = mRegisterQueries.begin(); iter_doNotUse != mRegisterQueries.end(); )
+        {
+          RegisterQueryList::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          RegisterQueryPtr query = (*current);
+
+          if (query->isComplete()) {
+            ZS_LOG_DEBUG(log("removing deleted query"))
+            mRegisterQueries.erase(current);
+            continue;
+          }
+
+          if (!query->needsRequest()) continue;
+
+          subscriptions.push_back(query->getSubscriptionInfo());
+          queriesNeedingRequest.push_back(query);
+        }
+
+        if (subscriptions.size() > 0) {
+          RegisterPushRequestPtr request = RegisterPushRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+#if defined(__APPLE__)
+          request->pushServiceType(RegisterPushRequest::PushServiceType_APNS);
+#elif defined(_ANDROID)
+          request->pushServiceType(RegisterPushRequest::PushServiceType_GCM);
+#endif //__APPLE__
+          request->token(mDeviceToken);
+          request->subscriptions(subscriptions);
+
+          for (RegisterQueryList::iterator iter = queriesNeedingRequest.begin(); iter != queriesNeedingRequest.end(); ++iter)
+          {
+            RegisterQueryPtr query = (*iter);
+            query->monitor(request);
+          }
+
+          sendRequest(request);
+        }
+
+        if (mRegisterQueries.size() < 1) {
+          ZS_LOG_TRACE(log("all register device queries are complete"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("some register device queries are still pending"))
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepBackgroundingReady()
       {
         if (!mBackgroundingEnabled) {
@@ -1556,7 +1668,7 @@ namespace openpeer
           return true;
         }
 
-        bool backgroundingReady = true;
+        bool backgroundingReady = (mRegisterQueries.size() < 1);
 
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 1
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 2
@@ -1665,6 +1777,19 @@ namespace openpeer
           mReachabilitySubscription->cancel();
           mReachabilitySubscription.reset();
         }
+
+        // clean out any pending queries
+        for (RegisterQueryList::iterator iter_doNotUse = mRegisterQueries.begin(); iter_doNotUse != mRegisterQueries.end(); )
+        {
+          RegisterQueryList::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          RegisterQueryPtr query = (*current);
+          query->setError(IHTTP::HTTPStatusCode_Gone, "push mailbox service unexpectedly closed before query completed");
+          query->cancel();
+        }
+
+        mRegisterQueries.clear();
       }
 
       //-----------------------------------------------------------------------
