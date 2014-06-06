@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2013, SMB Phone Inc.
+ Copyright (c) 2014, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -261,6 +261,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServicePushMailboxRegisterQueryPtr ServicePushMailboxSession::registerDevice(
                                                                                     const char *deviceToken,
+                                                                                    const char *folder,
+                                                                                    Time expires,
                                                                                     const char *mappedType,
                                                                                     bool unreadBadge,
                                                                                     const char *sound,
@@ -1000,39 +1002,6 @@ namespace openpeer
       bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
                                                                               IMessageMonitorPtr monitor,
                                                                               ListFetchResultPtr ignore,
-                                                                              message::MessageResultPtr result
-                                                                              )
-      {
-        ZS_LOG_ERROR(Debug, log("list fetch error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
-
-        AutoRecursiveLock lock(*this);
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark ServicePushMailboxSession => IMessageMonitorResultDelegate<RegisterPushResult>
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::handleMessageMonitorResultReceived(
-                                                                         IMessageMonitorPtr monitor,
-                                                                         RegisterPushResultPtr result
-                                                                         )
-      {
-        ZS_LOG_DEBUG(log("list fetch result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
-
-        AutoRecursiveLock lock(*this);
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::handleMessageMonitorErrorResultReceived(
-                                                                              IMessageMonitorPtr monitor,
-                                                                              RegisterPushResultPtr ignore,
                                                                               message::MessageResultPtr result
                                                                               )
       {
@@ -1822,11 +1791,18 @@ namespace openpeer
           return IMessageMonitorPtr();
         }
 
+        sendRequest(requestMessage);
+        return monitor;
+      }
+
+      //---------------------------------------------------------------------
+      bool ServicePushMailboxSession::sendRequest(MessagePtr requestMessage)
+      {
         bool result = send(requestMessage);
         if (!result) {
           // notify that the message requester failed to send the message...
           UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
-          return monitor;
+          return false;
         }
 
         if (0 == mSentViaObjectID) {
@@ -1836,7 +1812,7 @@ namespace openpeer
         UseMessageMonitorManager::trackSentViaObjectID(requestMessage, mSentViaObjectID);
 
         ZS_LOG_DEBUG(log("request successfully created"))
-        return monitor;
+        return true;
       }
 
       //-----------------------------------------------------------------------

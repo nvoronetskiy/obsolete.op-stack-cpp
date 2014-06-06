@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2013, SMB Phone Inc.
+ Copyright (c) 2014, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -172,12 +172,14 @@ namespace openpeer
 
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                  const char *deviceToken,
-                                                                 const char *mappedType,   // for APNS maps to "loc-key"
-                                                                 bool unreadBadge,         // true causes total unread messages to be displayed in badge
-                                                                 const char *sound,        // what sound to play upon receiving a message. For APNS, maps to "sound" field
-                                                                 const char *action,       // for APNS, maps to "action-loc-key"
-                                                                 const char *launchImage,  // for APNS, maps to "launch-image"
-                                                                 unsigned int priority     // for APNS, maps to push priority
+                                                                 const char *folder,        // what folder to monitor for push requests
+                                                                 Time expires,              // how long should the registrration to the device last
+                                                                 const char *mappedType,    // for APNS maps to "loc-key"
+                                                                 bool unreadBadge,          // true causes total unread messages to be displayed in badge
+                                                                 const char *sound,         // what sound to play upon receiving a message. For APNS, maps to "sound" field
+                                                                 const char *action,        // for APNS, maps to "action-loc-key"
+                                                                 const char *launchImage,   // for APNS, maps to "launch-image"
+                                                                 unsigned int priority      // for APNS, maps to push priority
                                                                  ) = 0;
 
       virtual void monitorFolder(const char *folderName) = 0;

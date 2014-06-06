@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2013, SMB Phone Inc.
+ Copyright (c) 2014, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -1633,7 +1633,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark message::PushSubscriptionInfo::FlagInfo::URIInfo
+      #pragma mark message::PushSubscriptionInfo
       #pragma mark
 
       //-----------------------------------------------------------------------
@@ -1663,6 +1663,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "folder", mFolder);
 
+        IHelper::debugAppend(resultEl, "expires", mExpires);
+
         IHelper::debugAppend(resultEl, "type", mType);
 
         IHelper::debugAppend(resultEl, "mapped", mMapped);
@@ -1688,6 +1690,8 @@ namespace openpeer
       {
         merge(mFolder, source.mFolder, overwriteExisting);
 
+        merge(mExpires, source.mExpires, overwriteExisting);
+
         merge(mType, source.mType, overwriteExisting);
 
         merge(mMapped, source.mMapped, overwriteExisting);
@@ -1710,6 +1714,10 @@ namespace openpeer
 
         if (mFolder.hasData()) {
           subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("folder", mFolder));
+        }
+
+        if (Time() != mExpires) {
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(mExpires)));
         }
 
         if (mType.hasData()) {
@@ -1751,6 +1759,8 @@ namespace openpeer
         if (!elem) return info;
 
         info.mFolder = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("folder"));
+
+        info.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
 
         info.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
 

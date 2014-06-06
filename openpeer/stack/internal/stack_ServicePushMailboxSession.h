@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2013, SMB Phone Inc.
+ Copyright (c) 2014, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,8 @@
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-access-timeout-in-seconds"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_NAMESPACE_GRANT_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-namespace-grant-timeout-in-seconds"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-peer-validate-timeout-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_REGISTER_PUSH_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-register-push-timeout-in-seconds"
+
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
@@ -123,12 +125,13 @@ namespace openpeer
                                         public IMessageMonitorResultDelegate<message::push_mailbox::MessagesDataGetResult>,
                                         public IMessageMonitorResultDelegate<message::push_mailbox::MessagesMetaDataGetResult>,
                                         public IMessageMonitorResultDelegate<message::push_mailbox::MessageUpdateResult>,
-                                        public IMessageMonitorResultDelegate<message::push_mailbox::ListFetchResult>,
-                                        public IMessageMonitorResultDelegate<message::push_mailbox::RegisterPushResult>
+                                        public IMessageMonitorResultDelegate<message::push_mailbox::ListFetchResult>
       {
       public:
         friend interaction IServicePushMailboxSessionFactory;
         friend interaction IServicePushMailboxSession;
+
+        ZS_DECLARE_CLASS_PTR(RegisterQuery)
 
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
@@ -155,6 +158,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessageUpdateResult, MessageUpdateResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchResult, ListFetchResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ChangedNotify, ChangedNotify)
+        ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushRequest, RegisterPushRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushResult, RegisterPushResult)
         ZS_DECLARE_TYPEDEF_PTR(message::bootstrapped_servers::ServersGetResult, ServersGetResult)
 
@@ -211,6 +215,8 @@ namespace openpeer
 
         virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                    const char *deviceToken,
+                                                                   const char *folder,
+                                                                   Time expires,
                                                                    const char *mappedType,
                                                                    bool unreadBadge,
                                                                    const char *sound,
@@ -507,22 +513,6 @@ namespace openpeer
                                                              message::MessageResultPtr result
                                                              );
 
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<RegisterPushResult>
-        #pragma mark
-
-        virtual bool handleMessageMonitorResultReceived(
-                                                        IMessageMonitorPtr monitor,
-                                                        RegisterPushResultPtr result
-                                                        );
-
-        virtual bool handleMessageMonitorErrorResultReceived(
-                                                             IMessageMonitorPtr monitor,
-                                                             RegisterPushResultPtr ignore,          // will always be NULL
-                                                             message::MessageResultPtr result
-                                                             );
-
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -571,8 +561,14 @@ namespace openpeer
                                        MessagePtr requestMessage,
                                        Duration timeout
                                        );
+        bool sendRequest(MessagePtr requestMessage);
 
         virtual void handleChanged(ChangedNotifyPtr notify);
+
+      public:
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_RegisterQuery.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
 
       protected:
         //---------------------------------------------------------------------
