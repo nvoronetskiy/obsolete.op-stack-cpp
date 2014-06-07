@@ -31,8 +31,10 @@
 
 #pragma once
 
-#include <openpeer/stack/message/IMessageFactory.h>
+#include <openpeer/stack/message/MessageResult.h>
+#include <openpeer/stack/message/peer/MessageFactoryPeer.h>
 
+#include <list>
 
 namespace openpeer
 {
@@ -42,48 +44,37 @@ namespace openpeer
     {
       namespace peer
       {
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageFactoryPeer
-        #pragma mark
-
-        class MessageFactoryPeer : public IMessageFactory
+        class PeerFilesGetResult : public MessageResult
         {
         public:
-          enum Methods
+          enum AttributeTypes
           {
-            Method_Invalid = Message::Method_Invalid,
-
-            Method_PeerServicesGet,
-            Method_PeerFilesGet,
-            Method_PeerFileSet,
-
-            Method_Last = Method_PeerFileSet,
+            AttributeType_PeerFiles = AttributeType_Last + 1,
           };
 
-        protected:
-          static MessageFactoryPeerPtr create();
+          typedef std::list<IPeerFilePublicPtr> PeerFileList;
 
         public:
-          static MessageFactoryPeerPtr singleton();
+          static PeerFilesGetResultPtr convert(MessagePtr message);
 
-          //-------------------------------------------------------------------
-          #pragma mark
-          #pragma mark MessageFactoryPeer => IMessageFactory
-          #pragma mark
+          static PeerFilesGetResultPtr create(
+                                              ElementPtr rootEl,
+                                              IMessageSourcePtr messageSource
+                                              );
 
-          virtual const char *getHandler() const;
+          virtual Methods method() const                    {return (Message::Methods)MessageFactoryPeer::Method_PeerFilesGet;}
 
-          virtual Message::Methods toMethod(const char *method) const;
-          virtual const char *toString(Message::Methods method) const;
+          virtual IMessageFactoryPtr factory() const        {return MessageFactoryPeer::singleton();}
 
-          virtual MessagePtr create(
-                                    ElementPtr root,
-                                    IMessageSourcePtr messageSource
-                                    );
+          bool hasAttribute(AttributeTypes type) const;
+
+          const PeerFileList &peerFiles() const              {return mPeerFiles;}
+          void peerFiles(const PeerFileList &val)            {mPeerFiles = val;}
+
+        protected:
+          PeerFilesGetResult();
+
+          PeerFileList mPeerFiles;
         };
       }
     }

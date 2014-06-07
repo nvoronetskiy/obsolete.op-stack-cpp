@@ -802,6 +802,10 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(MessageFactoryPeer)
         ZS_DECLARE_CLASS_PTR(PeerServicesGetRequest)
         ZS_DECLARE_CLASS_PTR(PeerServicesGetResult)
+        ZS_DECLARE_CLASS_PTR(PeerFilesGetRequest)
+        ZS_DECLARE_CLASS_PTR(PeerFilesGetResult)
+        ZS_DECLARE_CLASS_PTR(PeerFileSetRequest)
+        ZS_DECLARE_CLASS_PTR(PeerFileSetResult)
       }
 
       namespace peer_common

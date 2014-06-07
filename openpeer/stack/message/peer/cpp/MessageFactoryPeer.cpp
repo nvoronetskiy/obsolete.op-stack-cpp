@@ -31,6 +31,9 @@
 
 #include <openpeer/stack/message/peer/MessageFactoryPeer.h>
 #include <openpeer/stack/message/peer/PeerServicesGetResult.h>
+#include <openpeer/stack/message/peer/PeerFilesGetResult.h>
+#include <openpeer/stack/message/peer/PeerFileSetResult.h>
+
 #include <openpeer/stack/message/Message.h>
 #include <openpeer/stack/message/IMessageFactoryManager.h>
 
@@ -109,6 +112,8 @@ namespace openpeer
             case Method_Invalid:                            return "";
 
             case Method_PeerServicesGet:                    return "peer-services-get";
+            case Method_PeerFilesGet:                       return "peer-files-get";
+            case Method_PeerFileSet:                        return "peer-file-set";
           }
           return "";
         }
@@ -133,6 +138,8 @@ namespace openpeer
                 case Method_Invalid:                            return MessagePtr();
 
                 case Method_PeerServicesGet:                    return MessagePtr();
+                case Method_PeerFilesGet:                       return MessagePtr();
+                case Method_PeerFileSet:                        return MessagePtr();
               }
               break;
             }
@@ -142,17 +149,12 @@ namespace openpeer
                 case Method_Invalid:                            return MessagePtr();
 
                 case Method_PeerServicesGet:                    return PeerServicesGetResult::create(root, messageSource);
+                case Method_PeerFilesGet:                       return PeerFilesGetResult::create(root, messageSource);
+                case Method_PeerFileSet:                        return PeerFileSetResult::create(root, messageSource);
               }
               break;
             }
-            case Message::MessageType_Notify:                   {
-              switch (msgMethod) {
-                case Method_Invalid:                            return MessagePtr();
-
-                case Method_PeerServicesGet:                    return MessagePtr();
-              }
-              break;
-            }
+            case Message::MessageType_Notify:                   return MessagePtr();
           }
 
           return MessagePtr();

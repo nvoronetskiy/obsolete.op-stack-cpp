@@ -10,6 +10,10 @@
 		000493FE193FC14A00500EA6 /* MessageFactoryBootstrappedServers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000493F8193FC14A00500EA6 /* MessageFactoryBootstrappedServers.cpp */; };
 		000493FF193FC14A00500EA6 /* ServersGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000493F9193FC14A00500EA6 /* ServersGetRequest.cpp */; };
 		00049400193FC14A00500EA6 /* ServersGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000493FA193FC14A00500EA6 /* ServersGetResult.cpp */; };
+		00083C381943829000EF9F03 /* PeerFilesGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00083C361943829000EF9F03 /* PeerFilesGetRequest.cpp */; };
+		00083C391943829000EF9F03 /* PeerFilesGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00083C371943829000EF9F03 /* PeerFilesGetResult.cpp */; };
+		00083C3E194388C400EF9F03 /* PeerFileSetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00083C3C194388C400EF9F03 /* PeerFileSetRequest.cpp */; };
+		00083C3F194388C400EF9F03 /* PeerFileSetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00083C3D194388C400EF9F03 /* PeerFileSetResult.cpp */; };
 		000CBEB017A2F75A0075E86C /* stack_FinderRelayChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */; };
 		001BB9C0183B8FF400F14A64 /* stack_javascript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */; };
 		0020FC42193654540065C965 /* stack_ServicePushMailboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */; };
@@ -187,6 +191,14 @@
 		000493FB193FC14A00500EA6 /* MessageFactoryBootstrappedServers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageFactoryBootstrappedServers.h; sourceTree = "<group>"; };
 		000493FC193FC14A00500EA6 /* ServersGetRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServersGetRequest.h; sourceTree = "<group>"; };
 		000493FD193FC14A00500EA6 /* ServersGetResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServersGetResult.h; sourceTree = "<group>"; };
+		00083C361943829000EF9F03 /* PeerFilesGetRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerFilesGetRequest.cpp; sourceTree = "<group>"; };
+		00083C371943829000EF9F03 /* PeerFilesGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerFilesGetResult.cpp; sourceTree = "<group>"; };
+		00083C3A194382A800EF9F03 /* PeerFilesGetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerFilesGetRequest.h; sourceTree = "<group>"; };
+		00083C3B194382A800EF9F03 /* PeerFilesGetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerFilesGetResult.h; sourceTree = "<group>"; };
+		00083C3C194388C400EF9F03 /* PeerFileSetRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerFileSetRequest.cpp; sourceTree = "<group>"; };
+		00083C3D194388C400EF9F03 /* PeerFileSetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PeerFileSetResult.cpp; sourceTree = "<group>"; };
+		00083C40194388D900EF9F03 /* PeerFileSetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerFileSetRequest.h; sourceTree = "<group>"; };
+		00083C41194388D900EF9F03 /* PeerFileSetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeerFileSetResult.h; sourceTree = "<group>"; };
 		000CBEAC17A2CBC50075E86C /* stack_IFinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderRelayChannel.h; sourceTree = "<group>"; };
 		000CBEAE17A2F7440075E86C /* stack_FinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderRelayChannel.h; sourceTree = "<group>"; };
 		000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderRelayChannel.cpp; sourceTree = "<group>"; };
@@ -1184,6 +1196,10 @@
 				00AF4E43171E40AD00DCA0A8 /* MessageFactoryPeer.h */,
 				00AF4E44171E40AD00DCA0A8 /* PeerServicesGetRequest.h */,
 				00AF4E45171E40AD00DCA0A8 /* PeerServicesGetResult.h */,
+				00083C3A194382A800EF9F03 /* PeerFilesGetRequest.h */,
+				00083C3B194382A800EF9F03 /* PeerFilesGetResult.h */,
+				00083C40194388D900EF9F03 /* PeerFileSetRequest.h */,
+				00083C41194388D900EF9F03 /* PeerFileSetResult.h */,
 			);
 			path = peer;
 			sourceTree = "<group>";
@@ -1194,6 +1210,10 @@
 				00AF4E40171E40AD00DCA0A8 /* MessageFactoryPeer.cpp */,
 				00AF4E41171E40AD00DCA0A8 /* PeerServicesGetRequest.cpp */,
 				00AF4E42171E40AD00DCA0A8 /* PeerServicesGetResult.cpp */,
+				00083C361943829000EF9F03 /* PeerFilesGetRequest.cpp */,
+				00083C371943829000EF9F03 /* PeerFilesGetResult.cpp */,
+				00083C3C194388C400EF9F03 /* PeerFileSetRequest.cpp */,
+				00083C3D194388C400EF9F03 /* PeerFileSetResult.cpp */,
 			);
 			path = cpp;
 			sourceTree = "<group>";
@@ -1250,9 +1270,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				0063BB6A16CA92D000E6DB4D /* stack.cpp in Sources */,
+				00083C381943829000EF9F03 /* PeerFilesGetRequest.cpp in Sources */,
 				000493FE193FC14A00500EA6 /* MessageFactoryBootstrappedServers.cpp in Sources */,
 				0063BB6B16CA92D000E6DB4D /* stack_Account.cpp in Sources */,
 				0063BB6C16CA92D000E6DB4D /* stack_AccountFinder.cpp in Sources */,
+				00083C391943829000EF9F03 /* PeerFilesGetResult.cpp in Sources */,
 				00F28E0B18D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp in Sources */,
 				00AA456A19380FB5001D3AA2 /* MessageFactoryPushMailbox.cpp in Sources */,
 				0063BB6D16CA92D000E6DB4D /* stack_AccountPeerLocation.cpp in Sources */,
@@ -1383,12 +1405,14 @@
 				008400101850169E009F6934 /* stack_KeyGenerator.cpp in Sources */,
 				00384C53175BFF9500113845 /* RolodexAccessResult.cpp in Sources */,
 				00384C54175BFF9500113845 /* RolodexContactsGetRequest.cpp in Sources */,
+				00083C3E194388C400EF9F03 /* PeerFileSetRequest.cpp in Sources */,
 				00384C55175BFF9500113845 /* RolodexContactsGetResult.cpp in Sources */,
 				00384C6E175BFFDE00113845 /* MessageFactoryNamespaceGrant.cpp in Sources */,
 				00384C73175BFFDE00113845 /* NamespaceGrantCompleteNotify.cpp in Sources */,
 				00384C74175BFFDE00113845 /* NamespaceGrantStartNotify.cpp in Sources */,
 				0063C5EA193BA0960051ADA8 /* FoldersGetRequest.cpp in Sources */,
 				00384C77175BFFDE00113845 /* NamespaceGrantWindowRequest.cpp in Sources */,
+				00083C3F194388C400EF9F03 /* PeerFileSetResult.cpp in Sources */,
 				00A7BAC6193D5E4D003EDD1A /* ListFetchRequest.cpp in Sources */,
 				00384C78175BFFDE00113845 /* NamespaceGrantWindowResult.cpp in Sources */,
 				00760BDC193D36D700C7435C /* MessagesMetaDataGetResult.cpp in Sources */,
