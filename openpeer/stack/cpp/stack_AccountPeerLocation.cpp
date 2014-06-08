@@ -108,6 +108,28 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark (helpers)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      static String getMultiplexedJsonTCPTransport(const Server::ProtocolList &protocols)
+      {
+        for (Server::ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
+        {
+          const Server::Protocol &protocol = (*iter);
+
+          if (OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_TCP == protocol.mTransport) {
+            return protocol.mHost;
+          }
+        }
+        return String();
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IAccountPeerLocationForAccount
       #pragma mark
 
@@ -702,6 +724,35 @@ namespace openpeer
 
         // fake that the message monitor timed-out because it never really times out...
         onMessageMonitorTimedOut(mFindRequestMonitor, PeerLocationFindNotifyPtr());
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark AccountPeerLocation => ITimerDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void AccountPeerLocation::onLookupCompleted(IDNSQueryPtr query)
+      {
+        ZS_LOG_DEBUG(log("on lookup complete"))
+
+        AutoRecursiveLock lock(*this);
+
+        if (query == mOutgoingSRVLookup) {
+          mOutgoingSRVResult = query->getSRV();
+          mOutgoingSRVLookup.reset();
+
+          if (!mOutgoingSRVResult) {
+            ZS_LOG_ERROR(Detail, log("failed to resolve SRV query for outgoing finder connection"))
+            cancel();
+            return;
+          }
+        }
+
+        step();
       }
 
       //-----------------------------------------------------------------------
@@ -1580,6 +1631,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool AccountPeerLocation::stepOutgoingRelayChannel()
       {
+        if (mOutgoingSRVLookup) {
+          ZS_LOG_TRACE(log("outgoing DNS server is still resolving"))
+          return false;
+        }
+
         if (!isCreatedFromIncomingFind()) {
           ZS_LOG_TRACE(log("only a location receiving find request will open an outgoing relay channel"))
           return true;
@@ -1635,6 +1691,23 @@ namespace openpeer
         UseAccountPtr outer = mOuter.lock();
         ZS_THROW_BAD_STATE_IF(!outer)
 
+        IPAddress outgoingIP;
+        if (!IDNS::extractNextIP(mOutgoingSRVResult, outgoingIP)) {
+          // need to perform a DNS lookup
+          String srv = getMultiplexedJsonTCPTransport(relayCandidate.mProtocols);
+
+          if (srv.isEmpty()) {
+            ZS_LOG_ERROR(Detail, log("unable to open relay channel as no supported relay protocol was found"))
+            cancel();
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("performing SRV lookup on canddiate") + ZS_PARAM("srv", srv))
+
+          mOutgoingSRVLookup = IDNS::lookupSRV(mThisWeak.lock(), srv, "finder", "tcp");
+          return false;
+        }
+
         ITransportStreamPtr receiveStream = ITransportStream::create(ITransportStreamWriterDelegatePtr(), mThisWeak.lock());
         ITransportStreamPtr sendStream = ITransportStream::create(mThisWeak.lock(), ITransportStreamReaderDelegatePtr());
 
@@ -1653,7 +1726,7 @@ namespace openpeer
                                                              Account::convert(outer),
                                                              receiveStream,
                                                              sendStream,
-                                                             relayCandidate.mIPAddress,
+                                                             outgoingIP,
                                                              mLocalContext,
                                                              mRemoteContext,
                                                              domain,

@@ -1076,10 +1076,9 @@ namespace openpeer
         ChannelMapNotifyPtr channelMapNotify = ChannelMapNotify::convert(message);
         if (channelMapNotify) {
 
-          IPAddress finderIP;
           String relayAccessToken;
           String relayAccessSecret;
-          mFinder->getFinderRelayInformation(finderIP, relayAccessToken, relayAccessSecret);
+          mFinder->getFinderRelayInformation(relayAccessToken, relayAccessSecret);
 
           for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter)
           {
@@ -2548,11 +2547,11 @@ namespace openpeer
       {
         if (!mFinder) return CandidatePtr();
 
-        IPAddress finderIP;
         String relayAccessToken;
         String relayAccessSecret;
 
-        mFinder->getFinderRelayInformation(finderIP, relayAccessToken, relayAccessSecret);
+        Server server = mFinder->getCurrentFinder();
+        mFinder->getFinderRelayInformation(relayAccessToken, relayAccessSecret);
 
         if ((relayAccessToken.isEmpty()) ||
             (relayAccessSecret.isEmpty())) return CandidatePtr();
@@ -2560,9 +2559,8 @@ namespace openpeer
         CandidatePtr candidate(new Candidate);
 
         candidate->mNamespace = OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY;
-        candidate->mTransport = OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_MLS_TCP;
+        candidate->mProtocols = server.mProtocols;
         candidate->mAccessToken = relayAccessToken;
-        candidate->mIPAddress = finderIP;
 
         // hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map")
         String hashString = "finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";

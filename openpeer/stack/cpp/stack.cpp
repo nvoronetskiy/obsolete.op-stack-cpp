@@ -128,6 +128,7 @@ namespace openpeer
       OPIHelper::debugAppend(resultEl, "class", mNamespace);
 
       OPIHelper::debugAppend(resultEl, "transport", mTransport);
+      OPIHelper::debugAppend(resultEl, toDebug(mProtocols));
       OPIHelper::debugAppend(resultEl, "access token", mAccessToken);
       OPIHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
 
@@ -145,6 +146,7 @@ namespace openpeer
 
       ElementPtr namespaceEl = elem->findFirstChildElement("namespace");
       ElementPtr transportEl = elem->findFirstChildElement("transport");
+      ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
       ElementPtr typeEl = elem->findFirstChildElement("type");
       ElementPtr foundationEl = elem->findFirstChildElement("foundation");
       ElementPtr componentEl = elem->findFirstChildElement("component");
@@ -164,6 +166,9 @@ namespace openpeer
 
       ret.mNamespace = IMessageHelper::getElementTextAndDecode(namespaceEl);
       ret.mTransport = IMessageHelper::getElementTextAndDecode(transportEl);
+
+      if (protocolsEl) {
+      }
 
       String type = IMessageHelper::getElementTextAndDecode(typeEl);
       if ("host" == type) {
@@ -247,8 +252,15 @@ namespace openpeer
       if (mNamespace.hasData()) {
         candidateEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("namespace", mNamespace));
       }
+
       if (mTransport.hasData()) {
         candidateEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("transport", mTransport));
+      }
+
+      ElementPtr protocolsEl = createElement(mProtocols);
+      if ((protocolsEl->hasChildren()) ||
+          (protocolsEl->hasAttributes())) {
+        candidateEl->adoptAsLastChild(protocolsEl);
       }
 
       const char *typeAsString = NULL;
@@ -303,6 +315,121 @@ namespace openpeer
       }
 
       return candidateEl;
+    }
+
+    //-------------------------------------------------------------------------
+    Candidate::ProtocolList Candidate::createProtocolList(ElementPtr protocolsEl)
+    {
+      ProtocolList result;
+      if (!protocolsEl) return result;
+
+      ElementPtr protocolEl = protocolsEl->findFirstChildElement("protocol");
+      while (protocolEl) {
+        Protocol protocol = Protocol::create(protocolEl);
+
+        if (protocol.hasData()) {
+          result.push_back(protocol);
+        }
+
+        protocolEl = protocolEl->findNextSiblingElement("protocol");
+      }
+
+      return result;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr Candidate::createElement(const ProtocolList &protocols)
+    {
+      ElementPtr protocolsEl = Element::create("protocols");
+
+      for (ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
+      {
+        const Protocol &protocol = (*iter);
+        if (!protocol.hasData()) continue;
+
+        ElementPtr protocolEl = protocol.createElement();
+
+        if ((!protocolEl->hasChildren()) &&
+            (!protocolEl->hasAttributes())) continue;
+
+        protocolsEl->adoptAsLastChild(protocolEl);
+      }
+
+      return protocolsEl;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr Candidate::toDebug(
+                                  const ProtocolList &protocols,
+                                  const char *groupingElementName
+                                  )
+    {
+      if (!groupingElementName) groupingElementName = "stack::Candidate::ProtocolList";
+
+      if (protocols.size() < 1) return ElementPtr();
+
+      ElementPtr resultEl = Element::create(groupingElementName);
+
+      for (ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
+      {
+        const Protocol &protocol = (*iter);
+        OPIHelper::debugAppend(resultEl, protocol.toDebug());
+      }
+
+      return resultEl;
+    }
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark Candidate::Protocol
+    #pragma mark
+
+    //-------------------------------------------------------------------------
+    bool Candidate::Protocol::hasData() const
+    {
+      return ((mTransport.hasData()) ||
+              (mHost.hasData()));
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr Candidate::Protocol::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("stack::Candidate::Protocol");
+
+      OPIHelper::debugAppend(resultEl, "transport", mTransport);
+      OPIHelper::debugAppend(resultEl, "host", mHost);
+
+      return resultEl;
+    }
+
+    //---------------------------------------------------------------------
+    Candidate::Protocol Candidate::Protocol::create(ElementPtr elem)
+    {
+      Candidate::Protocol info;
+      if (!elem) return info;
+
+      info.mTransport = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("transport"));
+      info.mHost = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("host"));
+
+      return info;
+    }
+
+    //---------------------------------------------------------------------
+    ElementPtr Candidate::Protocol::createElement() const
+    {
+      ElementPtr protocolEl = IMessageHelper::createElement("protocol");
+
+      if (mTransport.hasData()) {
+        protocolEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("transport", mTransport));
+      }
+      if (mHost.hasData()) {
+        protocolEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("host", mHost));
+      }
+
+      return protocolEl;
     }
 
     //-------------------------------------------------------------------------

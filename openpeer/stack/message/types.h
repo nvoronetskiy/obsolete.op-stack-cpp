@@ -582,12 +582,8 @@ namespace openpeer
 
       struct Server
       {
-        struct Protocol
-        {
-          String mTransport;
-          String mHost;
-        };
-        typedef std::list<Protocol> ProtocolList;
+        typedef Candidate::Protocol Protocol;
+        typedef Candidate::ProtocolList ProtocolList;
 
         String mID;
         String mType;

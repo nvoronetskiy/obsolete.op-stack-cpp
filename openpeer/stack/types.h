@@ -110,8 +110,22 @@ namespace openpeer
 
     struct Candidate : public IICESocket::Candidate
     {
+      struct Protocol
+      {
+        String mTransport;
+        String mHost;
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        static Protocol create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+      typedef std::list<Protocol> ProtocolList;
+
       String mNamespace;
       String mTransport;
+      ProtocolList mProtocols;
 
       String mAccessToken;
       String mAccessSecretProof;
@@ -127,6 +141,14 @@ namespace openpeer
                               const char *encryptionPassphrase = NULL
                               );
       ElementPtr createElement(const char *encryptionPassphrase = NULL) const;
+
+      static ProtocolList createProtocolList(ElementPtr protocolsEl);
+      static ElementPtr createElement(const ProtocolList &protocols);
+
+      static ElementPtr toDebug(
+                                const ProtocolList &protocols,
+                                const char *groupingElementName = NULL
+                                );
     };
 
     //-----------------------------------------------------------------------

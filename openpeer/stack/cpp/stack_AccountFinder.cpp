@@ -305,6 +305,7 @@ namespace openpeer
                                              IPAddress *outIPAddress
                                              ) const
       {
+        AutoRecursiveLock lock(*this);
         if (outServerAgent) *outServerAgent = mServerAgent;
         if (outIPAddress) *outIPAddress = mFinderIP;
         return mFinder;
@@ -312,13 +313,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void AccountFinder::getFinderRelayInformation(
-                                                    IPAddress &outFinderIP,
                                                     String &outFinderRelayAccessToken,
                                                     String &outFinderRelayAccessSecret
                                                     ) const
       {
         AutoRecursiveLock lock(*this);
-        outFinderIP = mFinderIP;
         outFinderRelayAccessToken = mRelayAccessToken;
         outFinderRelayAccessSecret = mRelayAccessSecret;
       }

@@ -176,6 +176,7 @@ namespace openpeer
                                   public IAccountPeerLocationForAccount,
                                   public IWakeDelegate,
                                   public ITimerDelegate,
+                                  public IDNSDelegate,
                                   public IFinderRelayChannelDelegate,
                                   public IICESocketDelegate,
                                   public IRUDPTransportDelegate,
@@ -317,6 +318,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onTimer(TimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark AccountPeerLocation => IDNSDelegate
+        #pragma mark
+
+        virtual void onLookupCompleted(IDNSQueryPtr query);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -534,6 +542,8 @@ namespace openpeer
         IMessageMonitorPtr mFindRequestMonitor;
         TimerPtr mFindRequestTimer;
 
+        IDNSQueryPtr mOutgoingSRVLookup;
+        IDNS::SRVResultPtr mOutgoingSRVResult;
         IFinderRelayChannelPtr mOutgoingRelayChannel;
         ITransportStreamReaderPtr mOutgoingRelayReceiveStream;
         ITransportStreamWriterPtr mOutgoingRelaySendStream;

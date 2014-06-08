@@ -242,27 +242,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      static ElementPtr getProtocolsDebugValueString(const Server::ProtocolList &protocols)
-      {
-        if (protocols.size() < 1) return ElementPtr();
-
-        ElementPtr resultEl = Element::create("Server::ProtocolList");
-
-        for (Server::ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
-        {
-          ElementPtr protocolEl = Element::create("Server::Protocol");
-          const Server::Protocol &protocol = (*iter);
-
-          IHelper::debugAppend(protocolEl, "transport", protocol.mTransport);
-          IHelper::debugAppend(protocolEl, "host", protocol.mHost);
-
-          IHelper::debugAppend(resultEl, protocolEl);
-        }
-        
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -2007,7 +1986,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
         IHelper::debugAppend(resultEl, "type", mType);
-        IHelper::debugAppend(resultEl, getProtocolsDebugValueString(mProtocols));
+        IHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "message::Server::ProtocolList"));
         IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
         IHelper::debugAppend(resultEl, "priority", mPriority);
         IHelper::debugAppend(resultEl, "weight", mWeight);
@@ -2029,22 +2008,7 @@ namespace openpeer
         ret.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
 
         ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
-        if (protocolsEl) {
-          ElementPtr protocolEl = protocolsEl->findFirstChildElement("protocol");
-          while (protocolEl) {
-            Server::Protocol protocol;
-            protocol.mTransport = IMessageHelper::getElementTextAndDecode(protocolEl->findFirstChildElement("transport"));
-            protocol.mHost = IMessageHelper::getElementTextAndDecode(protocolEl->findFirstChildElement("host"));
-
-            if ((protocol.mTransport.hasData()) ||
-                (protocol.mHost.hasData())) {
-              ret.mProtocols.push_back(protocol);
-            }
-
-            protocolEl = protocolEl->findNextSiblingElement("protocol");
-          }
-        }
-
+        ret.mProtocols = Candidate::createProtocolList(protocolsEl);
         ret.mRegion = IMessageHelper::getElementText(elem->findFirstChildElement("region"));
         ret.mCreated = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
         ret.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
