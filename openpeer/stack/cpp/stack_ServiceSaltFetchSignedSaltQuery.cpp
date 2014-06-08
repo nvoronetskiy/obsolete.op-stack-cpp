@@ -76,7 +76,6 @@ namespace openpeer
                                                                        UINT totalToFetch
                                                                        ) :
         zsLib::MessageQueueAssociator(queue),
-        mID(zsLib::createPUID()),
         mDelegate(IServiceSaltFetchSignedSaltQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
         mBootstrappedNetwork(BootstrappedNetwork::convert(serviceSalt)),
         mLastError(0),

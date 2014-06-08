@@ -144,7 +144,7 @@ namespace openpeer
       protected:
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark BootstrappedNetwork => (internal)
+        #pragma mark ServiceSaltFetchSignedSaltQuery => (internal)
         #pragma mark
 
         RecursiveLock &getLock() const;
@@ -159,10 +159,10 @@ namespace openpeer
       protected:
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark BootstrappedNetwork => (data)
+        #pragma mark ServiceSaltFetchSignedSaltQuery => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
         mutable RecursiveLock mLock;
         ServiceSaltFetchSignedSaltQueryWeakPtr mThisWeak;
 

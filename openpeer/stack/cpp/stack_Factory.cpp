@@ -987,6 +987,27 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IServicePeerFileLookupFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServicePeerFileLookupFactory &IServicePeerFileLookupFactory::singleton()
+      {
+        return Factory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServicePeerFileLookupPtr IServicePeerFileLookupFactory::createServicePeerFileLookup()
+      {
+        if (this) {}
+        return ServicePeerFileLookup::create();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IServicePushMailboxSessionFactory
       #pragma mark
 
