@@ -74,6 +74,9 @@ namespace openpeer
           const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
           void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
 
+          const NamespaceInfoMap &namespaces() const      {return mNamespaces;}
+          void namespaces(const NamespaceInfoMap &val)    {mNamespaces = val;}
+
           const IdentityInfoList &identities() const      {return mIdentities;}
           void identities(const IdentityInfoList &val)    {mIdentities = val;}
 
@@ -83,6 +86,8 @@ namespace openpeer
           LockboxInfo mLockboxInfo;
 
           NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
+
+          NamespaceInfoMap mNamespaces;
 
           IdentityInfoList mIdentities;
         };

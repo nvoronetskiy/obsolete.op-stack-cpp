@@ -68,6 +68,18 @@ namespace openpeer
           ret->mLockboxInfo = LockboxInfo::create(rootEl->findFirstChildElement("lockbox"));
           ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
 
+          ElementPtr namespacesEl = rootEl->findFirstChildElement("namespaces");
+          if (namespacesEl) {
+            ElementPtr namespaceEl = namespacesEl->findFirstChildElement("namespace");
+            while (namespacesEl) {
+              NamespaceInfo info = NamespaceInfo::create(namespaceEl);
+              if (info.hasData()) {
+                ret->mNamespaces[info.mURL] = info;
+              }
+              namespacesEl = namespacesEl->findNextSiblingElement("namespace");
+            }
+          }
+
           ElementPtr identitiesEl = rootEl->findFirstChildElement("identities");
           if (identitiesEl) {
             ElementPtr identityEl = identitiesEl->findFirstChildElement("identity");
