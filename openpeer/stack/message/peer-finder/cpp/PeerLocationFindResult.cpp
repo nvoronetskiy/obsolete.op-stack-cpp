@@ -30,6 +30,7 @@
  */
 
 #include <openpeer/stack/message/peer-finder/PeerLocationFindResult.h>
+#include <openpeer/stack/message/peer-finder/PeerLocationFindRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -54,15 +55,23 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
+        PeerLocationFindResultPtr PeerLocationFindResult::create(PeerLocationFindRequestPtr request)
+        {
+          PeerLocationFindResultPtr ret(new PeerLocationFindResult);
+          ret->fillFrom(request);
+          return ret;
+        }
+        
+        //---------------------------------------------------------------------
         PeerLocationFindResultPtr PeerLocationFindResult::create(
-                                                                 ElementPtr root,
+                                                                 ElementPtr rootEl,
                                                                  IMessageSourcePtr messageSource
                                                                  )
         {
           PeerLocationFindResultPtr ret(new PeerLocationFindResult);
-          IMessageHelper::fill(*ret, root, messageSource);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ElementPtr locationsEl = root->findFirstChildElement("locations");
+          ElementPtr locationsEl = rootEl->findFirstChildElement("locations");
           if (locationsEl) {
             ElementPtr locationEl = locationsEl->findFirstChildElement("location");
             while (locationEl)
@@ -92,6 +101,30 @@ namespace openpeer
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
 
+        //---------------------------------------------------------------------
+        DocumentPtr PeerLocationFindResult::encode()
+        {
+          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
+          ElementPtr rootEl = ret->getFirstChildElement();
+
+          if (hasAttribute(AttributeType_Locations)) {
+            ElementPtr locationsEl = Element::create("locations");
+
+            for (LocationInfoList::const_iterator iter = mLocations.begin(); iter != mLocations.end(); ++iter)
+            {
+              const LocationInfoPtr &info = (*iter);
+              if (!info->hasData()) continue;
+
+              locationsEl->adoptAsLastChild(info->createElement());
+            }
+
+            if (locationsEl->hasChildren()) {
+              rootEl->adoptAsLastChild(locationsEl);
+            }
+          }
+
+          return ret;
+        }
       }
     }
   }

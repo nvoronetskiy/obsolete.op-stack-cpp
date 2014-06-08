@@ -53,14 +53,17 @@ namespace openpeer
         public:
           static PeerLocationFindResultPtr convert(MessagePtr message);
 
+          static PeerLocationFindResultPtr create(PeerLocationFindRequestPtr request);
           static PeerLocationFindResultPtr create(
-                                                  ElementPtr root,
+                                                  ElementPtr rootEl,
                                                   IMessageSourcePtr messageSource
                                                   );
 
-          virtual Methods method() const              {return(Message::Methods)MessageFactoryPeerFinder::Method_PeerLocationFind;}
+          virtual DocumentPtr encode();
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryPeerFinder::singleton();}
+          virtual Methods method() const                {return(Message::Methods)MessageFactoryPeerFinder::Method_PeerLocationFind;}
+
+          virtual IMessageFactoryPtr factory() const    {return MessageFactoryPeerFinder::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 

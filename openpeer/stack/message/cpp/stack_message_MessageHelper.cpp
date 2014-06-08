@@ -323,13 +323,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void IMessageHelper::fill(
                                 Message &message,
-                                ElementPtr root,
+                                ElementPtr rootEl,
                                 IMessageSourcePtr source
                                 )
       {
-        String id = IMessageHelper::getAttribute(root, "id");
-        String domain = IMessageHelper::getAttribute(root, "domain");
-        String appID = IMessageHelper::getAttribute(root, "appid");
+        String id = IMessageHelper::getAttribute(rootEl, "id");
+        String domain = IMessageHelper::getAttribute(rootEl, "domain");
+        String appID = IMessageHelper::getAttribute(rootEl, "appid");
 
         if (id.hasData()) {
           message.messageID(id);
@@ -338,7 +338,8 @@ namespace openpeer
           message.domain(domain);
         }
         message.appID(appID);
-        Time time = IMessageHelper::getAttributeEpoch(root);
+
+        Time time = IMessageHelper::getAttributeEpoch(rootEl);
         if (Time() != time) {
           message.time(time);
         }

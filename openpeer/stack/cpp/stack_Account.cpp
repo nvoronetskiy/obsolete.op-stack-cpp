@@ -2171,9 +2171,9 @@ namespace openpeer
       {
         ZS_LOG_TRACE(log("responding to incoming find requests") + ZS_PARAM("size", mIncomingFindRequests.size()))
 
-        for (IncomingFindRequestList::iterator iter = mIncomingFindRequests.begin(); iter != mIncomingFindRequests.end(); )
+        for (IncomingFindRequestList::iterator iter_doNotUse = mIncomingFindRequests.begin(); iter_doNotUse != mIncomingFindRequests.end(); )
         {
-          IncomingFindRequestList::iterator current = iter; ++iter;
+          IncomingFindRequestList::iterator current = iter_doNotUse; ++iter_doNotUse;
 
           PeerLocationFindRequestPtr &peerLocationFindRequest = (*current);
 
@@ -2272,6 +2272,10 @@ namespace openpeer
 
             if (!resetExistingLocation) {
               ZS_LOG_WARNING(Detail, log("intentionally ignoring incoming find request because the existing location is favoured to the new location described in the incoming find request (this location won the conflict resolution)"))
+
+              MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_Conflict);
+              send(Location::convert(mLocationsDB.getFinder()), result);
+
               mIncomingFindRequests.erase(current);
               continue;
             }
@@ -2295,6 +2299,10 @@ namespace openpeer
           if ((!remoteKeyDomain) ||
               (!remotePublicKey)) {
             ZS_LOG_ERROR(Detail, log("remote party did not include remote public key and key domain (thus ignoring incoming find request)"))
+
+            MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_NetworkAuthenticationRequired);
+            send(Location::convert(mLocationsDB.getFinder()), result);
+
             mIncomingFindRequests.erase(current);
             continue;
           }
@@ -2303,6 +2311,10 @@ namespace openpeer
           if ((!templateKeyPair.first) ||
               (!templateKeyPair.second)) {
             ZS_LOG_ERROR(Detail, log("remote party's key domain does not have a precompiled domain key template (thus ignoring incoming find request)"))
+
+            MessageResultPtr result = MessageResult::create(peerLocationFindRequest, IHTTP::HTTPStatusCode_PreconditionFailed);
+            send(Location::convert(mLocationsDB.getFinder()), result);
+
             mIncomingFindRequests.erase(current);
             continue;
           }
@@ -2324,6 +2336,9 @@ namespace openpeer
           get(peerInfo->mFindAgainAfterBackgrounded) = false;
 
           ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
+
+          PeerLocationFindResultPtr result = PeerLocationFindResult::create(peerLocationFindRequest);
+          send(Location::convert(mLocationsDB.getFinder()), result);
 
           mIncomingFindRequests.erase(current);
         }

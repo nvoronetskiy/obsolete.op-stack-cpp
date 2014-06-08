@@ -66,9 +66,7 @@ namespace openpeer
         PeerKeepAliveResultPtr PeerKeepAliveResult::create(PeerKeepAliveRequestPtr request)
         {
           PeerKeepAliveResultPtr ret(new PeerKeepAliveResult);
-
-          ret->mID = request->messageID();
-
+          ret->fillFrom(request);
           return ret;
         }
 

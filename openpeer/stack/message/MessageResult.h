@@ -82,6 +82,8 @@ namespace openpeer
 
         bool hasAttribute(AttributeTypes type) const;
 
+        virtual void fillFrom(MessagePtr requestOrNotify);
+
         ErrorCodeType errorCode() const                 {return mErrorCode;}
         void errorCode(WORD val)                        {mErrorCode = val;}
 

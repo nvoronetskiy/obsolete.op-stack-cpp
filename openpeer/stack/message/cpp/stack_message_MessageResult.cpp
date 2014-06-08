@@ -186,6 +186,19 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void MessageResult::fillFrom(MessagePtr requestOrNotify)
+      {
+        if (!requestOrNotify) return;
+
+        if ((!requestOrNotify->isRequest()) &&
+            (!requestOrNotify->isNotify())) return;
+
+        mDomain = requestOrNotify->domain();
+        mAppID = requestOrNotify->appID();
+        mID = requestOrNotify->messageID();
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

@@ -63,11 +63,7 @@ namespace openpeer
         PeerIdentifyResultPtr PeerIdentifyResult::create(PeerIdentifyRequestPtr request)
         {
           PeerIdentifyResultPtr ret(new PeerIdentifyResult);
-
-          ret->mDomain = request->domain();
-          ret->mID = request->messageID();
-          ret->mAppID = request->appID();
-
+          ret->fillFrom(request);
           return ret;
         }
 
