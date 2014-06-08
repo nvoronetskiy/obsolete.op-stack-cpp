@@ -936,6 +936,7 @@ namespace openpeer
         request->domain(outer->getDomain());
 
         request->finderID(mFinder.mID);
+        request->findMode(SessionCreateRequest::FindMode_All);
 
         UseLocationPtr selfLocation = UseLocation::getForLocal(Account::convert(outer));
         LocationInfoPtr locationInfo = selfLocation->getLocationInfo();

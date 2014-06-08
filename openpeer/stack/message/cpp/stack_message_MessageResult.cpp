@@ -38,7 +38,10 @@
 
 #include <zsLib/Stringize.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Log.h>
 #include <zsLib/XML.h>
+
+namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
 namespace openpeer
 {
@@ -51,6 +54,12 @@ namespace openpeer
       using internal::MessageFactoryManager;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+      //---------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "MessageResult");
+      }
 
       //-----------------------------------------------------------------------
       MessageResult::MessageResult() :
@@ -74,6 +83,7 @@ namespace openpeer
       {
         if ((!requestOrNotify->isRequest()) &&
             (!requestOrNotify->isNotify())) {
+          ZS_LOG_ERROR(Detail, slog("cannot create result from message that is not a request or a notify"))
           return MessageResultPtr();
         }
         MessageResultPtr pThis(new MessageResult);
@@ -191,7 +201,10 @@ namespace openpeer
         if (!requestOrNotify) return;
 
         if ((!requestOrNotify->isRequest()) &&
-            (!requestOrNotify->isNotify())) return;
+            (!requestOrNotify->isNotify())) {
+          ZS_LOG_ERROR(Detail, slog("cannot fill result from message that is not a request or a notify"))
+          return;
+        }
 
         mDomain = requestOrNotify->domain();
         mAppID = requestOrNotify->appID();

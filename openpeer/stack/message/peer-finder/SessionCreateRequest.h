@@ -49,7 +49,17 @@ namespace openpeer
           {
             AttributeType_FinderID,
             AttributeType_LocationInfo,
+            AttributeType_FindMode,
             AttributeType_PeerFiles,
+          };
+
+          enum FindModes
+          {
+            FindMode_NA,
+
+            FindMode_All,
+            FindMode_Exclusive,
+            FindMode_None,
           };
 
         public:
@@ -68,6 +78,9 @@ namespace openpeer
           const String &finderID() const              {return mFinderID;}
           void finderID(const String &val)            {mFinderID = val;}
 
+          FindModes findMode() const                  {return mFindMode;}
+          void findMode(FindModes val)                {mFindMode = val;}
+
           LocationInfoPtr locationInfo() const        {return mLocationInfo;}
           void locationInfo(LocationInfoPtr val)      {mLocationInfo = val;}
 
@@ -78,6 +91,9 @@ namespace openpeer
           SessionCreateRequest();
 
           String mFinderID;
+
+          FindModes mFindMode;
+
           LocationInfoPtr mLocationInfo;
 
           IPeerFilesPtr mPeerFiles;

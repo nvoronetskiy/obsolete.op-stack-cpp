@@ -74,7 +74,8 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        SessionCreateRequest::SessionCreateRequest()
+        SessionCreateRequest::SessionCreateRequest() :
+          mFindMode(FindMode_NA)
         {
         }
 
@@ -91,6 +92,7 @@ namespace openpeer
           switch (type)
           {
             case AttributeType_FinderID:      return (!mFinderID.isEmpty());
+            case AttributeType_FindMode:      return FindMode_NA != mFindMode;
             case AttributeType_LocationInfo:  return (mLocationInfo ? mLocationInfo->hasData(): false);
             case AttributeType_PeerFiles:     return (bool)mPeerFiles;
             default:                          break;
@@ -111,14 +113,9 @@ namespace openpeer
             ZS_LOG_ERROR(Detail, slog("peer file private was null"))
             return DocumentPtr();
           }
-          IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
-          if (!peerFilePublic) {
-            ZS_LOG_ERROR(Detail, slog("peer file public was null"))
-            return DocumentPtr();
-          }
 
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+          ElementPtr rootEl = ret->getFirstChildElement();
 
           ElementPtr sessionProofBundleEl = Element::create("sessionProofBundle");
           ElementPtr sessionProofEl = Element::create("sessionProof");
@@ -133,16 +130,29 @@ namespace openpeer
 
           sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));
 
+          if (hasAttribute(AttributeType_FindMode)) {
+            ElementPtr findModeEl;
+
+            switch (mFindMode) {
+              case FindMode_NA:         break;
+              case FindMode_All:        findModeEl = IMessageHelper::createElementWithText("findMode", "all"); break;
+              case FindMode_Exclusive:  findModeEl = IMessageHelper::createElementWithText("findMode", "exclusive"); break;
+              case FindMode_None:       findModeEl = IMessageHelper::createElementWithText("findMode", "none"); break;
+            }
+
+            if (findModeEl) {
+              sessionProofEl->adoptAsLastChild(findModeEl);
+            }
+          }
+
           if (hasAttribute(AttributeType_LocationInfo)) {
             sessionProofEl->adoptAsLastChild(mLocationInfo->createElement());
           }
 
-          sessionProofEl->adoptAsLastChild(peerFilePublic->saveToElement());
-
           sessionProofBundleEl->adoptAsLastChild(sessionProofEl);
           peerFilePrivate->signElement(sessionProofEl);
 
-          root->adoptAsLastChild(sessionProofBundleEl);
+          rootEl->adoptAsLastChild(sessionProofBundleEl);
 
           return ret;
         }
