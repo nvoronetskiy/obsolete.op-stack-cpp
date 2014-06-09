@@ -45,17 +45,9 @@ namespace openpeer
     {
       using zsLib::Log;
 
-      const char *getJavaScriptLogLevel()
+      Log::Level getJavaScriptLogLevel()
       {
-        switch (ZS_GET_LOG_LEVEL()) {
-          case Log::None:     return "none";
-          case Log::Basic:    return "basic";
-          case Log::Detail:   return "detail";
-          case Log::Debug:    return "debug";
-          case Log::Trace:    return "trace";
-          case Log::Insane:   return "insane";
-        }
-        return "undefined";
+        return ZS_GET_LOG_LEVEL();
       }
     }
   }

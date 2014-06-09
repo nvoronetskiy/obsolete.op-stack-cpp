@@ -45,6 +45,7 @@
 #include <openpeer/stack/message/peer-to-peer/MessageFactoryPeerToPeer.h>
 #include <openpeer/stack/message/push-mailbox/MessageFactoryPushMailbox.h>
 
+#include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_Settings.h>
 
 #include <openpeer/stack/ISettings.h>
@@ -257,6 +258,7 @@ namespace openpeer
         result.mName = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
         result.mImageURL = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
         result.mAgentURL = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_URL);
+        result.mLogLevel = stack::internal::Helper::getJavaScriptLogLevel();
       }
 
       //-----------------------------------------------------------------------

@@ -125,6 +125,7 @@ namespace openpeer
           }
 
           AgentInfo agentInfo = UseStack::agentInfo();
+          agentInfo.mLogLevel = Log::None;
           agentInfo.mergeFrom(mAgentInfo, true);
 
           if (agentInfo.hasData()) {

@@ -86,7 +86,7 @@ namespace openpeer
                                                const char *hexIVAndBase64EncodedData
                                                );
 
-        static const char *getJavaScriptLogLevel();
+        static Log::Level getJavaScriptLogLevel();
 
       protected:
         static Log::Params log(const char *message);

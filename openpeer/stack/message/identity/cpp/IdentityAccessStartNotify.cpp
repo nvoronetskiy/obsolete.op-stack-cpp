@@ -127,9 +127,7 @@ namespace openpeer
           }
 
           if (agentInfo.hasData()) {
-            ElementPtr agentEl = agentInfo.createElement();
-            agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Helper::getJavaScriptLogLevel()));
-            root->adoptAsLastChild(agentEl);
+            root->adoptAsLastChild(agentInfo.createElement());
           }
 
           if (identityInfo.hasData()) {

@@ -141,6 +141,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(Log::Level &result, Log::Level source, bool overwrite)
+      {
+        if (Log::None == source) return;
+        if (Log::None != result) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static void merge(IPeerFilePublicPtr &result, const IPeerFilePublicPtr &source, bool overwrite)
       {
         if (!source) return;
@@ -255,7 +265,8 @@ namespace openpeer
         return ((mUserAgent.hasData()) ||
                 (mName.hasData()) ||
                 (mImageURL.hasData()) ||
-                (mAgentURL.hasData()));
+                (mAgentURL.hasData()) ||
+                (Log::None != mLogLevel));
       }
 
       //-----------------------------------------------------------------------
@@ -267,6 +278,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "name", mName);
         IHelper::debugAppend(resultEl, "image url", mImageURL);
         IHelper::debugAppend(resultEl, "agent url", mAgentURL);
+        IHelper::debugAppend(resultEl, "log level", Log::toString(mLogLevel));
 
         return resultEl;
       }
@@ -281,6 +293,7 @@ namespace openpeer
         merge(mName, source.mName, overwriteExisting);
         merge(mImageURL, source.mImageURL, overwriteExisting);
         merge(mAgentURL, source.mAgentURL, overwriteExisting);
+        merge(mLogLevel, source.mLogLevel, overwriteExisting);
       }
 
       //-----------------------------------------------------------------------
@@ -295,25 +308,32 @@ namespace openpeer
         info.mImageURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("image"));
         info.mAgentURL = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("url"));
 
+        info.mLogLevel = Log::toLevel(IMessageHelper::getElementText(elem->findFirstChildElement("log")));
+
         return info;
       }
       
       //-----------------------------------------------------------------------
-      ElementPtr AgentInfo::createElement() const
+      ElementPtr AgentInfo::createElement(bool forceLogLevelOutput) const
       {
         ElementPtr agentEl = Element::create("agent");
 
         if (mUserAgent.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("userAgent", mUserAgent));
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("userAgent", mUserAgent));
         }
         if (mName.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("name", mName));
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("name", mName));
         }
         if (mImageURL.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("image", mImageURL));
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("image", mImageURL));
         }
         if (mAgentURL.hasData()) {
-          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("url", mAgentURL));
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("url", mAgentURL));
+        }
+
+        if ((Log::None != mLogLevel) ||
+            (forceLogLevelOutput)) {
+          agentEl->adoptAsLastChild(IMessageHelper::createElementWithText("log", Log::toString(mLogLevel)));
         }
 
         return agentEl;

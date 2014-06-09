@@ -56,7 +56,7 @@ namespace openpeer
       #pragma mark Forwards
       #pragma mark
 
-      const char *getJavaScriptLogLevel();
+      Log::Level getJavaScriptLogLevel();
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -203,7 +203,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      const char *Helper::getJavaScriptLogLevel()
+      Log::Level Helper::getJavaScriptLogLevel()
       {
         return internal::getJavaScriptLogLevel();
       }

@@ -95,7 +95,11 @@ namespace openpeer
         String mImageURL;
         String mAgentURL;
 
-        AgentInfo() {}
+        Log::Level mLogLevel;
+
+        AgentInfo() :
+          mLogLevel(Log::None) {}
+
         bool hasData() const;
         ElementPtr toDebug() const;
 
@@ -105,7 +109,7 @@ namespace openpeer
                        );
 
         static AgentInfo create(ElementPtr elem);
-        ElementPtr createElement() const;
+        ElementPtr createElement(bool forceLogLevelOutput = false) const;
       };
 
       //-----------------------------------------------------------------------
