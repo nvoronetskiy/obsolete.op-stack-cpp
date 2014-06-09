@@ -80,6 +80,7 @@ namespace openpeer
             if (!visibility.isEmpty()) {
               ret->mVisible = ("true" == visibility ? 1 : 0);
             }
+            ret->mRedirectURL = IMessageHelper::getElementTextAndDecode(browserEl->findFirstChildElement("redirect"));
           }
           return ret;
         }
@@ -91,6 +92,7 @@ namespace openpeer
           {
             case AttributeType_Ready:         return (mReady >= 0);
             case AttributeType_Visible:       return (mVisible >= 0);
+            case AttributeType_RedirectURL:   return mRedirectURL.hasData();
             default:                          break;
           }
           return false;

@@ -52,6 +52,7 @@ namespace openpeer
           {
             AttributeType_Ready,
             AttributeType_Visible,
+            AttributeType_RedirectURL,
           };
 
         public:
@@ -74,11 +75,16 @@ namespace openpeer
           bool visible() const                        {return (mVisible > 0);}
           void visible(bool &val)                     {mVisible = (val ? 1: 0);}
 
+          const String &redirectURL() const           {return mRedirectURL;}
+          void redirectURL(const String &val)         {mRedirectURL = val;}
+
         protected:
           IdentityAccessWindowRequest();
 
           int mReady;
           int mVisible;
+
+          String mRedirectURL;
         };
       }
     }

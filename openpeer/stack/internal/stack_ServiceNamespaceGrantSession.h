@@ -233,8 +233,10 @@ namespace openpeer
         virtual String getGrantID() const;
 
         virtual String getInnerBrowserWindowFrameURL() const;
+        virtual String getBrowserWindowRedirectURL() const;
 
         virtual void notifyBrowserWindowVisible();
+        virtual void notifyBrowserWindowRedirected();
         virtual void notifyBrowserWindowClosed();
 
         virtual DocumentPtr getNextMessageForInnerBrowerWindowFrame();
@@ -318,6 +320,7 @@ namespace openpeer
         bool stepBootstrapper();
         bool stepLoadGrantWindow();
         bool stepMakeGrantWindowVisible();
+        bool stepBrowserRedirect();
         bool stepSendNamespaceGrantStartNotification();
         bool stepWaitForPermission();
         bool stepCloseBrowserWindow();
@@ -476,6 +479,7 @@ namespace openpeer
         bool mBrowserWindowClosed;
 
         bool mNeedsBrowserWindowVisible;
+        String mNeedsBrowserWindowRedirectURL;
 
         bool mNamespaceGrantStartNotificationSent;
         bool mReceivedNamespaceGrantCompleteNotify;

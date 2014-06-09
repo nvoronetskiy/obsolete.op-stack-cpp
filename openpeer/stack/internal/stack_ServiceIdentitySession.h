@@ -240,8 +240,10 @@ namespace openpeer
         virtual void getIdentityInfo(IdentityInfo &outIdentityInfo) const;
 
         virtual String getInnerBrowserWindowFrameURL() const;
+        virtual String getBrowserWindowRedirectURL() const;
 
         virtual void notifyBrowserWindowVisible();
+        virtual void notifyBrowserWindowRedirected();
         virtual void notifyBrowserWindowClosed();
 
         virtual DocumentPtr getNextMessageForInnerBrowerWindowFrame();
@@ -468,6 +470,7 @@ namespace openpeer
         bool stepGrantCheck();
         bool stepLoadBrowserWindow();
         bool stepMakeBrowserWindowVisible();
+        bool stepMakeBrowserWindowRedirect();
         bool stepIdentityAccessStartNotification();
         bool stepIdentityAccessCompleteNotification();
         bool stepRolodexCredentialsGet();
@@ -533,9 +536,11 @@ namespace openpeer
 
         AutoBool mBrowserWindowReady;
         AutoBool mBrowserWindowVisible;
+        String mBrowserWindowRedirectURL;
         AutoBool mBrowserWindowClosed;
 
         AutoBool mNeedsBrowserWindowVisible;
+        String mNeedsBrowserWindowRedirectURL;
 
         AutoBool mIdentityAccessStartNotificationSent;
         AutoBool mLockboxUpdated;

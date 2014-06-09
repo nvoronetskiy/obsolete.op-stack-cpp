@@ -63,14 +63,14 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         NamespaceGrantWindowRequestPtr NamespaceGrantWindowRequest::create(
-                                                                                       ElementPtr root,
-                                                                                       IMessageSourcePtr messageSource
-                                                                                       )
+                                                                           ElementPtr rootEl,
+                                                                           IMessageSourcePtr messageSource
+                                                                           )
         {
           NamespaceGrantWindowRequestPtr ret(new NamespaceGrantWindowRequest);
-          MessageHelper::fill(*ret, root, messageSource);
+          MessageHelper::fill(*ret, rootEl, messageSource);
 
-          ElementPtr browserEl = root->findFirstChildElement("browser");
+          ElementPtr browserEl = rootEl->findFirstChildElement("browser");
           if (browserEl) {
             String ready = IMessageHelper::getElementText(browserEl->findFirstChildElement("ready"));
             if (!ready.isEmpty()) {
@@ -80,6 +80,7 @@ namespace openpeer
             if (!visibility.isEmpty()) {
               ret->mVisible = ("true" == visibility ? 1 : 0);
             }
+            ret->mRedirectURL = IMessageHelper::getElementTextAndDecode(browserEl->findFirstChildElement("redirect"));
           }
           return ret;
         }
@@ -91,6 +92,7 @@ namespace openpeer
           {
             case AttributeType_Ready:         return (mReady >= 0);
             case AttributeType_Visible:       return (mVisible >= 0);
+            case AttributeType_RedirectURL:   return mRedirectURL.hasData();
             default:                          break;
           }
           return false;

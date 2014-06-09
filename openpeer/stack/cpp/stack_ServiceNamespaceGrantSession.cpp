@@ -204,12 +204,30 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      String ServiceNamespaceGrantSession::getBrowserWindowRedirectURL() const
+      {
+        AutoRecursiveLock lock(*this);
+        ZS_LOG_TRACE(log("get browser window redirect URL") + ZS_PARAM("url", mNeedsBrowserWindowRedirectURL))
+        return mNeedsBrowserWindowRedirectURL;
+      }
+
+      //-----------------------------------------------------------------------
       void ServiceNamespaceGrantSession::notifyBrowserWindowVisible()
       {
         ZS_LOG_TRACE(log("notified browser window made visible"))
 
         AutoRecursiveLock lock(*this);
         mBrowserWindowVisible = true;
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServiceNamespaceGrantSession::notifyBrowserWindowRedirected()
+      {
+        ZS_LOG_TRACE(log("notified browser window redirected"))
+
+        AutoRecursiveLock lock(*this);
+        mNeedsBrowserWindowRedirectURL.clear();
         step();
       }
 
@@ -312,6 +330,11 @@ namespace openpeer
           if (windowRequest->visible()) {
             ZS_LOG_DEBUG(log("notifying browser window needs to be made visible"))
             mNeedsBrowserWindowVisible = true;
+          }
+
+          if (windowRequest->redirectURL().hasData()) {
+            ZS_LOG_DEBUG(log("notifying browser window needs to be redirected") + ZS_PARAM("url", windowRequest->redirectURL()))
+            mNeedsBrowserWindowRedirectURL = windowRequest->redirectURL();
           }
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -695,6 +718,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
         IHelper::debugAppend(resultEl, "browser window closed", mBrowserWindowClosed);
         IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "need browser window redirect", mNeedsBrowserWindowRedirectURL);
         IHelper::debugAppend(resultEl, "namespace grant start notification", mNamespaceGrantStartNotificationSent);
         IHelper::debugAppend(resultEl, "received namespace grant complete notification", mReceivedNamespaceGrantCompleteNotify);
         IHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
@@ -722,6 +746,7 @@ namespace openpeer
         if (!stepBootstrapper()) goto post_step;
         if (!stepLoadGrantWindow()) goto post_step;
         if (!stepMakeGrantWindowVisible()) goto post_step;
+        if (!stepBrowserRedirect()) goto post_step;
         if (!stepSendNamespaceGrantStartNotification()) goto post_step;
         if (!stepWaitForPermission()) goto post_step;
         if (!stepCloseBrowserWindow()) goto post_step;
@@ -926,7 +951,25 @@ namespace openpeer
         setState(SessionState_WaitingForBrowserWindowToBeMadeVisible);
         return false;
       }
+      
+      //-----------------------------------------------------------------------
+      bool ServiceNamespaceGrantSession::stepBrowserRedirect()
+      {
+        if (!mBrowserWindowReady) {
+          ZS_LOG_TRACE(log("all required namespaces have been granted"))
+          return true;
+        }
 
+        if (mNeedsBrowserWindowRedirectURL.isEmpty()) {
+          ZS_LOG_TRACE(log("no browser window redirect is needed"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("waiting for grant window to be redirected") + ZS_PARAM("url", mNeedsBrowserWindowRedirectURL))
+        setState(SessionState_WaitingForBrowserWindowToBeRedirected);
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServiceNamespaceGrantSession::stepSendNamespaceGrantStartNotification()
       {
@@ -1019,6 +1062,7 @@ namespace openpeer
         mBrowserWindowClosed = false;
 
         mNeedsBrowserWindowVisible = false;
+        mNeedsBrowserWindowRedirectURL.clear();
         mNamespaceGrantStartNotificationSent = false;
         mReceivedNamespaceGrantCompleteNotify = false;
 
@@ -1320,6 +1364,7 @@ namespace openpeer
         case SessionState_Pending:                                return "Pending";
         case SessionState_WaitingForBrowserWindowToBeLoaded:      return "Waiting for Browser Window to be Loaded";
         case SessionState_WaitingForBrowserWindowToBeMadeVisible: return "Waiting for Browser Window to be Made Visible";
+        case SessionState_WaitingForBrowserWindowToBeRedirected:  return "Waiting for Browser Window to be Redirected";
         case SessionState_WaitingForBrowserWindowToClose:         return "Waiting for Browser Window to Close";
         case SessionState_Ready:                                  return "Ready";
         case SessionState_Shutdown:                               return "Shutdown";

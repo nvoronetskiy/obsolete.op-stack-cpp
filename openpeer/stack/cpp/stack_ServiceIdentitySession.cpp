@@ -614,11 +614,28 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      String ServiceIdentitySession::getBrowserWindowRedirectURL() const
+      {
+        AutoRecursiveLock lock(*this);
+        ZS_LOG_TRACE(log("obtained browser window redirect url") + ZS_PARAM("url", mNeedsBrowserWindowRedirectURL))
+        return mNeedsBrowserWindowRedirectURL;
+      }
+      
+      //-----------------------------------------------------------------------
       void ServiceIdentitySession::notifyBrowserWindowVisible()
       {
         AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("browser window visible"))
         get(mBrowserWindowVisible) = true;
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServiceIdentitySession::notifyBrowserWindowRedirected()
+      {
+        AutoRecursiveLock lock(*this);
+        ZS_LOG_DEBUG(log("browser window redirected"))
+        mNeedsBrowserWindowRedirectURL.clear();
         step();
       }
 
@@ -714,6 +731,10 @@ namespace openpeer
           if (windowRequest->visible()) {
             ZS_LOG_DEBUG(log("notified browser window needs to be made visible"))
             get(mNeedsBrowserWindowVisible) = true;
+          }
+          if (windowRequest->redirectURL().hasData()) {
+            ZS_LOG_DEBUG(log("notified browser window needs to be redirected") + ZS_PARAM("url", windowRequest->redirectURL()))
+            mNeedsBrowserWindowRedirectURL = windowRequest->redirectURL();
           }
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -1679,6 +1700,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "browser closed", mBrowserWindowClosed);
 
         IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+        IHelper::debugAppend(resultEl, "need browser window redirect", mNeedsBrowserWindowRedirectURL);
 
         IHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
         IHelper::debugAppend(resultEl, "lockbox updated", mLockboxUpdated);
@@ -1731,6 +1753,7 @@ namespace openpeer
         if (!stepLoadBrowserWindow()) return;
         if (!stepIdentityAccessStartNotification()) return;
         if (!stepMakeBrowserWindowVisible()) return;
+        if (!stepMakeBrowserWindowRedirect()) return;
         if (!stepIdentityAccessCompleteNotification()) return;
         if (!stepRolodexCredentialsGet()) return;
         if (!stepRolodexAccess()) return;
@@ -1953,6 +1976,26 @@ namespace openpeer
         return false;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServiceIdentitySession::stepMakeBrowserWindowRedirect()
+      {
+        if (mNeedsBrowserWindowRedirectURL.isEmpty()) {
+          ZS_LOG_TRACE(log("browser window does not need to be redirected"))
+          return true;
+        }
+
+        if (mKillAssociation) {
+          ZS_LOG_WARNING(Detail, log("association is killed"))
+          setError(IHTTP::HTTPStatusCode_Gone, "association is killed");
+          cancel();
+          return false;
+        }
+
+        ZS_LOG_TRACE(log("waiting for browser window to be redirected") + ZS_PARAM("url", mNeedsBrowserWindowRedirectURL))
+        setState(SessionState_WaitingForBrowserWindowToBeRedirected);
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::stepIdentityAccessCompleteNotification()
       {
@@ -3132,6 +3175,7 @@ namespace openpeer
         case SessionState_WaitingAttachmentOfDelegate:              return "Waiting Attachment of Delegate";
         case SessionState_WaitingForBrowserWindowToBeLoaded:        return "Waiting for Browser Window to be Loaded";
         case SessionState_WaitingForBrowserWindowToBeMadeVisible:   return "Waiting for Browser Window to be Made Visible";
+        case SessionState_WaitingForBrowserWindowToBeRedirected:    return "Waiting for Browser Window to be Redirected";
         case SessionState_WaitingForBrowserWindowToClose:           return "Waiting for Browser Window to Close";
         case SessionState_WaitingForAssociationToLockbox:           return "Waiting for Association to Lockbox";
         case SessionState_Ready:                                    return "Ready";

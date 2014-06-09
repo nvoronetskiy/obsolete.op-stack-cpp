@@ -53,6 +53,7 @@ namespace openpeer
         SessionState_Pending,
         SessionState_WaitingForBrowserWindowToBeLoaded,
         SessionState_WaitingForBrowserWindowToBeMadeVisible,
+        SessionState_WaitingForBrowserWindowToBeRedirected,
         SessionState_WaitingForBrowserWindowToClose,
         SessionState_Ready,
         SessionState_Shutdown,
@@ -77,8 +78,10 @@ namespace openpeer
       virtual String getGrantID() const = 0;
 
       virtual String getInnerBrowserWindowFrameURL() const = 0;
+      virtual String getBrowserWindowRedirectURL() const = 0;
 
       virtual void notifyBrowserWindowVisible() = 0;
+      virtual void notifyBrowserWindowRedirected() = 0;
       virtual void notifyBrowserWindowClosed() = 0;
 
       virtual DocumentPtr getNextMessageForInnerBrowerWindowFrame() = 0;
