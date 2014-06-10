@@ -90,7 +90,7 @@ namespace openpeer
         DocumentPtr IdentityAccessRolodexCredentialsGetRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+          ElementPtr rootEl = ret->getFirstChildElement();
 
           String clientNonce = IHelper::randomString(32);
 
@@ -105,9 +105,9 @@ namespace openpeer
             identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":rolodex-credentials-get"));
           }
 
-          root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
+          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
-            root->adoptAsLastChild(identityInfo.createElement());
+            rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
           return ret;

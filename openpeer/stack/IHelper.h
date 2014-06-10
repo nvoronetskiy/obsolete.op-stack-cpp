@@ -76,7 +76,7 @@ namespace openpeer
 
       static SecureByteBlockPtr splitDecrypt(
                                              SecureByteBlock &key,
-                                             const char *hexIVAndBase64EncodedData
+                                             const char *saltAndProofAndBase64EncodedData
                                              );
     };
   }

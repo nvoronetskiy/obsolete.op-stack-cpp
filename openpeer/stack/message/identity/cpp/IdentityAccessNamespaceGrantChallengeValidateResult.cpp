@@ -29,11 +29,10 @@
 
  */
 
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateResult.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
-#include <zsLib/helpers.h>
 
 namespace openpeer
 {
@@ -43,39 +42,47 @@ namespace openpeer
     {
       namespace identity
       {
-        using internal::MessageHelper;
+        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+        using message::internal::MessageHelper;
 
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateResultPtr IdentityAccessLockboxUpdateResult::convert(MessagePtr message)
+        IdentityAccessNamespaceGrantChallengeValidateResultPtr IdentityAccessNamespaceGrantChallengeValidateResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessLockboxUpdateResult>(message);
+          return dynamic_pointer_cast<IdentityAccessNamespaceGrantChallengeValidateResult>(message);
         }
 
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateResult::IdentityAccessLockboxUpdateResult()
+        IdentityAccessNamespaceGrantChallengeValidateResult::IdentityAccessNamespaceGrantChallengeValidateResult()
         {
         }
 
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateResultPtr IdentityAccessLockboxUpdateResult::create(
-                                                                                       ElementPtr root,
-                                                                                       IMessageSourcePtr messageSource
-                                                                                       )
+        IdentityAccessNamespaceGrantChallengeValidateResultPtr IdentityAccessNamespaceGrantChallengeValidateResult::create(
+                                                                                                                           ElementPtr rootEl,
+                                                                                                                           IMessageSourcePtr messageSource
+                                                                                                                           )
         {
-          IdentityAccessLockboxUpdateResultPtr ret(new IdentityAccessLockboxUpdateResult);
-          IMessageHelper::fill(*ret, root, messageSource);
+          IdentityAccessNamespaceGrantChallengeValidateResultPtr ret(new IdentityAccessNamespaceGrantChallengeValidateResult);
+
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
+          ret->mEncryptionKeyUponGrantProof = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("encryptionKeyUponGrantProof"));
+
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool IdentityAccessLockboxUpdateResult::hasAttribute(AttributeTypes type) const
+        bool IdentityAccessNamespaceGrantChallengeValidateResult::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            default:                                      break;
+            AttributeType_EncryptionKeyUponGrantProof:          return mEncryptionKeyUponGrantProof.hasData();
+            default:                                            break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
+
       }
     }
   }

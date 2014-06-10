@@ -112,7 +112,8 @@ namespace openpeer
           LockboxInfo lockboxInfo;
           lockboxInfo.mDomain = mLockboxInfo.mDomain;
           lockboxInfo.mAccountID = mLockboxInfo.mAccountID;
-          lockboxInfo.mHash = mLockboxInfo.mHash;
+          lockboxInfo.mKeyName = mLockboxInfo.mKeyName;
+          lockboxInfo.mKey = mLockboxInfo.mKey;
           lockboxInfo.mResetFlag = mLockboxInfo.mResetFlag;
 
           rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
@@ -120,8 +121,22 @@ namespace openpeer
             rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
+          if ((lockboxInfo.mKey) &&
+              (lockboxInfo.mKeyName.hasData())) {
+            // hex(hmac(`<lockbox-passphrase>`, "lockbox:" + `<lockbox-passphrase-id>`))
+            String hash = IHelper::convertToHex(*IHelper::hmac(*lockboxInfo.mKey, "lockbox:" + lockboxInfo.mKeyName));
+            if (identityInfo.hasData()) {
+              lockboxInfo.mKeyHash = hash;
+            } else {
+              lockboxInfo.mKeyHashProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
+
+              // proof = hex(hmac(`<lockbox-hash>`, "identity-access-validate:" + `<client-nonce>` + ":" + `<expires>` + ":" + `<lockbox-passphrase-id>` + ":lockbox-access")), lockbox hash = hex(hmac(`<lockbox-passphrase>`, "lockbox:" + `<lockbox-passphrase-id>`))
+              lockboxInfo.mKeyHashProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(hash), "identity-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mKeyHashProofExpires) + ":" + lockboxInfo.mKeyName + ":lockbox-access"));
+            }
+          }
+
           if (lockboxInfo.hasData()) {
-            rootEl->adoptAsLastChild(lockboxInfo.createElement());
+            rootEl->adoptAsLastChild(lockboxInfo.createElement());  // when info is present, it's only the key hash
           }
 
           AgentInfo agentInfo = UseStack::agentInfo();

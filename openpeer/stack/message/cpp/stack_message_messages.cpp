@@ -441,6 +441,7 @@ namespace openpeer
                 (Time() != mAccessSecretProofExpires) ||
 
                 (mReloginKey.hasData()) ||
+                (mReloginKeyEncrypted.hasData()) ||
 
                 (mBase.hasData()) ||
                 (mURI.hasData()) ||
@@ -478,6 +479,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "identity access secret proof", mAccessSecretProof);
         IHelper::debugAppend(resultEl, "identity access secret expires", mAccessSecretProofExpires);
         IHelper::debugAppend(resultEl, "identity relogin key", mReloginKey);
+        IHelper::debugAppend(resultEl, "identity relogin key encrypted", mReloginKeyEncrypted);
         IHelper::debugAppend(resultEl, "identity base", mBase);
         IHelper::debugAppend(resultEl, "identity", mURI);
         IHelper::debugAppend(resultEl, "identity provider", mProvider);
@@ -513,6 +515,7 @@ namespace openpeer
         merge(mAccessSecretProofExpires, source.mAccessSecretProofExpires, overwriteExisting);
 
         merge(mReloginKey, source.mReloginKey, overwriteExisting);
+        merge(mReloginKeyEncrypted, source.mReloginKeyEncrypted, overwriteExisting);
 
         merge(mBase, source.mBase, overwriteExisting);
         merge(mURI, source.mURI, overwriteExisting);
@@ -553,6 +556,7 @@ namespace openpeer
         info.mAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProofExpires")));
 
         info.mReloginKey = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reloginKey"));
+        info.mReloginKeyEncrypted = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reloginKeyEncrypted"));
 
         info.mBase = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("base"));
         info.mURI = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("uri"));
@@ -750,8 +754,13 @@ namespace openpeer
                 (mAccessSecretProof.hasData()) ||
                 (Time() != mAccessSecretProofExpires) ||
 
+                (mKeyName.hasData()) ||
+                (mKeyEncrypted.hasData()) ||
+
                 (mKey) ||
-                (mHash.hasData()) ||
+                (mKeyHash.hasData()) ||
+                (mKeyHashProof.hasData()) ||
+                (Time() != mKeyHashProofExpires) ||
 
                 (mResetFlag));
       }
@@ -768,8 +777,14 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretExpires);
         IHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
         IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretProofExpires);
+
+        IHelper::debugAppend(resultEl, "key name", mKeyName);
+        IHelper::debugAppend(resultEl, "key encrypted", mKeyEncrypted);
         IHelper::debugAppend(resultEl, "key", mKey ? IHelper::convertToBase64(*mKey) : String());
-        IHelper::debugAppend(resultEl, "hash", mHash);
+        IHelper::debugAppend(resultEl, "key hash", mKeyHash);
+        IHelper::debugAppend(resultEl, "key hash proof", mKeyHashProof);
+        IHelper::debugAppend(resultEl, "key hash proof expires", mKeyHashProofExpires);
+
         IHelper::debugAppend(resultEl, "reset", mResetFlag);
 
         return resultEl;
@@ -790,8 +805,10 @@ namespace openpeer
         merge(mAccessSecretProof, source.mAccessSecretProof, overwriteExisting);
         merge(mAccessSecretProofExpires, source.mAccessSecretProofExpires, overwriteExisting);
 
+        merge(mKeyName, source.mKeyName, overwriteExisting);
+        merge(mKeyEncrypted, source.mKeyEncrypted, overwriteExisting);
         merge(mKey, source.mKey, overwriteExisting);
-        merge(mHash, source.mHash, overwriteExisting);
+
         merge(mResetFlag, source.mResetFlag, overwriteExisting);
       }
 
@@ -807,26 +824,35 @@ namespace openpeer
           lockboxEl->setAttribute("id", mAccountID);
         }
         if (mAccessToken.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessToken", mAccessToken));
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessToken", mAccessToken));
         }
         if (mAccessSecret.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecret", mAccessSecret));
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecret", mAccessSecret));
         }
         if (Time() != mAccessSecretExpires) {
           lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(mAccessSecretExpires)));
         }
         if (mAccessSecretProof.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecretProof", mAccessSecretProof));
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProof", mAccessSecretProof));
         }
         if (Time() != mAccessSecretProofExpires) {
           lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(mAccessSecretProofExpires)));
         }
 
-        if (mKey) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("key", IHelper::convertToBase64(*mKey)));
+        if (mKeyName.hasData()) {
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyName", mKeyName));
         }
-        if (mHash.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("hash", mHash));
+        if (mKeyEncrypted.hasData()) {
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyEncrypted", mKeyEncrypted));
+        }
+        if (mKeyHash.hasData()) {
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHash", mKeyHash));
+        }
+        if (mKeyHashProof.hasData()) {
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHashProof", mKeyHashProof));
+        }
+        if (Time() != mKeyHashProofExpires) {
+          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHashProofExpires", IHelper::timeToString(mKeyHashProofExpires)));
         }
 
         if (mResetFlag) {
@@ -851,13 +877,11 @@ namespace openpeer
         info.mAccessSecretProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProof"));
         info.mAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProofExpires")));
 
-        String key = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("key"));
-
-        if (key.hasData()) {
-          info.mKey = IHelper::convertFromBase64(key);
-          if (IHelper::isEmpty(info.mKey)) info.mKey = SecureByteBlockPtr();
-        }
-        info.mHash = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("hash"));
+        info.mKeyName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyName"));
+        info.mKeyEncrypted = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyEncrypted"));
+        info.mKeyHash = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyHash"));
+        info.mKeyHashProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyHashProof"));
+        info.mKeyHashProofExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("keyHashProofExpires")));
 
         try {
           info.mResetFlag = Numeric<bool>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reset")));

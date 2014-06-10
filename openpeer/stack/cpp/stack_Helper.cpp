@@ -148,31 +148,30 @@ namespace openpeer
                                   SecureByteBlock &value
                                   )
       {
-        SecureByteBlockPtr iv = services::IHelper::random(services::IHelper::getHashDigestSize(services::IHelper::HashAlgorthm_MD5));
+        String salt = services::IHelper::randomString(services::IHelper::getHashDigestSize(services::IHelper::HashAlgorthm_MD5)*8/5);
+
+        SecureByteBlockPtr iv = services::IHelper::hash(salt, services::IHelper::HashAlgorthm_MD5);
         String base64 = services::IHelper::convertToBase64(*services::IHelper::encrypt(key, *iv, value));
 
-        String ivAsHex = services::IHelper::convertToHex(*iv);
-        String keyAsHex = services::IHelper::convertToHex(key);
-
         SecureByteBlockPtr proofHash = services::IHelper::hash(value);
-        String proof = services::IHelper::convertToHex(*services::IHelper::hmac(*services::IHelper::hmacKeyFromPassphrase(keyAsHex), "proof:" + ivAsHex + ":" + services::IHelper::convertToHex(*services::IHelper::hash(value))));
+        String proof = services::IHelper::convertToHex(*services::IHelper::hmac(key, "proof:" + salt + ":" + services::IHelper::convertToHex(*services::IHelper::hash(value))));
 
-        return ivAsHex + ":" + proof + ":" + base64;
+        return salt + ":" + proof + ":" + base64;
       }
 
       //-----------------------------------------------------------------------
       SecureByteBlockPtr Helper::splitDecrypt(
                                               SecureByteBlock &key,
-                                              const char *hexIVAndBase64EncodedData
+                                              const char *saltAndProofAndBase64EncodedData
                                               )
       {
-        if (!hexIVAndBase64EncodedData) return SecureByteBlockPtr();
+        if (!saltAndProofAndBase64EncodedData) return SecureByteBlockPtr();
 
         services::IHelper::SplitMap split;
-        services::IHelper::split(hexIVAndBase64EncodedData, split, ':');
+        services::IHelper::split(saltAndProofAndBase64EncodedData, split, ':');
 
         if (split.size() != 3) {
-          ZS_LOG_WARNING(Detail, log("failed to decode data (does not have salt:base64 pattern") + ZS_PARAM("value", hexIVAndBase64EncodedData))
+          ZS_LOG_WARNING(Detail, log("failed to decode data (does not have salt:proof:base64 pattern") + ZS_PARAM("value", saltAndProofAndBase64EncodedData))
           return SecureByteBlockPtr();
         }
 
@@ -180,8 +179,7 @@ namespace openpeer
         const String &proof = split[1];
         const String &value = split[2];
 
-        SecureByteBlockPtr iv = services::IHelper::convertFromHex(salt);
-        String keyAsHex = services::IHelper::convertToHex(key);
+        SecureByteBlockPtr iv = services::IHelper::hash(salt, services::IHelper::HashAlgorthm_MD5);
 
         SecureByteBlockPtr dataToConvert = services::IHelper::convertFromBase64(value);
         if (services::IHelper::isEmpty(dataToConvert)) {
@@ -192,7 +190,7 @@ namespace openpeer
         SecureByteBlockPtr decryptedData = services::IHelper::decrypt(key, *iv, *dataToConvert);
 
         SecureByteBlockPtr proofHash = services::IHelper::hash(*decryptedData);
-        String calculatedProof = services::IHelper::convertToHex(*services::IHelper::hmac(*services::IHelper::hmacKeyFromPassphrase(keyAsHex), "proof:" + salt + ":" + services::IHelper::convertToHex(*services::IHelper::hash(*decryptedData))));
+        String calculatedProof = services::IHelper::convertToHex(*services::IHelper::hmac(key, "proof:" + salt + ":" + services::IHelper::convertToHex(*services::IHelper::hash(*decryptedData))));
 
         if (calculatedProof != proof) {
           ZS_LOG_WARNING(Detail, log("decryption proof failure") + ZS_PARAM("proof", proof) + ZS_PARAM("calculated", calculatedProof))

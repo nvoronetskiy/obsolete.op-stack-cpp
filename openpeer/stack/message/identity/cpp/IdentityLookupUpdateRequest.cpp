@@ -88,8 +88,10 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_IdentityInfo:      return mIdentityInfo.hasData();
-            default:                              break;
+            case AttributeType_IdentityInfo:                return mIdentityInfo.hasData();
+            case AttributeType_PeerFiles:                   return (bool)mPeerFiles;
+            case AttributeType_EncryptionKeyUponGrantProof: return mEncryptionKeyUponGrantProof.hasData();
+            default:                                        break;
           }
           return false;
         }
@@ -105,15 +107,7 @@ namespace openpeer
 
           if (mPeerFiles) {
             peerFilePrivate = mPeerFiles->getPeerFilePrivate();
-            if (!peerFilePrivate) {
-              ZS_LOG_ERROR(Detail, slog("peer file private was null"))
-              return DocumentPtr();
-            }
             peerFilePublic = mPeerFiles->getPeerFilePublic();
-            if (!peerFilePublic) {
-              ZS_LOG_ERROR(Detail, slog("peer file public was null"))
-              return DocumentPtr();
-            }
           }
 
           String clientNonce = IHelper::randomString(32);
@@ -161,8 +155,8 @@ namespace openpeer
             Time created = zsLib::now();
             Time expires = created + Hours(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_CONTACT_PROOF_EXPIRES_IN_HOURS);
 
-            contactProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("created", IHelper::timeToString(created)));
-            contactProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("expires", IHelper::timeToString(expires)));
+            contactProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", IHelper::timeToString(created)));
+            contactProofEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));
 
             identityInfo.mContactProofBundle = Element::create("contactProofBundle");
             identityInfo.mContactProofBundle->adoptAsLastChild(contactProofEl);
@@ -180,6 +174,10 @@ namespace openpeer
           if (identityInfo.hasData()) {
             ElementPtr identityEl = identityInfo.createElement(true);
             root->adoptAsLastChild(identityEl);
+          }
+
+          if (hasAttribute(AttributeType_EncryptionKeyUponGrantProof)) {
+            root->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("encryptionKeyUponGrantProof", mEncryptionKeyUponGrantProof));
           }
 
           return ret;

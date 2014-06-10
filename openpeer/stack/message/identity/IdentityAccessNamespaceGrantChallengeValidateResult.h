@@ -34,8 +34,6 @@
 #include <openpeer/stack/message/MessageResult.h>
 #include <openpeer/stack/message/identity/MessageFactoryIdentity.h>
 
-#include <list>
-
 namespace openpeer
 {
   namespace stack
@@ -44,29 +42,35 @@ namespace openpeer
     {
       namespace identity
       {
-        class IdentityAccessLockboxUpdateResult : public MessageResult
+        class IdentityAccessNamespaceGrantChallengeValidateResult : public MessageResult
         {
         public:
           enum AttributeTypes
           {
+            AttributeType_EncryptionKeyUponGrantProof = MessageResult::AttributeType_Last + 1,
           };
 
         public:
-          static IdentityAccessLockboxUpdateResultPtr convert(MessagePtr message);
+          static IdentityAccessNamespaceGrantChallengeValidateResultPtr convert(MessagePtr message);
 
-          static IdentityAccessLockboxUpdateResultPtr create(
-                                                             ElementPtr root,
-                                                             IMessageSourcePtr messageSource
-                                                             );
+          static IdentityAccessNamespaceGrantChallengeValidateResultPtr create(
+                                                                               ElementPtr rootEl,
+                                                                               IMessageSourcePtr messageSource
+                                                                               );
 
-          virtual Methods method() const                  {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessLockboxUpdate;}
+          virtual Methods method() const              {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessNamespaceGrantChallengeValidate;}
 
-          virtual IMessageFactoryPtr factory() const      {return MessageFactoryIdentity::singleton();}
+          virtual IMessageFactoryPtr factory() const  {return MessageFactoryIdentity::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
+          const String &encryptionKeyUponGrantProof() const         {return mEncryptionKeyUponGrantProof;}
+          void encryptionKeyUponGrantProof(const String &val)       {mEncryptionKeyUponGrantProof = val;}
+
         protected:
-          IdentityAccessLockboxUpdateResult();
+          IdentityAccessNamespaceGrantChallengeValidateResult();
+
+          String mEncryptionKeyUponGrantProof;
         };
       }
     }

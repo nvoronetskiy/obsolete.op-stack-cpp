@@ -57,8 +57,8 @@
 #include <openpeer/stack/message/identity/IdentityAccessWindowResult.h>
 #include <openpeer/stack/message/identity/IdentityAccessStartNotify.h>
 #include <openpeer/stack/message/identity/IdentityAccessCompleteNotify.h>
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateRequest.h>
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateResult.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateRequest.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/identity/IdentityAccessRolodexCredentialsGetRequest.h>
 #include <openpeer/stack/message/identity/IdentityAccessRolodexCredentialsGetResult.h>
 #include <openpeer/stack/message/identity/IdentityLookupUpdateRequest.h>

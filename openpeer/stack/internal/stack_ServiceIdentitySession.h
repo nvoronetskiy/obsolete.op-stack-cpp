@@ -37,7 +37,7 @@
 #include <openpeer/stack/IMessageSource.h>
 #include <openpeer/stack/IServiceIdentity.h>
 
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateResult.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/identity/IdentityLookupUpdateResult.h>
 #include <openpeer/stack/message/identity/IdentityAccessRolodexCredentialsGetResult.h>
 #include <openpeer/stack/message/identity-lookup/IdentityLookupResult.h>
@@ -64,12 +64,12 @@ namespace openpeer
       interaction IBootstrappedNetworkForServices;
       interaction IServiceLockboxSessionForServiceIdentity;
 
-      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessLockboxUpdateResult)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessNamespaceGrantChallengeValidateResult)
       ZS_DECLARE_USING_PTR(message::identity, IdentityLookupUpdateResult)
       ZS_DECLARE_USING_PTR(message::identity, IdentityAccessRolodexCredentialsGetResult)
 
       ZS_DECLARE_USING_PTR(message::identity_lookup, IdentityLookupResult)
-      
+
       ZS_DECLARE_USING_PTR(message::rolodex, RolodexAccessResult)
       ZS_DECLARE_USING_PTR(message::rolodex, RolodexNamespaceGrantChallengeValidateResult)
       ZS_DECLARE_USING_PTR(message::rolodex, RolodexContactsGetResult)
@@ -137,7 +137,7 @@ namespace openpeer
                                      public zsLib::ITimerDelegate,
                                      public IServiceNamespaceGrantSessionWaitDelegate,
                                      public IServiceNamespaceGrantSessionQueryDelegate,
-                                     public IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>,
+                                     public IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>,
                                      public IMessageMonitorResultDelegate<IdentityLookupUpdateResult>,
                                      public IMessageMonitorResultDelegate<IdentityAccessRolodexCredentialsGetResult>,
                                      public IMessageMonitorResultDelegate<IdentityLookupResult>,
@@ -344,17 +344,17 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServiceIdentitySession => IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>
+        #pragma mark ServiceIdentitySession => IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>
         #pragma mark
 
         virtual bool handleMessageMonitorResultReceived(
                                                         IMessageMonitorPtr monitor,
-                                                        IdentityAccessLockboxUpdateResultPtr result
+                                                        IdentityAccessNamespaceGrantChallengeValidateResultPtr result
                                                         );
 
         virtual bool handleMessageMonitorErrorResultReceived(
                                                              IMessageMonitorPtr monitor,
-                                                             IdentityAccessLockboxUpdateResultPtr ignore, // will always be NULL
+                                                             IdentityAccessNamespaceGrantChallengeValidateResultPtr ignore, // will always be NULL
                                                              message::MessageResultPtr result
                                                              );
 
@@ -475,15 +475,16 @@ namespace openpeer
         bool stepIdentityAccessCompleteNotification();
         bool stepRolodexCredentialsGet();
         bool stepRolodexAccess();
-        bool stepLockboxAssociation();
         bool stepIdentityLookup();
-        bool stepLockboxAccessToken();
-        bool stepLockboxUpdate();
         bool stepCloseBrowserWindow();
         bool stepPreGrantChallenge();
         bool stepClearGrantWait();
-        bool stepGrantChallenge();
+        bool stepGrantChallengeAccess();
+        bool stepGrantChallengeRolodex();
+        bool stepPrepareKeying();
+        bool stepLockboxAssociation();
         bool stepLockboxReady();
+        bool stepLockboxAccessToken();
         bool stepLookupUpdate();
         bool stepDownloadContacts();
 
@@ -521,13 +522,15 @@ namespace openpeer
         UseBootstrappedNetworkPtr mActiveBootstrappedNetwork;
 
         UseServiceNamespaceGrantSessionPtr mGrantSession;
-        IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
+        IServiceNamespaceGrantSessionQueryPtr mGrantQueryAccess;
+        IServiceNamespaceGrantSessionQueryPtr mGrantQueryRolodex;
         IServiceNamespaceGrantSessionWaitPtr mGrantWait;
 
-        IMessageMonitorPtr mIdentityAccessLockboxUpdateMonitor;
+        IMessageMonitorPtr mIdentityAccessNamespaceGrantChallengeValidateMonitor;
         IMessageMonitorPtr mIdentityLookupUpdateMonitor;
         IMessageMonitorPtr mIdentityAccessRolodexCredentialsGetMonitor;
         IMessageMonitorPtr mIdentityLookupMonitor;
+        IMessageMonitorPtr mPeerFileSetMonitor;
         IMessageMonitorPtr mRolodexAccessMonitor;
         IMessageMonitorPtr mRolodexNamespaceGrantChallengeValidateMonitor;
         IMessageMonitorPtr mRolodexContactsGetMonitor;
@@ -543,7 +546,12 @@ namespace openpeer
         String mNeedsBrowserWindowRedirectURL;
 
         AutoBool mIdentityAccessStartNotificationSent;
-        AutoBool mLockboxUpdated;
+        NamespaceGrantChallengeInfo mAccessChallengeInfo;
+        AutoBool mKeyingPrepared;
+        String mEncryptedUserSpecificPassphrase;
+        String mUserSpecificPassphrase;
+        String mEncryptionKeyUponGrantProof;
+        String mEncryptionKeyUponGrantProofHash;
         AutoBool mIdentityLookupUpdated;
         IdentityInfo mPreviousLookupInfo;
 

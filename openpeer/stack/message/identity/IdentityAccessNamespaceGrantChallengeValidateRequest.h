@@ -34,9 +34,6 @@
 #include <openpeer/stack/message/MessageRequest.h>
 #include <openpeer/stack/message/identity/MessageFactoryIdentity.h>
 
-#include <utility>
-#include <list>
-
 namespace openpeer
 {
   namespace stack
@@ -45,48 +42,48 @@ namespace openpeer
     {
       namespace identity
       {
-        class IdentityAccessLockboxUpdateRequest : public MessageRequest
+        class IdentityAccessNamespaceGrantChallengeValidateRequest : public MessageRequest
         {
+        public:
+          friend class PeerIdentifyResult;
+
         public:
           enum AttributeTypes
           {
             AttributeType_IdentityInfo,
-            AttributeType_LocboxInfo,
+            AttributeType_NamespaceGrantChallengeBundle,
           };
 
         public:
-          static IdentityAccessLockboxUpdateRequestPtr convert(MessagePtr message);
+          static IdentityAccessNamespaceGrantChallengeValidateRequestPtr convert(MessagePtr message);
 
-          static IdentityAccessLockboxUpdateRequestPtr create();
+          static IdentityAccessNamespaceGrantChallengeValidateRequestPtr create();
 
           virtual DocumentPtr encode();
 
-          virtual Methods method() const              {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessLockboxUpdate;}
+          virtual Methods method() const                              {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessNamespaceGrantChallengeValidate;}
 
-          virtual IMessageFactoryPtr factory() const  {return MessageFactoryIdentity::singleton();}
+          virtual IMessageFactoryPtr factory() const                  {return MessageFactoryIdentity::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
           // IdentityInfo members need to be set:
           //
-          // mURI
-          // mProvider
-          //
           // mAccessToken
           // mAccessSecret
           // mAccessSecretExpires
 
-          const IdentityInfo &identityInfo() const    {return mIdentityInfo;}
-          void identityInfo(const IdentityInfo &val)  {mIdentityInfo = val;}
-
-          const LockboxInfo &lockboxInfo() const    {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)  {mLockboxInfo = val;}
+          const IdentityInfo &identityInfo() const                    {return mIdentityInfo;}
+          void identityInfo(const IdentityInfo &val)                  {mIdentityInfo = val;}
+          
+          const ElementPtr &namespaceGrantChallengeBundle() const     {return mNamespaceGrantChallengeBundle;}
+          void namespaceGrantChallengeBundle(ElementPtr val)          {mNamespaceGrantChallengeBundle = val;}
 
         protected:
-          IdentityAccessLockboxUpdateRequest();
+          IdentityAccessNamespaceGrantChallengeValidateRequest();
 
           IdentityInfo mIdentityInfo;
-          LockboxInfo mLockboxInfo;
+          ElementPtr mNamespaceGrantChallengeBundle;
         };
       }
     }

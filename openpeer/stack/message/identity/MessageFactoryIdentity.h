@@ -60,7 +60,7 @@ namespace openpeer
             Method_IdentityAccessWindow,
             Method_IdentityAccessStart,
             Method_IdentityAccessComplete,
-            Method_IdentityAccessLockboxUpdate,
+            Method_IdentityAccessNamespaceGrantChallengeValidate,
             Method_IdentityAccessRolodexCredentialsGetUpdate,
             Method_IdentityLookupUpdate,
 

@@ -32,7 +32,7 @@
 #include <openpeer/stack/message/identity/MessageFactoryIdentity.h>
 #include <openpeer/stack/message/identity/IdentityAccessWindowRequest.h>
 #include <openpeer/stack/message/identity/IdentityAccessCompleteNotify.h>
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateResult.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/identity/IdentityAccessRolodexCredentialsGetResult.h>
 #include <openpeer/stack/message/identity/IdentityLookupUpdateResult.h>
 #include <openpeer/stack/message/Message.h>
@@ -110,14 +110,14 @@ namespace openpeer
         {
           switch ((MessageFactoryIdentity::Methods)method)
           {
-            case Method_Invalid:                                    return "";
+            case Method_Invalid:                                        return "";
 
-            case Method_IdentityAccessWindow:                       return "identity-access-window";
-            case Method_IdentityAccessStart:                        return "identity-access-start";
-            case Method_IdentityAccessComplete:                     return "identity-access-complete";
-            case Method_IdentityAccessLockboxUpdate:                return "identity-access-lockbox-update";
-            case Method_IdentityAccessRolodexCredentialsGetUpdate:  return "identity-access-rolodex-credentials-get";
-            case Method_IdentityLookupUpdate:                       return "identity-lookup-update";
+            case Method_IdentityAccessWindow:                           return "identity-access-window";
+            case Method_IdentityAccessStart:                            return "identity-access-start";
+            case Method_IdentityAccessComplete:                         return "identity-access-complete";
+            case Method_IdentityAccessNamespaceGrantChallengeValidate:  return "identity-access-namespace-grant-challenge-validate";
+            case Method_IdentityAccessRolodexCredentialsGetUpdate:      return "identity-access-rolodex-credentials-get";
+            case Method_IdentityLookupUpdate:                           return "identity-lookup-update";
           }
           return "";
         }
@@ -134,47 +134,47 @@ namespace openpeer
           Methods msgMethod = (MessageFactoryIdentity::Methods)toMethod(IMessageHelper::getAttribute(root, "method"));
 
           switch (msgType) {
-            case Message::MessageType_Invalid:                          return MessagePtr();
+            case Message::MessageType_Invalid:                              return MessagePtr();
 
             case Message::MessageType_Request:
             {
               switch (msgMethod) {
-                case Method_Invalid:                                    return MessagePtr();
+                case Method_Invalid:                                        return MessagePtr();
 
-                case Method_IdentityAccessWindow:                       return IdentityAccessWindowRequest::create(root, messageSource);
-                case Method_IdentityAccessStart:                        return MessagePtr();
-                case Method_IdentityAccessComplete:                     return MessagePtr();
-                case Method_IdentityAccessLockboxUpdate:                return MessagePtr();
-                case Method_IdentityAccessRolodexCredentialsGetUpdate:  return MessagePtr();
-                case Method_IdentityLookupUpdate:                       return MessagePtr();
+                case Method_IdentityAccessWindow:                           return IdentityAccessWindowRequest::create(root, messageSource);
+                case Method_IdentityAccessStart:                            return MessagePtr();
+                case Method_IdentityAccessComplete:                         return MessagePtr();
+                case Method_IdentityAccessNamespaceGrantChallengeValidate:  return MessagePtr();
+                case Method_IdentityAccessRolodexCredentialsGetUpdate:      return MessagePtr();
+                case Method_IdentityLookupUpdate:                           return MessagePtr();
               }
               break;
             }
             case Message::MessageType_Result:
             {
               switch (msgMethod) {
-                case Method_Invalid:                                    return MessagePtr();
+                case Method_Invalid:                                        return MessagePtr();
 
-                case Method_IdentityAccessWindow:                       return MessagePtr();
-                case Method_IdentityAccessStart:                        return MessagePtr();
-                case Method_IdentityAccessComplete:                     return MessagePtr();
-                case Method_IdentityAccessLockboxUpdate:                return IdentityAccessLockboxUpdateResult::create(root, messageSource);
-                case Method_IdentityAccessRolodexCredentialsGetUpdate:  return IdentityAccessRolodexCredentialsGetResult::create(root, messageSource);
-                case Method_IdentityLookupUpdate:                       return IdentityLookupUpdateResult::create(root, messageSource);
+                case Method_IdentityAccessWindow:                           return MessagePtr();
+                case Method_IdentityAccessStart:                            return MessagePtr();
+                case Method_IdentityAccessComplete:                         return MessagePtr();
+                case Method_IdentityAccessNamespaceGrantChallengeValidate:  return IdentityAccessNamespaceGrantChallengeValidateResult::create(root, messageSource);
+                case Method_IdentityAccessRolodexCredentialsGetUpdate:      return IdentityAccessRolodexCredentialsGetResult::create(root, messageSource);
+                case Method_IdentityLookupUpdate:                           return IdentityLookupUpdateResult::create(root, messageSource);
               }
               break;
             }
             case Message::MessageType_Notify:
             {
               switch (msgMethod) {
-                case Method_Invalid:                                    return MessagePtr();
+                case Method_Invalid:                                        return MessagePtr();
 
-                case Method_IdentityAccessWindow:                       return MessagePtr();
-                case Method_IdentityAccessStart:                        return MessagePtr();
-                case Method_IdentityAccessComplete:                     return IdentityAccessCompleteNotify::create(root, messageSource);
-                case Method_IdentityAccessLockboxUpdate:                return MessagePtr();
-                case Method_IdentityAccessRolodexCredentialsGetUpdate:  return MessagePtr();
-                case Method_IdentityLookupUpdate:                       return MessagePtr();
+                case Method_IdentityAccessWindow:                           return MessagePtr();
+                case Method_IdentityAccessStart:                            return MessagePtr();
+                case Method_IdentityAccessComplete:                         return IdentityAccessCompleteNotify::create(root, messageSource);
+                case Method_IdentityAccessNamespaceGrantChallengeValidate:  return MessagePtr();
+                case Method_IdentityAccessRolodexCredentialsGetUpdate:      return MessagePtr();
+                case Method_IdentityLookupUpdate:                           return MessagePtr();
               }
               break;
             }

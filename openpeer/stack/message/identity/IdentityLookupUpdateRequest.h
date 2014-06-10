@@ -51,6 +51,8 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_IdentityInfo,
+            AttributeType_PeerFiles,
+            AttributeType_EncryptionKeyUponGrantProof,
           };
 
         public:
@@ -96,6 +98,9 @@ namespace openpeer
           IPeerFilesPtr peerFiles() const             {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)     {mPeerFiles = peerFiles;}
 
+          const String &encryptionKeyUponGrantProof() const         {return mEncryptionKeyUponGrantProof;}
+          void encryptionKeyUponGrantProof(const String &val)       {mEncryptionKeyUponGrantProof = val;}
+
         protected:
           IdentityLookupUpdateRequest();
 
@@ -103,6 +108,8 @@ namespace openpeer
 
           IdentityInfo mIdentityInfo;
           IPeerFilesPtr mPeerFiles;
+
+          String mEncryptionKeyUponGrantProof;
         };
       }
     }

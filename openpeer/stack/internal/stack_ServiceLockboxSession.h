@@ -40,6 +40,7 @@
 #include <openpeer/stack/message/identity-lockbox/LockboxIdentitiesUpdateResult.h>
 #include <openpeer/stack/message/identity-lockbox/LockboxContentGetResult.h>
 #include <openpeer/stack/message/identity-lockbox/LockboxContentSetResult.h>
+#include <openpeer/stack/message/peer/PeerFileSetResult.h>
 #include <openpeer/stack/message/peer/PeerServicesGetResult.h>
 
 #include <openpeer/stack/IBootstrappedNetwork.h>
@@ -72,6 +73,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentGetResult)
       ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentSetResult)
 
+      ZS_DECLARE_USING_PTR(message::peer, PeerFileSetResult)
       ZS_DECLARE_USING_PTR(message::peer, PeerServicesGetResult)
 
       //-----------------------------------------------------------------------
@@ -190,6 +192,7 @@ namespace openpeer
                                     public IMessageMonitorResultDelegate<LockboxIdentitiesUpdateResult>,
                                     public IMessageMonitorResultDelegate<LockboxContentGetResult>,
                                     public IMessageMonitorResultDelegate<LockboxContentSetResult>,
+                                    public IMessageMonitorResultDelegate<PeerFileSetResult>,
                                     public IMessageMonitorResultDelegate<PeerServicesGetResult>
       {
       public:
@@ -484,6 +487,22 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
+        #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<PeerFileSetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        PeerFileSetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             PeerFileSetResultPtr ignore, // will always be NULL
+                                                             message::MessageResultPtr result
+                                                             );
+
+        //---------------------------------------------------------------------
+        #pragma mark
         #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<PeerServicesGetResult>
         #pragma mark
 
@@ -520,7 +539,9 @@ namespace openpeer
         bool stepGrantChallenge();
         bool stepContentGet();
         bool stepPreparePeerFiles();
-        bool stepServicesGet();
+        bool stepPeerFileSet();
+        bool stepPeerServicesGet();
+        bool stepPreReadyCheck();
         bool stepLoginIdentityBecomeAssociated();
         bool stepConvertFromServerToRealIdentities();
         bool stepPruneDuplicatePendingIdentities();
@@ -587,6 +608,7 @@ namespace openpeer
         IMessageMonitorPtr mLockboxIdentitiesUpdateMonitor;
         IMessageMonitorPtr mLockboxContentGetMonitor;
         IMessageMonitorPtr mLockboxContentSetMonitor;
+        IMessageMonitorPtr mPeerFileSetMonitor;
         IMessageMonitorPtr mPeerServicesGetMonitor;
         
         LockboxInfo mLockboxInfo;
@@ -603,6 +625,8 @@ namespace openpeer
 
         IServiceSaltFetchSignedSaltQueryPtr mSaltQuery;
         IKeyGeneratorPtr mPeerFileKeyGenerator;
+        AutoBool mPeerFilesGenerated;
+        AutoBool mPeerFileSet;
 
         ServiceTypeMap mServicesByType;
 

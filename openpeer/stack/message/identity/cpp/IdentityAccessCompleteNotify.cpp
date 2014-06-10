@@ -58,15 +58,21 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         IdentityAccessCompleteNotifyPtr IdentityAccessCompleteNotify::create(
-                                                                             ElementPtr root,
+                                                                             ElementPtr rootEl,
                                                                              IMessageSourcePtr messageSource
                                                                              )
         {
           IdentityAccessCompleteNotifyPtr ret(new IdentityAccessCompleteNotify);
-          IMessageHelper::fill(*ret, root, messageSource);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
 
-          ret->mIdentityInfo = IdentityInfo::create(root->findFirstChildElement("identity"));
-          ret->mLockboxInfo = LockboxInfo::create(root->findFirstChildElement("lockbox"));
+          ret->mIdentityInfo = IdentityInfo::create(rootEl->findFirstChildElement("identity"));
+          ret->mLockboxInfo = LockboxInfo::create(rootEl->findFirstChildElement("lockbox"));
+          ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
+
+          ret->mEncryptedUserSpecificPassphrase = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("encryptedUserSpecificKey"));
+
+          ret->mEncryptionKeyUponGrantProofHash = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("encryptionKeyUponGrantProofHash"));
+          ret->mEncryptionKeyUponGrantProof = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("encryptionKeyUponGrantProof"));
 
           return ret;
         }
@@ -76,8 +82,12 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_IdentityInfo:              return (mIdentityInfo.hasData());
-            case AttributeType_LockboxInfo:               return (mLockboxInfo.hasData());
+            case AttributeType_IdentityInfo:                    return (mIdentityInfo.hasData());
+            case AttributeType_LockboxInfo:                     return (mLockboxInfo.hasData());
+            case AttributeType_NamespaceGrantChallengeInfo:     return (mNamespaceGrantChallengeInfo.hasData());
+            case AttributeType_EncryptedUserSpecificPassphrase: return (mEncryptedUserSpecificPassphrase.hasData());
+            case AttributeType_EncryptionKeyUponGrantProofHash: return (mEncryptionKeyUponGrantProofHash.hasData());
+            case AttributeType_EncryptionKeyUponGrantProof:     return (mEncryptionKeyUponGrantProof.hasData());
             default:                                      break;
           }
           return false;

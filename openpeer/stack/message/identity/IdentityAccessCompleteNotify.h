@@ -51,19 +51,23 @@ namespace openpeer
           {
             AttributeType_IdentityInfo,
             AttributeType_LockboxInfo,
+            AttributeType_NamespaceGrantChallengeInfo,
+            AttributeType_EncryptedUserSpecificPassphrase,
+            AttributeType_EncryptionKeyUponGrantProofHash,
+            AttributeType_EncryptionKeyUponGrantProof,
           };
 
         public:
           static IdentityAccessCompleteNotifyPtr convert(MessagePtr message);
 
           static IdentityAccessCompleteNotifyPtr create(
-                                                       ElementPtr root,
+                                                       ElementPtr rootEl,
                                                        IMessageSourcePtr messageSource
                                                        );
 
-          virtual Methods method() const                  {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessComplete;}
+          virtual Methods method() const                          {return (Message::Methods)MessageFactoryIdentity::Method_IdentityAccessComplete;}
 
-          virtual IMessageFactoryPtr factory() const      {return MessageFactoryIdentity::singleton();}
+          virtual IMessageFactoryPtr factory() const              {return MessageFactoryIdentity::singleton();}
 
           bool hasAttribute(AttributeTypes type) const;
 
@@ -71,22 +75,49 @@ namespace openpeer
           //
           // mURI
           // mProvider
+          // mReloginKeyEncrypted
           //
           // mAccessToken
           // mAccessSecret
           // mAccessSecretExpires
 
-          const IdentityInfo &identityInfo() const        {return mIdentityInfo;}
-          void identityInfo(const IdentityInfo &val)      {mIdentityInfo = val;}
+          const IdentityInfo &identityInfo() const                {return mIdentityInfo;}
+          void identityInfo(const IdentityInfo &val)              {mIdentityInfo = val;}
 
-          const LockboxInfo &lockboxInfo() const          {return mLockboxInfo;}
-          void lockboxInfo(const LockboxInfo &val)        {mLockboxInfo = val;}
+          // LockboxInfo
+          //
+          // mDomain
+          // mKeyName
+          // mKeyEncrypted
+          // mResetFlag
+
+          const LockboxInfo &lockboxInfo() const                    {return mLockboxInfo;}
+          void lockboxInfo(const LockboxInfo &val)                  {mLockboxInfo = val;}
+
+          const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
+          void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
+
+          const String &encryptedUserSpecificPassphrase() const     {return mEncryptedUserSpecificPassphrase;}
+          void encryptedUserSpecificPassphrase(const String &val)   {mEncryptedUserSpecificPassphrase = val;}
+
+          const String &encryptionKeyUponGrantProofHash() const     {return mEncryptionKeyUponGrantProofHash;}
+          void encryptionKeyUponGrantProofHash(const String &val)   {mEncryptionKeyUponGrantProofHash = val;}
+
+          const String &encryptionKeyUponGrantProof() const         {return mEncryptionKeyUponGrantProof;}
+          void encryptionKeyUponGrantProof(const String &val)       {mEncryptionKeyUponGrantProof = val;}
 
         protected:
           IdentityAccessCompleteNotify();
 
           IdentityInfo mIdentityInfo;
           LockboxInfo mLockboxInfo;
+
+          NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
+
+          String mEncryptedUserSpecificPassphrase;
+
+          String mEncryptionKeyUponGrantProofHash;
+          String mEncryptionKeyUponGrantProof;
         };
       }
     }

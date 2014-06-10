@@ -36,6 +36,7 @@
 #include <openpeer/stack/message/identity-lockbox/LockboxIdentitiesUpdateRequest.h>
 #include <openpeer/stack/message/identity-lockbox/LockboxContentGetRequest.h>
 #include <openpeer/stack/message/identity-lockbox/LockboxContentSetRequest.h>
+#include <openpeer/stack/message/peer/PeerFileSetRequest.h>
 #include <openpeer/stack/message/peer/PeerServicesGetRequest.h>
 
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
@@ -90,6 +91,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentGetRequest)
       ZS_DECLARE_USING_PTR(message::identity_lockbox, LockboxContentSetRequest)
 
+      ZS_DECLARE_USING_PTR(message::peer, PeerFileSetRequest)
       ZS_DECLARE_USING_PTR(message::peer, PeerServicesGetRequest)
 
       //-----------------------------------------------------------------------
@@ -245,7 +247,6 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->mLockboxInfo.mAccountID = String(lockboxAccountID);
         pThis->mLockboxInfo.mKey = IHelper::clone(lockboxKey);
-        pThis->mLockboxInfo.mHash = IHelper::convertToHex(*IHelper::hash(lockboxKey));
         pThis->init();
         return pThis;
       }
@@ -394,6 +395,10 @@ namespace openpeer
         if (mLockboxContentSetMonitor) {
           mLockboxContentSetMonitor->cancel();
           mLockboxContentSetMonitor.reset();
+        }
+        if (mPeerFileSetMonitor) {
+          mPeerFileSetMonitor->cancel();
+          mPeerFileSetMonitor.reset();
         }
         if (mPeerServicesGetMonitor) {
           mPeerServicesGetMonitor->cancel();
@@ -966,7 +971,58 @@ namespace openpeer
         cancel();
         return true;
       }
-      
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<PeerFileSetResult>
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      bool ServiceLockboxSession::handleMessageMonitorResultReceived(
+                                                                     IMessageMonitorPtr monitor,
+                                                                     PeerFileSetResultPtr result
+                                                                     )
+      {
+        AutoRecursiveLock lock(*this);
+        if (monitor != mPeerFileSetMonitor) {
+          ZS_LOG_DEBUG(log("notified about obsolete monitor"))
+          return false;
+        }
+
+        mPeerFileSetMonitor->cancel();
+        mPeerFileSetMonitor.reset();
+
+        ZS_LOG_DEBUG(log("peer file set completed"))
+
+        get(mPeerFileSet) = true;
+
+        step();
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServiceLockboxSession::handleMessageMonitorErrorResultReceived(
+                                                                          IMessageMonitorPtr monitor,
+                                                                          PeerFileSetResultPtr ignore,
+                                                                          message::MessageResultPtr result
+                                                                          )
+      {
+        AutoRecursiveLock lock(*this);
+        if (monitor != mPeerFileSetMonitor) {
+          ZS_LOG_DEBUG(log("notified about obsolete monitor"))
+          return false;
+        }
+
+        ZS_LOG_WARNING(Detail, log("peer file set failed"))
+
+        setError(result->errorCode(), result->errorReason());
+        cancel();
+        return true;
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -1078,6 +1134,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "lockbox identities update monitor", (bool)mLockboxIdentitiesUpdateMonitor);
         IHelper::debugAppend(resultEl, "lockbox content get monitor", (bool)mLockboxContentGetMonitor);
         IHelper::debugAppend(resultEl, "lockbox content set monitor", (bool)mLockboxContentSetMonitor);
+        IHelper::debugAppend(resultEl, "peer file set monitor", (bool)mPeerFileSetMonitor);
         IHelper::debugAppend(resultEl, "peer services get monitor", (bool)mPeerServicesGetMonitor);
 
         IHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
@@ -1094,6 +1151,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "salt query id", mSaltQuery ? mSaltQuery->getID() : 0);
         IHelper::debugAppend(resultEl, "peer file key generator id", mPeerFileKeyGenerator ? mPeerFileKeyGenerator->getID() : 0);
+        IHelper::debugAppend(resultEl, "peer file generated", mPeerFilesGenerated);
+        IHelper::debugAppend(resultEl, "peer file set", mPeerFileSet);
 
         IHelper::debugAppend(resultEl, "services by type", mServicesByType.size());
 
@@ -1133,7 +1192,9 @@ namespace openpeer
         if (!stepGrantChallenge()) goto post_step;
         if (!stepContentGet()) goto post_step;
         if (!stepPreparePeerFiles()) goto post_step;
-        if (!stepServicesGet()) goto post_step;
+        if (!stepPeerFileSet()) goto post_step;
+        if (!stepPeerServicesGet()) goto post_step;
+        if (!stepPreReadyCheck()) goto post_step;
 
         setState(SessionState_Ready);
 
@@ -1297,21 +1358,20 @@ namespace openpeer
             mLockboxInfo.mKey.reset();
           }
 
-          if (!mLockboxInfo.mKey) {
+          if ((!mLockboxInfo.mKey) ||
+              (mLockboxInfo.mKeyName.isEmpty())) {
             mLockboxInfo.mAccountID.clear();
+            mLockboxInfo.mKeyName.clear();
             mLockboxInfo.mKey.reset();
-            mLockboxInfo.mHash.clear();
             mLockboxInfo.mResetFlag = true;
 
-            mLockboxInfo.mKey = IHelper::random(32);
+            mLockboxInfo.mKeyName = IHelper::convertToHex(*IHelper::hash(IHelper::randomString(32)));
+            mLockboxInfo.mKey = IHelper::convertToBuffer(IHelper::randomString(32*8/5));
 
             ZS_LOG_DEBUG(log("created new lockbox key") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
           }
 
           ZS_THROW_BAD_STATE_IF(!mLockboxInfo.mKey)
-
-          ZS_LOG_DEBUG(log("creating lockbox key hash") + ZS_PARAM("key", IHelper::convertToBase64(*mLockboxInfo.mKey)))
-          mLockboxInfo.mHash = IHelper::convertToHex(*IHelper::hash(*mLockboxInfo.mKey));
         }
 
         mLockboxInfo.mDomain = mBootstrappedNetwork->getDomain();
@@ -1493,6 +1553,8 @@ namespace openpeer
           mPeerFileKeyGenerator->cancel();
           mPeerFileKeyGenerator.reset();
 
+          get(mPeerFilesGenerated) = true;
+
           mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
           return true;
         }
@@ -1589,7 +1651,45 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServiceLockboxSession::stepServicesGet()
+      bool ServiceLockboxSession::stepPeerFileSet()
+      {
+        if (!mPeerFilesGenerated) {
+          ZS_LOG_TRACE(log("no need to set peer files as peer file was not generated"))
+          return true;
+        }
+
+        if (mPeerFileSet) {
+          ZS_LOG_TRACE(log("peer files already set (thus no need to do it again)"))
+          return true;
+        }
+
+        if (mPeerFileSetMonitor) {
+          ZS_LOG_TRACE(log("waiting for services get to complete"))
+          return true;
+        }
+
+        ZS_THROW_BAD_STATE_IF(!mPeerFiles)  // thus must be now valid
+
+        IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
+        ZS_THROW_BAD_STATE_IF(!peerFilePublic)  // thus must be now valid
+
+        setState(SessionState_Pending);
+
+        ZS_LOG_DEBUG(log("requesting peer file set to be completed on server"))
+
+        PeerFileSetRequestPtr request = PeerFileSetRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->lockboxInfo(mLockboxInfo);
+        request->peerFilePublic(peerFilePublic);
+
+        mPeerFileSetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerFileSetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
+        mBootstrappedNetwork->sendServiceMessage("peer", "peer-file-set", request);
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
+      bool ServiceLockboxSession::stepPeerServicesGet()
       {
         if (mServicesByType.size() > 0) {
           ZS_LOG_TRACE(log("already download services"))
@@ -1598,12 +1698,12 @@ namespace openpeer
 
         if (mPeerServicesGetMonitor) {
           ZS_LOG_TRACE(log("waiting for services get to complete"))
-          return false;
+          return true;
         }
 
         setState(SessionState_Pending);
 
-        ZS_LOG_DEBUG(log("requestion information about the peer services available"))
+        ZS_LOG_DEBUG(log("requesting information about the peer services available"))
 
         PeerServicesGetRequestPtr request = PeerServicesGetRequest::create();
         request->domain(mBootstrappedNetwork->getDomain());
@@ -1612,7 +1712,25 @@ namespace openpeer
 
         mPeerServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         mBootstrappedNetwork->sendServiceMessage("peer", "peer-services-get", request);
-        return false;
+        return true;
+      }
+      
+      //-----------------------------------------------------------------------
+      bool ServiceLockboxSession::stepPreReadyCheck()
+      {
+        ZS_LOG_TRACE(log("make sure any requests that are parallelized are completed before going to ready"))
+
+        if (mPeerFileSetMonitor) {
+          ZS_LOG_TRACE(log("waiting for peer file set to complete"))
+          return false;
+        }
+
+        if (mPeerServicesGetMonitor) {
+          ZS_LOG_TRACE(log("waiting for services get to complete"))
+          return false;
+        }
+
+        return true;
       }
 
       //-----------------------------------------------------------------------

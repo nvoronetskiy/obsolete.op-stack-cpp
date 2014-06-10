@@ -177,6 +177,7 @@ namespace openpeer
         Time mAccessSecretProofExpires;
 
         String mReloginKey;
+        String mReloginKeyEncrypted;
 
         String mBase;
         String mURI;
@@ -233,8 +234,13 @@ namespace openpeer
         String mAccessSecretProof;
         Time mAccessSecretProofExpires;
 
+        String mKeyName;
+        String mKeyEncrypted;
+        String mKeyHash;
+        String mKeyHashProof;
+        Time mKeyHashProofExpires;
+
         SecureByteBlockPtr mKey;
-        String mHash;
 
         bool mResetFlag;
 
@@ -741,12 +747,10 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(IdentityAccessWindowResult)
         ZS_DECLARE_CLASS_PTR(IdentityAccessStartNotify)
         ZS_DECLARE_CLASS_PTR(IdentityAccessCompleteNotify)
-        ZS_DECLARE_CLASS_PTR(IdentityAccessLockboxUpdateRequest)
-        ZS_DECLARE_CLASS_PTR(IdentityAccessLockboxUpdateResult)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessNamespaceGrantChallengeValidateRequest)
+        ZS_DECLARE_CLASS_PTR(IdentityAccessNamespaceGrantChallengeValidateResult)
         ZS_DECLARE_CLASS_PTR(IdentityAccessRolodexCredentialsGetRequest)
         ZS_DECLARE_CLASS_PTR(IdentityAccessRolodexCredentialsGetResult)
-        ZS_DECLARE_CLASS_PTR(IdentityAccessValidateRequest)
-        ZS_DECLARE_CLASS_PTR(IdentityAccessValidateResult)
         ZS_DECLARE_CLASS_PTR(IdentityLookupUpdateRequest)
         ZS_DECLARE_CLASS_PTR(IdentityLookupUpdateResult)
       }

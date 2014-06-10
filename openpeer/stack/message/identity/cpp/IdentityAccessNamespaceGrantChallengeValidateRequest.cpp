@@ -29,18 +29,20 @@
 
  */
 
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateRequest.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+
+#include <openpeer/stack/internal/stack_Stack.h>
 #include <openpeer/stack/IPeerFiles.h>
-#include <openpeer/stack/IPeerFilePrivate.h>
 #include <openpeer/stack/IPeerFilePublic.h>
 
 #include <openpeer/services/IHelper.h>
 
+//#include <zsLib/Stringize.h>
+//#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
-#include <zsLib/helpers.h>
 
-#define OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
+#define OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_NAMESPACE_GRANT_CHALLENGE_VALIDATE_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -54,74 +56,71 @@ namespace openpeer
 
       namespace identity
       {
-        using zsLib::Seconds;
         using internal::MessageHelper;
 
+        typedef stack::internal::IStackForInternal UseStack;
+
+        using zsLib::Seconds;
+
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateRequestPtr IdentityAccessLockboxUpdateRequest::convert(MessagePtr message)
+        IdentityAccessNamespaceGrantChallengeValidateRequestPtr IdentityAccessNamespaceGrantChallengeValidateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessLockboxUpdateRequest>(message);
+          return dynamic_pointer_cast<IdentityAccessNamespaceGrantChallengeValidateRequest>(message);
         }
 
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateRequest::IdentityAccessLockboxUpdateRequest()
+        IdentityAccessNamespaceGrantChallengeValidateRequest::IdentityAccessNamespaceGrantChallengeValidateRequest()
         {
         }
 
         //---------------------------------------------------------------------
-        IdentityAccessLockboxUpdateRequestPtr IdentityAccessLockboxUpdateRequest::create()
+        IdentityAccessNamespaceGrantChallengeValidateRequestPtr IdentityAccessNamespaceGrantChallengeValidateRequest::create()
         {
-          IdentityAccessLockboxUpdateRequestPtr ret(new IdentityAccessLockboxUpdateRequest);
+          IdentityAccessNamespaceGrantChallengeValidateRequestPtr ret(new IdentityAccessNamespaceGrantChallengeValidateRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool IdentityAccessLockboxUpdateRequest::hasAttribute(AttributeTypes type) const
+        bool IdentityAccessNamespaceGrantChallengeValidateRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_IdentityInfo:      return mIdentityInfo.hasData();
-            case AttributeType_LocboxInfo:        return mLockboxInfo.hasData();
-            default:                              break;
+            case AttributeType_IdentityInfo:                  return mIdentityInfo.hasData();
+            case AttributeType_NamespaceGrantChallengeBundle: return (bool)mNamespaceGrantChallengeBundle;
+            default:                                          break;
           }
           return false;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr IdentityAccessLockboxUpdateRequest::encode()
+        DocumentPtr IdentityAccessNamespaceGrantChallengeValidateRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+          ElementPtr rootEl = ret->getFirstChildElement();
 
           String clientNonce = IHelper::randomString(32);
 
           IdentityInfo identityInfo;
 
-          identityInfo.mURI = mIdentityInfo.mURI;
-          identityInfo.mProvider = mIdentityInfo.mProvider;
-
           identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
           if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":lockbox-update"));
+            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_NAMESPACE_GRANT_CHALLENGE_VALIDATE_EXPIRES_TIME_IN_SECONDS);
+            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":identity-access-namespace-grant-challenge-validate"));
           }
 
-          LockboxInfo lockboxInfo;
-
-          lockboxInfo.mDomain = mLockboxInfo.mDomain;
-          lockboxInfo.mKey = mLockboxInfo.mKey;
-
-          root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
+          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
-            root->adoptAsLastChild(identityInfo.createElement());
+            rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
-          if (lockboxInfo.hasData()) {
-            root->adoptAsLastChild(lockboxInfo.createElement());
+          if (mNamespaceGrantChallengeBundle) {
+            rootEl->adoptAsLastChild(mNamespaceGrantChallengeBundle->clone()->toElement());
           }
 
           return ret;
         }
+
+
       }
     }
   }

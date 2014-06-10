@@ -35,7 +35,7 @@
 #include <openpeer/stack/message/identity/IdentityAccessWindowResult.h>
 #include <openpeer/stack/message/identity/IdentityAccessStartNotify.h>
 #include <openpeer/stack/message/identity/IdentityAccessCompleteNotify.h>
-#include <openpeer/stack/message/identity/IdentityAccessLockboxUpdateRequest.h>
+#include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateRequest.h>
 #include <openpeer/stack/message/identity/IdentityLookupUpdateRequest.h>
 #include <openpeer/stack/message/identity/IdentityAccessRolodexCredentialsGetRequest.h>
 #include <openpeer/stack/message/identity-lookup/IdentityLookupRequest.h>
@@ -68,8 +68,6 @@
 #define OPENPEER_STACK_SERVICE_IDENTITY_SIGN_CREATE_SHOULD_NOT_BE_BEFORE_NOW_IN_HOURS (72)
 #define OPENPEER_STACK_SERVICE_IDENTITY_MAX_CONSUMED_TIME_PERCENTAGE_BEFORE_IDENTITY_PROOF_REFRESH (80)
 
-#define OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_CONTACTS_NAMESPACE "https://meta.openpeer.org/permission/rolodex-contacts"
-
 #define OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_DOWNLOAD_FROZEN_VALUE "FREEZE-"
 #define OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_ERROR_RETRY_TIME_IN_SECONDS ((60)*2)
 #define OPENPEER_STACK_SERVICE_IDENTITY_MAX_ROLODEX_ERROR_RETRY_TIME_IN_SECONDS (((60)*60) * 24)
@@ -100,7 +98,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::identity, IdentityAccessWindowResult)
       ZS_DECLARE_USING_PTR(message::identity, IdentityAccessStartNotify)
       ZS_DECLARE_USING_PTR(message::identity, IdentityAccessCompleteNotify)
-      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessLockboxUpdateRequest)
+      ZS_DECLARE_USING_PTR(message::identity, IdentityAccessNamespaceGrantChallengeValidateRequest)
       ZS_DECLARE_USING_PTR(message::identity, IdentityLookupUpdateRequest)
       ZS_DECLARE_USING_PTR(message::identity, IdentityAccessRolodexCredentialsGetRequest)
 
@@ -747,6 +745,13 @@ namespace openpeer
           const IdentityInfo &identityInfo = completeNotify->identityInfo();
           const LockboxInfo &lockboxInfo = completeNotify->lockboxInfo();
 
+          mAccessChallengeInfo = completeNotify->namespaceGrantChallengeInfo();
+          mGrantQueryAccess = mGrantSession->query(mThisWeak.lock(), mAccessChallengeInfo);
+
+          mEncryptedUserSpecificPassphrase = completeNotify->encryptedUserSpecificPassphrase();
+          mEncryptionKeyUponGrantProof = completeNotify->encryptionKeyUponGrantProof();
+          mEncryptionKeyUponGrantProofHash = completeNotify->encryptionKeyUponGrantProofHash();
+
           ZS_LOG_DEBUG(log("received complete notification") + identityInfo.toDebug() + lockboxInfo.toDebug())
 
           mIdentityInfo.mergeFrom(identityInfo, true);
@@ -762,8 +767,6 @@ namespace openpeer
           }
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-
-          notifyLockboxStateChanged();
           return;
         }
 
@@ -847,9 +850,9 @@ namespace openpeer
 
         mPendingMessagesToDeliver.clear();
 
-        if (mIdentityAccessLockboxUpdateMonitor) {
-          mIdentityAccessLockboxUpdateMonitor->cancel();
-          mIdentityAccessLockboxUpdateMonitor.reset();
+        if (mIdentityAccessNamespaceGrantChallengeValidateMonitor) {
+          mIdentityAccessNamespaceGrantChallengeValidateMonitor->cancel();
+          mIdentityAccessNamespaceGrantChallengeValidateMonitor.reset();
         }
 
         if (mIdentityLookupUpdateMonitor) {
@@ -880,9 +883,14 @@ namespace openpeer
           mRolodexContactsGetMonitor.reset();
         }
 
-        if (mGrantQuery) {
-          mGrantQuery->cancel();
-          mGrantQuery.reset();
+        if (mGrantQueryAccess) {
+          mGrantQueryAccess->cancel();
+          mGrantQueryAccess.reset();
+        }
+
+        if (mGrantQueryRolodex) {
+          mGrantQueryRolodex->cancel();
+          mGrantQueryRolodex.reset();
         }
 
         if (mGrantWait) {
@@ -1007,11 +1015,6 @@ namespace openpeer
           mAssociatedLockboxSubscription.reset();
         }
 
-        if (mIdentityAccessLockboxUpdateMonitor) {
-          mIdentityAccessLockboxUpdateMonitor->cancel();
-          mIdentityAccessLockboxUpdateMonitor.reset();
-        }
-
         if (mIdentityLookupUpdateMonitor) {
           mIdentityLookupUpdateMonitor->cancel();
           mIdentityLookupUpdateMonitor.reset();
@@ -1022,7 +1025,6 @@ namespace openpeer
           mIdentityLookupMonitor.reset();
         }
 
-        get(mLockboxUpdated) = false;
         get(mIdentityLookupUpdated) = false;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -1039,7 +1041,15 @@ namespace openpeer
       bool ServiceIdentitySession::isLoginComplete() const
       {
         AutoRecursiveLock lock(*this);
-        return mIdentityInfo.mAccessToken.hasData();
+        if (!mKeyingPrepared) {
+          ZS_LOG_TRACE(log("login not complete as keying not ready"))
+          return false;
+        }
+        if (!mIdentityInfo.mAccessToken.hasData()) {
+          ZS_LOG_TRACE(log("login not complete as access token not ready"))
+          return false;
+        }
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1168,27 +1178,39 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServiceIdentitySession => IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>
+      #pragma mark ServiceIdentitySession => IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>
       #pragma mark
 
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::handleMessageMonitorResultReceived(
                                                                       IMessageMonitorPtr monitor,
-                                                                      IdentityAccessLockboxUpdateResultPtr result
+                                                                      IdentityAccessNamespaceGrantChallengeValidateResultPtr result
                                                                       )
       {
         AutoRecursiveLock lock(*this);
-        if (monitor != mIdentityAccessLockboxUpdateMonitor) {
+        if (monitor != mIdentityAccessNamespaceGrantChallengeValidateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
         }
 
-        mIdentityAccessLockboxUpdateMonitor->cancel();
-        mIdentityAccessLockboxUpdateMonitor.reset();
+        mIdentityAccessNamespaceGrantChallengeValidateMonitor->cancel();
+        mIdentityAccessNamespaceGrantChallengeValidateMonitor.reset();
 
-        get(mLockboxUpdated) = true;
+        mEncryptionKeyUponGrantProof = result->encryptionKeyUponGrantProof();
 
-        ZS_LOG_DEBUG(log("identity access lockbox update complete"))
+        String calculatedProof = IHelper::convertToHex(*IHelper::hash(mEncryptionKeyUponGrantProof));
+
+        if (mEncryptionKeyUponGrantProofHash != calculatedProof) {
+          ZS_LOG_ERROR(Detail, log("encryption key upon grant proof does not match expected value after grant proof issued") + ZS_PARAM("expecting", mEncryptionKeyUponGrantProofHash) + ZS_PARAM("calculated", calculatedProof) + ZS_PARAM("encryption key upon grant proof", mEncryptionKeyUponGrantProof))
+          setError(IHTTP::HTTPStatusCode_PreconditionFailed, "encryption key upon grant proof does not match expected value");
+          cancel();
+          return false;
+        }
+
+        // no longer need this value
+        mEncryptionKeyUponGrantProofHash.clear();
+
+        ZS_LOG_DEBUG(log("identity access namespace grant challenge validate complete"))
 
         step();
         return true;
@@ -1197,19 +1219,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::handleMessageMonitorErrorResultReceived(
                                                                            IMessageMonitorPtr monitor,
-                                                                           IdentityAccessLockboxUpdateResultPtr ignore, // will always be NULL
+                                                                           IdentityAccessNamespaceGrantChallengeValidateResultPtr ignore, // will always be NULL
                                                                            message::MessageResultPtr result
                                                                            )
       {
         AutoRecursiveLock lock(*this);
-        if (monitor != mIdentityAccessLockboxUpdateMonitor) {
+        if (monitor != mIdentityAccessNamespaceGrantChallengeValidateMonitor) {
           ZS_LOG_WARNING(Detail, log("monitor notified for obsolete request"))
           return false;
         }
 
         setError(result->errorCode(), result->errorReason());
 
-        ZS_LOG_ERROR(Detail, log("identity access lockbox update failed"))
+        ZS_LOG_ERROR(Detail, log("identity access namespace grant challenge validate failed"))
 
         cancel();
         return true;
@@ -1466,7 +1488,7 @@ namespace openpeer
         mRolodexChallengeInfo = result->namespaceGrantChallengeInfo();
 
         if (mRolodexChallengeInfo.mID.hasData()) {
-          mGrantQuery = mGrantSession->query(mThisWeak.lock(), mRolodexChallengeInfo);
+          mGrantQueryRolodex = mGrantSession->query(mThisWeak.lock(), mRolodexChallengeInfo);
         }
 
         step();
@@ -1683,10 +1705,11 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
 
         IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant query access id", mGrantQueryAccess ? mGrantQueryAccess->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant query rolodex id", mGrantQueryRolodex ? mGrantQueryRolodex->getID() : 0);
         IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "identity access lockbox update monitor", (bool)mIdentityAccessLockboxUpdateMonitor);
+        IHelper::debugAppend(resultEl, "identity access namespace grant challenge validate monitor", (bool)mIdentityAccessNamespaceGrantChallengeValidateMonitor);
         IHelper::debugAppend(resultEl, "identity lookup update monitor", (bool)mIdentityLookupUpdateMonitor);
         IHelper::debugAppend(resultEl, "identity access rolodex credentials get monitor", (bool)mIdentityAccessRolodexCredentialsGetMonitor);
         IHelper::debugAppend(resultEl, "rolodex access monitor", (bool)mRolodexAccessMonitor);
@@ -1703,7 +1726,12 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "need browser window redirect", mNeedsBrowserWindowRedirectURL);
 
         IHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
-        IHelper::debugAppend(resultEl, "lockbox updated", mLockboxUpdated);
+        IHelper::debugAppend(resultEl, mAccessChallengeInfo.hasData() ? mAccessChallengeInfo.toDebug() : ElementPtr());
+        IHelper::debugAppend(resultEl, "keying prepared", mKeyingPrepared);
+        IHelper::debugAppend(resultEl, "encrypted user specific passphrase", mEncryptedUserSpecificPassphrase);
+        IHelper::debugAppend(resultEl, "user specific passphrase", mUserSpecificPassphrase);
+        IHelper::debugAppend(resultEl, "encryption key upon grant proof", mEncryptionKeyUponGrantProof);
+        IHelper::debugAppend(resultEl, "encryption key upon grant proof hash", mEncryptionKeyUponGrantProofHash);
         IHelper::debugAppend(resultEl, "identity lookup updated", mIdentityLookupUpdated);
         IHelper::debugAppend(resultEl, mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.toDebug() : ElementPtr());
 
@@ -1757,14 +1785,15 @@ namespace openpeer
         if (!stepIdentityAccessCompleteNotification()) return;
         if (!stepRolodexCredentialsGet()) return;
         if (!stepRolodexAccess()) return;
-        if (!stepLockboxAssociation()) return;
         if (!stepIdentityLookup()) return;
-        if (!stepLockboxAccessToken()) return;
-        if (!stepLockboxUpdate()) return;
         if (!stepCloseBrowserWindow()) return;
         if (!stepPreGrantChallenge()) return;
         if (!stepClearGrantWait()) return;
-        if (!stepGrantChallenge()) return;
+        if (!stepGrantChallengeAccess()) return;
+        if (!stepGrantChallengeRolodex()) return;
+        if (!stepPrepareKeying()) return;
+        if (!stepLockboxAssociation()) return;
+        if (!stepLockboxAccessToken()) return;
         if (!stepLockboxReady()) return;
         if (!stepLookupUpdate()) return;
         if (!stepDownloadContacts()) return;
@@ -2088,25 +2117,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServiceIdentitySession::stepLockboxAssociation()
-      {
-        if (mAssociatedLockbox.lock()) {
-          ZS_LOG_TRACE(log("lockbox associated"))
-          return true;
-        }
-
-        if (mKillAssociation) {
-          ZS_LOG_TRACE(log("do not need an association to the lockbox if association is being killed"))
-          return true;
-        }
-
-        ZS_LOG_TRACE(log("waiting for association to lockbox"))
-
-        setState(SessionState_WaitingForAssociationToLockbox);
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
       bool ServiceIdentitySession::stepIdentityLookup()
       {
         if (mKillAssociation) {
@@ -2154,127 +2164,6 @@ namespace openpeer
 
         setState(SessionState_Pending);
         return true;
-      }
-
-      //-----------------------------------------------------------------------
-      bool ServiceIdentitySession::stepLockboxAccessToken()
-      {
-        if (mKillAssociation) {
-          ZS_LOG_TRACE(log("do not need lockbox to be ready if association is being killed"))
-          return true;
-        }
-        
-        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
-        if (!lockbox) {
-          return stepLockboxAssociation();
-        }
-
-        WORD errorCode = 0;
-        String reason;
-        IServiceLockboxSession::SessionStates state = lockbox->getState(&errorCode, &reason);
-
-        switch (state) {
-          case IServiceLockboxSession::SessionState_Pending:
-          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
-
-            LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
-            if (lockboxInfo.mAccessToken.hasData()) {
-              ZS_LOG_TRACE(log("lockbox is still pending but safe to proceed because lockbox has been granted access"))
-              return true;
-            }
-
-            ZS_LOG_TRACE(log("waiting for lockbox to have access token"))
-            return false;
-          }
-          case IServiceLockboxSession::SessionState_Ready: {
-            ZS_LOG_TRACE(log("lockbox is ready"))
-            return true;
-          }
-          case IServiceLockboxSession::SessionState_Shutdown: {
-            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
-
-            setError(errorCode, reason);
-            cancel();
-            return false;
-          }
-        }
-
-        ZS_LOG_ERROR(Detail, debug("unknown lockbox state"))
-
-        ZS_THROW_BAD_STATE("unknown lockbox state")
-        return false;
-      }
-
-      //-----------------------------------------------------------------------
-      bool ServiceIdentitySession::stepLockboxUpdate()
-      {
-        if (mLockboxUpdated) {
-          ZS_LOG_TRACE(log("identity access lockbox update already complete"))
-          return true;
-        }
-
-        if (mIdentityAccessLockboxUpdateMonitor) {
-          ZS_LOG_TRACE(log("identity access lockbox update already in progress"))
-          return false;
-        }
-
-        if (!mBrowserWindowReady) {
-#define WARNING_HOW_TO_UPDATE_LOCKBOX_INFO 1
-#define WARNING_HOW_TO_UPDATE_LOCKBOX_INFO 2
-          ZS_LOG_TRACE(log("never loaded browser window so no need to perform lockbox update"))
-          return true;
-        }
-
-        if (mKillAssociation) {
-          setState(SessionState_Pending);
-
-          IdentityAccessLockboxUpdateRequestPtr request = IdentityAccessLockboxUpdateRequest::create();
-          request->domain(mActiveBootstrappedNetwork->getDomain());
-          request->identityInfo(mIdentityInfo);
-
-          ZS_LOG_DEBUG(log("clearing lockbox information (but not preventing other requests from continuing)"))
-
-          mIdentityAccessLockboxUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-          sendInnerWindowMessage(request);
-
-          return false;
-        }
-
-        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
-        if (!lockbox) {
-          return stepLockboxAssociation();
-        }
-
-        setState(SessionState_Pending);
-
-        LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
-
-        bool equalKeys = (((bool)lockboxInfo.mKey) == ((bool)mLockboxInfo.mKey));
-        bool hasKeys = (((bool)lockboxInfo.mKey) && ((bool)mLockboxInfo.mKey));
-        if (hasKeys) {
-          equalKeys = (0 == IHelper::compare(*lockboxInfo.mKey, *mLockboxInfo.mKey));
-        }
-
-        if ((lockboxInfo.mDomain == mLockboxInfo.mDomain) &&
-            (equalKeys)) {
-          ZS_LOG_TRACE(log("lockbox info already updated correctly"))
-          get(mLockboxUpdated) = true;
-          return true;
-        }
-
-        mLockboxInfo.mergeFrom(lockboxInfo, true);
-
-        IdentityAccessLockboxUpdateRequestPtr request = IdentityAccessLockboxUpdateRequest::create();
-        request->domain(mActiveBootstrappedNetwork->getDomain());
-        request->identityInfo(mIdentityInfo);
-        request->lockboxInfo(lockboxInfo);
-
-        ZS_LOG_DEBUG(log("updating lockbox information"))
-
-        mIdentityAccessLockboxUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessLockboxUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        sendInnerWindowMessage(request);
-
-        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -2329,9 +2218,64 @@ namespace openpeer
         mGrantWait.reset();
         return true;
       }
+
+      //-----------------------------------------------------------------------
+      bool ServiceIdentitySession::stepGrantChallengeAccess()
+      {
+        if (mIdentityAccessNamespaceGrantChallengeValidateMonitor) {
+          ZS_LOG_TRACE(log("waiting for identity access namespace grant challenge validate monitor to complete"))
+          return true;
+        }
+
+        if (!mGrantQueryAccess) {
+          ZS_LOG_TRACE(log("no access related grant challenge query thus continuing..."))
+          return true;
+        }
+
+        if (!mGrantQueryAccess->isComplete()) {
+          ZS_LOG_TRACE(log("waiting for the access grant query to complete"))
+          return true;
+        }
+
+        ElementPtr bundleEl = mGrantQueryAccess->getNamespaceGrantChallengeBundle();
+        if (!bundleEl) {
+          ZS_LOG_ERROR(Detail, log("namespaces were no granted in access challenge"))
+          setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access identity");
+          cancel();
+          return false;
+        }
+
+        for (NamespaceInfoMap::iterator iter = mAccessChallengeInfo.mNamespaces.begin(); iter != mAccessChallengeInfo.mNamespaces.end(); ++iter)
+        {
+          NamespaceInfo &namespaceInfo = (*iter).second;
+
+          if (!mGrantSession->isNamespaceURLInNamespaceGrantChallengeBundle(bundleEl, namespaceInfo.mURL)) {
+            ZS_LOG_WARNING(Detail, log("access was not granted required namespace") + ZS_PARAM("namespace", namespaceInfo.mURL))
+            setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access identity");
+            cancel();
+            return false;
+          }
+        }
+
+        mGrantQueryAccess->cancel();
+        mGrantQueryAccess.reset();
+
+        ZS_LOG_DEBUG(log("all namespaces required were correctly granted, notify the identity access of the newly created access"))
+
+        IdentityAccessNamespaceGrantChallengeValidateRequestPtr request = IdentityAccessNamespaceGrantChallengeValidateRequest::create();
+        request->domain(mActiveBootstrappedNetwork->getDomain());
+
+        request->identityInfo(mIdentityInfo);
+        request->namespaceGrantChallengeBundle(bundleEl);
+
+        mIdentityAccessNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
+        mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-access-namespace-grant-challenge-validate", request);
+        
+        return true;
+      }
       
       //-----------------------------------------------------------------------
-      bool ServiceIdentitySession::stepGrantChallenge()
+      bool ServiceIdentitySession::stepGrantChallengeRolodex()
       {
         if (mRolodexNotSupportedForIdentity) {
           ZS_LOG_TRACE(log("rolodex service is not supported"))
@@ -2340,20 +2284,20 @@ namespace openpeer
 
         if (mRolodexNamespaceGrantChallengeValidateMonitor) {
           ZS_LOG_TRACE(log("waiting for rolodex namespace grant challenge validate monitor to complete"))
-          return false;
-        }
-
-        if (!mGrantQuery) {
-          ZS_LOG_TRACE(log("no grant challenge query thus continuing..."))
           return true;
         }
 
-        if (!mGrantQuery->isComplete()) {
-          ZS_LOG_TRACE(log("waiting for the grant query to complete"))
-          return false;
+        if (!mGrantQueryRolodex) {
+          ZS_LOG_TRACE(log("no rolodex grant challenge query thus continuing..."))
+          return true;
         }
 
-        ElementPtr bundleEl = mGrantQuery->getNamespaceGrantChallengeBundle();
+        if (!mGrantQueryRolodex->isComplete()) {
+          ZS_LOG_TRACE(log("waiting for the rolodex grant query to complete"))
+          return true;
+        }
+
+        ElementPtr bundleEl = mGrantQueryRolodex->getNamespaceGrantChallengeBundle();
         if (!bundleEl) {
           ZS_LOG_ERROR(Detail, log("namespaces were no granted in challenge"))
           setError(IHTTP::HTTPStatusCode_Forbidden, "namespaces were not granted to access rolodex");
@@ -2373,8 +2317,8 @@ namespace openpeer
           }
         }
 
-        mGrantQuery->cancel();
-        mGrantQuery.reset();
+        mGrantQueryRolodex->cancel();
+        mGrantQueryRolodex.reset();
 
         ZS_LOG_DEBUG(log("all namespaces required were correctly granted, notify the rolodex of the newly created access"))
 
@@ -2389,7 +2333,173 @@ namespace openpeer
         
         return true;
       }
+
+      //-----------------------------------------------------------------------
+      bool ServiceIdentitySession::stepPrepareKeying()
+      {
+        if (mGrantQueryAccess) {
+          ZS_LOG_TRACE(log("waiting for access grant to complete"))
+          setState(SessionState_Pending);
+          return false;
+        }
+
+        if (mIdentityAccessNamespaceGrantChallengeValidateMonitor) {
+          ZS_LOG_TRACE(log("waiting for identity access namespace grant challenge validate to complete"))
+          setState(SessionState_Pending);
+          return false;
+        }
+
+        if (mEncryptedUserSpecificPassphrase.isEmpty()) {
+          ZS_LOG_ERROR(Detail, log("missing user specific passphrase"))
+          setError(IHTTP::HTTPStatusCode_PreconditionFailed, "missing user specific passphrase");
+          cancel();
+          return false;
+        }
+
+        if (mEncryptionKeyUponGrantProof.isEmpty()) {
+          ZS_LOG_ERROR(Detail, log("missing encryption key upon grant proof"))
+          setError(IHTTP::HTTPStatusCode_PreconditionFailed, "missing encryption key upon grant proof");
+          cancel();
+          return false;
+        }
+
+        if (mLockboxInfo.mKeyName.isEmpty()) {
+          ZS_LOG_TRACE(log("keying material is not available for identity"))
+          get(mKeyingPrepared) = true;
+          return true;
+        }
+
+        if (mLockboxInfo.mKey) {
+          ZS_LOG_TRACE(log("keying material already prepared for lockbox"))
+          return true;
+        }
+
+        if (mLockboxInfo.mKeyEncrypted.isEmpty()) {
+          ZS_LOG_DEBUG(log("key name was provided but no encrypted key is available"))
+          mLockboxInfo.mKeyName.clear();
+          get(mKeyingPrepared) = true;
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("preparing keying information for lockbox") + ZS_PARAM("encryption key upon grant proof", mEncryptionKeyUponGrantProof) + ZS_PARAM("identity uri", mIdentityInfo.mURI) + ZS_PARAM("key encrypted", mLockboxInfo.mKeyEncrypted) + ZS_PARAM("encrypted user specific passphrase", mEncryptedUserSpecificPassphrase))
+
+        get(mKeyingPrepared) = true;
+        notifyLockboxStateChanged();
+
+        SecureByteBlockPtr outerKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
+
+        String encryptedLockboxPassphrase = IHelper::convertToString(*stack::IHelper::splitDecrypt(*outerKey, mLockboxInfo.mKeyEncrypted));
+        if (encryptedLockboxPassphrase.isEmpty()) {
+          ZS_LOG_WARNING(Detail, log("failed to decrypt encryption key thus clearing keying information from lockbox"))
+          mLockboxInfo.mKeyName.clear();
+          mLockboxInfo.mKeyEncrypted.clear();
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("calculated encrypted lockbox passphrase and will now decrypt user specific passphrase") + ZS_PARAM("encrypted lockbox passphrase", encryptedLockboxPassphrase) + ZS_PARAM("encrypted user specific passphrase", mEncryptedUserSpecificPassphrase))
+
+        // <key> = hmac(<encryption-passphrase-upon-grant-proof>, "identity:" + <identity-uri> + ":user-specific-key")
+
+        SecureByteBlockPtr userKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":user-specific-key", IHelper::HashAlgorthm_SHA256);
+        mUserSpecificPassphrase = IHelper::convertToString(*stack::IHelper::splitDecrypt(*userKey, mEncryptedUserSpecificPassphrase));
+        if (mUserSpecificPassphrase.isEmpty()) {
+          ZS_LOG_WARNING(Detail, log("failed to decrypt user specific passphrase thus cannot login to this identity"))
+          setError(IHTTP::HTTPStatusCode_PreconditionFailed, "failed to decrypt user specific passphrase thus cannot login to this identity");
+          cancel();
+          return false;
+        }
+
+        ZS_LOG_DEBUG(log("calculated user specific passphrase and will now decrypt lockbox passphrase") + ZS_PARAM("user specific passphrase", mUserSpecificPassphrase)  + ZS_PARAM("encrypted lockbox passphrase", encryptedLockboxPassphrase))
+
+        SecureByteBlockPtr innerKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
+        mLockboxInfo.mKey = stack::IHelper::splitDecrypt(*innerKey, encryptedLockboxPassphrase);
+
+        if (mLockboxInfo.mKey) {
+          if (mLockboxInfo.mKey->SizeInBytes() < 1) {
+            mLockboxInfo.mKey.reset();
+          }
+        }
+
+        if (!mLockboxInfo.mKey) {
+          mLockboxInfo.mKeyName.clear();
+          ZS_LOG_WARNING(Detail, log("failed to decrypt lockbox key thus clearing keying information from lockbox"))
+          return true;
+        }
+
+        mLockboxInfo.mKeyEncrypted.clear();
+
+        ZS_LOG_DEBUG(log("successfully decrypted lockbox keying material") + ZS_PARAM("key", IHelper::convertToString(*mLockboxInfo.mKey)))
+        return true;
+      }
       
+      //-----------------------------------------------------------------------
+      bool ServiceIdentitySession::stepLockboxAssociation()
+      {
+        if (mAssociatedLockbox.lock()) {
+          ZS_LOG_TRACE(log("lockbox associated"))
+          return true;
+        }
+
+        if (mKillAssociation) {
+          ZS_LOG_TRACE(log("do not need an association to the lockbox if association is being killed"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("waiting for association to lockbox"))
+
+        setState(SessionState_WaitingForAssociationToLockbox);
+        return false;
+      }
+      
+      //-----------------------------------------------------------------------
+      bool ServiceIdentitySession::stepLockboxAccessToken()
+      {
+        if (mKillAssociation) {
+          ZS_LOG_TRACE(log("do not need lockbox to be ready if association is being killed"))
+          return true;
+        }
+
+        UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
+        if (!lockbox) {
+          return stepLockboxAssociation();
+        }
+
+        WORD errorCode = 0;
+        String reason;
+        IServiceLockboxSession::SessionStates state = lockbox->getState(&errorCode, &reason);
+
+        switch (state) {
+          case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
+
+            LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
+            if (lockboxInfo.mAccessToken.hasData()) {
+              ZS_LOG_TRACE(log("lockbox is still pending but safe to proceed because lockbox has been granted access"))
+              return true;
+            }
+
+            ZS_LOG_TRACE(log("waiting for lockbox to have access token"))
+            return false;
+          }
+          case IServiceLockboxSession::SessionState_Ready: {
+            ZS_LOG_TRACE(log("lockbox is ready"))
+            return true;
+          }
+          case IServiceLockboxSession::SessionState_Shutdown: {
+            ZS_LOG_ERROR(Detail, log("lockbox shutdown") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
+
+            setError(errorCode, reason);
+            cancel();
+            return false;
+          }
+        }
+
+        ZS_LOG_ERROR(Detail, debug("unknown lockbox state"))
+
+        ZS_THROW_BAD_STATE("unknown lockbox state")
+        return false;
+      }
+
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::stepLockboxReady()
       {
@@ -2432,7 +2542,7 @@ namespace openpeer
         ZS_THROW_BAD_STATE("unknown lockbox state")
         return false;
       }
-      
+
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::stepLookupUpdate()
       {
@@ -2449,22 +2559,17 @@ namespace openpeer
         if (mKillAssociation) {
           ZS_LOG_DEBUG(log("clearing identity lookup information (but not preventing other requests from continuing)"))
 
-          mIdentityInfo.mStableID.clear();
-          mIdentityInfo.mPeerFilePublic.reset();
-          mIdentityInfo.mPriority = 0;
-          mIdentityInfo.mWeight = 0;
+          IdentityInfo killInfo;
 
-          UseServiceLockboxSessionPtr lockbox = mAssociatedLockbox.lock();
-
-          if (lockbox) {
-            LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
-            mLockboxInfo.mergeFrom(lockboxInfo, true);
-          }
+          killInfo.mAccessToken = mIdentityInfo.mAccessToken;
+          killInfo.mAccessSecret = mIdentityInfo.mAccessSecret;
+          killInfo.mURI = mIdentityInfo.mURI;
+          killInfo.mProvider = mIdentityInfo.mProvider;
 
           IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
           request->domain(mActiveBootstrappedNetwork->getDomain());
-          request->lockboxInfo(mLockboxInfo);
-          request->identityInfo(mIdentityInfo);
+          request->identityInfo(killInfo);
+          request->encryptionKeyUponGrantProof(mEncryptionKeyUponGrantProof);
 
           mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
           mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
@@ -2484,11 +2589,31 @@ namespace openpeer
 
         setState(SessionState_Pending);
 
+        LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
+
+        bool keyChanged = false;
+        if (lockboxInfo.mKeyName != mLockboxInfo.mKeyName) {
+          keyChanged = true;
+        }
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(!lockboxInfo.mKey)
+
+        if (!mLockboxInfo.mKey) {
+          keyChanged = true;
+        }
+
+        if (mLockboxInfo.mKey) {
+          if (0 != IHelper::compare(*mLockboxInfo.mKey, *lockboxInfo.mKey)) {
+            keyChanged = true;
+          }
+        }
+
         IPeerFilesPtr peerFiles;
         IdentityInfo identityInfo = lockbox->getIdentityInfoForIdentity(mThisWeak.lock(), &peerFiles);
         mIdentityInfo.mergeFrom(identityInfo, true);
 
-        if ((identityInfo.mStableID == mPreviousLookupInfo.mStableID) &&
+        if ((!keyChanged) &&
+            (identityInfo.mStableID == mPreviousLookupInfo.mStableID) &&
             (isSame(identityInfo.mPeerFilePublic, mPreviousLookupInfo.mPeerFilePublic)) &&
             (identityInfo.mPriority == mPreviousLookupInfo.mPriority) &&
             (identityInfo.mWeight == mPreviousLookupInfo.mWeight) &&
@@ -2500,14 +2625,27 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("updating identity lookup information (but not preventing other requests from continuing)") + ZS_PARAM("lockbox", mLockboxInfo.toDebug()) + ZS_PARAM("identity info", mIdentityInfo.toDebug()))
 
-        LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
+        mLockboxInfo.mKeyName.clear();
+        mLockboxInfo.mKey.reset();
+        mLockboxInfo.mDomain.clear();
+
         mLockboxInfo.mergeFrom(lockboxInfo, true);
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(mLockboxInfo.mKeyName.isEmpty())
+        ZS_THROW_INVALID_ASSUMPTION_IF(!mLockboxInfo.mKey)
+        ZS_THROW_INVALID_ASSUMPTION_IF(mUserSpecificPassphrase.isEmpty())
+
+        // <key> = hmac(<user-specific-passphrase>, "identity:" + <identity-uri> + ":lockbox-key")
+        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
+
+        mLockboxInfo.mKeyEncrypted = stack::IHelper::splitEncrypt(*key, *mLockboxInfo.mKey);
 
         IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
         request->domain(mActiveBootstrappedNetwork->getDomain());
         request->peerFiles(peerFiles);
         request->lockboxInfo(mLockboxInfo);
         request->identityInfo(mIdentityInfo);
+        request->encryptionKeyUponGrantProof(mEncryptionKeyUponGrantProof);
 
         mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
