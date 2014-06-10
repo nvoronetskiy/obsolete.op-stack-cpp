@@ -137,6 +137,7 @@ namespace openpeer
 
         virtual ElementPtr saveToElement() const;
 
+        virtual ULONG getVersion() const;
         virtual String getPeerURI() const;
         virtual Time getCreated() const;
         virtual Time getExpires() const;
@@ -190,7 +191,8 @@ namespace openpeer
 
         Log::Params log(const char *message) const;
 
-        bool load(bool loadedFromCache = false);
+        bool load();
+        void saveToCache() const;
 
         ElementPtr findSection(const char *sectionID) const;
 

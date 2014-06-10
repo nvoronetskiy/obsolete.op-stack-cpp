@@ -58,6 +58,7 @@ namespace openpeer
 
       virtual ElementPtr saveToElement() const = 0;
 
+      virtual ULONG getVersion() const = 0;
       virtual String getPeerURI() const = 0;
       virtual Time getCreated() const = 0;
       virtual Time getExpires() const = 0;

@@ -35,6 +35,8 @@
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_Cache.h>
 
+#include <openpeer/stack/message/IMessageHelper.h>
+
 #include <openpeer/stack/IPeer.h>
 
 #include <openpeer/services/IHelper.h>
@@ -44,6 +46,7 @@
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
+#include <zsLib/Numeric.h>
 
 #include <cryptopp/sha.h>
 
@@ -63,6 +66,9 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(ICacheForServices, UseCache)
 
       using services::IHelper;
+      using message::IMessageHelper;
+
+      using zsLib::Numeric;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
@@ -226,6 +232,46 @@ namespace openpeer
           return PeerFilePublicPtr();
         }
 
+        PeerFilePublicPtr cached = loadFromCache(pThis->mPeerURI);
+        if (cached) {
+          ULONG newVersion = pThis->getVersion();
+          ULONG cachedVersion = cached->getVersion();
+
+          String newFindSecret = pThis->getFindSecret();
+          String cachedFindSecret = cached->getFindSecret();
+
+          if ((cachedFindSecret.hasData()) &&
+              (newFindSecret.isEmpty())) {
+            // cached has a find secret but new version does not thus return cached version
+            goto use_cache;
+          }
+
+          if ((newFindSecret.hasData()) &&
+              (cachedFindSecret.isEmpty())) {
+            // new version has find secret but cached does not so replace cached version
+            goto use_new;
+          }
+
+          // use the newest version
+          if (newVersion > cachedVersion) goto use_new;
+          if (cachedVersion > newVersion) goto use_cache;
+
+          // they are both equal thus use new version
+          goto use_new;
+        }
+
+        goto use_new;
+
+      use_cache:
+        {
+          return cached;
+        }
+
+      use_new:
+        {
+          pThis->saveToCache();
+        }
+
         return pThis;
       }
 
@@ -279,6 +325,27 @@ namespace openpeer
       String PeerFilePublic::getPeerURI() const
       {
         return mPeerURI;
+      }
+
+      //-----------------------------------------------------------------------
+      ULONG PeerFilePublic::getVersion() const
+      {
+        if (!mDocument) return 0;
+
+        ElementPtr peerRootEl = mDocument->getFirstChildElement();
+        if (!peerRootEl) return 0;
+
+        String version = IMessageHelper::getAttribute(peerRootEl, "version");
+
+        ULONG result = 0;
+
+        try {
+          result = Numeric<decltype(result)>(version);
+        } catch (Numeric<decltype(result)>::ValueOutOfRange &) {
+          return result;
+        }
+
+        return result;
       }
 
       //-----------------------------------------------------------------------
@@ -524,7 +591,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool PeerFilePublic::load(bool loadedFromCache)
+      bool PeerFilePublic::load()
       {
         ElementPtr sectionAEl = findSection("A");
         if (!sectionAEl) {
@@ -625,20 +692,24 @@ namespace openpeer
           return false;
         }
 
-        if (!loadedFromCache) {
-          String publicFile = IHelper::toString(mDocument->getFirstChildElement());
+        return true;
+      }
 
-          if (publicFile.hasData()) {
-            // successfully loaded so cache it immediately
-            String cookieName = getCookieName(mPeerURI);
-            if (cookieName.hasData()) {
-              ZS_LOG_TRACE(log("storing peer file public in cache") + ZS_PARAM("cookie", cookieName) + ZS_PARAM("uri", mPeerURI))
-              UseCache::store(getCookieName(mPeerURI), zsLib::now() + Hours(OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_DURATION_IN_HOURS), publicFile);
-            }
-          }
+      //-----------------------------------------------------------------------
+      void PeerFilePublic::saveToCache() const
+      {
+        String publicFile = IHelper::toString(mDocument->getFirstChildElement());
+        if (publicFile.isEmpty()) {
+          ZS_LOG_WARNING(Detail, log("failed to save to cache"))
+          return;
         }
 
-        return true;
+        // successfully loaded so cache it immediately
+        String cookieName = getCookieName(mPeerURI);
+        if (cookieName.hasData()) {
+          ZS_LOG_TRACE(log("storing peer file public in cache") + ZS_PARAM("cookie", cookieName) + ZS_PARAM("uri", mPeerURI))
+          UseCache::store(getCookieName(mPeerURI), zsLib::now() + Hours(OPENPEER_STACK_PEER_FILE_PUBLIC_STORE_CACHE_DURATION_IN_HOURS), publicFile);
+        }
       }
 
       //-----------------------------------------------------------------------
