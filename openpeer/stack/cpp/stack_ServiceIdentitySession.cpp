@@ -2369,22 +2369,34 @@ namespace openpeer
           return true;
         }
 
-        if (mLockboxInfo.mKey) {
+        if (mKeyingPrepared) {
           ZS_LOG_TRACE(log("keying material already prepared for lockbox"))
-          return true;
-        }
-
-        if (mLockboxInfo.mKeyEncrypted.isEmpty()) {
-          ZS_LOG_DEBUG(log("key name was provided but no encrypted key is available"))
-          mLockboxInfo.mKeyName.clear();
-          get(mKeyingPrepared) = true;
           return true;
         }
 
         ZS_LOG_DEBUG(log("preparing keying information for lockbox") + ZS_PARAM("encryption key upon grant proof", mEncryptionKeyUponGrantProof) + ZS_PARAM("identity uri", mIdentityInfo.mURI) + ZS_PARAM("key encrypted", mLockboxInfo.mKeyEncrypted) + ZS_PARAM("encrypted user specific passphrase", mEncryptedUserSpecificPassphrase))
 
         get(mKeyingPrepared) = true;
+
         notifyLockboxStateChanged();
+
+        if (mIdentityInfo.mReloginKeyEncrypted) {
+          SecureByteBlockPtr reloginKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":identity-relogin-key", IHelper::HashAlgorthm_SHA256);
+
+          mIdentityInfo.mReloginKey = IHelper::convertToString(*stack::IHelper::splitDecrypt(*reloginKey, mIdentityInfo.mReloginKeyEncrypted));
+
+          if (mIdentityInfo.mReloginKey.isEmpty()) {
+            ZS_LOG_WARNING(Detail, log("decrypted relogin key failed") + ZS_PARAM("encrypted relogin key", mIdentityInfo.mReloginKeyEncrypted) + ZS_PARAM("relogin key", mIdentityInfo.mReloginKey))
+          } else {
+            ZS_LOG_DEBUG(log("decrypted relogin key") + ZS_PARAM("encrypted relogin key", mIdentityInfo.mReloginKeyEncrypted) + ZS_PARAM("relogin key", mIdentityInfo.mReloginKey))
+          }
+        }
+
+        if (mLockboxInfo.mKeyEncrypted.isEmpty()) {
+          ZS_LOG_DEBUG(log("lockbox key name was provided but no encrypted key is available"))
+          mLockboxInfo.mKeyName.clear();
+          return true;
+        }
 
         SecureByteBlockPtr outerKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
 
