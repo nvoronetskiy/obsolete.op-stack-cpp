@@ -54,9 +54,8 @@ namespace openpeer
           };
 
           typedef String PeerURI;
-          typedef String PeerFindSecret;
 
-          typedef std::map<PeerURI, PeerFindSecret> PeerURIMap;
+          typedef std::list<PeerURI> PeerURIList;
 
         public:
           static PeerFilesGetRequestPtr convert(MessagePtr message);
@@ -71,13 +70,13 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const PeerURIMap &peerURIs() const                  {return mPeerURIs;}
-          void peerURIs(const PeerURIMap &val)                {mPeerURIs = val;}
+          const PeerURIList &peerURIs() const                 {return mPeerURIs;}
+          void peerURIs(const PeerURIList &val)               {mPeerURIs = val;}
 
         protected:
           PeerFilesGetRequest();
 
-          PeerURIMap mPeerURIs;
+          PeerURIList mPeerURIs;
         };
       }
     }

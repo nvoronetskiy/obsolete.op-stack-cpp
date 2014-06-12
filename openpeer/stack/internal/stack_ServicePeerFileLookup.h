@@ -80,7 +80,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::peer::PeerFilesGetRequest, PeerFilesGetRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::peer::PeerFilesGetResult, PeerFilesGetResult)
 
-        ZS_DECLARE_TYPEDEF_PTR(IServicePeerFileLookupQuery::PeerFileLookupMap, PeerFileLookupMap)
+        ZS_DECLARE_TYPEDEF_PTR(IServicePeerFileLookupQuery::PeerFileLookupList, PeerFileLookupList)
 
         typedef String Domain;
         typedef std::map<Domain, UseBootstrappedNetworkPtr> BootstrapperMap;
@@ -115,7 +115,7 @@ namespace openpeer
 
         static IServicePeerFileLookupQueryPtr createBogusFetchPeerFiles(
                                                                         IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                                        const PeerFileLookupMap &peerFilesToLookup
+                                                                        const PeerFileLookupList &peerFilesToLookup
                                                                         );
 
         //---------------------------------------------------------------------
@@ -127,7 +127,7 @@ namespace openpeer
 
         virtual IServicePeerFileLookupQueryPtr fetchPeerFiles(
                                                               IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                              const PeerFileLookupMap &peerFilesToLookup
+                                                              const PeerFileLookupList &peerFilesToLookup
                                                               );
         // (duplicate) static Log::Params slog(const char *message);
 
@@ -173,6 +173,7 @@ namespace openpeer
         public:
           friend ServicePeerFileLookup;
 
+          typedef std::map<PeerURI, PeerURI> PeerFileLookupMap;
           typedef std::map<PeerURI, IPeerFilePublicPtr> PeerFileResultMap;
 
         protected:
@@ -180,7 +181,7 @@ namespace openpeer
                  SharedRecursiveLock lock,
                  ServicePeerFileLookupPtr outer,
                  IServicePeerFileLookupQueryDelegatePtr delegate,
-                 const PeerFileLookupMap &peerFilesToLookup
+                 const PeerFileLookupList &peerFilesToLookup
                  );
 
           void init();
@@ -200,7 +201,7 @@ namespace openpeer
                                   SharedRecursiveLock lock,
                                   ServicePeerFileLookupPtr outer,
                                   IServicePeerFileLookupQueryDelegatePtr delegate,
-                                  const PeerFileLookupMap &peerFilesToLookup
+                                  const PeerFileLookupList &peerFilesToLookup
                                   );
 
           virtual ElementPtr toDebug();
@@ -210,7 +211,7 @@ namespace openpeer
           virtual void notifyDomainFailure(const String &domain);
           virtual void notifyLookupComplete(
                                             const PeerFilesGetResult::PeerFileList &peerFiles,
-                                            const PeerFilesGetRequest::PeerURIMap &originalPeerURIs
+                                            const PeerFilesGetRequest::PeerURIList &originalPeerURIs
                                             );
 
           virtual void notifyError(
@@ -242,6 +243,11 @@ namespace openpeer
           #pragma mark
 
           Log::Params log(const char *message) const;
+
+          static void convert(
+                              const PeerFileLookupList &inList,
+                              PeerFileLookupMap &outMap
+                              );
 
         protected:
           //-------------------------------------------------------------------
@@ -292,7 +298,7 @@ namespace openpeer
 
         BootstrapperMap mPendingBootstrappers;
 
-        PeerFileLookupMap mPendingPeerURIs;
+        PeerFileLookupList mPendingPeerURIs;
 
         LookupList mPendingLookups;
 

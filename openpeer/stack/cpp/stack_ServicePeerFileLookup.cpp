@@ -131,7 +131,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServicePeerFileLookupQueryPtr ServicePeerFileLookup::createBogusFetchPeerFiles(
                                                                                       IServicePeerFileLookupQueryDelegatePtr inDelegate,
-                                                                                      const PeerFileLookupMap &peerFilesToLookup
+                                                                                      const PeerFileLookupList &peerFilesToLookup
                                                                                       )
       {
         ZS_DECLARE_CLASS_PTR(BogusServicePeerFileLookupQuery)
@@ -193,7 +193,7 @@ namespace openpeer
       //---------------------------------------------------------------------
       IServicePeerFileLookupQueryPtr ServicePeerFileLookup::fetchPeerFiles(
                                                                            IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                                           const PeerFileLookupMap &peerFilesToLookup
+                                                                           const PeerFileLookupList &peerFilesToLookup
                                                                            )
       {
         AutoRecursiveLock lock(*this);
@@ -203,10 +203,9 @@ namespace openpeer
 
         LookupPtr lookup = Lookup::create(*this, mThisWeak.lock(), delegate, peerFilesToLookup);
 
-        for (PeerFileLookupMap::const_iterator iter = peerFilesToLookup.begin(); iter != peerFilesToLookup.end(); ++iter)
+        for (PeerFileLookupList::const_iterator iter = peerFilesToLookup.begin(); iter != peerFilesToLookup.end(); ++iter)
         {
-          const String &peerURI = (*iter).first;
-          const String &peerFindSecret = (*iter).second;
+          const String &peerURI = (*iter);
 
           IPeerFilePublicPtr peerFile = IPeerFilePublic::loadFromCache(peerURI);
 
@@ -232,7 +231,7 @@ namespace openpeer
             mPendingBootstrappers[domain] = bootstrapper;
           }
 
-          mPendingPeerURIs[peerURI] = peerFindSecret;
+          mPendingPeerURIs.push_back(peerURI);
         }
 
         mPendingLookups.push_back(lookup);
@@ -296,15 +295,14 @@ namespace openpeer
             continue;
           }
 
-          PeerFilesGetRequest::PeerURIMap peersToLookup;
+          PeerFilesGetRequest::PeerURIList peersToLookup;
 
-          for (PeerFileLookupMap::iterator iterPendingURI_doNotUse = mPendingPeerURIs.begin(); iterPendingURI_doNotUse != mPendingPeerURIs.end(); )
+          for (PeerFileLookupList::iterator iterPendingURI_doNotUse = mPendingPeerURIs.begin(); iterPendingURI_doNotUse != mPendingPeerURIs.end(); )
           {
-            PeerFileLookupMap::iterator currentPendingURI = iterPendingURI_doNotUse;
+            PeerFileLookupList::iterator currentPendingURI = iterPendingURI_doNotUse;
             ++iterPendingURI_doNotUse;
 
-            const String &peerURI = (*currentPendingURI).first;
-            const String &findSecret = (*currentPendingURI).second;
+            const String &peerURI = (*currentPendingURI);
 
             String peerDomain;
             String peerContact;
@@ -316,7 +314,7 @@ namespace openpeer
             }
 
             ZS_LOG_DEBUG(log("peer URI being added to lookup request") + ZS_PARAM("uri", peerURI))
-            peersToLookup[peerURI] = findSecret;
+            peersToLookup.push_back(peerURI);
 
             mPendingPeerURIs.erase(currentPendingURI);
           }
@@ -370,7 +368,7 @@ namespace openpeer
         mPendingRequests.erase(found);
 
         const PeerFilesGetResult::PeerFileList &peerFiles = response->peerFiles();
-        const PeerFilesGetRequest::PeerURIMap &peerURIs = request->peerURIs();
+        const PeerFilesGetRequest::PeerURIList &peerURIs = request->peerURIs();
 
         for (LookupList::iterator iter = mPendingLookups.begin(); iter != mPendingLookups.end(); ++iter)
         {
@@ -406,7 +404,7 @@ namespace openpeer
         mPendingRequests.erase(found);
 
         PeerFilesGetResult::PeerFileList peerFiles;
-        const PeerFilesGetRequest::PeerURIMap &peerURIs = request->peerURIs();
+        const PeerFilesGetRequest::PeerURIList &peerURIs = request->peerURIs();
 
         for (LookupList::iterator iter = mPendingLookups.begin(); iter != mPendingLookups.end(); ++iter)
         {
@@ -536,16 +534,14 @@ namespace openpeer
                                             SharedRecursiveLock lock,
                                             ServicePeerFileLookupPtr outer,
                                             IServicePeerFileLookupQueryDelegatePtr delegate,
-                                            const PeerFileLookupMap &peerFilesToLookup
+                                            const PeerFileLookupList &peerFilesToLookup
                                             ) :
         SharedRecursiveLock(lock),
         mOuter(outer),
-        mDelegate(IServicePeerFileLookupQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate)),
-        mFiles(peerFilesToLookup)
+        mDelegate(IServicePeerFileLookupQueryDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
-        mThisWeak.reset();
         ZS_LOG_DEBUG(log("created"))
-        cancel();
+        convert(peerFilesToLookup, mFiles);
       }
 
       //-----------------------------------------------------------------------
@@ -580,7 +576,7 @@ namespace openpeer
                                                                              SharedRecursiveLock lock,
                                                                              ServicePeerFileLookupPtr outer,
                                                                              IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                                             const PeerFileLookupMap &peerFilesToLookup
+                                                                             const PeerFileLookupList &peerFilesToLookup
                                                                              )
       {
         LookupPtr pThis(new Lookup(lock, outer, delegate, peerFilesToLookup));
@@ -671,11 +667,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePeerFileLookup::Lookup::notifyLookupComplete(
                                                                const PeerFilesGetResult::PeerFileList &peerFiles,
-                                                               const PeerFilesGetRequest::PeerURIMap &originalPeerURIs
+                                                               const PeerFilesGetRequest::PeerURIList &originalPeerURIs
                                                                )
       {
         typedef PeerFilesGetResult::PeerFileList PeerFileList;
-        typedef PeerFilesGetRequest::PeerURIMap PeerURIMap;
+        typedef PeerFilesGetRequest::PeerURIList PeerURIList;
 
         ZS_LOG_DEBUG(log("lookup complete") + ZS_PARAM("files", peerFiles.size()) + ZS_PARAM("original peer URIs", originalPeerURIs.size()))
 
@@ -686,9 +682,9 @@ namespace openpeer
           notifyResult(peerFile);
         }
 
-        for (PeerURIMap::const_iterator iter = originalPeerURIs.begin(); iter != originalPeerURIs.end(); ++iter)
+        for (PeerURIList::const_iterator iter = originalPeerURIs.begin(); iter != originalPeerURIs.end(); ++iter)
         {
-          const String &peerURI = (*iter).first;
+          const String &peerURI = (*iter);
 
           if (mResults.end() != mResults.find(peerURI)) {
             ZS_LOG_TRACE(log("already have known result for peer URI") + ZS_PARAM("uri", peerURI))
@@ -809,6 +805,19 @@ namespace openpeer
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
+
+      //-----------------------------------------------------------------------
+      void ServicePeerFileLookup::Lookup::convert(
+                                                  const PeerFileLookupList &inList,
+                                                  PeerFileLookupMap &outMap
+                                                  )
+      {
+        for (PeerFileLookupList::const_iterator iter = inList.begin(); iter != inList.end(); ++iter)
+        {
+          const PeerURI &uri = (*iter);
+          outMap[uri] = uri;
+        }
+      }
     }
 
     //-------------------------------------------------------------------------
@@ -833,7 +842,7 @@ namespace openpeer
     //-------------------------------------------------------------------------
     IServicePeerFileLookupQueryPtr IServicePeerFileLookupQuery::fetchPeerFiles(
                                                                                IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                                               const PeerFileLookupMap &peerFilesToLookup
+                                                                               const PeerFileLookupList &peerFilesToLookup
                                                                                )
     {
       internal::ServicePeerFileLookupPtr singleton = internal::ServicePeerFileLookup::singleton();

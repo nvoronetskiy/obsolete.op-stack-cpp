@@ -50,15 +50,14 @@ namespace openpeer
     interaction IServicePeerFileLookupQuery
     {
       typedef String PeerURI;
-      typedef String PeerFindSecret;
 
-      typedef std::map<PeerURI, PeerFindSecret> PeerFileLookupMap;
+      typedef std::list<PeerURI> PeerFileLookupList;
 
       static ElementPtr toDebug(IServicePeerFileLookupQueryPtr query);
 
       static IServicePeerFileLookupQueryPtr fetchPeerFiles(
                                                            IServicePeerFileLookupQueryDelegatePtr delegate,
-                                                           const PeerFileLookupMap &peerFilesToLookup
+                                                           const PeerFileLookupList &peerFilesToLookup
                                                            );
 
       virtual PUID getID() const = 0;

@@ -89,34 +89,17 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
-          Time expires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PEER_FILES_GET_REQUEST_EXPIRES_TIME_IN_SECONDS);
-
           ElementPtr peersEl = Element::create("peers");
 
           if (hasAttribute(AttributeType_PeerURIs)) {
 
-            for (PeerURIMap::const_iterator iter = mPeerURIs.begin(); iter != mPeerURIs.end(); ++iter)
+            for (PeerURIList::const_iterator iter = mPeerURIs.begin(); iter != mPeerURIs.end(); ++iter)
             {
-              ElementPtr peerEl = Element::create("peer");
-              const PeerURI &uri = (*iter).first;
-              const PeerFindSecret &findSecret = (*iter).second;
+              const PeerURI &uri = (*iter);
 
               if (uri.hasData()) {
-                peerEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("uri", uri));
+                peersEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("peer", uri));
               }
-
-              if (findSecret.hasData()) {
-                String findSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(findSecret), "proof:" + clientNonce + ":" + IHelper::timeToString(expires)));
-                peerEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("findSecretNonce", clientNonce));
-                peerEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("findSecretProof", findSecretProof));
-                peerEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("findSecretProofExpires", IHelper::timeToString(expires)));
-              }
-
-              if (peerEl->hasChildren()) {
-                peersEl->adoptAsLastChild(peerEl);
-              }
-
             }
           }
 
