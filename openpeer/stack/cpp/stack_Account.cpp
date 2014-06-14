@@ -182,10 +182,7 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("inited"))
 
-        String instanceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_INSTANCE_ID);
-        String authorizedAppId = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
-
-        ZS_LOG_FORCED(Informational, Basic, log("instance information") + ZS_PARAM("instance id", instanceID) + ZS_PARAM("authorized application id", authorizedAppId) + UseStack::agentInfo().toDebug())
+        UseStack::logInstanceInformation();
 
         AutoRecursiveLock lock(*this);
 
