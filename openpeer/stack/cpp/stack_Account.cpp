@@ -182,6 +182,11 @@ namespace openpeer
       {
         ZS_LOG_DEBUG(log("inited"))
 
+        String instanceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_INSTANCE_ID);
+        String authorizedAppId = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
+
+        ZS_LOG_FORCED(Informational, Basic, log("instance information") + ZS_PARAM("instance id", instanceID) + ZS_PARAM("authorized application id", authorizedAppId) + UseStack::agentInfo().toDebug())
+
         AutoRecursiveLock lock(*this);
 
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
@@ -2130,9 +2135,13 @@ namespace openpeer
           IICESocket::ICESocketStates socketState = mSocket->getState();
 
           if (IICESocket::ICESocketState_Shutdown == socketState) {
-            ZS_LOG_ERROR(Debug, log("notified RUDP ICE socket is shutdown unexpected"))
-            setError(IHTTP::HTTPStatusCode_Networkconnecttimeouterror, "RUDP ICE Socket Session shutdown unexpectedly");
-            cancel();
+            ZS_LOG_ERROR(Debug, log("notified ICE socket is shutdown unexpected"))
+            mSocket.reset();
+
+            if (services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_SHUTDOWN_ON_ICE_SOCKET_FAILURE)) {
+              setError(IHTTP::HTTPStatusCode_Networkconnecttimeouterror, "ICE socket shutdown unexpectedly");
+              cancel();
+            }
             return false;
           }
 
@@ -2163,7 +2172,7 @@ namespace openpeer
           return true;
         }
 
-        ZS_LOG_ERROR(Detail, log("failed to create RUDP ICE socket thus shutting down"))
+        ZS_LOG_ERROR(Detail, log("failed to create ICE socket thus shutting down"))
         setError(IHTTP::HTTPStatusCode_InternalServerError, "Failed to create RUDP ICE Socket");
         cancel();
         return false;

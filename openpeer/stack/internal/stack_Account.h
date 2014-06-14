@@ -56,6 +56,7 @@
 #include <map>
 
 #define OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE "openpeer/stack/backgrounding-phase-account"
+#define OPENPEER_STACK_SETTING_ACCOUNT_SHUTDOWN_ON_ICE_SOCKET_FAILURE "openpeer/stack/account-shutdown-on-ice-socket-failure"
 
 namespace openpeer
 {

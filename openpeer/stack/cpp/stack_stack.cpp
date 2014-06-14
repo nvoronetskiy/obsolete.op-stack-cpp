@@ -235,6 +235,7 @@ namespace openpeer
         verifySettingIsSet(OPENPEER_COMMON_SETTING_DEVICE_ID);
         verifySettingIsSet(OPENPEER_COMMON_SETTING_OS);
         verifySettingIsSet(OPENPEER_COMMON_SETTING_SYSTEM);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_INSTANCE_ID);
 
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
       }
