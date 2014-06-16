@@ -132,6 +132,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void IStackForInternal::logInstanceInformation()
+      {
+        StackPtr singleton = Stack::singleton();
+        if (!singleton) return;
+        singleton->logInstanceInformation();
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -239,6 +247,7 @@ namespace openpeer
         verifySettingIsSet(OPENPEER_COMMON_SETTING_DEVICE_ID);
         verifySettingIsSet(OPENPEER_COMMON_SETTING_OS);
         verifySettingIsSet(OPENPEER_COMMON_SETTING_SYSTEM);
+        verifySettingIsSet(OPENPEER_COMMON_SETTING_INSTANCE_ID);
 
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
       }
@@ -295,6 +304,19 @@ namespace openpeer
           mKeyGenerationQueue = IMessageQueueManager::getMessageQueue(OPENPEER_STACK_KEY_GENERATION_THREAD_NAME);
         }
         return mKeyGenerationQueue;
+      }
+
+      //-----------------------------------------------------------------------
+      void Stack::logInstanceInformation()
+      {
+        String deviceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_DEVICE_ID);
+        String instanceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_INSTANCE_ID);
+        String authorizedAppId = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
+
+        AgentInfo agentInfo;
+        getAgentInfo(agentInfo);
+
+        ZS_LOG_FORCED(Informational, Basic, log("instance information") + ZS_PARAM("device id", deviceID) + ZS_PARAM("instance id", instanceID) + ZS_PARAM("authorized application id", authorizedAppId) + agentInfo.toDebug())
       }
 
       //-----------------------------------------------------------------------

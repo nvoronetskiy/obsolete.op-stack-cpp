@@ -59,6 +59,8 @@ namespace openpeer
         static IMessageQueuePtr queueStack();
         static IMessageQueuePtr queueServices();
         static IMessageQueuePtr queueKeyGeneration();
+
+        static void logInstanceInformation();
       };
 
       //-----------------------------------------------------------------------
@@ -113,6 +115,8 @@ namespace openpeer
         virtual IMessageQueuePtr queueStack();
         virtual IMessageQueuePtr queueServices();
         virtual IMessageQueuePtr queueKeyGeneration();
+
+        virtual void logInstanceInformation();
 
         //---------------------------------------------------------------------
         #pragma mark

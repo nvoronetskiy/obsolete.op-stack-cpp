@@ -346,6 +346,8 @@ namespace openpeer
                                                           IBootstrappedNetworkDelegatePtr inDelegate
                                                           )
       {
+        UseStack::logInstanceInformation();
+
         ZS_THROW_INVALID_ARGUMENT_IF(!inDomain)
 
         String domain(inDomain ? String(inDomain) : String());

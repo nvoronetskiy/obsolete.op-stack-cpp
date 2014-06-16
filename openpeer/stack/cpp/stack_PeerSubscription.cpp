@@ -82,7 +82,7 @@ namespace openpeer
                                          AccountPtr account,
                                          IPeerSubscriptionDelegatePtr delegate
                                          ) :
-        SharedRecursiveLock(*account),
+        SharedRecursiveLock(account ? (*account) : SharedRecursiveLock::create()),
         mAccount(account),
         mDelegate(IPeerSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
