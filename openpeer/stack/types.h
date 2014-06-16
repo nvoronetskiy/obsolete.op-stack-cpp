@@ -50,7 +50,7 @@
 #define OPENPEER_COMMON_SETTING_DEVICE_ID                     "openpeer/calculated/device-id"
 #define OPENPEER_COMMON_SETTING_OS                            "openpeer/calculated/os"
 #define OPENPEER_COMMON_SETTING_SYSTEM                        "openpeer/calculated/system"
-#define OPENPEER_COMMON_SETTING_INSTANCE_ID                   "openpeer/calculated/instanceID"
+#define OPENPEER_COMMON_SETTING_INSTANCE_ID                   "openpeer/calculated/instance-id"
 
 namespace openpeer
 {
