@@ -53,8 +53,7 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        AccessResult::AccessResult() :
-          mPeerValidate(-1)
+        AccessResult::AccessResult()
         {
         }
 
@@ -70,15 +69,7 @@ namespace openpeer
 
           ret->mNamespaceGrantChallengeInfo = NamespaceGrantChallengeInfo::create(rootEl->findFirstChildElement("namespaceGrantChallenge"));
 
-          ElementPtr peerEl = rootEl->findFirstChildElement("peer");
-          if (peerEl) {
-            ret->mPeerChallengeID = MessageHelper::getAttributeID(peerEl);
-
-            String validate = IMessageHelper::getElementText(peerEl->findFirstChildElement("validate"));
-            if (!validate.isEmpty()) {
-              ret->mPeerValidate = ("true" == validate ? 1 : 0);
-            }
-          }
+          ret->mPeerURI = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("peer"));
 
           return ret;
         }
@@ -89,8 +80,7 @@ namespace openpeer
           switch (type)
           {
             case AttributeType_NamespaceGrantChallengeInfo:     return mNamespaceGrantChallengeInfo.hasData();
-            case AttributeType_PeerChallengeID:                 return mPeerChallengeID.hasData();
-            case AttributeType_PeerValidate:                    return (mPeerValidate >= 0);
+            case AttributeType_PeerURI:                         return mPeerURI.hasData();
             default:                                            break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);

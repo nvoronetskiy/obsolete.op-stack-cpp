@@ -50,7 +50,7 @@ namespace openpeer
         public:
           enum AttributeTypes
           {
-            AttributeType_PeerChallengeID,
+            AttributeType_LockboxInfo,
             AttributeType_PeerFiles,
           };
 
@@ -67,8 +67,8 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          const String &peerChallengeID() const             {return mPeerChallengeID;}
-          void peerChallengeID(const String &val)           {mPeerChallengeID = val;}
+          const LockboxInfo &lockboxInfo() const            {return mLockboxInfo;}
+          void lockboxInfo(const LockboxInfo &val)          {mLockboxInfo = val;}
 
           IPeerFilesPtr peerFiles() const                   {return mPeerFiles;}
           void peerFiles(IPeerFilesPtr peerFiles)           {mPeerFiles = peerFiles;}
@@ -76,7 +76,7 @@ namespace openpeer
         protected:
           PeerValidateRequest();
 
-          String mPeerChallengeID;
+          LockboxInfo mLockboxInfo;
 
           IPeerFilesPtr mPeerFiles;
         };

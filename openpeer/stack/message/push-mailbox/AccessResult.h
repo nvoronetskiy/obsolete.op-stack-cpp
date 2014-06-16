@@ -48,8 +48,7 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_NamespaceGrantChallengeInfo = MessageResult::AttributeType_Last + 1,
-            AttributeType_PeerChallengeID,
-            AttributeType_PeerValidate,
+            AttributeType_PeerURI,
           };
 
         public:
@@ -69,19 +68,15 @@ namespace openpeer
           const NamespaceGrantChallengeInfo &namespaceGrantChallengeInfo() const    {return mNamespaceGrantChallengeInfo;}
           void namespaceGrantChallengeInfo(const NamespaceGrantChallengeInfo &val)  {mNamespaceGrantChallengeInfo = val;}
 
-          const String &peerChallengeID() const                                     {return mPeerChallengeID;}
-          void peerChallengeID(const String &val)                                   {mPeerChallengeID = val;}
-
-          bool peerValidate() const                                                 {return mPeerValidate > 0;}
-          void peerValidate(bool val)                                               {mPeerValidate = (val ? 1 : 0);}
+          const String &peerURI() const                                             {return mPeerURI;}
+          void peerURI(const String &val)                                           {mPeerURI = val;}
 
         protected:
           AccessResult();
 
           NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 
-          String mPeerChallengeID;
-          int mPeerValidate;
+          String mPeerURI;
         };
       }
     }

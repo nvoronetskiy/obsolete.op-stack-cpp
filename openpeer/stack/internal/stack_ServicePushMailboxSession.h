@@ -113,6 +113,7 @@ namespace openpeer
                                         public IBackgroundingDelegate,
                                         public IReachabilityDelegate,
                                         public IBootstrappedNetworkDelegate,
+                                        public IServiceLockboxSessionForInternalDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
                                         public IServiceNamespaceGrantSessionQueryDelegate,
                                         public IMessageMonitorResultDelegate<message::bootstrapped_servers::ServersGetResult>,
@@ -328,6 +329,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => IServiceLockboxSessionForInternalDelegate
+        #pragma mark
+
+        virtual void onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -608,6 +616,8 @@ namespace openpeer
 
         IReachabilitySubscriptionPtr mReachabilitySubscription;
 
+        IServiceLockboxSessionForInternalSubscriptionPtr mLockboxSubscription;
+
         PUID mSentViaObjectID;
 
         ITCPMessagingPtr mTCPMessaging;
@@ -640,7 +650,7 @@ namespace openpeer
         SRVResultPtr mServerSRV;
         IPAddress mServerIP;
 
-        String mPeerChallengeID;
+        String mPeerURIFromAccessResult;
 
         NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 

@@ -43,6 +43,8 @@
 //#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
 
+#define OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_PEER_VALIDATE_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
+
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
 namespace openpeer
@@ -84,7 +86,7 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_PeerChallengeID:   return mPeerChallengeID.hasData();
+            case AttributeType_LockboxInfo:       return mLockboxInfo.hasData();
             case AttributeType_PeerFiles:         return (bool)mPeerFiles;
             default:                              break;
           }
@@ -94,26 +96,31 @@ namespace openpeer
         //---------------------------------------------------------------------
         DocumentPtr PeerValidateRequest::encode()
         {
-          IPeerFilePublicPtr peerFilePublic;
           IPeerFilePrivatePtr peerFilePrivate;
           if (mPeerFiles) {
-            peerFilePublic =  mPeerFiles->getPeerFilePublic();
             peerFilePrivate = mPeerFiles->getPeerFilePrivate();
           }
           
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-
           ElementPtr peerProofBundleEl = Element::create("peerProofBundle");
-          ElementPtr peerProofEl = (mPeerChallengeID.hasData() ? IMessageHelper::createElementWithID("peerProof", mPeerChallengeID) : Element::create("peerProof"));
+          ElementPtr peerProofEl = Element::create("peerProof");
 
-          if (peerFilePublic) {
-            ElementPtr peerEl = peerFilePublic->saveToElement();
-            peerProofEl->adoptAsLastChild(peerEl);
+          String clientNonce = IHelper::randomString(32);
+
+          Time expires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_PEER_VALIDATE_REQUEST_EXPIRES_TIME_IN_SECONDS);
+
+          peerProofEl->adoptAsFirstChild(IMessageHelper::createElementWithTextAndJSONEncode("clientNonce", clientNonce));
+          peerProofEl->adoptAsFirstChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));
+
+          LockboxInfo lockboxInfo;
+
+          lockboxInfo.mAccountID = mLockboxInfo.mAccountID;
+
+          if (lockboxInfo.hasData()) {
+            rootEl->adoptAsLastChild(lockboxInfo.createElement());
           }
-
-          peerProofBundleEl->adoptAsLastChild(peerProofEl);
 
           if (peerFilePrivate) {
             peerFilePrivate->signElement(peerProofEl);

@@ -94,7 +94,6 @@ namespace openpeer
             case AttributeType_LockboxInfo:       return mLockboxInfo.hasData();
             case AttributeType_AgentInfo:         return mAgentInfo.hasData();
             case AttributeType_GrantID:           return mGrantID.hasData();
-            case AttributeType_PeerFiles:         return (bool)mPeerFiles;
             default:                              break;
           }
           return false;
@@ -103,11 +102,6 @@ namespace openpeer
         //---------------------------------------------------------------------
         DocumentPtr AccessRequest::encode()
         {
-          IPeerFilePublicPtr peerFilePublic;
-          if (mPeerFiles) {
-            peerFilePublic =  mPeerFiles->getPeerFilePublic();
-          }
-          
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
@@ -136,14 +130,6 @@ namespace openpeer
           
           if (mGrantID.hasData()) {
             rootEl->adoptAsLastChild(IMessageHelper::createElementWithID("grant", mGrantID));
-          }
-
-          if (peerFilePublic) {
-            String peerURI = peerFilePublic->getPeerURI();
-            ElementPtr uriEl = MessageHelper::createElementWithText("uri", peerURI);
-            ElementPtr peerEl = Element::create("peer");
-            peerEl->adoptAsLastChild(uriEl);
-            rootEl->adoptAsLastChild(peerEl);
           }
 
           return ret;

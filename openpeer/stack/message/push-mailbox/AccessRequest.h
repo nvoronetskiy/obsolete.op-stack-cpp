@@ -53,7 +53,6 @@ namespace openpeer
             AttributeType_LockboxInfo,
             AttributeType_AgentInfo,
             AttributeType_GrantID,
-            AttributeType_PeerFiles,
           };
 
         public:
@@ -78,9 +77,6 @@ namespace openpeer
           const String &grantID() const                     {return mGrantID;}
           void grantID(const String &val)                   {mGrantID = val;}
 
-          IPeerFilesPtr peerFiles() const                   {return mPeerFiles;}
-          void peerFiles(IPeerFilesPtr peerFiles)           {mPeerFiles = peerFiles;}
-
         protected:
           AccessRequest();
 
@@ -89,8 +85,6 @@ namespace openpeer
           AgentInfo mAgentInfo;
 
           String mGrantID;
-
-          IPeerFilesPtr mPeerFiles;
         };
       }
     }

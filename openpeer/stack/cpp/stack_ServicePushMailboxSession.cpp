@@ -43,6 +43,9 @@
 #include <openpeer/stack/message/push-mailbox/PeerValidateRequest.h>
 #include <openpeer/stack/message/push-mailbox/RegisterPushRequest.h>
 
+#include <openpeer/stack/IPeerFiles.h>
+#include <openpeer/stack/IPeerFilePublic.h>
+
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/ITCPMessaging.h>
@@ -584,6 +587,23 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ServicePushMailboxSession => IServiceLockboxSessionForInternalDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr session)
+      {
+        ZS_LOG_DEBUG(log("lockbox reported state change"))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServicePushMailboxSession => IServiceNamespaceGrantSessionWaitDelegate
       #pragma mark
 
@@ -698,11 +718,7 @@ namespace openpeer
           return false;
         }
 
-        if (result->peerValidate()) {
-          mPeerChallengeID = result->peerChallengeID();
-        } else {
-          mPeerChallengeID.clear();
-        }
+        mPeerURIFromAccessResult = result->peerURI();
 
         mNamespaceGrantChallengeInfo = result->namespaceGrantChallengeInfo();
 
@@ -1142,8 +1158,8 @@ namespace openpeer
         if (!stepAccess()) goto post_step;
 
         if (!stepGrantLockClear()) goto post_step;
-        if (!stepPeerValidate()) goto post_step;
         if (!stepGrantChallenge()) goto post_step;
+        if (!stepPeerValidate()) goto post_step;
 
         if (!stepFullyConnected()) goto post_step;
 
@@ -1372,6 +1388,11 @@ namespace openpeer
           }
         }
 
+        if (!mLockboxSubscription) {
+          ZS_LOG_DEBUG(log("now subscribing to lockbox state"))
+          mLockboxSubscription = mLockbox->subscribe(mThisWeak.lock());
+        }
+
         if (!mLockboxInfo.mAccessSecret.hasData()) {
           mLockboxInfo = mLockbox->getLockboxInfo();
           if (mLockboxInfo.mAccessSecret.hasData()) {
@@ -1379,16 +1400,8 @@ namespace openpeer
           }
         }
 
-        if (!mPeerFiles) {
-          mPeerFiles = mLockbox->getPeerFiles();
-          if (mPeerFiles) {
-            ZS_LOG_DEBUG(log("obtained peer files"))
-          }
-        }
-
-        if ((mLockboxInfo.mAccessSecret.hasData()) &&
-            (mPeerFiles)) {
-          ZS_LOG_TRACE(log("now have lockbox acess secret and peeer files"))
+        if (mLockboxInfo.mAccessSecret.hasData()) {
+          ZS_LOG_TRACE(log("now have lockbox acess secret"))
           return true;
         }
 
@@ -1474,7 +1487,6 @@ namespace openpeer
         AccessRequestPtr request = AccessRequest::create();
         request->domain(mBootstrappedNetwork->getDomain());
         request->lockboxInfo(mLockboxInfo);
-        request->peerFiles(mPeerFiles);
         request->grantID(mGrantSession->getGrantID());
 
         mAccessMonitor = sendRequest(IMessageMonitorResultDelegate<AccessResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS)));
@@ -1494,42 +1506,6 @@ namespace openpeer
         mGrantWait->cancel();
         mGrantWait.reset();
         return true;
-      }
-
-      //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::stepPeerValidate()
-      {
-        if (!mPeerChallengeID.isEmpty()) {
-          ZS_LOG_TRACE(log("peer validation is not required"))
-          return true;
-        }
-
-        if (mPeerValidateMonitor) {
-          if (!mPeerValidateMonitor->isComplete()) {
-            ZS_LOG_TRACE(log("waiting for peer validation to complete"))
-            return false;
-          }
-
-          ZS_LOG_DEBUG(log("peer validation completed"))
-
-          mPeerValidateMonitor->cancel();
-          mPeerValidateMonitor.reset();
-
-          mPeerChallengeID.clear();
-
-          return true;
-        }
-
-        ZS_LOG_DEBUG(log("issuing peer validate request"))
-
-        PeerValidateRequestPtr request = PeerValidateRequest::create();
-        request->domain(mBootstrappedNetwork->getDomain());
-
-        request->peerChallengeID(mPeerChallengeID);
-        request->peerFiles(mPeerFiles);
-
-        mPeerValidateMonitor = sendRequest(IMessageMonitorResultDelegate<PeerValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS)));
-        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -1586,6 +1562,52 @@ namespace openpeer
         return false;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepPeerValidate()
+      {
+        if (!mPeerFiles) {
+          mPeerFiles = mLockbox->getPeerFiles();
+          if (!mPeerFiles) {
+            ZS_LOG_TRACE(log("waiting for lockbox to have peer files"))
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("obtained peer files"))
+        }
+
+        IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
+
+        if (mPeerURIFromAccessResult == peerFilePublic->getPeerURI()) {
+          ZS_LOG_TRACE(log("no need to issue peer validate request"))
+          return true;
+        }
+
+        if (mPeerValidateMonitor) {
+          if (!mPeerValidateMonitor->isComplete()) {
+            ZS_LOG_TRACE(log("waiting for peer validation to complete"))
+            return false;
+          }
+
+          ZS_LOG_DEBUG(log("peer validation completed"))
+
+          mPeerValidateMonitor->cancel();
+          mPeerValidateMonitor.reset();
+
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("issuing peer validate request"))
+
+        PeerValidateRequestPtr request = PeerValidateRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->lockboxInfo(mLockboxInfo);
+        request->peerFiles(mPeerFiles);
+
+        mPeerValidateMonitor = sendRequest(IMessageMonitorResultDelegate<PeerValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS)));
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepFullyConnected()
       {
