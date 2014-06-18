@@ -153,7 +153,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
 
-        IMessageMonitorPtr monitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RegisterPushResult>::convert(mThisWeak.lock()), requestMessage, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REGISTER_PUSH_TIMEOUT_IN_SECONDS)));
+        IMessageMonitorPtr monitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RegisterPushResult>::convert(mThisWeak.lock()), requestMessage, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         if (monitor) {
           ZS_LOG_DEBUG(log("monitoring register request") + IMessageMonitor::toDebug(monitor))
           return;

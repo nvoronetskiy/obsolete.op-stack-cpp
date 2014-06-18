@@ -357,7 +357,7 @@ namespace openpeer
 
         IFinderConnectionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
-        IFinderConnectionDelegatePtr delegate = mSubscriptions.delegate(subscription);
+        IFinderConnectionDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
         if (delegate) {
           FinderConnectionPtr pThis(mThisWeak.lock());

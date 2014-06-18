@@ -68,13 +68,8 @@
 #define OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE "openpeer/stack/backgrounding-phase-push-mailbox"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET "openpeer/stack/push-mailbox-total-servers-to-get"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-servers-get-timeout-in-seconds"
 
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-access-timeout-in-seconds"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_NAMESPACE_GRANT_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-namespace-grant-timeout-in-seconds"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-peer-validate-timeout-in-seconds"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_REGISTER_PUSH_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-register-push-timeout-in-seconds"
-
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS "openpeer/stack/push-mailbox-request-timeout-in-seconds"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
@@ -163,6 +158,9 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushRequest, RegisterPushRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushResult, RegisterPushResult)
         ZS_DECLARE_TYPEDEF_PTR(message::bootstrapped_servers::ServersGetResult, ServersGetResult)
+
+        typedef String FolderName;
+        typedef std::map<FolderName, FolderName> FolderNameMap;
 
       protected:
         ServicePushMailboxSession(
@@ -561,6 +559,7 @@ namespace openpeer
 
         bool stepFullyConnected();
         bool stepRegisterQueries();
+        bool stepRefreshFolders();
 
         bool stepBackgroundingReady();
 
@@ -661,6 +660,12 @@ namespace openpeer
 
         String mDeviceToken;
         RegisterQueryList mRegisterQueries;
+
+        bool mRefreshFolders;
+        FolderNameMap mMonitoredFolders;
+        IMessageMonitorPtr mFoldersGetMonitor;
+
+        TimerPtr mNextFoldersUpdateTimer;
       };
 
       //-----------------------------------------------------------------------

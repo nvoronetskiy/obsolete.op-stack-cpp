@@ -42,6 +42,7 @@
 #include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateRequest.h>
 #include <openpeer/stack/message/push-mailbox/PeerValidateRequest.h>
 #include <openpeer/stack/message/push-mailbox/RegisterPushRequest.h>
+#include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
 
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePublic.h>
@@ -76,6 +77,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::push_mailbox, AccessRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, NamespaceGrantChallengeValidateRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, PeerValidateRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, FoldersGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -136,7 +138,9 @@ namespace openpeer
         mLastActivity(zsLib::now()),
 
         mDefaultLastRetryDuration(Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS))),
-        mLastRetryDuration(mDefaultLastRetryDuration)
+        mLastRetryDuration(mDefaultLastRetryDuration),
+
+        mRefreshFolders(true)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -217,7 +221,7 @@ namespace openpeer
 
         IServicePushMailboxSessionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate);
 
-        IServicePushMailboxSessionDelegatePtr delegate = mSubscriptions.delegate(subscription);
+        IServicePushMailboxSessionDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
         if (delegate) {
           ServicePushMailboxSessionPtr pThis = mThisWeak.lock();
@@ -225,8 +229,12 @@ namespace openpeer
           if (SessionState_Pending != mCurrentState) {
             delegate->onServicePushMailboxSessionStateChanged(pThis, mCurrentState);
           }
-#define WARNING_NOTIFY_ABOUT_FOLDERS_THAT_ARE_MONITORED_AND_HAVE_ALREADY_NOTIFIED 1
-#define WARNING_NOTIFY_ABOUT_FOLDERS_THAT_ARE_MONITORED_AND_HAVE_ALREADY_NOTIFIED 2
+
+          for (FolderNameMap::const_iterator iter = mMonitoredFolders.begin(); iter != mMonitoredFolders.end(); ++iter)
+          {
+            const FolderName &folderName = (*iter).first;
+            delegate->onServicePushMailboxSessionFolderChanged(pThis, folderName);
+          }
         }
 
         if (isShutdown()) {
@@ -300,7 +308,7 @@ namespace openpeer
 
         RegisterQueryPtr query = RegisterQuery::create(getAssociatedMessageQueue(), *this, mThisWeak.lock(), delegate, info);
         if (isShutdown()) {
-          query->setError(IHTTP::HTTPStatusCode_Gone, "alreayd shutdown");
+          query->setError(IHTTP::HTTPStatusCode_Gone, "already shutdown");
           query->cancel();
           return query;
         }
@@ -314,8 +322,28 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::monitorFolder(const char *folderName)
+      void ServicePushMailboxSession::monitorFolder(const char *inFolderName)
       {
+        String folderName(inFolderName);
+
+        ZS_THROW_INVALID_ARGUMENT_IF(folderName.isEmpty())
+
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_DEBUG(log("monitoring folder") + ZS_PARAM("folder name", folderName))
+
+        if (mMonitoredFolders.find(folderName) != mMonitoredFolders.end()) {
+          ZS_LOG_DEBUG(log("already monitoring folder") + ZS_PARAM("folder name", folderName))
+          return;
+        }
+
+        mMonitoredFolders[folderName] = folderName;
+
+        // since we just started monitoring, indicate that the folder has changed
+        mSubscriptions.delegate()->onServicePushMailboxSessionFolderChanged(mThisWeak.lock(), folderName);
+
+        // wake up and refresh the folders list to start the monitor process on this folder
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
@@ -358,8 +386,7 @@ namespace openpeer
 
         mDoNotRetryConnectionBefore = Time();
 
-#define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 1
-#define WARNING_MAY_NEED_TO_FORCE_FOLDERS_VERSION_RECHECK 2
+        mRefreshFolders = true;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -406,10 +433,19 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("on timer"))
 
+        if (timer == mNextFoldersUpdateTimer) {
+          mLastActivity = zsLib::now();
+          mRefreshFolders = true;
+
+          mNextFoldersUpdateTimer->cancel();
+          mNextFoldersUpdateTimer.reset();
+        }
+
         if (timer == mRetryTimer) {
           mRetryTimer->cancel();
           mRetryTimer.reset();
         }
+
         step();
       }
 
@@ -650,11 +686,11 @@ namespace openpeer
                                                                          ServersGetResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("servers get result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_DEBUG(log("servers get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mServersGetMonitor) {
-          ZS_LOG_WARNING(Detail, log("servers get result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("servers get result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -663,7 +699,7 @@ namespace openpeer
         mPushMailboxServers = result->servers();
 
         if (mPushMailboxServers.size() < 1) {
-          ZS_LOG_ERROR(Detail, log("no push-mailbox servers were returned from servers-get") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_ERROR(Detail, log("no push-mailbox servers were returned from servers-get") + IMessageMonitor::toDebug(monitor))
           connectionFailure();
           return true;
         }
@@ -679,15 +715,15 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("servers get error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Debug, log("servers get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mServersGetMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
-        ZS_LOG_ERROR(Detail, log("error result received on servers get monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Detail, log("error result received on servers get monitor") + IMessageMonitor::toDebug(monitor))
 
         mServersGetMonitor.reset();
         connectionFailure();
@@ -710,11 +746,11 @@ namespace openpeer
                                                                          AccessResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("access result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("access result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mAccessMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -738,11 +774,11 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("access error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Debug, log("access error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mAccessMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -768,11 +804,11 @@ namespace openpeer
                                                                          NamespaceGrantChallengeValidateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("namespace grant challenge validate result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_DEBUG(log("namespace grant challenge validate result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mGrantMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -789,11 +825,11 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("namespace grant challenge validate error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Debug, log("namespace grant challenge validate error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mGrantMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -819,7 +855,7 @@ namespace openpeer
                                                                          PeerValidateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("peer validate result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_DEBUG(log("peer validate result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -833,12 +869,12 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("peer validate error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Debug, log("peer validate error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
 
         if (monitor != mPeerValidateMonitor) {
-          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+          ZS_LOG_WARNING(Detail, log("error result received on obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
         }
 
@@ -864,10 +900,60 @@ namespace openpeer
                                                                          FoldersGetResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("folders get result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_DEBUG(log("folders get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mFoldersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        mFoldersGetMonitor.reset();
+
+        const PushMessageFolderInfoList &folders = result->folders();
+
+        for (PushMessageFolderInfoList::const_iterator iter = folders.begin(); iter != folders.end(); ++iter)
+        {
+          const PushMessageFolderInfo &info = (*iter);
+
+          if (PushMessageFolderInfo::Disposition_Remove == info.mDisposition) {
+            ZS_LOG_DEBUG(log("folder was removed") + ZS_PARAM("folder name", info.mName))
+            mDB->removeFolder(info.mName);
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("folder was added/updated") + info.toDebug())
+          mDB->updateFolder(info.mName, info.mVersion, info.mUnread, info.mTotal);
+        }
+
+        mDB->setLastDownloadedVersionForFolders(result->version());
+
+        if (mNextFoldersUpdateTimer) {
+          mNextFoldersUpdateTimer->cancel();
+          mNextFoldersUpdateTimer.reset();
+        }
+
+        Time updateNextTime = result->updateNext();
+        Duration updateNextDuration;
+        if (Time() != updateNextTime) {
+          Time now = zsLib::now();
+          if (now < updateNextTime) {
+            updateNextDuration = updateNextTime - now;
+          } else {
+            updateNextDuration = Seconds(1);
+          }
+
+          if (updateNextDuration < Seconds(1)) {
+            updateNextDuration = Seconds(1);
+          }
+        }
+
+        if (Duration() != updateNextDuration) {
+          mNextFoldersUpdateTimer = Timer::create(mThisWeak.lock(), updateNextDuration, false);
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -877,10 +963,35 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("folders get error result received") + ZS_PARAM("monitor", IMessageMonitor::toDebug(monitor)))
+        ZS_LOG_ERROR(Debug, log("folders get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mFoldersGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        mFoldersGetMonitor.reset();
+
+        if (IHTTP::HTTPStatusCode_Conflict == result->errorCode()) {
+          ZS_LOG_WARNING(Detail, log("folders get version conflict") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+          mRefreshFolders = true;
+          mDB->setLastDownloadedVersionForFolders(String());
+          mLastActivity = zsLib::now();
+
+          mDB->flushFolders();
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return true;
+        }
+
+        ZS_LOG_ERROR(Detail, log("folders get failed") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
       
       //-----------------------------------------------------------------------
@@ -897,7 +1008,7 @@ namespace openpeer
                                                                          FolderUpdateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("folder update result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("folder update result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -910,7 +1021,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("folder update error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("folder update error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -930,7 +1041,7 @@ namespace openpeer
                                                                          FolderGetResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("folder get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("folder get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -943,7 +1054,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("folder get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("folder get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -1112,6 +1223,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
 
+        IHelper::debugAppend(resultEl, "graceful shutdown reference", (bool)mGracefulShutdownReference);
+
         IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
         IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
 
@@ -1123,16 +1236,64 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
         IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
-        IHelper::debugAppend(resultEl, "lockbox", mLockbox ? mLockbox->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "grant session", mGrantSession ? mGrantSession->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant query", mGrantQuery ? mGrantQuery->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant wait", mGrantWait ? mGrantWait->getID() : 0);
+        IHelper::debugAppend(resultEl, "backgrounding subscription id", mBackgroundingSubscription ? mBackgroundingSubscription->getID() : 0);
+        IHelper::debugAppend(resultEl, "backgrounding notifier", (bool)mBackgroundingNotifier);
+        IHelper::debugAppend(resultEl, "backgrounding enabled", mBackgroundingEnabled);
+
+        IHelper::debugAppend(resultEl, "reachability subscription", mReachabilitySubscription ? mReachabilitySubscription->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "lockbox subscription", mLockboxSubscription ? mLockboxSubscription->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "sent via object id", mSentViaObjectID);
+
+        IHelper::debugAppend(resultEl, "tcp messaging id", mTCPMessaging ? mTCPMessaging->getID() : 0);
+        IHelper::debugAppend(resultEl, "wire stream", mWireStream ? mWireStream->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "reader id", mReader ? mReader->getID() : 0);
+        IHelper::debugAppend(resultEl, "writer id", mWriter ? mWriter->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "lockbox", mLockbox ? mLockbox->getID() : 0);
+        IHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
+        IHelper::debugAppend(resultEl, IPeerFiles::toDebug(mPeerFiles));
+
+        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
 
         IHelper::debugAppend(resultEl, "obtained lock", mObtainedLock);
 
+        IHelper::debugAppend(resultEl, "required connection", mRequiresConnection);
         IHelper::debugAppend(resultEl, "inactivty timeout (s)", mInactivityTimeout);
         IHelper::debugAppend(resultEl, "last activity", mLastActivity);
+
+        IHelper::debugAppend(resultEl, "default last try duration (ms)", mDefaultLastRetryDuration);
+        IHelper::debugAppend(resultEl, "last try duration (ms)", mLastRetryDuration);
+        IHelper::debugAppend(resultEl, "do not retry connection before", mDoNotRetryConnectionBefore);
+        IHelper::debugAppend(resultEl, "retry timer", mRetryTimer ? mRetryTimer->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "server list", mPushMailboxServers.size());
+        IHelper::debugAppend(resultEl, "server lookup id", mServerLookup ? mServerLookup->getID() : 0);
+        IHelper::debugAppend(resultEl, "server srv record", (bool)mServerSRV);
+        IHelper::debugAppend(resultEl, "server ip", string(mServerIP));
+
+        IHelper::debugAppend(resultEl, "peer uri from access result", mPeerURIFromAccessResult);
+
+        IHelper::debugAppend(resultEl, mNamespaceGrantChallengeInfo.toDebug());
+
+        IHelper::debugAppend(resultEl, "servers get monitor", mServersGetMonitor ? mServersGetMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "access monitor", mAccessMonitor ? mAccessMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "grant monitor", mGrantMonitor ? mGrantMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "peer validate monitor", mPeerValidateMonitor ? mPeerValidateMonitor->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "device token", mDeviceToken);
+        IHelper::debugAppend(resultEl, "register queries", mRegisterQueries.size());
+
+        IHelper::debugAppend(resultEl, "refresh folders", mRefreshFolders);
+        IHelper::debugAppend(resultEl, "monitored folders", mMonitoredFolders.size());
+        IHelper::debugAppend(resultEl, "folders get monitor", mFoldersGetMonitor ? mFoldersGetMonitor->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
 
         return resultEl;
       }
@@ -1359,7 +1520,7 @@ namespace openpeer
         request->type(OPENPEER_STACK_SERVER_TYPE_PUSH_MAILBOX);
         request->totalFinders(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_TOTAL_SERVERS_TO_GET));
 
-        mServersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "bootstrapped-servers", "servers-get", request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SERVERS_GET_TIMEOUT_IN_SECONDS)));
+        mServersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "bootstrapped-servers", "servers-get", request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
 
         ZS_LOG_DEBUG(log("attempting to get push mailbox servers"))
         return true;
@@ -1489,7 +1650,7 @@ namespace openpeer
         request->lockboxInfo(mLockboxInfo);
         request->grantID(mGrantSession->getGrantID());
 
-        mAccessMonitor = sendRequest(IMessageMonitorResultDelegate<AccessResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ACCESS_TIMEOUT_IN_SECONDS)));
+        mAccessMonitor = sendRequest(IMessageMonitorResultDelegate<AccessResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         return false;
       }
       
@@ -1558,7 +1719,7 @@ namespace openpeer
 
         request->namespaceGrantChallengeBundle(bundleEl);
 
-        mGrantMonitor = sendRequest(IMessageMonitorResultDelegate<NamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_NAMESPACE_GRANT_TIMEOUT_IN_SECONDS)));
+        mGrantMonitor = sendRequest(IMessageMonitorResultDelegate<NamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         return false;
       }
 
@@ -1604,7 +1765,7 @@ namespace openpeer
         request->lockboxInfo(mLockboxInfo);
         request->peerFiles(mPeerFiles);
 
-        mPeerValidateMonitor = sendRequest(IMessageMonitorResultDelegate<PeerValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_PEER_VALIDATE_TIMEOUT_IN_SECONDS)));
+        mPeerValidateMonitor = sendRequest(IMessageMonitorResultDelegate<PeerValidateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         return false;
       }
       
@@ -1683,6 +1844,34 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepRefreshFolders()
+      {
+        ZS_LOG_TRACE(log("step refresh folders"))
+
+        if (mFoldersGetMonitor) {
+          ZS_LOG_TRACE(log("waiting for folders update to complete"))
+          return true;
+        }
+
+        if (!mRefreshFolders) {
+          ZS_LOG_TRACE(log("refresh folders is not needed"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("performing refresh of folders"))
+
+        FoldersGetRequestPtr request = FoldersGetRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->version(mDB->getLastDownloadedVersionForFolders());
+
+        mFoldersGetMonitor = sendRequest(IMessageMonitorResultDelegate<FoldersGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+
+        mRefreshFolders = false;
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepBackgroundingReady()
       {
         if (!mBackgroundingEnabled) {
@@ -1690,7 +1879,8 @@ namespace openpeer
           return true;
         }
 
-        bool backgroundingReady = (mRegisterQueries.size() < 1);
+        bool backgroundingReady = (mRegisterQueries.size() < 1) &&
+                                  (!mFoldersGetMonitor);
 
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 1
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 2
@@ -1859,6 +2049,8 @@ namespace openpeer
           mAccessMonitor.reset();
         }
 
+        mPeerURIFromAccessResult.clear();
+
         if (mGrantQuery) {
           mGrantQuery->cancel();
           mGrantQuery.reset();
@@ -1872,6 +2064,11 @@ namespace openpeer
         if (mPeerValidateMonitor) {
           mPeerValidateMonitor->cancel();
           mPeerValidateMonitor.reset();
+        }
+
+        if (mFoldersGetMonitor) {
+          mFoldersGetMonitor->cancel();
+          mFoldersGetMonitor.reset();
         }
 
         if (mTCPMessaging) {

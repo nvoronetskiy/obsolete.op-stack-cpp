@@ -182,7 +182,7 @@ namespace openpeer
 
         IKeyGeneratorSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate);
 
-        IKeyGeneratorDelegatePtr delegate = mSubscriptions.delegate(subscription);
+        IKeyGeneratorDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
         if (delegate) {
           KeyGeneratorPtr pThis = mThisWeak.lock();

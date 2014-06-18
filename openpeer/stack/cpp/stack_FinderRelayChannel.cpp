@@ -303,7 +303,7 @@ namespace openpeer
 
         IFinderRelayChannelSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
-        IFinderRelayChannelDelegatePtr delegate = mSubscriptions.delegate(subscription);
+        IFinderRelayChannelDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
         if (delegate) {
           FinderRelayChannelPtr pThis(mThisWeak.lock());

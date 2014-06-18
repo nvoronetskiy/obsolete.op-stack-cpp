@@ -322,6 +322,34 @@ namespace openpeer
 
     interaction IServicePushMailboxDatabaseAbstractionDelegate
     {
+      //Settings Table
+      //--------------
+      //String lastDownloadedVersionForFolders
+
+      virtual String getLastDownloadedVersionForFolders() = 0;
+      virtual void setLastDownloadedVersionForFolders(const char *version) = 0;
+
+      // Folders Table
+      // -------------
+      // String folderName
+      // String serverVersion
+      // String downloadedVersion
+      // ULONG  totalUnreadMessages
+      // ULONG  totalMessages
+
+      virtual void flushFolders() = 0;
+      virtual void removeFolder(const char *inFolderName) = 0;
+      virtual String getDownloadedVersionForFolder(const char *inFolderName) = 0;
+      virtual void updateFolder(
+                                const char *inFolderName,
+                                const char *inServerVersion,
+                                ULONG totalUnreadMessages,
+                                ULONG totalMessages
+                                ) = 0;
+
+      // Folder Messages Table
+      //----------------------
+      //
     };
   }
 
