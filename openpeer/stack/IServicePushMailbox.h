@@ -322,34 +322,107 @@ namespace openpeer
 
     interaction IServicePushMailboxDatabaseAbstractionDelegate
     {
-      //Settings Table
-      //--------------
-      //String lastDownloadedVersionForFolders
+      struct FolderNeedingUpdateInfo
+      {
+        int    mIndex;
+        String mFolderName;
+        String mDownloadedVersion;
+      };
+      typedef std::list<FolderNeedingUpdateInfo> FolderNeedingUpdateList;
+
+      // SETTINGS TABLE
+      // ==============
+      // String lastDownloadedVersionForFolders
 
       virtual String getLastDownloadedVersionForFolders() = 0;
       virtual void setLastDownloadedVersionForFolders(const char *version) = 0;
 
-      // Folders Table
-      // -------------
-      // String folderName
+
+      // FOLDERS TABLE
+      // =============
+      // int    index         [auto, unique]
+      // String uniqueID      [unique, alphanum, default = assign random ID]
+      // String folderName    [unique]
       // String serverVersion
       // String downloadedVersion
       // ULONG  totalUnreadMessages
       // ULONG  totalMessages
+      // Time   updateNext
 
+      //-----------------------------------------------------------------------
+      // PURPOSE: Deletet all folders and folder related data
+      // NOTE:    All data in "Folders Table", "Folder Message Table" and
+      //          "Version Folder Messages Table" are deleted.
       virtual void flushFolders() = 0;
-      virtual void removeFolder(const char *inFolderName) = 0;
-      virtual String getDownloadedVersionForFolder(const char *inFolderName) = 0;
-      virtual void updateFolder(
-                                const char *inFolderName,
-                                const char *inServerVersion,
-                                ULONG totalUnreadMessages,
-                                ULONG totalMessages
-                                ) = 0;
 
-      // Folder Messages Table
-      //----------------------
-      //
+      //-----------------------------------------------------------------------
+      // PURPOSE: Deletet a folder and all related data for the folder
+      // NOTE:    Deletes folder entry and any related messages to the folder
+      //          in "Folder Messages" Table or messages in "Versioned Folder
+      //          Messages Table"
+      virtual void removeFolder(const char *inFolderName) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Add or update a record in the "Folders Table"
+      virtual void addOrUpdateFolder(
+                                     const char *inFolderName,
+                                     const char *inServerVersion,
+                                     ULONG totalUnreadMessages,
+                                     ULONG totalMessages
+                                     ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Returns a list of folders needing update
+      // NOTE:    "WHERE now >= updateNext OR downloadedVersion != serverVersion"
+      virtual void getFoldersNeedingUpdate(
+                                           const Time &now,
+                                           FolderNeedingUpdateList &outFolderNames
+                                           ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Updates a folder's download information
+      // NOTE:    Messages have been downloaded from the server and the
+      //          information about the downloaded messages must be recorded
+      virtual void updateFolderDownloadInfo(
+                                            int folderIndex,
+                                            const char *inDownloadedVersion,
+                                            const Time &inUpdateNext   // Time() if should not check again
+                                            ) = 0;
+
+
+      // FOLDER MESSAGES TABLE
+      // =====================
+      // int    index         [auto, unique]
+      // int    folderIndex
+      // String messageID
+
+      virtual void addMessageToFolderIfNotPresent(
+                                                  int folderIndex,
+                                                  const char *messageID
+                                                  ) = 0;
+
+      virtual void removeMessageFromFolder(
+                                           int folderIndex,
+                                           const char *messageID
+                                           ) = 0;
+
+      virtual void removeAllMessagesFromFolder(int folderIndex) = 0;
+
+
+      // FOLKDER VERSIONED MESSAGES TABLE
+      // ===============================
+      // int    index         [auto, unique]
+      // int    folderIndex
+      // String messageID
+      // bool   removedFlag   [default = false where true = removed]
+
+      virtual void removeAllVersionedMessagesFromFolder(int folderIndex) = 0;
+
+
+      // MESSAGES TABLE
+      // ==============
+      // int    index         [auto, unique]
+      // String messageID     [unique]
     };
   }
 

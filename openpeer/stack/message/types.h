@@ -443,7 +443,19 @@ namespace openpeer
         };
         typedef std::list<FolderInfo> FolderInfoList;
 
+        enum Dispositions
+        {
+          Disposition_NA,
+
+          Disposition_Update,
+          Disposition_Remove,
+        };
+
+        static Dispositions toDisposition(const char *disposition);
+        static const char *toString(Dispositions disposition);
+
         String mID;
+        Dispositions mDisposition;
 
         String mVersion;
 
@@ -470,6 +482,7 @@ namespace openpeer
         FlagInfoMap mFlags;
 
         PushMessageInfo() :
+          mDisposition(Disposition_NA),
           mChannelID(0),
           mLength(0) {}
 

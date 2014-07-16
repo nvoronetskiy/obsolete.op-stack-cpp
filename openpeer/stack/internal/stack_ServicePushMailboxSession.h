@@ -162,6 +162,18 @@ namespace openpeer
         typedef String FolderName;
         typedef std::map<FolderName, FolderName> FolderNameMap;
 
+        struct ProcessedFolderNeedingUpdateInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateInfo FolderNeedingUpdateInfo;
+
+          FolderNeedingUpdateInfo mInfo;
+          bool mSentRequest;
+        };
+
+        typedef std::map<FolderName, ProcessedFolderNeedingUpdateInfo> FolderUpdateMap;
+
+        typedef std::list<IMessageMonitorPtr> FolderGetMonitorList;
+
       protected:
         ServicePushMailboxSession(
                                   IMessageQueuePtr queue,
@@ -560,6 +572,8 @@ namespace openpeer
         bool stepFullyConnected();
         bool stepRegisterQueries();
         bool stepRefreshFolders();
+        bool stepCheckFoldersNeedingUpdate();
+        bool stepFolderGet();
 
         bool stepBackgroundingReady();
 
@@ -666,6 +680,9 @@ namespace openpeer
         IMessageMonitorPtr mFoldersGetMonitor;
 
         TimerPtr mNextFoldersUpdateTimer;
+
+        FolderUpdateMap mFoldersNeedingUpdate;
+        FolderGetMonitorList mFolderGetMonitors;
       };
 
       //-----------------------------------------------------------------------

@@ -43,6 +43,7 @@
 #include <openpeer/stack/message/push-mailbox/PeerValidateRequest.h>
 #include <openpeer/stack/message/push-mailbox/RegisterPushRequest.h>
 #include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
 
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePublic.h>
@@ -56,6 +57,10 @@
 #include <zsLib/helpers.h>
 
 #include <zsLib/Stringize.h>
+
+#define OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME ".sent"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_FOLDER_INDEX_INVALID (-1)
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -78,6 +83,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::push_mailbox, NamespaceGrantChallengeValidateRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, PeerValidateRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, FoldersGetRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, FolderGetRequest)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -165,6 +171,10 @@ namespace openpeer
         UseBootstrappedNetwork::prepare(mBootstrappedNetwork->getDomain(), mThisWeak.lock());
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE));
         mReachabilitySubscription = IReachability::subscribe(mThisWeak.lock());
+
+        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
@@ -339,6 +349,9 @@ namespace openpeer
 
         mMonitoredFolders[folderName] = folderName;
 
+        // need to recheck which folders need an update
+        mFoldersNeedingUpdate.clear();
+
         // since we just started monitoring, indicate that the folder has changed
         mSubscriptions.delegate()->onServicePushMailboxSessionFolderChanged(mThisWeak.lock(), folderName);
 
@@ -387,6 +400,7 @@ namespace openpeer
         mDoNotRetryConnectionBefore = Time();
 
         mRefreshFolders = true;
+        mFoldersNeedingUpdate.clear();
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -436,6 +450,7 @@ namespace openpeer
         if (timer == mNextFoldersUpdateTimer) {
           mLastActivity = zsLib::now();
           mRefreshFolders = true;
+          mFoldersNeedingUpdate.clear();
 
           mNextFoldersUpdateTimer->cancel();
           mNextFoldersUpdateTimer.reset();
@@ -916,14 +931,22 @@ namespace openpeer
         {
           const PushMessageFolderInfo &info = (*iter);
 
+          String name = info.mName;
+
           if (PushMessageFolderInfo::Disposition_Remove == info.mDisposition) {
-            ZS_LOG_DEBUG(log("folder was removed") + ZS_PARAM("folder name", info.mName))
-            mDB->removeFolder(info.mName);
+            ZS_LOG_DEBUG(log("folder was removed") + ZS_PARAM("folder name", name))
+            mDB->removeFolder(name);
             continue;
           }
 
-          ZS_LOG_DEBUG(log("folder was added/updated") + info.toDebug())
-          mDB->updateFolder(info.mName, info.mVersion, info.mUnread, info.mTotal);
+          if (info.mRenamed) {
+            ZS_LOG_DEBUG(log("folder was renamed (removing old folder)") + ZS_PARAM("folder name", info.mName) + ZS_PARAM("new name", info.mRenamed))
+            mDB->removeFolder(info.mName);
+            name = info.mRenamed;
+          }
+
+          ZS_LOG_DEBUG(log("folder was updated/added") + info.toDebug())
+          mDB->addOrUpdateFolder(name, info.mVersion, info.mUnread, info.mTotal);
         }
 
         mDB->setLastDownloadedVersionForFolders(result->version());
@@ -977,6 +1000,7 @@ namespace openpeer
           ZS_LOG_WARNING(Detail, log("folders get version conflict") + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
 
           mRefreshFolders = true;
+          mFoldersNeedingUpdate.clear();
           mDB->setLastDownloadedVersionForFolders(String());
           mLastActivity = zsLib::now();
 
@@ -1044,7 +1068,63 @@ namespace openpeer
         ZS_LOG_DEBUG(log("folder get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+
+        FolderGetMonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
+        if (found == mFolderGetMonitors.end()) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        // no longer monitoring this request
+        mFolderGetMonitors.erase(found);
+
+        FolderGetRequestPtr request = FolderGetRequest::convert(monitor->getMonitoredMessage());
+
+        const PushMessageFolderInfo &originalFolderInfo = request->folderInfo();
+
+        FolderUpdateMap::iterator foundNeedingUpdate = mFoldersNeedingUpdate.find(originalFolderInfo.mName);
+        if (foundNeedingUpdate == mFoldersNeedingUpdate.end()) {
+          ZS_LOG_WARNING(Detail, log("received information about folder update but folder no longer requires update") + originalFolderInfo.toDebug())
+          return true;
+        }
+
+        ProcessedFolderNeedingUpdateInfo &updateInfo = (*foundNeedingUpdate).second;
+
+        if ((!updateInfo.mSentRequest) ||
+            (OPENPEER_STACK_PUSH_MAILBOX_FOLDER_INDEX_INVALID == updateInfo.mInfo.mIndex)) {
+          ZS_LOG_WARNING(Detail, log("received information about folder update but folder did not issue request") + originalFolderInfo.toDebug())
+          return true;
+        }
+
+        if (originalFolderInfo.mVersion == updateInfo.mInfo.mDownloadedVersion) {
+          ZS_LOG_WARNING(Detail, log("received information about folder update but folder versions conflict") + originalFolderInfo.toDebug() + ZS_PARAM("expecting", updateInfo.mInfo.mDownloadedVersion))
+          return true;
+        }
+
+        const PushMessageFolderInfo &folderInfo = result->folderInfo();
+        const PushMessageInfoList &messages = result->messages();
+
+        // start processing messages
+        for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter) {
+          const PushMessageInfo &message = (*iter);
+
+          switch (message.mDisposition) {
+            case PushMessageInfo::Disposition_NA:
+            case PushMessageInfo::Disposition_Update: {
+              mDB->addMessageToFolderIfNotPresent(updateInfo.mInfo.mIndex, message.mID);
+              break;
+            }
+            case PushMessageInfo::Disposition_Remove: {
+              mDB->removeMessageFromFolder(updateInfo.mInfo.mIndex, message.mID);
+              break;
+            }
+          }
+        }
+
+        mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, folderInfo.mVersion, folderInfo.mUpdateNext);
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1057,7 +1137,51 @@ namespace openpeer
         ZS_LOG_ERROR(Debug, log("folder get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+
+        FolderGetMonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
+        if (found == mFolderGetMonitors.end()) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        // no longer monitoring this request
+        mFolderGetMonitors.erase(found);
+
+        FolderGetRequestPtr request = FolderGetRequest::convert(monitor->getMonitoredMessage());
+
+        const PushMessageFolderInfo &originalFolderInfo = request->folderInfo();
+
+        FolderUpdateMap::iterator foundNeedingUpdate = mFoldersNeedingUpdate.find(originalFolderInfo.mName);
+        if (foundNeedingUpdate != mFoldersNeedingUpdate.end()) {
+          ProcessedFolderNeedingUpdateInfo updateInfo = (*foundNeedingUpdate).second;
+
+          if ((updateInfo.mInfo.mDownloadedVersion != request->folderInfo().mVersion) ||
+              (OPENPEER_STACK_PUSH_MAILBOX_FOLDER_INDEX_INVALID == updateInfo.mInfo.mIndex)) {
+            ZS_LOG_DEBUG(log("already detected conflict, will refetch information later"))
+          } else {
+            if (result->errorCode() == IHTTP::HTTPStatusCode_Conflict) {
+
+              updateInfo.mInfo.mDownloadedVersion = String();
+
+              ZS_LOG_WARNING(Detail, log("folder version download conflict detected") + originalFolderInfo.toDebug())
+
+              // this folder conflicted, purge it and reload it
+              mDB->removeAllMessagesFromFolder(updateInfo.mInfo.mIndex);
+              mDB->removeAllVersionedMessagesFromFolder(updateInfo.mInfo.mIndex);
+
+              mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, String(), zsLib::now());
+            }
+          }
+
+          ZS_LOG_DEBUG(log("folder get required but folder get failed") + ZS_PARAM("folder name", updateInfo.mInfo.mFolderName))
+          updateInfo.mSentRequest = false;
+        }
+
+        mRefreshFolders = true;
+
+        ZS_LOG_ERROR(Detail, log("failed to get messages for a folder") + IMessageMonitor::toDebug(monitor))
+
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1295,6 +1419,9 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
 
+        IHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
+        IHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
+
         return resultEl;
       }
 
@@ -1323,6 +1450,10 @@ namespace openpeer
         if (!stepPeerValidate()) goto post_step;
 
         if (!stepFullyConnected()) goto post_step;
+
+        if (!stepRefreshFolders()) goto post_step;
+        if (!stepCheckFoldersNeedingUpdate()) goto post_step;
+        if (!stepFolderGet()) goto post_step;
 
         if (!stepBackgroundingReady()) goto post_step;
 
@@ -1872,6 +2003,98 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepCheckFoldersNeedingUpdate()
+      {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateList FolderNeedingUpdateList;
+
+        if (mFolderGetMonitors.size() > 0) {
+          ZS_LOG_TRACE(log("cannot check for folders needing update while folder get requests are outstanding"))
+          return true;
+        }
+
+        if (mFoldersNeedingUpdate.size() > 0) {
+          ZS_LOG_TRACE(log("no need to check if a folder needs an update"))
+          return true;
+        }
+
+        FolderNeedingUpdateList result;
+        mDB->getFoldersNeedingUpdate(zsLib::now(), result);
+
+        for (FolderNeedingUpdateList::const_iterator iter = result.begin(); iter != result.end(); ++iter)
+        {
+          const ProcessedFolderNeedingUpdateInfo::FolderNeedingUpdateInfo &info = (*iter);
+
+          if (mMonitoredFolders.find(info.mFolderName) == mMonitoredFolders.end()) {
+            ZS_LOG_TRACE(log("folder is not monitored so does not need an update") + ZS_PARAM("folder name", info.mFolderName))
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("will perform update check on folder") + ZS_PARAM("folder name", info.mFolderName))
+
+          ProcessedFolderNeedingUpdateInfo processedInfo;
+          processedInfo.mInfo = info;
+          processedInfo.mSentRequest = false;
+
+          mFoldersNeedingUpdate[info.mFolderName] = processedInfo;
+        }
+
+        if (mFoldersNeedingUpdate.size() < 1) {
+          ZS_LOG_DEBUG(log("no folders discovered needing any update, added sent but marking as complete"))
+          ProcessedFolderNeedingUpdateInfo info;
+          info.mInfo.mFolderName = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
+          info.mInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_FOLDER_INDEX_INVALID;
+          info.mSentRequest = true;
+          mFoldersNeedingUpdate[OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME] = info;
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("will perform folder update check on folders") + ZS_PARAM("size", mFoldersNeedingUpdate.size()))
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepFolderGet()
+      {
+        for (FolderUpdateMap::iterator iter_doNotUse = mFoldersNeedingUpdate.begin(); iter_doNotUse != mFoldersNeedingUpdate.end(); )
+        {
+          FolderUpdateMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          String name = (*current).first;
+          ProcessedFolderNeedingUpdateInfo &info = (*current).second;
+
+          if (info.mSentRequest) {
+            ZS_LOG_TRACE(log("folder does not need update") + ZS_PARAM("folder name", name))
+            if ((mFoldersNeedingUpdate.size() > 1) &&
+                (mFolderGetMonitors.size() < 1)) { // need to keep at least one folder in the list at all times to know when full list is processed but otherwise all others can go
+              ZS_LOG_DEBUG(log("purging folder needing update that is already completed") + ZS_PARAM("folder name", name))
+              mFoldersNeedingUpdate.erase(current);
+            }
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("issuing folder get request") + ZS_PARAM("folder name", name))
+
+          info.mSentRequest = true;
+
+          FolderGetRequestPtr request = FolderGetRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+
+          PushMessageFolderInfo pushInfo;
+          pushInfo.mName = name;
+          pushInfo.mVersion = info.mInfo.mDownloadedVersion;
+
+          request->folderInfo(pushInfo);
+
+          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+
+          mFolderGetMonitors.push_back(monitor);
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepBackgroundingReady()
       {
         if (!mBackgroundingEnabled) {
@@ -1885,17 +2108,17 @@ namespace openpeer
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 1
 #define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 2
 
-        if (backgroundingReady) {
-          ZS_LOG_DEBUG(log("backgrounding is now ready"))
-
-          mBackgroundingNotifier.reset();
-
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return false;
+        if (!backgroundingReady) {
+          ZS_LOG_TRACE(log("backgrounding is not ready yet") + toDebug())
+          return true;
         }
 
-        ZS_LOG_TRACE(log("backgrounding is not ready yet"))
-        return true;
+        ZS_LOG_DEBUG(log("backgrounding is now ready"))
+
+        mBackgroundingNotifier.reset();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -2069,6 +2292,13 @@ namespace openpeer
         if (mFoldersGetMonitor) {
           mFoldersGetMonitor->cancel();
           mFoldersGetMonitor.reset();
+        }
+
+        for (FolderGetMonitorList::iterator iter = mFolderGetMonitors.begin(); iter != mFolderGetMonitors.end(); ++iter) {
+          IMessageMonitorPtr monitor = (*iter);
+
+          monitor->cancel();
+          monitor.reset();
         }
 
         if (mTCPMessaging) {

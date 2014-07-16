@@ -252,6 +252,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(PushMessageInfo::Dispositions &result, PushMessageInfo::Dispositions source, bool overwrite)
+      {
+        if (PushMessageInfo::Disposition_NA == source) return;
+        if (PushMessageInfo::Disposition_NA != result) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -900,11 +910,37 @@ namespace openpeer
       #pragma mark message::PushMessageInfo
       #pragma mark
 
+      //-----------------------------------------------------------------------
+      PushMessageInfo::Dispositions PushMessageInfo::toDisposition(const char *disposition)
+      {
+        if (!disposition) return Disposition_NA;
+
+        if ('\0' == *disposition) return Disposition_NA;
+
+        if (0 == strcmp(disposition, "update")) return Disposition_Update;
+        if (0 == strcmp(disposition, "remove")) return Disposition_Remove;
+
+        return Disposition_NA;
+      }
+
+      //-----------------------------------------------------------------------
+      const char *PushMessageInfo::toString(Dispositions disposition)
+      {
+        switch (disposition) {
+          case Disposition_NA:          return "";
+
+          case Disposition_Update:      return "update";
+          case Disposition_Remove:      return "remove";
+        }
+        return "UNDEFINED";
+      }
 
       //-----------------------------------------------------------------------
       bool PushMessageInfo::hasData() const
       {
         return ((mID.hasData()) ||
+
+                (mDisposition == Disposition_NA) ||
 
                 (mVersion.hasData()) ||
 
@@ -937,6 +973,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("message::PushMessageInfo");
 
         IHelper::debugAppend(resultEl, "id", mID);
+        IHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
 
         IHelper::debugAppend(resultEl, "version", mVersion);
 
@@ -972,6 +1009,7 @@ namespace openpeer
                                   )
       {
         merge(mID, source.mID, overwriteExisting);
+        merge(mDisposition, source.mDisposition, overwriteExisting);
 
         merge(mVersion, source.mVersion, overwriteExisting);
 
@@ -1005,6 +1043,10 @@ namespace openpeer
 
         if (mID.hasData()) {
           messageEl->setAttribute("id", mID);
+        }
+
+        if (Disposition_NA != mDisposition) {
+          messageEl->setAttribute("disposition", toString(mDisposition));
         }
 
         if (mVersion.hasData()) {
@@ -1180,6 +1222,7 @@ namespace openpeer
         if (!elem) return info;
 
         info.mID = IMessageHelper::getAttributeID(elem);
+        info.mDisposition = toDisposition(IMessageHelper::getAttribute(elem, "disposition"));
 
         info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
 
