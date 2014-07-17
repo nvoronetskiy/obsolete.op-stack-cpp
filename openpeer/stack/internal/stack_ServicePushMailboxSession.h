@@ -154,6 +154,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessagesDataGetResult, MessagesDataGetResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessagesMetaDataGetResult, MessagesMetaDataGetResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessageUpdateResult, MessageUpdateResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchRequest, ListFetchRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchResult, ListFetchResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ChangedNotify, ChangedNotify)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushRequest, RegisterPushRequest)
@@ -194,6 +195,8 @@ namespace openpeer
           MessageNeedingDataInfo mInfo;
           bool mSentRequest;
 
+          DWORD  mChannelID;
+
           size_t mReceivedData;
           SecureByteBlockPtr mBuffer;
         };
@@ -205,6 +208,16 @@ namespace openpeer
 
         typedef std::pair<ChannelID, SecureByteBlockPtr> PendingChannelData;
         typedef std::list<PendingChannelData> PendingChannelDataList;
+
+        struct ProcessedListsNeedingDownloadInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::ListsNeedingDownloadInfo ListsNeedingDownloadInfo;
+
+          ListsNeedingDownloadInfo mInfo;
+          bool mSentRequest;
+        };
+        typedef String ListID;
+        typedef std::map<ListID, ProcessedListsNeedingDownloadInfo> ListDownloadMap;
 
       protected:
         ServicePushMailboxSession(
@@ -617,6 +630,9 @@ namespace openpeer
         bool stepCheckMessagesNeedingData();
         bool stepMessagesDataGet();
 
+        bool stepCheckListNeedingDownload();
+        bool stepListFetch();
+
         bool stepBackgroundingReady();
 
         void postStep();
@@ -637,6 +653,7 @@ namespace openpeer
         bool sendRequest(MessagePtr requestMessage);
 
         virtual void handleChanged(ChangedNotifyPtr notify);
+        virtual void handleListFetch(ListFetchRequestPtr request);
         virtual void handleChannelMessage(
                                           DWORD channel,
                                           SecureByteBlockPtr buffer
@@ -742,6 +759,10 @@ namespace openpeer
         IMessageMonitorPtr mMessageDataGetMonitor;
 
         PendingChannelDataList mPendingChannelData;
+
+        bool mRefreshListsNeedingDownload;
+        ListDownloadMap mListsNeedingDownload;
+        IMessageMonitorPtr mListFetchMonitor;
       };
 
       //-----------------------------------------------------------------------

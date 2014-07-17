@@ -46,6 +46,7 @@
 #include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/MessagesMetaDataGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/MessagesDataGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/ListFetchRequest.h>
 #include <openpeer/stack/message/push-mailbox/ChangedNotify.h>
 
 #include <openpeer/stack/IPeerFiles.h>
@@ -112,6 +113,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static String extractListID(const String &uri)
+      {
+        size_t listLength = strlen("list:");
+        if (0 != strncmp("list:", uri, listLength)) return String();
+
+        return uri.substr(listLength);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -156,7 +166,9 @@ namespace openpeer
 
         mRefreshMessagesNeedingUpdate(true),
 
-        mRefreshMessagesNeedingData(true)
+        mRefreshMessagesNeedingData(true),
+
+        mRefreshListsNeedingDownload(true)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -1213,10 +1225,68 @@ namespace openpeer
                                                                          MessagesDataGetResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("messages data get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("messages data get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mMessageDataGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        mMessageDataGetMonitor.reset();
+
+        const PushMessageInfoList &messages = result->messages();
+
+        for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter)
+        {
+          const PushMessageInfo &info = (*iter);
+
+          MessageDataMap::iterator found = mMessagesNeedingData.find(info.mID);
+          if (found == mMessagesNeedingData.end()) {
+            ZS_LOG_WARNING(Detail, log("received information about a message that was not requested") + ZS_PARAM("message id", info.mID))
+            continue;
+          }
+
+          ProcessedMessageNeedingDataInfo &processedInfo = (*found).second;
+
+          processedInfo.mChannelID = info.mChannelID;
+
+          // remember the mapping for the channel
+          mMessagesNeedingDataChannels[info.mChannelID] = info.mID;
+        }
+
+        for (MessageDataMap::iterator iter_doNotUse = mMessagesNeedingData.begin(); iter_doNotUse != mMessagesNeedingData.end(); )
+        {
+          MessageDataMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          ProcessedMessageNeedingDataInfo &processedInfo = (*current).second;
+          if (!processedInfo.mSentRequest) {
+            ZS_LOG_TRACE(log("this message was not part of the request") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
+            continue;
+          }
+
+          if (0 != processedInfo.mChannelID) {
+            ZS_LOG_TRACE(log("this message received download channel information") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
+            continue;
+          }
+
+          // this message failed to download
+          ZS_LOG_WARNING(Detail, log("message data failed to download") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
+
+          mDB->notifyMessageFailedToDownloadData(processedInfo.mInfo.mIndex);
+
+          mRefreshFolders = true;
+          mRefreshFoldersNeedingUpdate = true;
+          mRefreshMessagesNeedingData = true;
+
+          mMessagesNeedingData.erase(current);
+        }
+
+        processChannelMessages();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1226,10 +1296,19 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("messages data get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("messages data get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mMessageMetaDataGetMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("failed to get message data") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1248,7 +1327,8 @@ namespace openpeer
       {
         typedef IServicePushMailboxDatabaseAbstractionDelegate::DeliveryInfo DeliveryInfo;
         typedef IServicePushMailboxDatabaseAbstractionDelegate::DeliveryInfoList DeliveryInfoList;
-        ZS_LOG_DEBUG(log("messages meta data get result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+
+        ZS_LOG_DEBUG(log("messages meta data get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mMessageMetaDataGetMonitor) {
@@ -1303,6 +1383,8 @@ namespace openpeer
                              info.mVersion,
                              info.mTo,
                              info.mFrom,
+                             info.mCC,
+                             info.mBCC,
                              info.mType,
                              info.mMimeType,
                              info.mEncoding,
@@ -1314,6 +1396,24 @@ namespace openpeer
                              info.mLength
                              );
 
+          {
+            String listID =  extractListID(info.mTo);
+            if (listID.hasData()) mDB->addOrUpdateListID(listID);
+          }
+          {
+            String listID =  extractListID(info.mFrom);
+            if (listID.hasData()) mDB->addOrUpdateListID(listID);
+          }
+          {
+            String listID =  extractListID(info.mCC);
+            if (listID.hasData()) mDB->addOrUpdateListID(listID);
+          }
+          {
+            String listID =  extractListID(info.mBCC);
+            if (listID.hasData()) mDB->addOrUpdateListID(listID);
+          }
+
+          mRefreshListsNeedingDownload = true;
 
           // clear out the message since it's been processed
           mMessagesNeedingUpdate.erase(found);
@@ -1332,6 +1432,8 @@ namespace openpeer
 
           // this message failed to download
           ZS_LOG_WARNING(Detail, log("message failed to download") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
+
+          mDB->notifyMessageFailedToUpdate(processedInfo.mInfo.mIndex);
 
           mRefreshFolders = true;
           mRefreshFoldersNeedingUpdate = true;
@@ -1352,7 +1454,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("messages meta data get error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("messages meta data get error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         if (monitor != mMessageMetaDataGetMonitor) {
@@ -1360,7 +1462,7 @@ namespace openpeer
           return false;
         }
 
-        ZS_LOG_ERROR(Detail, log("failed to get messages for a folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+        ZS_LOG_ERROR(Detail, log("failed to get message metadata") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
 
         connectionFailure();
 
@@ -1381,7 +1483,7 @@ namespace openpeer
                                                                          MessageUpdateResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("message update result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_DEBUG(log("message update result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -1394,7 +1496,7 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("message update error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("message update error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
         return false;
@@ -1414,10 +1516,59 @@ namespace openpeer
                                                                          ListFetchResultPtr result
                                                                          )
       {
-        ZS_LOG_DEBUG(log("list fetch result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        typedef ListFetchResult::URIListMap URIListMap;
+        typedef ListFetchResult::URIList URIList;
+
+        ZS_LOG_DEBUG(log("list fetch result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mListFetchMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        URIListMap uriLists = result->listToURIs();
+
+        for (URIListMap::const_iterator iter = uriLists.begin(); iter != uriLists.end(); ++iter)
+        {
+          const String &listID = (*iter).first;
+          const URIList &uris = (*iter).second;
+
+          ListDownloadMap::iterator found = mListsNeedingDownload.find(listID);
+          if (found == mListsNeedingDownload.end()) {
+            ZS_LOG_WARNING(Detail, log("list was returned that did not need downloading") + ZS_PARAM("list id", listID))
+            continue;
+          }
+
+          ProcessedListsNeedingDownloadInfo &processedInfo = (*found).second;
+          if (!processedInfo.mSentRequest) {
+            ZS_LOG_WARNING(Detail, log("whose download was not requested") + ZS_PARAM("list id", listID))
+            continue;
+          }
+
+          mDB->updateListURIs(processedInfo.mInfo.mIndex, uris);
+
+          mListsNeedingDownload.erase(found);
+        }
+
+        for (ListDownloadMap::iterator iter_doNotUse = mListsNeedingDownload.begin(); iter_doNotUse != mListsNeedingDownload.end();)
+        {
+          ListDownloadMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          ProcessedListsNeedingDownloadInfo &processedInfo = (*current).second;
+          if (!processedInfo.mSentRequest) {
+            ZS_LOG_TRACE(log("did not issue download request yet for this list") + ZS_PARAM("list id", processedInfo.mInfo.mListID))
+            continue;
+          }
+
+          mDB->notifyListFailedToDownload(processedInfo.mInfo.mIndex);
+
+          mListsNeedingDownload.erase(current);
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1427,10 +1578,19 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("list fetch error result received") + ZS_PARAM("message ID", monitor->getMonitoredMessageID()))
+        ZS_LOG_ERROR(Debug, log("list fetch error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        return false;
+        if (monitor != mListFetchMonitor) {
+          ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
+          return false;
+        }
+
+        ZS_LOG_ERROR(Detail, log("failed to get lists") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+
+        connectionFailure();
+
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1551,6 +1711,10 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "pending channel data", mPendingChannelData.size());
 
+        IHelper::debugAppend(resultEl, "refresh lists needing download", mRefreshListsNeedingDownload);
+        IHelper::debugAppend(resultEl, "lists to download", mListsNeedingDownload.size());
+        IHelper::debugAppend(resultEl, "list fetch monitor", mListFetchMonitor ? mListFetchMonitor->getID() : 0);
+
         return resultEl;
       }
 
@@ -1590,6 +1754,12 @@ namespace openpeer
 
         if (!stepCheckMessagesNeedingUpdate()) goto post_step;
         if (!stepMessagesMetaDataGet()) goto post_step;
+
+        if (!stepCheckMessagesNeedingData()) goto post_step;
+        if (!stepMessagesDataGet()) goto post_step;
+
+        if (!stepCheckListNeedingDownload()) goto post_step;
+        if (!stepListFetch()) goto post_step;
 
         if (!stepBackgroundingReady()) goto post_step;
 
@@ -1952,6 +2122,15 @@ namespace openpeer
             ChangedNotifyPtr notify = ChangedNotify::convert(message);
             if (notify) {
               handleChanged(notify);
+              continue;
+            }
+          }
+
+          // scope: handle list fetch requests
+          {
+            ListFetchRequestPtr request = ListFetchRequest::convert(message);
+            if (request) {
+              handleListFetch(request);
               continue;
             }
           }
@@ -2451,6 +2630,7 @@ namespace openpeer
           ProcessedMessageNeedingDataInfo processedInfo;
           processedInfo.mInfo = info;
           processedInfo.mSentRequest = false;
+          processedInfo.mChannelID = 0;
           processedInfo.mReceivedData = 0;
 
           mMessagesNeedingData[info.mMessageID] = processedInfo;
@@ -2506,7 +2686,107 @@ namespace openpeer
 
         return true;
       }
-      
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepCheckListNeedingDownload()
+      {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::ListsNeedingDownloadInfo ListsNeedingDownloadInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::ListsNeedingDownloadList ListsNeedingDownloadList;
+
+        if (mListFetchMonitor) {
+          ZS_LOG_TRACE(log("list is currently being fetched"))
+          return true;
+        }
+
+        if (mListsNeedingDownload.size() > 0) {
+          ZS_LOG_TRACE(log("already have list that needs downloading"))
+          return true;
+        }
+
+        if (!mRefreshListsNeedingDownload) {
+          ZS_LOG_TRACE(log("do not need to refresh list needing download at this time"))
+          return true;
+        }
+
+        ListsNeedingDownloadList downloadList;
+
+        mDB->getBatchOfListNeedingDownload(downloadList);
+
+        if (downloadList.size() < 1) {
+          ZS_LOG_DEBUG(log("all lists have downloaded"))
+          mRefreshListsNeedingDownload = false;
+          return true;
+        }
+
+        for (ListsNeedingDownloadList::iterator iter = downloadList.begin(); iter != downloadList.end(); ++iter)
+        {
+          const ListsNeedingDownloadInfo &info = (*iter);
+
+          if (mListsNeedingDownload.end() != mListsNeedingDownload.find(info.mListID)) {
+            ZS_LOG_WARNING(Debug, log("already will attempt to download this list") + ZS_PARAM("list ID", info.mListID))
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("will download list") + ZS_PARAM("list id", info.mListID))
+
+          ProcessedListsNeedingDownloadInfo processedInfo;
+          processedInfo.mInfo = info;
+          processedInfo.mSentRequest = false;
+
+          mListsNeedingDownload[info.mListID] = processedInfo;
+        }
+
+        ZS_LOG_DEBUG(log("will download list information") + ZS_PARAM("total", mListsNeedingDownload.size()))
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepListFetch()
+      {
+        typedef ListFetchRequest::ListIDList ListIDList;
+
+        if (mListFetchMonitor) {
+          ZS_LOG_TRACE(log("list is currently being fetched"))
+          return true;
+        }
+
+        if (mListsNeedingDownload.size() < 1) {
+          ZS_LOG_TRACE(log("no lists to fetch at this time"))
+          return true;
+        }
+
+        ListIDList fetchList;
+
+        for (ListDownloadMap::iterator iter = mListsNeedingDownload.begin(); iter != mListsNeedingDownload.end(); ++iter)
+        {
+          ProcessedListsNeedingDownloadInfo &info = (*iter).second;
+          if (info.mSentRequest) {
+            ZS_LOG_TRACE(log("already requested fetch of this list") + ZS_PARAM("list id", info.mInfo.mListID))
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("will issue list fetch") + ZS_PARAM("list id", info.mInfo.mListID))
+          fetchList.push_back(info.mInfo.mListID);
+        }
+
+        if (fetchList.size() < 1) {
+          ZS_LOG_TRACE(log("nothing to download at this time"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("issuing list fetch request") + ZS_PARAM("lists to download", fetchList.size()))
+
+        ListFetchRequestPtr request = ListFetchRequest::create();
+        request->domain(mBootstrappedNetwork->getDomain());
+
+        request->listIDs(fetchList);
+
+        mListFetchMonitor = sendRequest(IMessageMonitorResultDelegate<ListFetchResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        
+        return true;
+      }
+
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepBackgroundingReady()
       {
@@ -2737,6 +3017,14 @@ namespace openpeer
         mMessagesNeedingDataChannels.clear();
         mPendingChannelData.clear();
 
+        if (mListFetchMonitor) {
+          mListFetchMonitor->cancel();
+          mListFetchMonitor.reset();
+        }
+
+        mRefreshListsNeedingDownload = true;
+        mListsNeedingDownload.clear();
+
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
           mTCPMessaging.reset();
@@ -2828,6 +3116,87 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::handleChanged(ChangedNotifyPtr notify)
       {
+        ZS_LOG_DEBUG(log("received change notification"))
+
+        String serverVersion = notify->version();
+
+        if ((serverVersion.hasData()) &&
+            (serverVersion != mDB->getLastDownloadedVersionForFolders())) {
+          ZS_LOG_DEBUG(log("folders need updating") + ZS_PARAM("version", serverVersion))
+          mRefreshFolders = true;
+        }
+
+        const PushMessageFolderInfoList &folders = notify->folders();
+        const PushMessageInfoList &messages = notify->messages();
+
+        for (PushMessageFolderInfoList::const_iterator iter = folders.begin(); iter != folders.end(); ++iter)
+        {
+          const PushMessageFolderInfo &info = (*iter);
+          if (info.mDisposition == PushMessageFolderInfo::Disposition_Remove) {
+            ZS_LOG_DEBUG(log("folder is removed") + ZS_PARAM("name", info.mName))
+            mRefreshFolders = true;
+            continue;
+          }
+
+          mRefreshFoldersNeedingUpdate = true;
+
+          ZS_LOG_DEBUG(log("folder needs update") + ZS_PARAM("name", info.mName) + ZS_PARAM("version", info.mVersion))
+
+          mDB->updateFolderIfExits(info.mName, info.mVersion);
+        }
+
+        for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter)
+        {
+          const PushMessageInfo &info = (*iter);
+          if (info.mDisposition == PushMessageInfo::Disposition_Remove) {
+            ZS_LOG_DEBUG(log("message is removed") + ZS_PARAM("message id", info.mID))
+
+            mDB->notifyMessageRemovedFromServer(info.mID);
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("message needs meta data update") + ZS_PARAM("message id", info.mID) + ZS_PARAM("server version", info.mVersion))
+
+          mDB->updateMessageIfExists(info.mID, info.mVersion);
+        }
+
+        ZS_LOG_DEBUG(log("finished processing change notification"))
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::handleListFetch(ListFetchRequestPtr request)
+      {
+        typedef ListFetchRequest::ListIDList ListIDList;
+        typedef ListFetchResult::URIListMap URIListMap;
+
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::URIList URIList;
+
+        ListFetchResultPtr result = ListFetchResult::create(request);
+
+        URIListMap listResults;
+
+        const ListIDList &listIDs = request->listIDs();
+
+        ZS_LOG_DEBUG(log("received request to fetch list(s)") + ZS_PARAM("total lists", listIDs.size()))
+
+        for (ListIDList::const_iterator iter = listIDs.begin(); iter != listIDs.end(); ++iter)
+        {
+          const String &listID = (*iter);
+
+          URIList uris;
+          mDB->getListURIs(listID, uris);
+
+          if (uris.size() > 0) {
+            ZS_LOG_DEBUG(log("found list containing URIs") + ZS_PARAM("list id", listID) + ZS_PARAM("total", uris.size()))
+            listResults[listID] = uris;
+          } else {
+            ZS_LOG_WARNING(Debug, log("did not find any URIs for list") + ZS_PARAM("list id", listID))
+          }
+        }
+
+        result->listToURIs(listResults);
+
+        send(result);
       }
 
       //-----------------------------------------------------------------------

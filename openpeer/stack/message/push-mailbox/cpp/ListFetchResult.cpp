@@ -30,6 +30,7 @@
  */
 
 #include <openpeer/stack/message/push-mailbox/ListFetchResult.h>
+#include <openpeer/stack/message/push-mailbox/ListFetchRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <openpeer/services/IHelper.h>
@@ -55,6 +56,14 @@ namespace openpeer
         //---------------------------------------------------------------------
         ListFetchResult::ListFetchResult()
         {
+        }
+
+        //---------------------------------------------------------------------
+        ListFetchResultPtr ListFetchResult::create(ListFetchRequestPtr request)
+        {
+          ListFetchResultPtr ret(new ListFetchResult);
+          ret->fillFrom(request);
+          return ret;
         }
 
         //---------------------------------------------------------------------
@@ -97,6 +106,47 @@ namespace openpeer
 
               listEl = listEl->findNextSiblingElement("list");
             }
+          }
+
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        DocumentPtr ListFetchResult::encode()
+        {
+          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
+          ElementPtr rootEl = ret->getFirstChildElement();
+
+          ElementPtr listsEl = Element::create("lists");
+
+          if (hasAttribute(AttributeType_ListToURIs)) {
+            for (URIListMap::const_iterator iter = mListToURIs.begin(); iter != mListToURIs.end(); ++iter) {
+              const String &listID = (*iter).first;
+              const URIList &uriList = (*iter).second;
+
+              if (listID.hasData()) {
+                ElementPtr listEl = IMessageHelper::createElementWithID("list", listID);
+
+                ElementPtr peersEl = IMessageHelper::createElement("peers");
+
+                for (URIList::const_iterator peerIter = uriList.begin(); peerIter != uriList.end(); ++peerIter)
+                {
+                  const URI &uri = (*peerIter);
+                  if (uri.hasData()) {
+                    ElementPtr peerEl = IMessageHelper::createElementWithTextAndJSONEncode("peer", uri);
+                    peersEl->adoptAsLastChild(peerEl);
+                  }
+                }
+
+                if (peersEl->hasChildren()) {
+                  listsEl->adoptAsLastChild(peersEl);
+                }
+              }
+            }
+          }
+
+          if (listsEl->hasChildren()) {
+            rootEl->adoptAsFirstChild(listsEl);
           }
 
           return ret;

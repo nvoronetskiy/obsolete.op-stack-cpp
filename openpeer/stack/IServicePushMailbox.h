@@ -356,6 +356,17 @@ namespace openpeer
 
       typedef std::list<DeliveryInfo> DeliveryInfoList;
 
+      struct ListsNeedingDownloadInfo
+      {
+        int mIndex;
+        String mListID;
+      };
+      typedef std::list<ListsNeedingDownloadInfo> ListsNeedingDownloadList;
+
+      typedef String URI;
+      typedef std::list<URI> URIList;
+
+
       // SETTINGS TABLE
       // ==============
       // String lastDownloadedVersionForFolders
@@ -396,6 +407,13 @@ namespace openpeer
                                      ULONG totalUnreadMessages,
                                      ULONG totalMessages
                                      ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Update a record in the "Folders Table"
+      virtual void updateFolderIfExits(
+                                       const char *inFolderName,
+                                       const char *inServerVersion
+                                       ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Returns a list of folders needing update
@@ -464,15 +482,20 @@ namespace openpeer
       // String downloadedVersion
       // String to
       // String from
+      // String cc
+      // String bcc
       // String type
       // String mimeType
       // String encoding
       // String pushType
-      // ValueList pushValues
+      // ValueList pushValues       small amount of data can be converted into an encoded string or put into its own table assoicated to message
       // Time   sent
       // Time   expires
       // Time   dataLength
       // Blob   data
+      // bool   needListFetch         [default false]
+      // bool   updateFailed          [default false]
+      // bool   dataDownloadFailed    [default false]
 
       //-----------------------------------------------------------------------
       // PURPOSE: Create an entry for a message or update it to notify that
@@ -489,6 +512,8 @@ namespace openpeer
                                  const char *downloadedVersion,
                                  const char *toURI,
                                  const char *fromURI,
+                                 const char *ccURI,
+                                 const char *bccURI,
                                  const char *type,
                                  const char *mimeType,
                                  const char *encoding,
@@ -501,6 +526,17 @@ namespace openpeer
                                  ) = 0;
 
       //-----------------------------------------------------------------------
+      // PURPOSE: Update meta data for a message
+      virtual void updateMessageIfExists(
+                                         const char *messageID,
+                                         const char *serverVersion
+                                         ) = 0;
+
+      virtual void notifyMessageFailedToUpdate(int index) = 0;
+
+      virtual void notifyMessageRemovedFromServer(const char *messageID) = 0;
+
+      //-----------------------------------------------------------------------
       // PURPOSE: Update the data on a message
       virtual void updateMessageData(
                                      int index,
@@ -508,14 +544,28 @@ namespace openpeer
                                      size_t dataBufferLengthInBytes
                                      ) = 0;
 
+      virtual void notifyMessageFailedToDownloadData(int index) = 0;
+
       //-----------------------------------------------------------------------
       // PURPOSE: Get a small batch of messages whose server version does not
       //          match the downloaded version.
+      // NOTES:   Can and should filter out messages that failed to update
+      //          either temporarily or indefinitely. This typically means
+      //          the message is no longer present on the server but sometimes
+      //          the server maybe merely in a funky state.
       virtual void getBatchOfMessagesNeedingUpdate(MessageNeedingUpdateList &outMessagesToUpdate) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a small batch of messages whose has a data length > 0
       //          but no associated data blob.
+      // NOTES:   To prevent downloading of messages that are too big this
+      //          method can filter out messages larger than the maximum
+      //          size the application wishes to download.
+      //
+      //          Also if data failed to download, the message can be excluded
+      //          from downloading for a period of time or indefinitely. A
+      //          failure typically means the message is no longer on the
+      //          server but sometimes the server maybe merely in a funky state.
       virtual void getBatchOfMessagesNeedingData(MessageNeedingDataList &outMessagesToUpdate) = 0;
 
 
@@ -534,6 +584,40 @@ namespace openpeer
                                                        const char *flag,
                                                        const DeliveryInfoList &uris
                                                        ) = 0;
+
+      // LIST TABLE
+      // ==========
+      // int    index           [auto, unique]
+      // String listID          [unique]
+      // bool   needsDownload   [default *true*]
+      // bool   failedDownload  [default false]
+
+      virtual void addOrUpdateListID(const char *listID) = 0;
+
+      virtual void notifyListFailedToDownload(int index) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get the next list that needs to be downloaded from the server
+      // RETRUNS: true if needing download otherwise false
+      virtual void getBatchOfListNeedingDownload(ListsNeedingDownloadList &outLists) = 0;
+
+
+      // LIST URI TABLE
+      // ==============
+      // int    index         [auto, unique]
+      // int    listIndex
+      // String uri           // uri of delivered party (empty = no list)
+
+      virtual void updateListURIs(
+                                  int listIndex,
+                                  const URIList &uris
+                                  ) = 0;
+
+      virtual void getListURIs(
+                               const char *listID,
+                               URIList &outURIs
+                               );
+
     };
   }
 

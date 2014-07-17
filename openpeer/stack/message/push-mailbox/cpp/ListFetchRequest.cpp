@@ -72,6 +72,32 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
+        ListFetchRequestPtr ListFetchRequest::create(
+                                                     ElementPtr rootEl,
+                                                     IMessageSourcePtr messageSource
+                                                     )
+        {
+          ListFetchRequestPtr ret(new ListFetchRequest);
+
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
+          ElementPtr listsEl = rootEl->findFirstChildElement("lists");
+
+          if (listsEl) {
+            ElementPtr listEl = listsEl->findFirstChildElement("list");
+            while (listEl) {
+              String uri = IMessageHelper::getElementTextAndDecode(listEl);
+              if (uri.hasData()) {
+                ret->mListIDs.push_back(uri);
+              }
+              listEl = listEl->findNextSiblingElement("list");
+            }
+          }
+
+          return ret;
+        }
+        
+        //---------------------------------------------------------------------
         DocumentPtr ListFetchRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);

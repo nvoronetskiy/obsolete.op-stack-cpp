@@ -61,10 +61,14 @@ namespace openpeer
         public:
           static ListFetchResultPtr convert(MessagePtr message);
 
+          static ListFetchResultPtr create(ListFetchRequestPtr request);
+
           static ListFetchResultPtr create(
                                             ElementPtr root,
                                             IMessageSourcePtr messageSource
                                             );
+
+          virtual DocumentPtr encode();
 
           virtual Methods method() const              {return (Message::Methods)MessageFactoryPushMailbox::Method_ListFetch;}
 
