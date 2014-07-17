@@ -467,6 +467,7 @@ namespace openpeer
 
         String mFrom;
 
+        String mType;
         String mMimeType;
         String mEncoding;
 

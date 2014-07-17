@@ -952,6 +952,7 @@ namespace openpeer
 
                 (mFrom.hasData()) ||
 
+                (mType.hasData()) ||
                 (mMimeType.hasData()) ||
                 (mEncoding.hasData()) ||
 
@@ -985,6 +986,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "from", mFrom);
 
+        IHelper::debugAppend(resultEl, "type", mType);
         IHelper::debugAppend(resultEl, "mimeType", mMimeType);
         IHelper::debugAppend(resultEl, "encoding", mEncoding);
 
@@ -1021,6 +1023,7 @@ namespace openpeer
 
         merge(mFrom, source.mFrom, overwriteExisting);
 
+        merge(mType, source.mType, overwriteExisting);
         merge(mMimeType, source.mMimeType, overwriteExisting);
         merge(mEncoding, source.mEncoding, overwriteExisting);
 
@@ -1069,6 +1072,10 @@ namespace openpeer
 
         if (mFrom.hasData()) {
           messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("from", mFrom));
+        }
+
+        if (mType.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", mType));
         }
 
         if (mMimeType.hasData()) {
@@ -1237,6 +1244,7 @@ namespace openpeer
 
         info.mFrom = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("from"));
 
+        info.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
         info.mMimeType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("mimeType"));
         info.mEncoding = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("encoding"));
 

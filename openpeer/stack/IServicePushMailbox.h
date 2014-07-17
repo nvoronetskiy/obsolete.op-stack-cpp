@@ -330,6 +330,32 @@ namespace openpeer
       };
       typedef std::list<FolderNeedingUpdateInfo> FolderNeedingUpdateList;
 
+      struct MessageNeedingUpdateInfo
+      {
+        int mIndex;
+        String mMessageID;
+      };
+      typedef std::list<MessageNeedingUpdateInfo> MessageNeedingUpdateList;
+
+      struct MessageNeedingDataInfo
+      {
+        int mIndex;
+        String mMessageID;
+        size_t mDataLength;
+      };
+      typedef std::list<MessageNeedingDataInfo> MessageNeedingDataList;
+
+      typedef IServicePushMailboxSession::ValueList ValueList;
+
+      struct DeliveryInfo
+      {
+        String mURI;
+        int mErrorCode;
+        String mErrorReason;
+      };
+
+      typedef std::list<DeliveryInfo> DeliveryInfoList;
+
       // SETTINGS TABLE
       // ==============
       // String lastDownloadedVersionForFolders
@@ -409,20 +435,105 @@ namespace openpeer
       virtual void removeAllMessagesFromFolder(int folderIndex) = 0;
 
 
-      // FOLKDER VERSIONED MESSAGES TABLE
+      // FOLDER VERSIONED MESSAGES TABLE
       // ===============================
-      // int    index         [auto, unique]
+      // int    index               [auto, unique]
       // int    folderIndex
       // String messageID
+      // String downloadedVersion
       // bool   removedFlag   [default = false where true = removed]
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: If the last message entry for a given folder index contains
+      //          the message ID but does not have a "removedFlag" true then
+      //          add a new entry for this message entry for the folder that
+      //          contains the removed flag being true.
+      virtual void addRemovedVersionedMessageEntryIfMessageNotRemoved(
+                                                                      int folderIndex,
+                                                                      const char *messageID
+                                                                      ) = 0;
 
       virtual void removeAllVersionedMessagesFromFolder(int folderIndex) = 0;
 
 
       // MESSAGES TABLE
       // ==============
+      // int    index               [auto, unique]
+      // String messageID           [unique]
+      // String serverVersion
+      // String downloadedVersion
+      // String to
+      // String from
+      // String type
+      // String mimeType
+      // String encoding
+      // String pushType
+      // ValueList pushValues
+      // Time   sent
+      // Time   expires
+      // Time   dataLength
+      // Blob   data
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Create an entry for a message or update it to notify that
+      //          the message may require updating.
+      virtual void addOrUpdateMessage(
+                                      const char *messageID,
+                                      const char *serverVersion
+                                      ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Update meta data for a message
+      virtual void updateMessage(
+                                 int index,
+                                 const char *downloadedVersion,
+                                 const char *toURI,
+                                 const char *fromURI,
+                                 const char *type,
+                                 const char *mimeType,
+                                 const char *encoding,
+                                 const char *pushType,
+                                 const ValueList &pushValues,  // list will be empty is no values
+                                 ElementPtr pushCustomData, // will be ElementPtr() if no custom data
+                                 Time sent,
+                                 Time expires,
+                                 size_t dataLength
+                                 ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Update the data on a message
+      virtual void updateMessageData(
+                                     int index,
+                                     const BYTE *dataBuffer,
+                                     size_t dataBufferLengthInBytes
+                                     ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get a small batch of messages whose server version does not
+      //          match the downloaded version.
+      virtual void getBatchOfMessagesNeedingUpdate(MessageNeedingUpdateList &outMessagesToUpdate) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get a small batch of messages whose has a data length > 0
+      //          but no associated data blob.
+      virtual void getBatchOfMessagesNeedingData(MessageNeedingDataList &outMessagesToUpdate) = 0;
+
+
+      // MESSAGES DELIVERY STATE TABLE
+      // =============================
       // int    index         [auto, unique]
-      // String messageID     [unique]
+      // int    messageIndex  // message index from messages table
+      // String flag          // represented flag
+      // String uri           // uri of delivered party (empty = no list)
+      // int    errorCode     // [default = 0] optional error code
+      // String errorReason   // optional error reason
+
+      virtual void removeMessageDeliveryStatesForMessage(int messageIndex) = 0;
+      virtual void updateMessageDeliverStateForMessage(
+                                                       int messageIndex,
+                                                       const char *flag,
+                                                       const DeliveryInfoList &uris
+                                                       ) = 0;
     };
   }
 

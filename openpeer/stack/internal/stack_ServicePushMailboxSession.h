@@ -100,6 +100,7 @@ namespace openpeer
                                         public zsLib::MessageQueueAssociator,
                                         public SharedRecursiveLock,
                                         public IServicePushMailboxSession,
+                                        public IMessageSource,
                                         public ITimerDelegate,
                                         public ITCPMessagingDelegate,
                                         public ITransportStreamReaderDelegate,
@@ -173,6 +174,37 @@ namespace openpeer
         typedef std::map<FolderName, ProcessedFolderNeedingUpdateInfo> FolderUpdateMap;
 
         typedef std::list<IMessageMonitorPtr> FolderGetMonitorList;
+
+        struct ProcessedMessageNeedingUpdateInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingUpdateInfo MessageNeedingUpdateInfo;
+
+          MessageNeedingUpdateInfo mInfo;
+          bool mSentRequest;
+        };
+
+        typedef String MessageID;
+        typedef std::map<MessageID, ProcessedMessageNeedingUpdateInfo> MessageUpdateMap;
+
+
+        struct ProcessedMessageNeedingDataInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingDataInfo MessageNeedingDataInfo;
+
+          MessageNeedingDataInfo mInfo;
+          bool mSentRequest;
+
+          size_t mReceivedData;
+          SecureByteBlockPtr mBuffer;
+        };
+
+        typedef std::map<MessageID, ProcessedMessageNeedingDataInfo> MessageDataMap;
+
+        typedef DWORD ChannelID;
+        typedef std::map<ChannelID, MessageID> ChannelToMessageMap;
+
+        typedef std::pair<ChannelID, SecureByteBlockPtr> PendingChannelData;
+        typedef std::list<PendingChannelData> PendingChannelDataList;
 
       protected:
         ServicePushMailboxSession(
@@ -562,7 +594,10 @@ namespace openpeer
         bool stepShouldConnect();
         bool stepDNS();
         bool stepLockboxAccess();
+
         bool stepConnect();
+        bool stepRead();
+
         bool stepAccess();
 
         bool stepGrantLockClear();
@@ -571,9 +606,16 @@ namespace openpeer
 
         bool stepFullyConnected();
         bool stepRegisterQueries();
+
         bool stepRefreshFolders();
         bool stepCheckFoldersNeedingUpdate();
         bool stepFolderGet();
+
+        bool stepCheckMessagesNeedingUpdate();
+        bool stepMessagesMetaDataGet();
+
+        bool stepCheckMessagesNeedingData();
+        bool stepMessagesDataGet();
 
         bool stepBackgroundingReady();
 
@@ -595,6 +637,11 @@ namespace openpeer
         bool sendRequest(MessagePtr requestMessage);
 
         virtual void handleChanged(ChangedNotifyPtr notify);
+        virtual void handleChannelMessage(
+                                          DWORD channel,
+                                          SecureByteBlockPtr buffer
+                                          );
+        virtual void processChannelMessages();
 
       public:
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
@@ -681,8 +728,20 @@ namespace openpeer
 
         TimerPtr mNextFoldersUpdateTimer;
 
+        bool mRefreshFoldersNeedingUpdate;
         FolderUpdateMap mFoldersNeedingUpdate;
         FolderGetMonitorList mFolderGetMonitors;
+
+        bool mRefreshMessagesNeedingUpdate;
+        MessageUpdateMap mMessagesNeedingUpdate;
+        IMessageMonitorPtr mMessageMetaDataGetMonitor;
+
+        bool mRefreshMessagesNeedingData;
+        MessageDataMap mMessagesNeedingData;
+        ChannelToMessageMap mMessagesNeedingDataChannels;
+        IMessageMonitorPtr mMessageDataGetMonitor;
+
+        PendingChannelDataList mPendingChannelData;
       };
 
       //-----------------------------------------------------------------------
