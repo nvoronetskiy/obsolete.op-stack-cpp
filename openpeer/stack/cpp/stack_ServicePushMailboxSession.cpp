@@ -37,6 +37,8 @@
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
+#include <openpeer/stack/message/IMessageHelper.h>
+
 #include <openpeer/stack/message/bootstrapped-servers/ServersGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/AccessRequest.h>
 #include <openpeer/stack/message/push-mailbox/NamespaceGrantChallengeValidateRequest.h>
@@ -44,14 +46,20 @@
 #include <openpeer/stack/message/push-mailbox/RegisterPushRequest.h>
 #include <openpeer/stack/message/push-mailbox/FoldersGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/FolderGetRequest.h>
+#include <openpeer/stack/message/push-mailbox/FolderUpdateRequest.h>
 #include <openpeer/stack/message/push-mailbox/MessagesMetaDataGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/MessagesDataGetRequest.h>
 #include <openpeer/stack/message/push-mailbox/ListFetchRequest.h>
 #include <openpeer/stack/message/push-mailbox/ChangedNotify.h>
 
+#include <openpeer/stack/IPeer.h>
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePublic.h>
+#include <openpeer/stack/IPeerFilePrivate.h>
 
+#include <openpeer/services/IDHKeyDomain.h>
+#include <openpeer/services/IDHPrivateKey.h>
+#include <openpeer/services/IDHPublicKey.h>
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/ITCPMessaging.h>
@@ -63,7 +71,15 @@
 #include <zsLib/Stringize.h>
 
 #define OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME ".sent"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME "keys"
 
+#define OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN (-1)
+
+#define OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE "text/json"
+#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_RSA "RSA"
+#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_DH "DH"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_LENGTH (25)
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -79,6 +95,8 @@ namespace openpeer
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
+      typedef message::IMessageHelper IMessageHelper;
+
       ZS_DECLARE_USING_PTR(openpeer::services, IBackgrounding)
 
       ZS_DECLARE_USING_PTR(message::bootstrapped_servers, ServersGetRequest)
@@ -87,6 +105,7 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(message::push_mailbox, PeerValidateRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, FoldersGetRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, FolderGetRequest)
+      ZS_DECLARE_USING_PTR(message::push_mailbox, FolderUpdateRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, MessagesMetaDataGetRequest)
       ZS_DECLARE_USING_PTR(message::push_mailbox, MessagesDataGetRequest)
 
@@ -122,6 +141,43 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static String extractRawSendingKeyID(
+                                           const String &inKeyID,
+                                           bool &outIsDHKey
+                                           )
+      {
+        IHelper::SplitMap split;
+        IHelper::split(inKeyID, split, '-');
+        if (split.size() != 2) return String();
+
+        if (split[1] == OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_DH) {
+          outIsDHKey = true;
+        } else {
+          outIsDHKey = false;
+        }
+
+        return split[0];
+      }
+
+      //-----------------------------------------------------------------------
+      static String generateSendingKeyID()
+      {
+        return IHelper::randomString(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_LENGTH);
+      }
+
+      //-----------------------------------------------------------------------
+      static String makeDHSendingKeyID(const String &inKeyID)
+      {
+        return inKeyID + "-" + OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_DH;
+      }
+
+      //-----------------------------------------------------------------------
+      static String makeRSASendingKeyID(const String &inKeyID)
+      {
+        return inKeyID + "-" + OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_RSA;
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -135,6 +191,7 @@ namespace openpeer
                                                            BootstrappedNetworkPtr network,
                                                            IServicePushMailboxSessionDelegatePtr delegate,
                                                            IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                           AccountPtr account,
                                                            ServiceNamespaceGrantSessionPtr grantSession,
                                                            ServiceLockboxSessionPtr lockboxSession
                                                            ) :
@@ -150,6 +207,8 @@ namespace openpeer
 
         mSentViaObjectID(mID),
 
+        mAccount(account),
+
         mLockbox(lockboxSession),
         mGrantSession(grantSession),
 
@@ -164,11 +223,17 @@ namespace openpeer
 
         mRefreshFoldersNeedingUpdate(true),
 
+        mRefreshKeysAndSentFolder(true),
+        mKeysFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN),
+        mSentFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN),
+
         mRefreshMessagesNeedingUpdate(true),
 
         mRefreshMessagesNeedingData(true),
 
-        mRefreshListsNeedingDownload(true)
+        mRefreshListsNeedingDownload(true),
+
+        mRefreshKeysFolderNeedsProcessing(true)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -195,6 +260,7 @@ namespace openpeer
         mReachabilitySubscription = IReachability::subscribe(mThisWeak.lock());
 
         mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
+        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -225,13 +291,14 @@ namespace openpeer
                                                                      IServicePushMailboxSessionDelegatePtr delegate,
                                                                      IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                                      IServicePushMailboxPtr servicePushMailbox,
+                                                                     IAccountPtr account,
                                                                      IServiceNamespaceGrantSessionPtr grantSession,
                                                                      IServiceLockboxSessionPtr lockboxSession
                                                                      )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!databaseDelegate) // must not be NULL
 
-        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
+        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, Account::convert(account), ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -949,6 +1016,7 @@ namespace openpeer
           if (PushMessageFolderInfo::Disposition_Remove == info.mDisposition) {
             ZS_LOG_DEBUG(log("folder was removed") + ZS_PARAM("folder name", name))
             mDB->removeFolder(name);
+            mRefreshKeysAndSentFolder = true;
             continue;
           }
 
@@ -956,6 +1024,7 @@ namespace openpeer
             ZS_LOG_DEBUG(log("folder was renamed (removing old folder)") + ZS_PARAM("folder name", info.mName) + ZS_PARAM("new name", info.mRenamed))
             mDB->removeFolder(info.mName);
             name = info.mRenamed;
+            mRefreshKeysAndSentFolder = true;
           }
 
           ZS_LOG_DEBUG(log("folder was updated/added") + info.toDebug())
@@ -1014,6 +1083,7 @@ namespace openpeer
 
           mRefreshFolders = true;
           mRefreshFoldersNeedingUpdate = true;
+          mRefreshKeysAndSentFolder = true;
           mDB->setLastDownloadedVersionForFolders(String());
           mLastActivity = zsLib::now();
 
@@ -1046,6 +1116,25 @@ namespace openpeer
         ZS_LOG_DEBUG(log("folder update result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
+        if (mKeyFolderUpdateMonitor == monitor) {
+          mKeyFolderUpdateMonitor.reset();
+
+          ZS_LOG_DEBUG(log("key folder was updated"))
+          mRefreshFolders = true;
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return true;
+        }
+
+        if (mSentFolderUpdateMonitor == monitor) {
+          mSentFolderUpdateMonitor.reset();
+
+          ZS_LOG_DEBUG(log("sent folder was updated"))
+          mRefreshFolders = true;
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return true;
+        }
+
+        ZS_LOG_WARNING(Detail, log("received notification on obsolete monitor") + IMessageMonitor::toDebug(monitor))
         return false;
       }
 
@@ -1059,6 +1148,23 @@ namespace openpeer
         ZS_LOG_ERROR(Debug, log("folder update error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
+        if (mKeyFolderUpdateMonitor == monitor) {
+          mKeyFolderUpdateMonitor.reset();
+
+          ZS_LOG_ERROR(Detail, log("failed to update keys folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+          connectionFailure();
+          return true;
+        }
+
+        if (mSentFolderUpdateMonitor == monitor) {
+          mSentFolderUpdateMonitor.reset();
+
+          ZS_LOG_ERROR(Detail, log("failed to update sent folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+          connectionFailure();
+          return true;
+        }
+
+        ZS_LOG_WARNING(Detail, log("received notification on obsolete monitor") + IMessageMonitor::toDebug(monitor))
         return false;
       }
       
@@ -1107,7 +1213,7 @@ namespace openpeer
         }
 
         if (originalFolderInfo.mVersion != updateInfo.mInfo.mDownloadedVersion) {
-          ZS_LOG_WARNING(Detail, log("received information about folder update but folder versions conflict") + originalFolderInfo.toDebug() + ZS_PARAM("expecting", updateInfo.mInfo.mDownloadedVersion))
+          ZS_LOG_WARNING(Detail, log("received information about folder update but folder version conflict") + originalFolderInfo.toDebug() + ZS_PARAM("expecting", updateInfo.mInfo.mDownloadedVersion))
           return true;
         }
 
@@ -1140,6 +1246,8 @@ namespace openpeer
         }
 
         mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, folderInfo.mVersion, folderInfo.mUpdateNext);
+
+        mFoldersNeedingUpdate.erase(foundNeedingUpdate);
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
@@ -1187,6 +1295,7 @@ namespace openpeer
               // this folder conflicted, purge it and reload it
               mDB->removeAllMessagesFromFolder(updateInfo.mInfo.mIndex);
               mDB->removeAllVersionedMessagesFromFolder(updateInfo.mInfo.mIndex);
+              mDB->resetFolderUniqueID(updateInfo.mInfo.mIndex);
 
               mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, String(), zsLib::now());
             } else {
@@ -1207,7 +1316,6 @@ namespace openpeer
         }
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-
         return true;
       }
 
@@ -1414,6 +1522,7 @@ namespace openpeer
           }
 
           mRefreshListsNeedingDownload = true;
+          mRefreshKeysFolderNeedsProcessing = true;
 
           // clear out the message since it's been processed
           mMessagesNeedingUpdate.erase(found);
@@ -1700,6 +1809,12 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
         IHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
 
+        IHelper::debugAppend(resultEl, "refresh keys and sent folder", mRefreshKeysAndSentFolder);
+        IHelper::debugAppend(resultEl, "keys folder index", string(mKeysFolderIndex));
+        IHelper::debugAppend(resultEl, "send folder index", string(mSentFolderIndex));
+        IHelper::debugAppend(resultEl, "key folder update monitor", mKeyFolderUpdateMonitor ? mKeyFolderUpdateMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "sent folder update monitor", mSentFolderUpdateMonitor ? mSentFolderUpdateMonitor->getID() : 0);
+
         IHelper::debugAppend(resultEl, "refresh messages needing update", mRefreshMessagesNeedingUpdate);
         IHelper::debugAppend(resultEl, "messages needing update", mMessagesNeedingUpdate.size());
         IHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageMetaDataGetMonitor ? mMessageMetaDataGetMonitor->getID() : 0);
@@ -1714,6 +1829,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "refresh lists needing download", mRefreshListsNeedingDownload);
         IHelper::debugAppend(resultEl, "lists to download", mListsNeedingDownload.size());
         IHelper::debugAppend(resultEl, "list fetch monitor", mListFetchMonitor ? mListFetchMonitor->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "refresh keys folder needs processing", mRefreshKeysFolderNeedsProcessing);
 
         return resultEl;
       }
@@ -1752,6 +1869,8 @@ namespace openpeer
         if (!stepCheckFoldersNeedingUpdate()) goto post_step;
         if (!stepFolderGet()) goto post_step;
 
+        if (!stepMakeKeysAndSentFolders()) goto post_step;
+
         if (!stepCheckMessagesNeedingUpdate()) goto post_step;
         if (!stepMessagesMetaDataGet()) goto post_step;
 
@@ -1760,6 +1879,8 @@ namespace openpeer
 
         if (!stepCheckListNeedingDownload()) goto post_step;
         if (!stepListFetch()) goto post_step;
+
+        if (!stepProcessKeysFolder()) goto post_step;
 
         if (!stepBackgroundingReady()) goto post_step;
 
@@ -2384,12 +2505,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepCheckFoldersNeedingUpdate()
       {
-        if (mFoldersGetMonitor) {
-          ZS_LOG_TRACE(log("will not update checked folders while folders get is outstanding"))
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateList FolderNeedingUpdateList;
+
+        if (isFolderListUpdating()) {
+          ZS_LOG_TRACE(log("will not update checked folders while updating folders list"))
           return true;
         }
-
-        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateList FolderNeedingUpdateList;
 
         if (mFolderGetMonitors.size() > 0) {
           ZS_LOG_TRACE(log("cannot check for folders needing update while folder get requests are outstanding"))
@@ -2440,8 +2561,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepFolderGet()
       {
-        if (mFoldersGetMonitor) {
-          ZS_LOG_TRACE(log("will not update checked folders while folders get is outstanding"))
+        if (isFolderListUpdating()) {
+          ZS_LOG_TRACE(log("will not issue folder get while updating folders list"))
           return true;
         }
 
@@ -2454,11 +2575,7 @@ namespace openpeer
           ProcessedFolderNeedingUpdateInfo &info = (*current).second;
 
           if (info.mSentRequest) {
-            ZS_LOG_TRACE(log("folder already being updated (or completed)") + ZS_PARAM("folder name", name))
-            if (mFolderGetMonitors.size() < 1) { // all monitors are complete thus can purge this folder from the list
-              ZS_LOG_DEBUG(log("purging folder needing update that is already completed") + ZS_PARAM("folder name", name))
-              mFoldersNeedingUpdate.erase(current);
-            }
+            ZS_LOG_TRACE(log("folder already being updated") + ZS_PARAM("folder name", name))
             continue;
           }
 
@@ -2484,13 +2601,86 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepMakeKeysAndSentFolders()
+      {
+        if ((isFolderListUpdating()) ||
+            (areAnyFoldersUpdating())) {
+          ZS_LOG_TRACE(log("will not attempt to create keys and sent folder if still updating folders"))
+          return true;
+        }
+
+        if ((mKeyFolderUpdateMonitor) ||
+            (mSentFolderUpdateMonitor)) {
+          ZS_LOG_TRACE(log("still waiting on keys and send folder"))
+          return true;
+        }
+
+        if (!mRefreshKeysAndSentFolder) {
+          ZS_LOG_TRACE(log("no need to refresh keys and sent folder at this time"))
+          return true;
+        }
+
+        int oldKeysIndex = mKeysFolderIndex;
+        int oldSendIndex = mSentFolderIndex;
+
+        mKeysFolderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        mSentFolderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+
+        mDB->getFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME, mKeysFolderIndex);
+        mDB->getFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME, mSentFolderIndex);
+
+        if (oldKeysIndex != mKeysFolderIndex) {
+          ZS_LOG_TRACE(log("keys folder needs processing"))
+          mRefreshKeysFolderNeedsProcessing = true;
+        }
+
+        if (oldSendIndex != mSentFolderIndex) {
+          ZS_LOG_TRACE(log("sent folder needs processing"))
+#define WARNING_TODO_SENT_FOLDER_NEEDS_PROCESSING 1
+#define WARNING_TODO_SENT_FOLDER_NEEDS_PROCESSING 2
+        }
+
+        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) {
+          ZS_LOG_DEBUG(log("creating keys folder on server") + ZS_PARAM("folder name", OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME))
+
+          FolderUpdateRequestPtr request = FolderUpdateRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+
+          PushMessageFolderInfo info;
+          info.mDisposition = PushMessageFolderInfo::Disposition_Update;
+          info.mName = OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME;
+
+          request->folderInfo(info);
+
+          mKeyFolderUpdateMonitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        }
+
+        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mSentFolderIndex) {
+          ZS_LOG_DEBUG(log("creating sent folder on server") + ZS_PARAM("folder name", OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME))
+
+          FolderUpdateRequestPtr request = FolderUpdateRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+
+          PushMessageFolderInfo info;
+          info.mDisposition = PushMessageFolderInfo::Disposition_Update;
+          info.mName = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
+
+          request->folderInfo(info);
+
+          mSentFolderUpdateMonitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepCheckMessagesNeedingUpdate()
       {
         typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingUpdateList MessageNeedingUpdateList;
         typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingUpdateInfo MessageNeedingUpdateInfo;
 
-        if ((mFoldersGetMonitor) ||
-            (mFolderGetMonitors.size() > 0)) {
+        if ((isFolderListUpdating()) ||
+            (areAnyFoldersUpdating())) {
           ZS_LOG_TRACE(log("will not download message while folders are updating"))
           return true;
         }
@@ -2510,7 +2700,7 @@ namespace openpeer
 
         if (updateList.size() < 1) {
           ZS_LOG_DEBUG(log("no messages are requiring an update right now"))
-          mRefreshFoldersNeedingUpdate = true;
+          mRefreshFoldersNeedingUpdate = false;
           return true;
         }
 
@@ -2541,8 +2731,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepMessagesMetaDataGet()
       {
-        if ((mFoldersGetMonitor) ||
-            (mFolderGetMonitors.size() > 0)) {
+        if ((isFolderListUpdating()) ||
+            (areAnyFoldersUpdating())) {
           ZS_LOG_TRACE(log("will not download message while folders are updating"))
           return true;
         }
@@ -2590,9 +2780,9 @@ namespace openpeer
         typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingDataList MessageNeedingDataList;
         typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingDataInfo MessageNeedingDataInfo;
 
-        if ((mFoldersGetMonitor) ||
-            (mFolderGetMonitors.size() > 0)) {
-          ZS_LOG_TRACE(log("will not download message while folders are updating"))
+        if ((isFolderListUpdating()) ||
+            (areAnyFoldersUpdating())) {
+          ZS_LOG_TRACE(log("will not download message data while folders are updating"))
           return true;
         }
 
@@ -2644,9 +2834,9 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepMessagesDataGet()
       {
-        if ((mFoldersGetMonitor) ||
-            (mFolderGetMonitors.size() > 0)) {
-          ZS_LOG_TRACE(log("will not download message while folders are updating"))
+        if ((isFolderListUpdating()) ||
+            (areAnyFoldersUpdating())) {
+          ZS_LOG_TRACE(log("will not download message data while folders are updating"))
           return true;
         }
 
@@ -2783,7 +2973,710 @@ namespace openpeer
         request->listIDs(fetchList);
 
         mListFetchMonitor = sendRequest(IMessageMonitorResultDelegate<ListFetchResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::extractKeyingBundle(
+                                                          SecureByteBlockPtr buffer,
+                                                          KeyingBundle &outBundle
+                                                          )
+      {
+        if (!buffer) {
+          ZS_LOG_WARNING(Detail, log("extract failed as data buffer was null"))
+          return false;
+        }
+
+        const char *bufferStr = (CSTR)(buffer->BytePtr());
+
+        DocumentPtr document = Document::createFromAutoDetect(bufferStr);
+        if (!document) {
+          ZS_LOG_WARNING(Detail, log("failed to parse document") + ZS_PARAM("json", bufferStr))
+          return false;
+        }
+
+        try {
+          ElementPtr keyingBundleEl = document->findFirstChildElementChecked("keyingBundle");
+          ElementPtr keyingEl = keyingBundleEl->findFirstChildElementChecked("keying");
+
+          outBundle.mReferencedKeyID = IMessageHelper::getAttributeID(keyingEl);
+          if (outBundle.mReferencedKeyID.isEmpty()) {
+            ZS_LOG_WARNING(Detail, log("missing referenced key ID in keying bundle"))
+            return false;
+          }
+
+          outBundle.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(keyingEl->findFirstChildElementChecked("expires")));
+
+          outBundle.mType = IMessageHelper::getElementText(keyingEl->findFirstChildElementChecked("type"));
+          if (outBundle.mType.isEmpty()) {
+            ZS_LOG_WARNING(Detail, log("missing keying type in keying bundle"))
+            return false;
+          }
+
+          outBundle.mMode = IMessageHelper::getElementText(keyingEl->findFirstChildElement("mode"));
+          outBundle.mMode = IMessageHelper::getElementText(keyingEl->findFirstChildElement("agreement"));
+          outBundle.mSecret = IMessageHelper::getElementText(keyingEl->findFirstChildElement("secret"));
+
+          if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI == outBundle.mType) {
+            if (outBundle.mSecret.isEmpty()) {
+              ZS_LOG_WARNING(Detail, log("missing keying secret in keying bundle"))
+              return false;
+            }
+          }
+
+          if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT == outBundle.mType) {
+            if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_REQUEST_OFFER != outBundle.mMode) {
+              if (outBundle.mAgreement.isEmpty()) {
+                ZS_LOG_WARNING(Detail, log("missing keying agreement information in keying bundle"))
+                return false;
+              }
+            }
+            if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER == outBundle.mMode) {
+              if (outBundle.mSecret.isEmpty()) {
+                ZS_LOG_WARNING(Detail, log("missing keying secret in keying bundle"))
+                return false;
+              }
+            }
+          }
+
+          IPeerPtr peer = IPeer::getFromSignature(Account::convert(mAccount.lock()), keyingEl);
+          if (!peer) {
+            ZS_LOG_WARNING(Detail, log("cannot process keying material from unknown peer"))
+            return false;
+          }
+
+          if (!peer->verifySignature(keyingEl)) {
+            ZS_LOG_WARNING(Detail, log("peer signature did not validate"))
+            return false;
+          }
+
+          outBundle.mValidationPeer = peer;
+
+        } catch (CheckFailed &) {
+          ZS_LOG_WARNING(Detail, log("expecting element which was missing in keying bundle"))
+          return false;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ServicePushMailboxSession::createKeyingBundle(const KeyingBundle &inBundle)
+      {
+        ElementPtr keyingBundleEl = Element::create("keyingBundle");
+        ElementPtr keyingEl = IMessageHelper::createElementWithID("keying", inBundle.mReferencedKeyID);
+
+        if (Time() != inBundle.mExpires) {
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(inBundle.mExpires)));
+        }
+
+        if (inBundle.mType.hasData()) {
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", inBundle.mType));
+        }
+        if (inBundle.mMode.hasData()) {
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("mode", inBundle.mMode));
+        }
+        if (inBundle.mAgreement.hasData()) {
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("agreement", inBundle.mAgreement));
+        }
+        if (inBundle.mSecret.hasData()) {
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("secret", inBundle.mSecret));
+        }
+
+        keyingBundleEl->adoptAsLastChild(keyingEl);
+
+        if (!mPeerFiles) {
+          ZS_LOG_WARNING(Detail, log("peer files missing"))
+          return ElementPtr();
+        }
+
+        IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
+
+        peerFilePrivate->signElement(keyingEl);
         
+        return keyingBundleEl;
+      }
+      
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSession::extractRSA(const String &secret)
+      {
+        IHelper::SplitMap parts;
+        IHelper::split(secret, parts, ':');
+        if (parts.size() != 3) {
+          ZS_LOG_WARNING(Detail, log("failed to extract RSA encrypted key") + ZS_PARAM("secret", secret))
+          return String();
+        }
+
+        String salt = parts[0];
+        String proof = parts[1];
+        SecureByteBlockPtr encrytpedPassword = IHelper::convertFromBase64(parts[2]);
+
+        if (!encrytpedPassword) {
+          ZS_LOG_WARNING(Detail, log("failed to extract encrypted password") + ZS_PARAM("secret", secret))
+          return String();
+        }
+
+        ZS_THROW_BAD_STATE_IF(!mPeerFiles)
+
+        IPeerFilePrivatePtr peerFilePrivate = mPeerFiles->getPeerFilePrivate();
+
+        if (!peerFilePrivate) {
+          ZS_LOG_WARNING(Detail, log("failed to obtain peer file private"))
+          return String();
+        }
+
+        SecureByteBlockPtr passphrase = peerFilePrivate->decrypt(*encrytpedPassword);
+        if (!passphrase) {
+          ZS_LOG_WARNING(Detail, log("failed to decrypt passphrase with RSA private key"))
+          return String();
+        }
+
+        String resultPassphrase = IHelper::convertToString(*passphrase);
+
+        String calculatedProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(resultPassphrase), "proof:" + salt, IHelper::HashAlgorthm_SHA1));
+        if (calculatedProof != proof) {
+          ZS_LOG_WARNING(Detail, log("proof for RSA key does not match") + ZS_PARAM("proof", proof) + ZS_PARAM("calculated proof", calculatedProof))
+          return String();
+        }
+
+        return resultPassphrase;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::prepareDHKeyDomain(
+                                                         int inKeyDomain,
+                                                         IDHKeyDomainPtr &outKeyDomain,
+                                                         SecureByteBlockPtr &outStaticPrivateKey,
+                                                         SecureByteBlockPtr &outStaticPublicKey
+                                                         )
+      {
+        String staticPrivateKeyStr;
+        String staticPublicKeyStr;
+        if (mDB->getKeyDomain(inKeyDomain, staticPrivateKeyStr, staticPublicKeyStr)) {
+          outStaticPrivateKey = IHelper::convertFromBase64(staticPrivateKeyStr);
+          outStaticPublicKey = IHelper::convertFromBase64(staticPublicKeyStr);
+        }
+
+        if ((outStaticPrivateKey) &&
+            (outStaticPublicKey)) {
+          ZS_LOG_TRACE(log("loaded existing static private/public key") + ZS_PARAM("key domain", inKeyDomain))
+          return true;
+        }
+
+        IDHKeyDomainPtr keyDomain = IDHKeyDomain::loadPrecompiled((IDHKeyDomain::KeyDomainPrecompiledTypes)inKeyDomain);
+        if (!keyDomain) {
+          ZS_LOG_WARNING(Detail, log("failed to load existing key domain") + ZS_PARAM("key domain", inKeyDomain))
+          return false;
+        }
+
+        outKeyDomain = keyDomain;
+
+        IDHPublicKeyPtr publicKey;
+        IDHPrivateKeyPtr privateKey = IDHPrivateKey::generate(keyDomain, publicKey);
+
+        if ((!privateKey) ||
+            (!publicKey)) {
+          ZS_LOG_WARNING(Detail, log("failed to generate new DH static keys for key domain") + ZS_PARAM("key domain", inKeyDomain))
+          return false;
+        }
+
+        outStaticPrivateKey = SecureByteBlockPtr(new SecureByteBlock);
+        outStaticPublicKey = SecureByteBlockPtr(new SecureByteBlock);
+
+        SecureByteBlock ephemeralPrivateKey;
+        privateKey->save(&(*outStaticPrivateKey), &ephemeralPrivateKey);
+
+        SecureByteBlock ephemeralPublicKey;
+        publicKey->save(&(*outStaticPublicKey), &ephemeralPublicKey);
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(!outStaticPrivateKey)
+        ZS_THROW_INVALID_ASSUMPTION_IF(!outStaticPublicKey)
+
+        mDB->addKeyDomain(inKeyDomain, IHelper::convertToBase64(*outStaticPrivateKey), IHelper::convertToBase64(*outStaticPublicKey));
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::prepareDHKeys(
+                                                    int inKeyDomain,
+                                                    const String &inEphemeralPrivateKey,
+                                                    const String &inEphemeralPublicKey,
+                                                    IDHPrivateKeyPtr &outPrivateKey,
+                                                    IDHPublicKeyPtr &outPublicKey
+                                                    )
+      {
+        if ((inEphemeralPrivateKey.isEmpty()) ||
+            (inEphemeralPublicKey.isEmpty())) {
+          ZS_LOG_WARNING(Detail, log("ephemeral keys missing values") + ZS_PARAM("ephemeral private key", inEphemeralPrivateKey) + ZS_PARAM("inEphemeralPublicKey", inEphemeralPublicKey))
+          return false;
+        }
+
+        SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(inEphemeralPrivateKey);
+        SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(inEphemeralPublicKey);
+
+        if ((!ephemeralPrivateKey) ||
+            ((!ephemeralPublicKey))) {
+          ZS_LOG_WARNING(Detail, log("ephemeral keys failed to decode") + ZS_PARAM("ephemeral private key", inEphemeralPrivateKey) + ZS_PARAM("inEphemeralPublicKey", inEphemeralPublicKey))
+          return false;
+        }
+
+        IDHKeyDomainPtr keyDomain;
+        SecureByteBlockPtr staticPrivateKey;
+        SecureByteBlockPtr staticPublicKey;
+        if (!prepareDHKeyDomain(inKeyDomain, keyDomain, staticPrivateKey, staticPublicKey)) {
+          ZS_LOG_WARNING(Detail, log("failed to load static keys for key domain") + ZS_PARAM("key domain", inKeyDomain))
+          return false;
+        }
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(!keyDomain)
+        ZS_THROW_INVALID_ASSUMPTION_IF(!staticPrivateKey)
+        ZS_THROW_INVALID_ASSUMPTION_IF(!staticPublicKey)
+
+        outPrivateKey = IDHPrivateKey::load(keyDomain, *staticPrivateKey, *ephemeralPrivateKey);
+        outPublicKey = IDHPublicKey::load(*staticPublicKey, *ephemeralPublicKey);
+
+        return (outPrivateKey) && (outPublicKey);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::prepareNewDHKeys(
+                                                       const char *inKeyDomainStr,
+                                                       int &outKeyDomain,
+                                                       String &outEphemeralPrivateKey,
+                                                       String &outEphemeralPublicKey,
+                                                       IDHPrivateKeyPtr &outPrivateKey,
+                                                       IDHPublicKeyPtr &outPublicKey
+                                                       )
+      {
+        int inKeyDomain = (int)IDHKeyDomain::KeyDomainPrecompiledType_Unknown;
+        if (NULL != inKeyDomainStr) {
+          inKeyDomain = (int)IDHKeyDomain::fromNamespace(inKeyDomainStr);
+        }
+
+        if (((int)IDHKeyDomain::KeyDomainPrecompiledType_Unknown) == inKeyDomain) {
+          inKeyDomain = (int)IDHKeyDomain::fromNamespace(services::ISettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DEFAULT_DH_KEY_DOMAIN));
+        }
+
+        outKeyDomain = inKeyDomain;
+
+        SecureByteBlockPtr staticPrivateKey;
+        SecureByteBlockPtr staticPublicKey;
+
+        IDHKeyDomainPtr keyDomain;
+        if (!prepareDHKeyDomain(inKeyDomain, keyDomain, staticPrivateKey, staticPublicKey)) {
+          ZS_LOG_WARNING(Detail, log("failed to load key domain") + ZS_PARAM("domain", inKeyDomain))
+          return false;
+        }
+
+        outPrivateKey = IDHPrivateKey::loadAndGenerateNewEphemeral(keyDomain, *staticPrivateKey, *staticPublicKey, outPublicKey);
+
+        if (outPrivateKey) {
+          SecureByteBlock staticPrivateKeyBuffer;
+          SecureByteBlock ephemeralPrivateKeyBuffer;
+
+          outPrivateKey->save(&staticPrivateKeyBuffer, &ephemeralPrivateKeyBuffer);
+
+          outEphemeralPrivateKey = IHelper::convertToBase64(ephemeralPrivateKeyBuffer);
+        }
+        if (outPublicKey) {
+          SecureByteBlock staticPublicKeyBuffer;
+          SecureByteBlock ephemeralPublicKeyBuffer;
+
+          outPublicKey->save(&staticPublicKeyBuffer, &ephemeralPublicKeyBuffer);
+
+          outEphemeralPublicKey = IHelper::convertToBase64(ephemeralPublicKeyBuffer);
+        }
+
+        return (outEphemeralPrivateKey.hasData()) &&
+               (outEphemeralPublicKey.hasData()) &&
+               (outPrivateKey) &&
+               (outPublicKey);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::extractDHFromAgreement(
+                                                             const String &agreement,
+                                                             int &outKeyDomain,
+                                                             IDHPublicKeyPtr &outPublicKey
+                                                             )
+      {
+        IHelper::SplitMap split;
+        IHelper::split(agreement, split, ':');
+        if (split.size() != 3) {
+          ZS_LOG_WARNING(Detail, log("cannot split agrement properly") + ZS_PARAM("agreement", agreement))
+          return false;
+        }
+
+        String domain = IHelper::convertToString(*IHelper::convertFromBase64(split[0]));
+
+        IDHKeyDomain::KeyDomainPrecompiledTypes precompiledKeyDomain = IDHKeyDomain::fromNamespace(domain);
+        if (IDHKeyDomain::KeyDomainPrecompiledType_Unknown == precompiledKeyDomain) {
+          ZS_LOG_WARNING(Detail, log("cannot extract a known key domain") + ZS_PARAM("agreement", agreement) + ZS_PARAM("domain", domain))
+          return false;
+        }
+
+        SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(split[1]);
+        SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(split[2]);
+
+        outPublicKey = IDHPublicKey::load(*staticPublicKey, *ephemeralPublicKey);
+
+        return (bool)outPublicKey;
+      }
+      
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::sendKeyingBundle(
+                                                       const String &toURI,
+                                                       const KeyingBundle &inBundle
+                                                       )
+      {
+        ElementPtr keyingBundleEl = createKeyingBundle(inBundle);
+        if (!keyingBundleEl) {
+          ZS_LOG_WARNING(Detail, log("unable to create keying bundle"))
+          return false;
+        }
+
+#define SEND_BUNDLE_TO_REMOTE_PARTY 1
+#define SEND_BUNDLE_TO_REMOTE_PARTY 2
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::sendOfferRequestExisting(
+                                                               const String &toURI,
+                                                               const String &keyID,
+                                                               int inKeyDomain,
+                                                               IDHPublicKeyPtr publicKey,
+                                                               Time expires
+                                                               )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!publicKey)
+
+        KeyingBundle bundle;
+        bundle.mReferencedKeyID = keyID;
+        bundle.mType = OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT;
+        bundle.mMode = OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING;
+        String domain = IDHKeyDomain::toNamespace((IDHKeyDomain::KeyDomainPrecompiledTypes)inKeyDomain);
+
+        SecureByteBlock staticPublicKey;
+        SecureByteBlock ephemeralPublicKey;
+        publicKey->save(&staticPublicKey, &ephemeralPublicKey);
+        bundle.mAgreement = IHelper::convertToBase64(domain) + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+
+        return sendKeyingBundle(toURI, bundle);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::sendPKI(
+                                              const String &toURI,
+                                              const String &keyID,
+                                              const String &passphrase,
+                                              IPeerPtr validationPeer,
+                                              Time expires
+                                              )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!validationPeer)
+
+        KeyingBundle bundle;
+        bundle.mReferencedKeyID = keyID;
+        bundle.mType = OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI;
+
+        IPeerFilePublicPtr peerFilePublic = validationPeer->getPeerFilePublic();
+        if (!peerFilePublic) {
+          ZS_LOG_WARNING(Detail, log("peer file of remote peer is not known thus can't encrypt passphrase") + ZS_PARAM("to", toURI) + ZS_PARAM("validation peer", validationPeer->getPeerURI()))
+          return false;
+        }
+
+        SecureByteBlockPtr encryptedPassphrase = peerFilePublic->encrypt(*IHelper::convertToBuffer(passphrase));
+
+        String salt = IHelper::randomString(20);
+        String proof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(passphrase), "proof:" + salt, IHelper::HashAlgorthm_SHA1));
+
+        bundle.mSecret = salt + ":" + proof + ":" + IHelper::convertToBase64(*encryptedPassphrase);
+
+        return sendKeyingBundle(toURI, bundle);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::sendAnswer(
+                                                 const String &toURI,
+                                                 const String &keyID,
+                                                 const String &passphrase,
+                                                 const String &remoteAgreement,
+                                                 int inKeyDomain,
+                                                 IDHPrivateKeyPtr privateKey,
+                                                 IDHPublicKeyPtr publicKey,
+                                                 Time expires
+                                                 )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!privateKey)
+        ZS_THROW_INVALID_ARGUMENT_IF(!publicKey)
+
+        KeyingBundle bundle;
+        bundle.mReferencedKeyID = keyID;
+        bundle.mType = OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT;
+        bundle.mMode = OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER;
+        String domain = IDHKeyDomain::toNamespace((IDHKeyDomain::KeyDomainPrecompiledTypes)inKeyDomain);
+
+        SecureByteBlock staticPublicKey;
+        SecureByteBlock ephemeralPublicKey;
+        publicKey->save(&staticPublicKey, &ephemeralPublicKey);
+        bundle.mAgreement = IHelper::convertToBase64(domain) + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+
+        int remoteKeyDomain = (int)IDHKeyDomain::KeyDomainPrecompiledType_Unknown;
+        IDHPublicKeyPtr remotePublicKey;
+        if (!extractDHFromAgreement(remoteAgreement, remoteKeyDomain, remotePublicKey)) {
+          ZS_LOG_WARNING(Detail, log("failed to extract remote DH agrement information") + ZS_PARAM("agreement", remoteAgreement))
+          return false;
+        }
+
+        if (remoteKeyDomain != inKeyDomain) {
+          ZS_LOG_WARNING(Detail, log("key domains do not match thus cannot answer") + ZS_PARAM("agreement", remoteAgreement) + ZS_PARAM("key domain", inKeyDomain) + ZS_PARAM("remote key domain", remoteKeyDomain))
+          return false;
+        }
+
+        SecureByteBlockPtr agreementKey = privateKey->getSharedSecret(remotePublicKey);
+
+        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(IHelper::convertToHex(*agreementKey)), "push-mailbox:", IHelper::HashAlgorthm_SHA256);
+
+        bundle.mSecret = stack::IHelper::splitEncrypt(*key, *IHelper::convertToBuffer(passphrase));
+
+        return sendKeyingBundle(toURI, bundle);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepProcessKeysFolder()
+      {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingKeyingProcessingInfo MessagesNeedingKeyingProcessingInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingKeyingProcessingList MessagesNeedingKeyingProcessingList;
+
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::ReceivingKeyInfo ReceivingKeyInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::SendingKeyInfo SendingKeyInfo;
+
+        if (!areKeysAndSentFolderReady()) {
+          ZS_LOG_TRACE(log("cannot process keys folder until keys and sent folder are ready"))
+          return true;
+        }
+
+        if (!mRefreshKeysFolderNeedsProcessing) {
+          ZS_LOG_TRACE(log("no need to process keys folder at this time"))
+          return true;
+        }
+
+        UseAccountPtr account = mAccount.lock();
+        if (!account) {
+          ZS_LOG_WARNING(Detail, log("cannot process messages while account is gone"))
+          cancel();
+          return true;
+        }
+
+        MessagesNeedingKeyingProcessingList messages;
+        mDB->getBatchOfMessagesNeedingKeysProcessing(mKeysFolderIndex, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, messages);
+
+        if (messages.size() < 1) {
+          ZS_LOG_DEBUG(log("no keys in keying folder needing processing at this time"))
+          mRefreshKeysFolderNeedsProcessing = false;
+          return true;
+        }
+
+        for (MessagesNeedingKeyingProcessingList::iterator iter = messages.begin(); iter != messages.end(); ++iter)
+        {
+          MessagesNeedingKeyingProcessingInfo &info = (*iter);
+
+          // scope
+          {
+            if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE != info.mEncoding) {
+              ZS_LOG_WARNING(Detail, log("failed to extract information from keying bundle") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("encoding", "info.mEncoding") + ZS_PARAM("expecting", OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE))
+              goto post_processing;
+            }
+
+            KeyingBundle bundle;
+            if (!extractKeyingBundle(info.mData, bundle)) {
+              ZS_LOG_WARNING(Detail, log("failed to extract information from keying bundle") + ZS_PARAM("message index", info.mMessageIndex))
+              goto post_processing;
+            }
+
+            if (info.mFrom != bundle.mValidationPeer->getPeerURI()) {
+              ZS_LOG_WARNING(Detail, log("can only accept keying material if the \"from\" is the same as the signing peer"))
+              goto post_processing;
+            }
+
+            if (zsLib::now() > bundle.mExpires) {
+              ZS_LOG_WARNING(Detail, log("this key has already expired (thus do not process)"))
+              goto post_processing;
+            }
+
+            if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI == bundle.mType) {
+              ReceivingKeyInfo receivingInfo;
+
+              if (mDB->getReceivingKey(bundle.mReferencedKeyID, receivingInfo)) {
+                ZS_LOG_DEBUG(log("found existing key thus no need to process again") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("uri", receivingInfo.mURI) + ZS_PARAM("passphrase", receivingInfo.mPassphrase) + ZS_PARAM("ephemeral private key", receivingInfo.mDHEphemerialPrivateKey) + ZS_PARAM("ephemeral public key", receivingInfo.mDHEphemerialPublicKey) + ZS_PARAM("expires", receivingInfo.mExpires))
+                goto post_processing;
+              }
+
+              receivingInfo.mPassphrase = extractRSA(bundle.mSecret);
+              if (receivingInfo.mPassphrase.isEmpty()) {
+                ZS_LOG_WARNING(Detail, log("failed to extract RSA keying material") + ZS_PARAM("message index", info.mMessageIndex))
+                goto post_processing;
+              }
+
+              receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+              receivingInfo.mKeyID = bundle.mReferencedKeyID;
+              receivingInfo.mURI = info.mFrom;
+              receivingInfo.mExpires = bundle.mExpires;
+
+              mDB->addOrUpdateReceivingKey(receivingInfo);
+            }
+
+            if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT == bundle.mType) {
+              IDHPrivateKeyPtr privateKey;
+              IDHPublicKeyPtr publicKey;
+
+              if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_REQUEST_OFFER == bundle.mMode) {
+                // L <-- (request offer) <-- R
+                // L --> (offer request existing) --> R
+                // L <-- (answer) <-- R (remote sending passphrase)
+
+                ReceivingKeyInfo receivingInfo;
+
+                if (mDB->getReceivingKey(bundle.mReferencedKeyID, receivingInfo)) {
+                  ZS_LOG_DEBUG(log("found existing key") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("uri", receivingInfo.mURI) + ZS_PARAM("passphrase", receivingInfo.mPassphrase) + ZS_PARAM("ephemeral private key", receivingInfo.mDHEphemerialPrivateKey) + ZS_PARAM("ephemeral public key", receivingInfo.mDHEphemerialPublicKey) + ZS_PARAM("expires", receivingInfo.mExpires))
+
+                  if (receivingInfo.mURI != bundle.mValidationPeer->getPeerURI()) {
+                    ZS_LOG_WARNING(Detail, log("referenced key is not signed by from peer (thus do not respond)") + ZS_PARAM("existing key peer uri", receivingInfo.mURI) + IPeer::toDebug(bundle.mValidationPeer))
+                    goto post_processing;
+                  }
+
+                  if (zsLib::now() > receivingInfo.mExpires) {
+                    ZS_LOG_WARNING(Detail, log("referenced key is expired") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("expires", receivingInfo.mExpires))
+                    goto post_processing;
+                  }
+
+                  if (!prepareDHKeys(receivingInfo.mKeyDomain, receivingInfo.mDHEphemerialPrivateKey, receivingInfo.mDHEphemerialPublicKey, privateKey, publicKey)) {
+                    ZS_LOG_WARNING(Detail, log("referenced key cannot load DH keying material") + ZS_PARAM("key id", bundle.mReferencedKeyID))
+                    goto post_processing;
+                  }
+                } else {
+                  ZS_LOG_DEBUG(log("existing receiving key not found thus create one"))
+
+                  if (!prepareNewDHKeys(NULL, receivingInfo.mKeyDomain, receivingInfo.mDHEphemerialPrivateKey, receivingInfo.mDHEphemerialPublicKey, privateKey, publicKey)) {
+                    ZS_LOG_WARNING(Detail, log("failed to generate new DH ephemeral keys"))
+                    goto post_processing;
+                  }
+
+                  receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+                  receivingInfo.mKeyID = bundle.mReferencedKeyID;
+                  receivingInfo.mURI = info.mFrom;
+                  receivingInfo.mExpires = bundle.mExpires;
+
+                  mDB->addOrUpdateReceivingKey(receivingInfo);
+                }
+
+                // remote party has a sending passphrase and this peer needs for the passphrase for receiving
+                sendOfferRequestExisting(info.mFrom, bundle.mReferencedKeyID, receivingInfo.mKeyDomain, publicKey, receivingInfo.mExpires);
+
+              } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING == bundle.mMode) {
+                // L <-- (offer request existing) <-- R
+                // L --> (answer) --> R (local sending passphrase)
+
+                // remote party needs a passphrase for receiving and this peer sends its sending passphrase
+                bool isDHKey = false;
+                String rawKeyID = extractRawSendingKeyID(bundle.mReferencedKeyID, isDHKey);
+
+                SendingKeyInfo sendingInfo;
+                if (!mDB->getSendingKey(rawKeyID, sendingInfo)) {
+                  ZS_LOG_WARNING(Detail, log("sending key is not known on this device") + ZS_PARAM("key id", bundle.mReferencedKeyID))
+                  goto post_processing;
+                }
+
+                if (!isDHKey) {
+                  sendPKI(info.mFrom, bundle.mReferencedKeyID, sendingInfo.mRSAPassphrase, bundle.mValidationPeer, sendingInfo.mExpires);
+                  goto post_processing;
+                }
+
+                // remote side needs DH keying material
+                if (sendingInfo.mListSize > 1) {
+                  if (sendingInfo.mListSize > sendingInfo.mTotalWithPassphrase) {
+                    // need to figure out if a peer is ACKing receipt of a particular passphrase
+                    String listID = internal::extractListID(sendingInfo.mURI);
+                    int order = 0;
+                    if (!mDB->getListOrder(listID, info.mFrom, order)) {
+                      ZS_LOG_WARNING(Detail, log("the sender is not on the list thus the sender cannot receive the keying material") + ZS_PARAM("from", info.mFrom))
+                      goto post_processing;
+                    }
+
+                    SecureByteBlockPtr ackBuffer;
+                    if (sendingInfo.mAckDHPassphraseSet.hasData()) {
+                      ackBuffer = IHelper::convertFromBase64(sendingInfo.mAckDHPassphraseSet);
+                    } else {
+                      size_t totalBytes = (sendingInfo.mListSize / 8) + (sendingInfo.mListSize % 8 != 0 ? 1 : 0);
+                      ackBuffer = SecureByteBlockPtr(new SecureByteBlock(totalBytes));
+                    }
+
+                    size_t position = (order / 8);
+                    size_t bit = (order % 8);
+                    if (position >= ackBuffer->SizeInBytes()) {
+                      ZS_LOG_ERROR(Detail, log("the sender is on the list but beyond the size of the buffer") + ZS_PARAM("key id", sendingInfo.mKeyID) + ZS_PARAM("from", info.mFrom) + ZS_PARAM("buffer size", ackBuffer->SizeInBytes()) + ZS_PARAM("order", order))
+                      goto post_processing;
+                    }
+
+                    BYTE ackByte = ackBuffer->BytePtr()[position];
+                    BYTE before = ackByte;
+
+                    ackByte = ackByte | (1 << bit);
+
+                    ackBuffer->BytePtr()[position] = ackByte;
+                    if (before != ackByte) {
+                      // byte has ordered in a new bit thus a new ack is present
+                      ++sendingInfo.mTotalWithPassphrase;
+                      ZS_LOG_DEBUG(log("remote party acked DH key") + ZS_PARAM("key id", sendingInfo.mKeyID) + ZS_PARAM("total", sendingInfo.mListSize) + ZS_PARAM("total acked", sendingInfo.mTotalWithPassphrase))
+
+                      if (sendingInfo.mListSize > sendingInfo.mTotalWithPassphrase) {
+                        sendingInfo.mAckDHPassphraseSet = IHelper::convertToBase64(*ackBuffer);
+                      } else {
+                        sendingInfo.mAckDHPassphraseSet = String();
+                      }
+                      mDB->addOrUpdateSendingKey(sendingInfo);
+                    }
+                  }
+                } else {
+                  if (0 == sendingInfo.mTotalWithPassphrase) {
+                    sendingInfo.mTotalWithPassphrase = 1;
+                    ZS_LOG_DEBUG(log("remote party acked DH key") + ZS_PARAM("key id", sendingInfo.mKeyID) + ZS_PARAM("total", sendingInfo.mListSize) + ZS_PARAM("total acked", sendingInfo.mTotalWithPassphrase))
+                    mDB->addOrUpdateSendingKey(sendingInfo);
+                  }
+                }
+
+                if (!prepareDHKeys(sendingInfo.mKeyDomain, sendingInfo.mDHEphemeralPrivateKey, sendingInfo.mDHEphemeralPrivateKey, privateKey, publicKey)) {
+                  ZS_LOG_WARNING(Detail, log("unable to prepare DH keying material") + ZS_PARAM("key ID", sendingInfo.mKeyID))
+                  goto post_processing;
+                }
+
+                sendAnswer(info.mFrom, bundle.mReferencedKeyID, sendingInfo.mDHPassphrase, bundle.mAgreement, sendingInfo.mKeyDomain, privateKey, publicKey, sendingInfo.mExpires);
+
+              } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_NEW == bundle.mMode) {
+                // L <-- (offer request new) <-- R
+                // L --> (answer) --> R (remote sending passphrase)
+
+                // remote party needs a sending passphrase which local side generates (and uses for receiving)
+              } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER == bundle.mMode) {
+                // remote party is answering and giving a passphrase, either a sending passphrase or a receiving passphrase
+              } else {
+                ZS_LOG_WARNING(Detail, log("agreement mode is not supported") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("agreement mode", bundle.mMode))
+                goto post_processing;
+              }
+            }
+          }
+
+        post_processing:
+          {
+            mDB->notifyMessageKeyingProcessed(info.mMessageIndex);
+          }
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
       }
 
@@ -3025,6 +3918,18 @@ namespace openpeer
         mRefreshListsNeedingDownload = true;
         mListsNeedingDownload.clear();
 
+        if (mKeyFolderUpdateMonitor) {
+          mKeyFolderUpdateMonitor->cancel();
+          mKeyFolderUpdateMonitor.reset();
+        }
+
+        if (mSentFolderUpdateMonitor) {
+          mSentFolderUpdateMonitor->cancel();
+          mSentFolderUpdateMonitor.reset();
+        }
+
+        mRefreshKeysAndSentFolder = true;
+
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
           mTCPMessaging.reset();
@@ -3135,6 +4040,7 @@ namespace openpeer
           if (info.mDisposition == PushMessageFolderInfo::Disposition_Remove) {
             ZS_LOG_DEBUG(log("folder is removed") + ZS_PARAM("name", info.mName))
             mRefreshFolders = true;
+            mRefreshKeysAndSentFolder = true;
             continue;
           }
 
@@ -3265,13 +4171,70 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("all database record with received for message"))
+          ZS_LOG_DEBUG(log("update database record with received for message"))
 
           mDB->updateMessageData(info.mInfo.mIndex, info.mBuffer->BytePtr(), info.mBuffer->SizeInBytes());
+
+          mRefreshKeysFolderNeedsProcessing = true;
 
           mMessagesNeedingDataChannels.erase(foundChannel);
           mMessagesNeedingData.erase(foundData);
         }
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::isFolderListUpdating()
+      {
+        if (mRefreshFolders) return true;
+        if (mFoldersGetMonitor) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyFoldersUpdating()
+      {
+        if (mRefreshFoldersNeedingUpdate) return true;
+        if (mFoldersNeedingUpdate.size() > 0) return true;
+        if (mFolderGetMonitors.size() > 0) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyMessagesUpdating()
+      {
+        if (mRefreshMessagesNeedingUpdate) return true;
+        if (mMessagesNeedingUpdate.size() > 0) return true;
+        if (mMessageMetaDataGetMonitor) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyMessagesDownloadingData()
+      {
+        if (mRefreshMessagesNeedingData) return true;
+        if (mMessagesNeedingData.size() > 0) return true;
+        if (mMessageDataGetMonitor) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyListsFetching()
+      {
+        if (mRefreshListsNeedingDownload) return true;
+        if (mListsNeedingDownload.size() > 0) return true;
+        if (mListFetchMonitor) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areKeysAndSentFolderReady()
+      {
+        if (mRefreshKeysAndSentFolder) return false;
+        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) return false;
+        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mSentFolderIndex) return false;
+        if (mKeyFolderUpdateMonitor) return false;
+        if (mSentFolderUpdateMonitor) return false;
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -3323,11 +4286,12 @@ namespace openpeer
                                                                      IServicePushMailboxSessionDelegatePtr delegate,
                                                                      IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                                      IServicePushMailboxPtr servicePushMailbox,
+                                                                     IAccountPtr account,
                                                                      IServiceNamespaceGrantSessionPtr grantSession,
                                                                      IServiceLockboxSessionPtr lockboxSession
                                                                      )
     {
-      return internal::IServicePushMailboxSessionFactory::singleton().create(delegate, databaseDelegate, servicePushMailbox, grantSession, lockboxSession);
+      return internal::IServicePushMailboxSessionFactory::singleton().create(delegate, databaseDelegate, servicePushMailbox, account, grantSession, lockboxSession);
     }
 
 

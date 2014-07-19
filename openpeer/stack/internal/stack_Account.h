@@ -268,6 +268,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IAccountForServicePushMailbox
+      #pragma mark
+
+      interaction IAccountForServicePushMailbox
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, ForPushMailbox)
+
+        virtual ~IAccountForServicePushMailbox() {} // make polymorphic
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IAccountForServiceLockboxSession
       #pragma mark
 
@@ -301,6 +316,7 @@ namespace openpeer
                       public IAccountForPeer,
                       public IAccountForPeerSubscription,
                       public IAccountForPublicationRepository,
+                      public IAccountForServicePushMailbox,
                       public IAccountForServiceLockboxSession,
                       public IWakeDelegate,
                       public IAccountFinderDelegate,
@@ -378,6 +394,7 @@ namespace openpeer
         static AccountPtr convert(ForMessagesPtr account);
         static AccountPtr convert(ForPeerPtr account);
         static AccountPtr convert(ForPublicationRepositoryPtr account);
+        static AccountPtr convert(ForPushMailboxPtr account);
 
       protected:
         //---------------------------------------------------------------------
@@ -520,6 +537,11 @@ namespace openpeer
         virtual PublicationRepositoryPtr getRepository() const;
 
         // (duplicate) virtual String getDomain() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Account => IAccountForServicePushMailbox
+        #pragma mark
 
         //---------------------------------------------------------------------
         #pragma mark

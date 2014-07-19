@@ -153,6 +153,7 @@ namespace openpeer
                                                   IServicePushMailboxSessionDelegatePtr delegate,
                                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                   IServicePushMailboxPtr servicePushMailbox,
+                                                  IAccountPtr account,
                                                   IServiceNamespaceGrantSessionPtr grantSession,
                                                   IServiceLockboxSessionPtr lockboxSession
                                                   );
@@ -322,6 +323,7 @@ namespace openpeer
 
     interaction IServicePushMailboxDatabaseAbstractionDelegate
     {
+      //-----------------------------------------------------------------------
       struct FolderNeedingUpdateInfo
       {
         int    mIndex;
@@ -330,6 +332,7 @@ namespace openpeer
       };
       typedef std::list<FolderNeedingUpdateInfo> FolderNeedingUpdateList;
 
+      //-----------------------------------------------------------------------
       struct MessageNeedingUpdateInfo
       {
         int mIndex;
@@ -337,6 +340,7 @@ namespace openpeer
       };
       typedef std::list<MessageNeedingUpdateInfo> MessageNeedingUpdateList;
 
+      //-----------------------------------------------------------------------
       struct MessageNeedingDataInfo
       {
         int mIndex;
@@ -345,8 +349,10 @@ namespace openpeer
       };
       typedef std::list<MessageNeedingDataInfo> MessageNeedingDataList;
 
+      //-----------------------------------------------------------------------
       typedef IServicePushMailboxSession::ValueList ValueList;
 
+      //-----------------------------------------------------------------------
       struct DeliveryInfo
       {
         String mURI;
@@ -356,6 +362,7 @@ namespace openpeer
 
       typedef std::list<DeliveryInfo> DeliveryInfoList;
 
+      //-----------------------------------------------------------------------
       struct ListsNeedingDownloadInfo
       {
         int mIndex;
@@ -363,8 +370,51 @@ namespace openpeer
       };
       typedef std::list<ListsNeedingDownloadInfo> ListsNeedingDownloadList;
 
+      //-----------------------------------------------------------------------
       typedef String URI;
       typedef std::list<URI> URIList;
+
+      //-----------------------------------------------------------------------
+      struct MessagesNeedingKeyingProcessingInfo
+      {
+        int mMessageIndex;
+        String mFrom;
+
+        String mEncoding;
+        SecureByteBlockPtr mData;
+      };
+      typedef std::list<MessagesNeedingKeyingProcessingInfo> MessagesNeedingKeyingProcessingList;
+
+      //-----------------------------------------------------------------------
+      struct SendingKeyInfo
+      {
+        int mIndex;                   // if < 0 then index is unknown
+        String mKeyID;
+        String mURI;
+        String mRSAPassphrase;
+        String mDHPassphrase;
+        int mKeyDomain;
+        String mDHEphemeralPrivateKey;
+        String mDHEphemeralPublicKey;
+        int mListSize;
+        int mTotalWithPassphrase;
+        String mAckDHPassphraseSet;
+        Time mActiveUntil;
+        Time mExpires;
+      };
+
+      //-----------------------------------------------------------------------
+      struct ReceivingKeyInfo
+      {
+        int mIndex;                   // if < 0 then index is unknown
+        String mKeyID;
+        String mURI;
+        String mPassphrase;
+        int mKeyDomain;
+        String mDHEphemerialPrivateKey;
+        String mDHEphemerialPublicKey;
+        Time mExpires;
+      };
 
 
       // SETTINGS TABLE
@@ -400,6 +450,14 @@ namespace openpeer
       virtual void removeFolder(const char *inFolderName) = 0;
 
       //-----------------------------------------------------------------------
+      // PURPOSE: find the index of an existing folder (if one exists)
+      // RETURNS: true if folder exists, otherwise false
+      virtual bool getFolderIndex(
+                                  const char *inFolderName,
+                                  int &outFolderIndex
+                                  ) = 0;
+
+      //-----------------------------------------------------------------------
       // PURPOSE: Add or update a record in the "Folders Table"
       virtual void addOrUpdateFolder(
                                      const char *inFolderName,
@@ -432,6 +490,10 @@ namespace openpeer
                                             const char *inDownloadedVersion,
                                             const Time &inUpdateNext   // Time() if should not check again
                                             ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Assign a brand new unique random ID to the folder specified
+      virtual void resetFolderUniqueID(int folderIndex) = 0;
 
 
       // FOLDER MESSAGES TABLE
@@ -493,6 +555,7 @@ namespace openpeer
       // Time   expires
       // Time   dataLength
       // Blob   data
+      // bool   processedKey          [default false]
       // bool   needListFetch         [default false]
       // bool   updateFailed          [default false]
       // bool   dataDownloadFailed    [default false]
@@ -568,6 +631,19 @@ namespace openpeer
       //          server but sometimes the server maybe merely in a funky state.
       virtual void getBatchOfMessagesNeedingData(MessageNeedingDataList &outMessagesToUpdate) = 0;
 
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get a small batch of messages which has "processedKey" set to
+      //          false.
+      // NOTES:   - if whereMimeType is specified then the mime type must match
+      //          - only return messages which have a "data" blob
+      virtual void getBatchOfMessagesNeedingKeysProcessing(
+                                                           int folderIndex,
+                                                           const char *whereMimeType,
+                                                           MessagesNeedingKeyingProcessingList &outMessages
+                                                           ) = 0;
+
+      virtual void notifyMessageKeyingProcessed(int messageIndex) = 0;
+
 
       // MESSAGES DELIVERY STATE TABLE
       // =============================
@@ -606,17 +682,94 @@ namespace openpeer
       // ==============
       // int    index         [auto, unique]
       // int    listIndex
+      // int    order         // each URI in the list is given an order ID starting at 0 for each list
       // String uri           // uri of delivered party (empty = no list)
 
+      //-----------------------------------------------------------------------
+      // PURPOSE: Stores the list into the database
+      // NOTES:   will replace any existing contents if any list is present
+      //          for a given list index
       virtual void updateListURIs(
                                   int listIndex,
                                   const URIList &uris
                                   ) = 0;
 
+      //-----------------------------------------------------------------------
+      // PURPOSE: Gets the full list associated to a list ID
       virtual void getListURIs(
                                const char *listID,
                                URIList &outURIs
-                               );
+                               ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Given a list ID and a URI return the order number for the
+      //          given URI within the list
+      virtual bool getListOrder(
+                                const char *listID,
+                                const char *uri,
+                                int &outIndex
+                                ) = 0;
+
+      // KEY DOMAIN TABLE
+      // ================
+      // int    index           [auto, unique]
+      // int    keyDomain       [unqiue]
+      // String dhStaticPrivateKey
+      // String dhStaticPublicKey
+
+      virtual bool getKeyDomain(
+                                int keyDomain,
+                                String &outStaticPrivateKey,
+                                String &outStaticPublicKey
+                                ) = 0;
+
+      virtual void addKeyDomain(
+                                int keyDomain,
+                                const char *staticPrivateKey,
+                                const char *staticPublicKey
+                                ) = 0;
+
+
+      // SENDING KEYS TABLE
+      // ==================
+      // int    index                 [auto, unique]
+      // String keyID                 [unique]
+      // String uri                   // this party (or list) is allowed to access this key
+      // String rsaPassphrase         // passphrase protected with RSA
+      // String dhPassphrase          // diffie hellman - perfect forward secrecy passphrase
+      // int    keyDomain             // the key domain to use with this DH key pair
+      // String dhEphemeralPrivateKey // diffie hellman ephemeral private key used in offer/answer
+      // String dhEphemeralPublicKey  // diffie hellman ephemeral private key used in offer/answer
+      // int    listSize              // if this key is for a list then how many parties in the list
+      // int    totalWithDhPassphrase // how many parties of the list have the dh key (when listSize == totalWithDhPassphrase then everyone does)
+      // String ackDHPassphraseSet    // the set representation of which parties have received the DH key and which have not
+      // Time   activeUntil           // this key can be used actively until a particular date
+      // Time   expires               // this key can be deleted after this date
+
+      virtual bool getSendingKey(
+                                 const char *keyID,
+                                 SendingKeyInfo &outInfo
+                                 ) = 0;
+
+      virtual bool addOrUpdateSendingKey(const SendingKeyInfo &inInfo) = 0;
+
+      // RECEIVING KEYS TABLE
+      // ====================
+      // int    index                 [auto, unique]
+      // String keyID                 [unique]
+      // String uri                   // this key is from this user
+      // String passphrase            // the passphrase for this key
+      // int    keyDomain             // the key domain to use with this DH key pair
+      // String dhEphemeralPrivateKey // diffie hellman ephemeral private key used in offer/answer
+      // String dhEphemeralPublicKey  // diffie hellman ephemeral private key used in offer/answer
+      // Time   expires               // when is this key no longer valid
+
+      virtual bool getReceivingKey(
+                                   const char *keyID,
+                                   ReceivingKeyInfo &outInfo
+                                   ) = 0;
+
+      virtual void addOrUpdateReceivingKey(const ReceivingKeyInfo &inInfo) = 0;
 
     };
   }

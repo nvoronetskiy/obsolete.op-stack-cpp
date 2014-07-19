@@ -1022,12 +1022,13 @@ namespace openpeer
                                                                              IServicePushMailboxSessionDelegatePtr delegate,
                                                                              IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                                              IServicePushMailboxPtr servicePushMailbox,
+                                                                             IAccountPtr account,
                                                                              IServiceNamespaceGrantSessionPtr grantSession,
                                                                              IServiceLockboxSessionPtr lockboxSession
                                                                              )
       {
         if (this) {}
-        return ServicePushMailboxSession::create(delegate, databaseDelegate, servicePushMailbox, grantSession, lockboxSession);
+        return ServicePushMailboxSession::create(delegate, databaseDelegate, servicePushMailbox, account, grantSession, lockboxSession);
       }
 
       //-----------------------------------------------------------------------

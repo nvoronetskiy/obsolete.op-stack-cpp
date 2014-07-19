@@ -37,6 +37,7 @@
 #include <openpeer/stack/IServicePushMailbox.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 
+#include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
@@ -74,6 +75,18 @@
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_INACTIVITY_TIMEOUT "openpeer/stack/push-mailbox-inactivity-timeout"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-retry-connection-in-seconds"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS "openpeer/stack/push-mailbox-max-retry-connection-in-seconds"
+
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DEFAULT_DH_KEY_DOMAIN "openpeer/stack/push-mailbox-default-dh-key-domain"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "http://meta.openpeer.org/2014/06/17/json-push-mailbox-key#aes-cfb-32-16-16-sha1-md5"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI       "pki"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT "agreement"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_REQUEST_OFFER           "request-offer"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING  "offer-request-existing"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_NEW       "offer-request-new"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER                  "answer"
 
 namespace openpeer
 {
@@ -131,6 +144,7 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(RegisterQuery)
         ZS_DECLARE_TYPEDEF_PTR(std::list<RegisterQueryPtr>, RegisterQueryList)
 
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
         ZS_DECLARE_TYPEDEF_PTR(IServiceNamespaceGrantSessionForServices, UseServiceNamespaceGrantSession)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForServicePushMailbox, UseServiceLockboxSession)
@@ -219,12 +233,27 @@ namespace openpeer
         typedef String ListID;
         typedef std::map<ListID, ProcessedListsNeedingDownloadInfo> ListDownloadMap;
 
+        struct KeyingBundle
+        {
+          String mReferencedKeyID;
+
+          Time mExpires;
+
+          String mType;
+          String mMode;
+          String mAgreement;
+          String mSecret;
+
+          IPeerPtr mValidationPeer;
+        };
+
       protected:
         ServicePushMailboxSession(
                                   IMessageQueuePtr queue,
                                   BootstrappedNetworkPtr network,
                                   IServicePushMailboxSessionDelegatePtr delegate,
                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                  AccountPtr account,
                                   ServiceNamespaceGrantSessionPtr grantSession,
                                   ServiceLockboxSessionPtr lockboxSession
                                   );
@@ -253,6 +282,7 @@ namespace openpeer
                                                    IServicePushMailboxSessionDelegatePtr delegate,
                                                    IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                    IServicePushMailboxPtr servicePushMailbox,
+                                                   IAccountPtr account,
                                                    IServiceNamespaceGrantSessionPtr grantSession,
                                                    IServiceLockboxSessionPtr lockboxSession
                                                    );
@@ -624,6 +654,8 @@ namespace openpeer
         bool stepCheckFoldersNeedingUpdate();
         bool stepFolderGet();
 
+        bool stepMakeKeysAndSentFolders();
+
         bool stepCheckMessagesNeedingUpdate();
         bool stepMessagesMetaDataGet();
 
@@ -632,6 +664,8 @@ namespace openpeer
 
         bool stepCheckListNeedingDownload();
         bool stepListFetch();
+
+        bool stepProcessKeysFolder();
 
         bool stepBackgroundingReady();
 
@@ -660,6 +694,84 @@ namespace openpeer
                                           );
         virtual void processChannelMessages();
 
+        bool isFolderListUpdating();
+        bool areAnyFoldersUpdating();
+        bool areAnyMessagesUpdating();
+        bool areAnyMessagesDownloadingData();
+        bool areAnyListsFetching();
+        bool areKeysAndSentFolderReady();
+
+        bool extractKeyingBundle(
+                                 SecureByteBlockPtr buffer,
+                                 KeyingBundle &outBundle
+                                 );
+
+        ElementPtr createKeyingBundle(const KeyingBundle &inBundle);
+
+        String extractRSA(const String &secret);
+
+        bool prepareDHKeyDomain(
+                                int keyDomain,
+                                IDHKeyDomainPtr &outKeyDomain,
+                                SecureByteBlockPtr &outStaticPrivateKey,
+                                SecureByteBlockPtr &outStaticPublicKey
+                                );
+
+        bool prepareDHKeys(
+                           int keyDomain,
+                           const String &ephemeralPrivateKey,
+                           const String &ephemeralPublicKey,
+                           IDHPrivateKeyPtr &outPrivateKey,
+                           IDHPublicKeyPtr &outPublicKey
+                           );
+
+        bool prepareNewDHKeys(
+                              const char *inKeyDomainStr,
+                              int &outKeyDomain,
+                              String &outEphemeralPrivateKey,
+                              String &outEphemeralPublicKey,
+                              IDHPrivateKeyPtr &outPrivateKey,
+                              IDHPublicKeyPtr &outPublicKey
+                              );
+
+        bool extractDHFromAgreement(
+                                    const String &agreement,
+                                    int &outKeyDomain,
+                                    IDHPublicKeyPtr &outPublicKey
+                                    );
+
+        bool sendKeyingBundle(
+                              const String &toURI,
+                              const KeyingBundle &inBundle
+                              );
+
+        bool sendOfferRequestExisting(
+                                      const String &toURI,
+                                      const String &keyID,
+                                      int inKeyDomain,
+                                      IDHPublicKeyPtr publicKey,
+                                      Time expires
+                                      );
+
+        bool sendPKI(
+                     const String &toURI,
+                     const String &keyID,
+                     const String &passphrase,
+                     IPeerPtr validationPeer,
+                     Time expires
+                     );
+
+        bool sendAnswer(
+                        const String &toURI,
+                        const String &keyID,
+                        const String &passphrase,
+                        const String &remoteAgreement,
+                        int inKeyDomain,
+                        IDHPrivateKeyPtr privateKey,
+                        IDHPublicKeyPtr publicKey,
+                        Time expires
+                        );
+
       public:
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_RegisterQuery.h>
@@ -684,6 +796,8 @@ namespace openpeer
 
         AutoWORD mLastError;
         String mLastErrorReason;
+
+        UseAccountWeakPtr mAccount;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
 
@@ -749,6 +863,12 @@ namespace openpeer
         FolderUpdateMap mFoldersNeedingUpdate;
         FolderGetMonitorList mFolderGetMonitors;
 
+        bool mRefreshKeysAndSentFolder;
+        int mKeysFolderIndex;
+        int mSentFolderIndex;
+        IMessageMonitorPtr mKeyFolderUpdateMonitor;
+        IMessageMonitorPtr mSentFolderUpdateMonitor;
+
         bool mRefreshMessagesNeedingUpdate;
         MessageUpdateMap mMessagesNeedingUpdate;
         IMessageMonitorPtr mMessageMetaDataGetMonitor;
@@ -763,6 +883,8 @@ namespace openpeer
         bool mRefreshListsNeedingDownload;
         ListDownloadMap mListsNeedingDownload;
         IMessageMonitorPtr mListFetchMonitor;
+
+        bool mRefreshKeysFolderNeedsProcessing;
       };
 
       //-----------------------------------------------------------------------
@@ -781,6 +903,7 @@ namespace openpeer
                                                     IServicePushMailboxSessionDelegatePtr delegate,
                                                     IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
                                                     IServicePushMailboxPtr servicePushMailbox,
+                                                    IAccountPtr account,
                                                     IServiceNamespaceGrantSessionPtr grantSession,
                                                     IServiceLockboxSessionPtr lockboxSession
                                                     );

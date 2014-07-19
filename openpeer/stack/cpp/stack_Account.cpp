@@ -248,6 +248,12 @@ namespace openpeer
         return dynamic_pointer_cast<Account>(account);
       }
 
+      //-----------------------------------------------------------------------
+      AccountPtr Account::convert(ForPushMailboxPtr account)
+      {
+        return dynamic_pointer_cast<Account>(account);
+      }
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
