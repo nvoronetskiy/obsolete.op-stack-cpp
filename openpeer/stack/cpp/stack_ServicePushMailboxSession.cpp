@@ -3447,6 +3447,43 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      String ServicePushMailboxSession::getAnswerPassphrase(
+                                                            int inKeyDomain,
+                                                            const String &ephemeralPrivateKey,
+                                                            const String &ephemeralPublicKey,
+                                                            const String &remoteAgreement,
+                                                            const String &secret
+                                                            )
+      {
+        IDHPrivateKeyPtr privateKey;
+        IDHPublicKeyPtr publicKey;
+        if (!prepareDHKeys(inKeyDomain, ephemeralPrivateKey, ephemeralPublicKey, privateKey, publicKey)) {
+          ZS_LOG_WARNING(Detail, log("unable to prepare DH keying material") + ZS_PARAM("domain", inKeyDomain) + ZS_PARAM("private key", ephemeralPrivateKey) + ZS_PARAM("public key", ephemeralPublicKey))
+          return String();
+        }
+
+        int remoteKeyDomain = (int)IDHKeyDomain::KeyDomainPrecompiledType_Unknown;
+        IDHPublicKeyPtr remotePublicKey;
+        if (!extractDHFromAgreement(remoteAgreement, remoteKeyDomain, remotePublicKey)) {
+          ZS_LOG_WARNING(Detail, log("failed to extract remote DH agrement information") + ZS_PARAM("agreement", remoteAgreement))
+          return String();
+        }
+
+        if (remoteKeyDomain != inKeyDomain) {
+          ZS_LOG_WARNING(Detail, log("key domains do not match thus cannot extract answer") + ZS_PARAM("agreement", remoteAgreement) + ZS_PARAM("key domain", inKeyDomain) + ZS_PARAM("remote key domain", remoteKeyDomain))
+          return String();
+        }
+
+        SecureByteBlockPtr agreementKey = privateKey->getSharedSecret(remotePublicKey);
+
+        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(IHelper::convertToHex(*agreementKey)), "push-mailbox:", IHelper::HashAlgorthm_SHA256);
+
+        SecureByteBlockPtr decryptedPassphrase = stack::IHelper::splitDecrypt(*key, secret);
+
+        return IHelper::convertToString(*decryptedPassphrase);
+      }
+      
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepProcessKeysFolder()
       {
         typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingKeyingProcessingInfo MessagesNeedingKeyingProcessingInfo;
@@ -3656,13 +3693,35 @@ namespace openpeer
 
                 sendAnswer(info.mFrom, bundle.mReferencedKeyID, sendingInfo.mDHPassphrase, bundle.mAgreement, sendingInfo.mKeyDomain, privateKey, publicKey, sendingInfo.mExpires);
 
-              } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_NEW == bundle.mMode) {
-                // L <-- (offer request new) <-- R
-                // L --> (answer) --> R (remote sending passphrase)
-
-                // remote party needs a sending passphrase which local side generates (and uses for receiving)
               } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER == bundle.mMode) {
-                // remote party is answering and giving a passphrase, either a sending passphrase or a receiving passphrase
+                // remote party is answering and giving a passphrase which represents their sending passphrase (i.e. which is used as a local receiving key)
+                ReceivingKeyInfo receivingInfo;
+
+                if (!mDB->getReceivingKey(bundle.mReferencedKeyID, receivingInfo)) {
+                  ZS_LOG_WARNING(Detail, log("never created an offer so this answer is not related") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("from", info.mFrom) + ZS_PARAM("uri", receivingInfo.mURI))
+                  goto post_processing;
+                }
+
+                if (receivingInfo.mURI != info.mFrom) {
+                  ZS_LOG_WARNING(Detail, log("from does not match the receiving key uri") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("from", info.mFrom) + ZS_PARAM("uri", receivingInfo.mURI))
+                  goto post_processing;
+                }
+
+                if (receivingInfo.mPassphrase.hasData()) {
+                  ZS_LOG_WARNING(Detail, log("already know about receiving passphrase thus will not update"))
+                  goto post_processing;
+                }
+
+                receivingInfo.mPassphrase = getAnswerPassphrase(receivingInfo.mKeyDomain, receivingInfo.mDHEphemerialPrivateKey, receivingInfo.mDHEphemerialPublicKey, bundle.mAgreement, bundle.mSecret);
+
+                if (receivingInfo.mPassphrase.isEmpty()) {
+                  ZS_LOG_WARNING(Detail, log("cannot extract answer passphrase") + ZS_PARAM("keying id", bundle.mReferencedKeyID))
+                  goto post_processing;
+                }
+
+                ZS_LOG_DEBUG(log("received answer passphrase") + ZS_PARAM("keying id", bundle.mReferencedKeyID) + ZS_PARAM("passphrase", receivingInfo.mPassphrase))
+
+                mDB->addOrUpdateReceivingKey(receivingInfo);
               } else {
                 ZS_LOG_WARNING(Detail, log("agreement mode is not supported") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("agreement mode", bundle.mMode))
                 goto post_processing;

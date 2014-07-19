@@ -84,8 +84,7 @@
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT "agreement"
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_REQUEST_OFFER           "request-offer"
-#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING  "offer-request-existing"
-#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_NEW       "offer-request-new"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING  "offer"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER                  "answer"
 
 namespace openpeer
@@ -771,6 +770,14 @@ namespace openpeer
                         IDHPublicKeyPtr publicKey,
                         Time expires
                         );
+
+        String getAnswerPassphrase(
+                                   int inKeyDomain,
+                                   const String &ephemeralPrivateKey,
+                                   const String &ephemeralPublicKey,
+                                   const String &remoteAgreement,
+                                   const String &secret
+                                   );
 
       public:
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
