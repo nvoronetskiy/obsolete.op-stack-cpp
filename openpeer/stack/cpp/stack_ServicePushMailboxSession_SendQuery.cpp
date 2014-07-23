@@ -52,6 +52,9 @@
 //
 //#include <zsLib/Stringize.h>
 
+#include <cryptopp/sha.h>
+
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 namespace openpeer
@@ -60,6 +63,8 @@ namespace openpeer
   {
     namespace internal
     {
+      using CryptoPP::SHA1;
+
       typedef IStackForInternal UseStack;
 //
       using services::IHelper;
@@ -140,6 +145,90 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::SendQuery::notifyUploaded()
+      {
+        ZS_LOG_DEBUG(log("message was uploaded to server") + ZS_PARAM("message id", mMessageID))
+
+        AutoRecursiveLock lock(*this);
+
+        get(mUploaded) = true;
+
+        if (!mDelegate) {
+          ZS_LOG_WARNING(Detail, log("delegate already gone"))
+          return;
+        }
+
+        try {
+          mDelegate->onPushMailboxSendQueryMessageUploaded(mThisWeak.lock());
+        } catch (IServicePushMailboxSendQueryDelegateProxy::Exceptions::DelegateGone &) {
+          ZS_LOG_WARNING(Detail, log("delegate gone"))
+          mDelegate.reset();
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::SendQuery::notifyDeliveryInfoChanged(const PushMessageInfo::FlagInfoMap &flags)
+      {
+        ZS_LOG_DEBUG(log("message delivery information changed") + ZS_PARAM("message id", mMessageID))
+
+        AutoRecursiveLock lock(*this);
+
+        if (!mDelegate) {
+          ZS_LOG_WARNING(Detail, log("delegate already gone"))
+          return;
+        }
+
+        SHA1 hasher;
+        SecureByteBlock hashResult(hasher.DigestSize());
+
+        for (PushMessageInfo::FlagInfoMap::const_iterator iter = flags.begin(); iter != flags.end(); ++iter)
+        {
+          const PushMessageInfo::FlagInfo &info = (*iter).second;
+
+          hasher.Update((const BYTE *) ":", strlen(":"));
+
+          hasher.Update((const BYTE *) (&info.mDisposition), sizeof(info.mDisposition));
+          hasher.Update((const BYTE *) (&info.mFlag), sizeof(info.mFlag));
+
+          size_t total = info.mFlagURIInfos.size();
+          hasher.Update((const BYTE *) (&total), sizeof(total));
+
+          for (PushMessageInfo::FlagInfo::URIInfoList::const_iterator uriIter = info.mFlagURIInfos.begin(); uriIter != info.mFlagURIInfos.end(); ++uriIter)
+          {
+            const PushMessageInfo::FlagInfo::URIInfo &uriInfo = (*uriIter);
+
+            hasher.Update((const BYTE *) ":", strlen(":"));
+            hasher.Update((const BYTE *) (&uriInfo.mErrorCode), sizeof(uriInfo.mErrorCode));
+            hasher.Update((const BYTE *) uriInfo.mURI.c_str(), uriInfo.mURI.length());
+            hasher.Update((const BYTE *) ":", strlen(":"));
+            hasher.Update((const BYTE *) uriInfo.mErrorReason.c_str(), uriInfo.mErrorReason.length());
+          }
+        }
+        hasher.Final(hashResult);
+
+        String deliveryHash = IHelper::convertToHex(hashResult);
+        if (flags.size() < 1) {
+          deliveryHash = String();
+        }
+
+        if (deliveryHash == mDeliveryHash) {
+          ZS_LOG_TRACE(log("hash did not change thus no need to notify about delivery state change"))
+          return;
+        }
+
+        mDeliveryHash = deliveryHash;
+
+        ZS_LOG_DEBUG(log("notifying about delivery state change") + ZS_PARAM("message id", mMessageID) + ZS_PARAM("hash", mDeliveryHash))
+
+        try {
+          mDelegate->onPushMailboxSendQueryPushStatesChanged(mThisWeak.lock());
+        } catch (IServicePushMailboxSendQueryDelegateProxy::Exceptions::DelegateGone &) {
+          ZS_LOG_WARNING(Detail, log("delegate gone"))
+          mDelegate.reset();
+        }
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -148,10 +237,28 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::SendQuery::isUploaded() const
+      {
+        AutoRecursiveLock lock(*this);
+        return mUploaded;
+      }
+
+      //-----------------------------------------------------------------------
       ServicePushMailboxSession::PushMessagePtr ServicePushMailboxSession::SendQuery::getPushMessage()
       {
         AutoRecursiveLock lock(*this);
-        return PushMessagePtr();
+        if (mComplete) {
+          ZS_LOG_WARNING(Detail, log("send query was previously cancelled (thus cannot return send updates)"))
+          return PushMessagePtr();
+        }
+
+        ServicePushMailboxSessionPtr outer = mOuter.lock();
+        if (!outer) {
+          ZS_LOG_WARNING(Detail, log("push messaging service is gone (thus cannot return send udpates)"))
+          return PushMessagePtr();
+        }
+
+        return outer->getPushMessage(mMessageID);
       }
 
       //-----------------------------------------------------------------------
@@ -188,8 +295,10 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
 
         IHelper::debugAppend(resultEl, "complete", (bool)mComplete);
+        IHelper::debugAppend(resultEl, "uploaded", (bool)mUploaded);
 
         IHelper::debugAppend(resultEl, "message id", mMessageID);
+        IHelper::debugAppend(resultEl, "delivery hash", mDeliveryHash);
 
         return resultEl;
       }

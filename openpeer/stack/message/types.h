@@ -473,7 +473,7 @@ namespace openpeer
 
         PushInfo mPushInfo;
 
-        Time mTime;
+        Time mSent;
         Time mExpires;
 
         size_t mLength;

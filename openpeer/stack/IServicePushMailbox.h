@@ -79,7 +79,14 @@ namespace openpeer
 
       enum PushStates
       {
+        PushState_None,
+
         PushState_Read,
+        PushState_Answered,
+        PushState_Flagged,
+        PushState_Deleted,
+        PushState_Draft,
+        PushState_Recent,
         PushState_Delivered,
         PushState_Sent,
         PushState_Pushed,
@@ -87,6 +94,7 @@ namespace openpeer
       };
 
       static const char *toString(PushStates state);
+      static PushStates toPushState(const char *state);
 
       typedef String ValueType;
       typedef std::list<ValueType> ValueList;
@@ -104,19 +112,9 @@ namespace openpeer
         String mErrorReason;
       };
 
-      ZS_DECLARE_PTR(PushStatePeerDetail)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<PushStatePeerDetail>, PushStatePeerDetailList)
 
-      ZS_DECLARE_TYPEDEF_PTR(std::list<PushStatePeerDetailPtr>, PushStatePeerDetailList)
-
-      struct PushStateDetail
-      {
-        PushStates mState;
-        PushStatePeerDetailList mRelatedPeers;
-      };
-
-      ZS_DECLARE_PTR(PushStateDetail)
-
-      ZS_DECLARE_TYPEDEF_PTR(std::list<PushStateDetailPtr>, PushStateDetailList)
+      typedef std::map<PushStates, PushStatePeerDetailList> PushStateDetailMap;
 
       struct PushMessage
       {
@@ -140,7 +138,7 @@ namespace openpeer
         PeerOrIdentityListPtr mCC;
         PeerOrIdentityListPtr mBCC;
 
-        PushStateDetailListPtr mPushDetails;   // detailed related state information about the push
+        PushStateDetailMap mPushStateDetails;   // detailed related state information about the push
       };
 
       ZS_DECLARE_PTR(PushMessage)
@@ -266,6 +264,7 @@ namespace openpeer
 
       virtual void cancel() = 0;
 
+      virtual bool isUploaded() const = 0;
       virtual PushMessagePtr getPushMessage() = 0;
     };
 
@@ -279,6 +278,7 @@ namespace openpeer
 
     interaction IServicePushMailboxSendQueryDelegate
     {
+      virtual void onPushMailboxSendQueryMessageUploaded(IServicePushMailboxSendQueryPtr query) = 0;
       virtual void onPushMailboxSendQueryPushStatesChanged(IServicePushMailboxSendQueryPtr query) = 0;
     };
 
@@ -362,6 +362,15 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       typedef std::list<DeliveryInfo> DeliveryInfoList;
+
+      //-----------------------------------------------------------------------
+      struct DeliveryInfoWithFlag : public DeliveryInfo
+      {
+        String mFlag;
+      };
+
+      //-----------------------------------------------------------------------
+      typedef std::list<DeliveryInfoWithFlag> DeliveryInfoWithFlagList;
 
       //-----------------------------------------------------------------------
       struct PendingDeliveryMessageInfo
@@ -638,6 +647,45 @@ namespace openpeer
                                 ) = 0;
 
       //-----------------------------------------------------------------------
+      // PURPOSE: gets existing message details
+      virtual bool getMessageDetails(
+                                     int messageIndex,
+                                     String &outMessageID,
+                                     String &outTo,
+                                     String &outFrom,
+                                     String &outCC,
+                                     String &outBCC,
+                                     String &type,
+                                     String &mimeType,
+                                     String &encoding,
+                                     String &pushType,
+                                     ValueList &outPushValues,
+                                     ElementPtr &outPushCustomData,
+                                     Time &outSent,
+                                     Time &outExpires,
+                                     SecureByteBlockPtr &outData
+                                     ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: gets existing message details
+      virtual bool getMessageDetails(
+                                     const char *messageID,
+                                     int &outMessageIndex,
+                                     String &outTo,
+                                     String &outFrom,
+                                     String &outCC,
+                                     String &outBCC,
+                                     String &type,
+                                     String &mimeType,
+                                     String &pushType,
+                                     ValueList &outPushValues,
+                                     ElementPtr &outPushCustomData,
+                                     Time &outSent,
+                                     Time &outExpires,
+                                     SecureByteBlockPtr &outDecryptedData
+                                     ) = 0;
+
+      //-----------------------------------------------------------------------
       // PURPOSE: Update meta data for a message
       virtual void updateMessageIfExists(
                                          const char *messageID,
@@ -735,6 +783,10 @@ namespace openpeer
                                                        const char *flag,
                                                        const DeliveryInfoList &uris
                                                        ) = 0;
+      virtual void getMessageDeliverStateForMessage(
+                                                    int messageIndex,
+                                                    const DeliveryInfoWithFlagList &infos
+                                                    ) = 0;
 
       // PENDING DELIVERY MESSAGES TABLE
       // ===============================
@@ -750,6 +802,8 @@ namespace openpeer
                                                ) = 0;
 
       virtual void getBatchOfMessagesToDeliver(PendingDeliveryMessageList &outPending) = 0;
+
+      virtual void removePendingDeliveryMessage(int pendingIndex) = 0;
 
 
       // LIST TABLE
@@ -892,6 +946,7 @@ ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSendQueryDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSendQueryPtr, IServicePushMailboxSendQueryPtr)
+ZS_DECLARE_PROXY_METHOD_1(onPushMailboxSendQueryMessageUploaded, IServicePushMailboxSendQueryPtr)
 ZS_DECLARE_PROXY_METHOD_1(onPushMailboxSendQueryPushStatesChanged, IServicePushMailboxSendQueryPtr)
 ZS_DECLARE_PROXY_END()
 

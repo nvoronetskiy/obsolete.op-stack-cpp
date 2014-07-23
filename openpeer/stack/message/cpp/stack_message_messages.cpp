@@ -958,7 +958,7 @@ namespace openpeer
 
                 (mPushInfo.hasData()) ||
 
-                (Time() != mTime) ||
+                (Time() != mSent) ||
                 (Time() != mExpires) ||
 
                 (0 != mLength) ||
@@ -992,7 +992,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, mPushInfo.toDebug());
 
-        IHelper::debugAppend(resultEl, "time", mTime);
+        IHelper::debugAppend(resultEl, "sent", mSent);
         IHelper::debugAppend(resultEl, "expires", mExpires);
 
         IHelper::debugAppend(resultEl, "length", mLength);
@@ -1029,7 +1029,7 @@ namespace openpeer
 
         mPushInfo.mergeFrom(source.mPushInfo, overwriteExisting);
 
-        merge(mTime, source.mTime, overwriteExisting);
+        merge(mSent, source.mSent, overwriteExisting);
         merge(mExpires, source.mExpires, overwriteExisting);
 
         merge(mLength, source.mLength, overwriteExisting);
@@ -1118,8 +1118,8 @@ namespace openpeer
           }
         }
 
-        if (Time() != mTime) {
-          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("time", IHelper::timeToString(mTime)));
+        if (Time() != mSent) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("sent", IHelper::timeToString(mSent)));
         }
 
         if (Time() != mExpires) {
@@ -1276,7 +1276,7 @@ namespace openpeer
           }
         }
 
-        info.mTime = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("time")));
+        info.mSent = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sent")));
         info.mExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
 
         try {

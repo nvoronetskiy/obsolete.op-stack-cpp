@@ -79,6 +79,9 @@ namespace openpeer
                                      );
 
           // (duplicate) virtual void cancel();
+          virtual void notifyUploaded();
+          virtual void notifyDeliveryInfoChanged(const PushMessageInfo::FlagInfoMap &flags);
+          virtual const String &getMessageID() const {return mMessageID;}
 
           //-------------------------------------------------------------------
           #pragma mark
@@ -89,6 +92,7 @@ namespace openpeer
 
           // (duplicate) virtual void cancel();
 
+          virtual bool isUploaded() const;
           virtual PushMessagePtr getPushMessage();
 
         protected:
@@ -117,8 +121,10 @@ namespace openpeer
           IServicePushMailboxSendQueryDelegatePtr mDelegate;
 
           AutoBool mComplete;
+          AutoBool mUploaded;
 
           String mMessageID;
+          String mDeliveryHash;
         };
 
 #if 0

@@ -83,6 +83,10 @@
 #define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
 #define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
 
+#define OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS     "openpeer/stack/push-mailbox-max-message-upload-time-in-seconds"
+#define OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-upload-chunk-size-in-bytes"
+
+
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI       "pki"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT "agreement"
@@ -123,6 +127,7 @@ namespace openpeer
                                         public ITimerDelegate,
                                         public ITCPMessagingDelegate,
                                         public ITransportStreamReaderDelegate,
+                                        public ITransportStreamWriterDelegate,
                                         public IDNSDelegate,
                                         public IWakeDelegate,
                                         public IBackgroundingDelegate,
@@ -150,8 +155,10 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(RegisterQuery)
         ZS_DECLARE_TYPEDEF_PTR(std::list<RegisterQueryPtr>, RegisterQueryList)
 
+        typedef String MessageID;
+
         ZS_DECLARE_CLASS_PTR(SendQuery)
-        ZS_DECLARE_TYPEDEF_PTR(std::list<SendQueryWeakPtr>, SendQueryList)
+        typedef std::map<MessageID, SendQueryWeakPtr> SendQueryMap;
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
@@ -176,6 +183,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::FolderGetResult, FolderGetResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessagesDataGetResult, MessagesDataGetResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessagesMetaDataGetResult, MessagesMetaDataGetResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessageUpdateRequest, MessageUpdateRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::MessageUpdateResult, MessageUpdateResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchRequest, ListFetchRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::ListFetchResult, ListFetchResult)
@@ -207,7 +215,6 @@ namespace openpeer
           bool mSentRequest;
         };
 
-        typedef String MessageID;
         typedef std::map<MessageID, ProcessedMessageNeedingUpdateInfo> MessageUpdateMap;
 
 
@@ -241,6 +248,19 @@ namespace openpeer
         };
         typedef String ListID;
         typedef std::map<ListID, ProcessedListsNeedingDownloadInfo> ListDownloadMap;
+
+        struct ProcessedPendingDeliveryMessageInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::PendingDeliveryMessageInfo PendingDeliveryMessageInfo;
+
+          PendingDeliveryMessageInfo mInfo;
+
+          PushMessageInfo mMessage;
+
+          size_t mSent;
+          SecureByteBlockPtr mData;
+        };
+        typedef std::map<MessageID, ProcessedPendingDeliveryMessageInfo> PendingDeliveryMap;
 
         struct KeyingBundle
         {
@@ -357,6 +377,7 @@ namespace openpeer
         #pragma mark
 
         virtual void notifyComplete(SendQuery &query);
+        virtual PushMessagePtr getPushMessage(const String &messageID);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -381,6 +402,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onTransportStreamReaderReady(ITransportStreamReaderPtr reader);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ITransportStreamWriterDelegate
+        #pragma mark
+
+        virtual void onTransportStreamWriterReady(ITransportStreamWriterPtr writer);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -682,6 +710,9 @@ namespace openpeer
         bool stepProcessKeysFolder();
         bool stepDecryptMessages();
 
+        bool stepPendingDelivery();
+        bool stepPendingDeliveryUpdateRequest();
+
         bool stepBackgroundingReady();
 
         void postStep();
@@ -715,6 +746,7 @@ namespace openpeer
         bool areAnyMessagesDownloadingData();
         bool areAnyListsFetching();
         bool areKeysAndSentFolderReady();
+        bool areAnyMessagesUploading();
 
         bool extractKeyingBundle(
                                  SecureByteBlockPtr buffer,
@@ -820,6 +852,8 @@ namespace openpeer
                                      const PeerOrIdentityList &source,
                                      size_t &outListSize
                                      );
+
+        PeerOrIdentityListPtr convertFromDatabaseList(const String &uri);
 
         void deliverNewSendingKey(
                                   const String &uri,
@@ -931,7 +965,7 @@ namespace openpeer
         String mDeviceToken;
         RegisterQueryList mRegisterQueries;
 
-        SendQueryList mSendQueries;
+        SendQueryMap mSendQueries;
 
         bool mRefreshFolders;
         FolderNameMap mMonitoredFolders;
@@ -967,6 +1001,16 @@ namespace openpeer
         bool mRefreshKeysFolderNeedsProcessing;
 
         bool mRefreshMessagesNeedingDecryption;
+
+        bool mRefreshPendingDelivery;
+        size_t mDeliveryMaxChunkSize;
+        ChannelID mLastChannel;
+        bool mPendingDeliveryPrecheckRequired;
+        PendingDeliveryMap mPendingDelivery;
+        IMessageMonitorPtr mPendingDeliveryPrecheckMessageMetaDataGetMonitor;
+        MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
+        IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
+        IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
       };
 
       //-----------------------------------------------------------------------
