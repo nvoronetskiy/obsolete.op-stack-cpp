@@ -166,6 +166,9 @@ namespace openpeer
         setUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS, 4*(60*60));
 
         setString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DEFAULT_DH_KEY_DOMAIN, "https://meta.openpeer.org/dh/modp/4096");
+
+        setUInt(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS, 60*60*24*30);
+        setUInt(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS, 60*60*24*150);
       }
 
       //-----------------------------------------------------------------------

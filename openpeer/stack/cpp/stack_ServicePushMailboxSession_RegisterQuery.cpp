@@ -114,6 +114,7 @@ namespace openpeer
       ServicePushMailboxSession::RegisterQuery::~RegisterQuery()
       {
         mThisWeak.reset();
+        cancel();
       }
 
       //-----------------------------------------------------------------------
@@ -286,7 +287,7 @@ namespace openpeer
       {
         get(mComplete) = true;
 
-        RegisterQueryPtr pThis;
+        RegisterQueryPtr pThis = mThisWeak.lock();
         if ((pThis) &&
             (mDelegate)) {
           try {

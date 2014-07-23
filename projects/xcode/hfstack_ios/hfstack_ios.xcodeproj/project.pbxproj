@@ -127,6 +127,7 @@
 		0077F3B817AC1FDD009399FD /* ChannelMapResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F3B617AC1FDD009399FD /* ChannelMapResult.cpp */; };
 		0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F46F17AD4CAB009399FD /* PeerLocationFindNotify.cpp */; };
 		008400101850169E009F6934 /* stack_KeyGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */; };
+		00994441197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */; };
 		00A7BAC6193D5E4D003EDD1A /* ListFetchRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAC5193D5E4D003EDD1A /* ListFetchRequest.cpp */; };
 		00A7BAC9193D5FE3003EDD1A /* ListFetchResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */; };
 		00A7BACC193D7065003EDD1A /* RegisterPushRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BACB193D7065003EDD1A /* RegisterPushRequest.cpp */; };
@@ -461,6 +462,8 @@
 		0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_KeyGenerator.cpp; sourceTree = "<group>"; };
 		00840011185016B0009F6934 /* stack_KeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_KeyGenerator.h; sourceTree = "<group>"; };
 		0084FFB2184F9891009F6934 /* IKeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKeyGenerator.h; sourceTree = "<group>"; };
+		0099443F197DAFA300063E17 /* stack_ServicePushMailboxSession_SendQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_SendQuery.h; sourceTree = "<group>"; };
+		00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_SendQuery.cpp; sourceTree = "<group>"; };
 		00A7BAC5193D5E4D003EDD1A /* ListFetchRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListFetchRequest.cpp; sourceTree = "<group>"; };
 		00A7BAC7193D5E61003EDD1A /* ListFetchRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ListFetchRequest.h; sourceTree = "<group>"; };
 		00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListFetchResult.cpp; sourceTree = "<group>"; };
@@ -746,6 +749,7 @@
 				00D3B9AA1943B10400B7B923 /* stack_ServicePeerFileLookup.cpp */,
 				0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */,
 				00EEA37C1941F28F00B59D26 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */,
+				00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */,
 				0063BA2716CA92CF00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp */,
 				004B8D5D189C036800D4F6A8 /* stack_Settings.cpp */,
 				0063BA2816CA92CF00E6DB4D /* stack_Stack.cpp */,
@@ -800,6 +804,7 @@
 				00D3B9AC1943B12000B7B923 /* stack_ServicePeerFileLookup.h */,
 				0020FC43193654630065C965 /* stack_ServicePushMailboxSession.h */,
 				00EEA37B1941F10200B59D26 /* stack_ServicePushMailboxSession_RegisterQuery.h */,
+				0099443F197DAFA300063E17 /* stack_ServicePushMailboxSession_SendQuery.h */,
 				0063BA4C16CA92CF00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.h */,
 				0063BA4D16CA92CF00E6DB4D /* stack_Stack.h */,
 				004B8D5C189C01F900D4F6A8 /* stack_Settings.h */,
@@ -1327,6 +1332,7 @@
 				0063BB9216CA92D000E6DB4D /* stack_message_MessageHelper.cpp in Sources */,
 				00E0A569193D23DE0085C456 /* FolderGetResult.cpp in Sources */,
 				0063BB9316CA92D000E6DB4D /* stack_message_MessageNotify.cpp in Sources */,
+				00994441197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp in Sources */,
 				0063BB9416CA92D000E6DB4D /* stack_message_MessageNotifyUnknown.cpp in Sources */,
 				0063BB9616CA92D000E6DB4D /* stack_message_MessageRequest.cpp in Sources */,
 				0063BB9716CA92D000E6DB4D /* stack_message_MessageRequestUnknown.cpp in Sources */,

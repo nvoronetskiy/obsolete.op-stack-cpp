@@ -80,12 +80,19 @@
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "http://meta.openpeer.org/2014/06/17/json-push-mailbox-key#aes-cfb-32-16-16-sha1-md5"
 
+#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
+#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
+
+
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI       "pki"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT "agreement"
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_REQUEST_OFFER           "request-offer"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_OFFER_REQUEST_EXISTING  "offer"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER                  "answer"
+
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE "keying"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME "key:"
 
 namespace openpeer
 {
@@ -142,6 +149,9 @@ namespace openpeer
 
         ZS_DECLARE_CLASS_PTR(RegisterQuery)
         ZS_DECLARE_TYPEDEF_PTR(std::list<RegisterQueryPtr>, RegisterQueryList)
+
+        ZS_DECLARE_CLASS_PTR(SendQuery)
+        ZS_DECLARE_TYPEDEF_PTR(std::list<SendQueryWeakPtr>, SendQueryList)
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
@@ -324,10 +334,8 @@ namespace openpeer
 
         virtual IServicePushMailboxSendQueryPtr sendMessage(
                                                             IServicePushMailboxSendQueryDelegatePtr delegate,
-                                                            const PeerOrIdentityList &to,
-                                                            const PeerOrIdentityList &cc,
-                                                            const PeerOrIdentityList &bcc,
                                                             const PushMessage &message,
+                                                            const char *remoteFolder,
                                                             bool copyToSentFolder = true
                                                             );
 
@@ -342,6 +350,13 @@ namespace openpeer
         #pragma mark
 
         virtual void notifyComplete(RegisterQuery &query);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => friend SendQuery
+        #pragma mark
+
+        virtual void notifyComplete(SendQuery &query);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -665,6 +680,7 @@ namespace openpeer
         bool stepListFetch();
 
         bool stepProcessKeysFolder();
+        bool stepDecryptMessages();
 
         bool stepBackgroundingReady();
 
@@ -744,6 +760,14 @@ namespace openpeer
                               const KeyingBundle &inBundle
                               );
 
+        bool sendRequestOffer(
+                              const String &toURI,
+                              const String &keyID,
+                              int inKeyDomain,
+                              IDHPublicKeyPtr publicKey,
+                              Time expires
+                              );
+
         bool sendOfferRequestExisting(
                                       const String &toURI,
                                       const String &keyID,
@@ -779,10 +803,57 @@ namespace openpeer
                                    const String &secret
                                    );
 
+        void addToMasterList(
+                             PeerOrIdentityListPtr &ioMaster,
+                             const PeerOrIdentityListPtr &source
+                             );
+        void addToMasterList(
+                             PeerOrIdentityList &ioMaster,
+                             const PeerOrIdentityList &source
+                             );
+
+        String convertToDatabaseList(
+                                     const PeerOrIdentityListPtr &source,
+                                     size_t &outListSize
+                                     );
+        String convertToDatabaseList(
+                                     const PeerOrIdentityList &source,
+                                     size_t &outListSize
+                                     );
+
+        void deliverNewSendingKey(
+                                  const String &uri,
+                                  PeerOrIdentityListPtr peerList,
+                                  String &outKeyID,
+                                  String &outInitialPassphrase,
+                                  Time &outExpires
+                                  );
+
+        bool encryptMessage(
+                            const String &inPassphraseID,
+                            const String &inPassphrase,
+                            SecureByteBlock &inOriginalData,
+                            String &outEncodingScheme,
+                            SecureByteBlockPtr &outEncryptedMessage
+                            );
+
+        bool decryptMessage(
+                            const String &inPassphraseID,
+                            const String &inPassphrase,
+                            const String &inSalt,
+                            const String &inProof,
+                            SecureByteBlock &inOriginalData,
+                            SecureByteBlockPtr &outDecryptedMessage
+                            );
+
       public:
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_RegisterQuery.h>
 #undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
+
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_SEND_QUERY
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_SendQuery.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_SEND_QUERY
 
       protected:
         //---------------------------------------------------------------------
@@ -860,6 +931,8 @@ namespace openpeer
         String mDeviceToken;
         RegisterQueryList mRegisterQueries;
 
+        SendQueryList mSendQueries;
+
         bool mRefreshFolders;
         FolderNameMap mMonitoredFolders;
         IMessageMonitorPtr mFoldersGetMonitor;
@@ -892,6 +965,8 @@ namespace openpeer
         IMessageMonitorPtr mListFetchMonitor;
 
         bool mRefreshKeysFolderNeedsProcessing;
+
+        bool mRefreshMessagesNeedingDecryption;
       };
 
       //-----------------------------------------------------------------------

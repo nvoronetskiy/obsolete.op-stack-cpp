@@ -124,9 +124,11 @@ namespace openpeer
         String mMessageVersion;           // system will assign this value
 
         String mMessageType;
+        String mMimeType;
         SecureByteBlockPtr mFullMessage;
 
-        ValueList mValues;                // values related to mapped type
+        String mPushType;
+        ValueList mPushValues;            // values related to mapped type
         ElementPtr mCustomPushData;       // extended push related custom data
 
         Time mSent;                       // when was the message sent
@@ -197,10 +199,8 @@ namespace openpeer
 
       virtual IServicePushMailboxSendQueryPtr sendMessage(
                                                           IServicePushMailboxSendQueryDelegatePtr delegate,
-                                                          const PeerOrIdentityList &to,
-                                                          const PeerOrIdentityList &cc,
-                                                          const PeerOrIdentityList &bcc,
                                                           const PushMessage &message,
+                                                          const char *remoteFolder,
                                                           bool copyToSentFolder = true
                                                           ) = 0;
 
@@ -279,7 +279,7 @@ namespace openpeer
 
     interaction IServicePushMailboxSendQueryDelegate
     {
-      virtual void onPushMailboxQueryPushStatesChanged(IServicePushMailboxSendQueryPtr query) = 0;
+      virtual void onPushMailboxSendQueryPushStatesChanged(IServicePushMailboxSendQueryPtr query) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -324,6 +324,9 @@ namespace openpeer
     interaction IServicePushMailboxDatabaseAbstractionDelegate
     {
       //-----------------------------------------------------------------------
+      typedef IServicePushMailboxSession::ValueList ValueList;
+
+      //-----------------------------------------------------------------------
       struct FolderNeedingUpdateInfo
       {
         int    mIndex;
@@ -350,9 +353,6 @@ namespace openpeer
       typedef std::list<MessageNeedingDataInfo> MessageNeedingDataList;
 
       //-----------------------------------------------------------------------
-      typedef IServicePushMailboxSession::ValueList ValueList;
-
-      //-----------------------------------------------------------------------
       struct DeliveryInfo
       {
         String mURI;
@@ -360,7 +360,20 @@ namespace openpeer
         String mErrorReason;
       };
 
+      //-----------------------------------------------------------------------
       typedef std::list<DeliveryInfo> DeliveryInfoList;
+
+      //-----------------------------------------------------------------------
+      struct PendingDeliveryMessageInfo
+      {
+        int     mIndex;
+        int     mMessageIndex;
+        String  mRemoteFolder;
+        bool    mCopyToSent;
+      };
+
+      //-----------------------------------------------------------------------
+      typedef std::list<PendingDeliveryMessageInfo> PendingDeliveryMessageList;
 
       //-----------------------------------------------------------------------
       struct ListsNeedingDownloadInfo
@@ -384,6 +397,16 @@ namespace openpeer
         SecureByteBlockPtr mData;
       };
       typedef std::list<MessagesNeedingKeyingProcessingInfo> MessagesNeedingKeyingProcessingList;
+
+      //-----------------------------------------------------------------------
+      struct MessagesNeedingDecryptingInfo
+      {
+        int mMessageIndex;
+
+        String mEncoding;
+        SecureByteBlockPtr mData;
+      };
+      typedef std::list<MessagesNeedingDecryptingInfo> MessagesNeedingDecryptingList;
 
       //-----------------------------------------------------------------------
       struct SendingKeyInfo
@@ -423,6 +446,8 @@ namespace openpeer
 
       virtual String getLastDownloadedVersionForFolders() = 0;
       virtual void setLastDownloadedVersionForFolders(const char *version) = 0;
+
+      virtual String getSalt() = 0;
 
 
       // FOLDERS TABLE
@@ -555,10 +580,14 @@ namespace openpeer
       // Time   expires
       // Time   dataLength
       // Blob   data
+      // Blob   decryptedData
       // bool   processedKey          [default false]
       // bool   needListFetch         [default false]
       // bool   updateFailed          [default false]
       // bool   dataDownloadFailed    [default false]
+      // String decryptKeyID
+      // bool   decryptLater          [default false]
+      // bool   decryptFailure        [default false]
 
       //-----------------------------------------------------------------------
       // PURPOSE: Create an entry for a message or update it to notify that
@@ -581,12 +610,32 @@ namespace openpeer
                                  const char *mimeType,
                                  const char *encoding,
                                  const char *pushType,
-                                 const ValueList &pushValues,  // list will be empty is no values
-                                 ElementPtr pushCustomData, // will be ElementPtr() if no custom data
+                                 const ValueList &pushValues,   // list will be empty is no values
+                                 ElementPtr pushCustomData,     // will be ElementPtr() if no custom data
                                  Time sent,
                                  Time expires,
                                  size_t dataLength
                                  ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Insert a message into the message table
+      virtual int insertMessage(
+                                const char *messageID,
+                                const char *toURI,
+                                const char *fromURI,
+                                const char *ccURI,
+                                const char *bccURI,
+                                const char *type,
+                                const char *mimeType,
+                                const char *encoding,
+                                const char *pushType,
+                                const ValueList &pushValues,  // list will be empty is no values
+                                ElementPtr pushCustomData,    // will be ElementPtr() if no custom data
+                                Time sent,
+                                Time expires,
+                                SecureByteBlockPtr data,
+                                SecureByteBlockPtr decryptedData
+                                ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Update meta data for a message
@@ -603,8 +652,7 @@ namespace openpeer
       // PURPOSE: Update the data on a message
       virtual void updateMessageData(
                                      int index,
-                                     const BYTE *dataBuffer,
-                                     size_t dataBufferLengthInBytes
+                                     const SecureByteBlock &buffer
                                      ) = 0;
 
       virtual void notifyMessageFailedToDownloadData(int index) = 0;
@@ -634,15 +682,42 @@ namespace openpeer
       //-----------------------------------------------------------------------
       // PURPOSE: Get a small batch of messages which has "processedKey" set to
       //          false.
-      // NOTES:   - if whereMimeType is specified then the mime type must match
-      //          - only return messages which have a "data" blob
+      // NOTES:   - only return messages which have a "data" blob
       virtual void getBatchOfMessagesNeedingKeysProcessing(
                                                            int folderIndex,
+                                                           const char *whereMessageTypeIs,
                                                            const char *whereMimeType,
                                                            MessagesNeedingKeyingProcessingList &outMessages
                                                            ) = 0;
 
       virtual void notifyMessageKeyingProcessed(int messageIndex) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get a small batch of messages that need to be decrypted
+      // NOTES:   - only return messages where decryptLater is false
+      //          - only return messages which have a "data" blob
+      //          - exclude messages where message type is set to value of
+      //            excludeWhereMessageTypeIs
+      //          - exclude messages that do not have data
+      //          - exclude messages that failed to decrypt
+      virtual void getBatchOfMessagesNeedingDecrypting(
+                                                       const char *excludeWhereMessageTypeIs,
+                                                       MessagesNeedingDecryptingList &outMessagesToDecrypt
+                                                       ) = 0;
+
+      virtual void notifyDecryptLater(
+                                      int messageIndex,
+                                      const char *decryptKeyID
+                                      ) = 0;
+
+      virtual void notifyDecryptionFailure(int messageIndex) = 0;
+
+      virtual void notifyDecryptNowForKeys(const char *whereDecryptKeyIDIs) = 0;
+
+      virtual void notifyDecrypted(
+                                   int messageIndex,
+                                   SecureByteBlockPtr decryptedData
+                                   ) = 0;
 
 
       // MESSAGES DELIVERY STATE TABLE
@@ -661,6 +736,22 @@ namespace openpeer
                                                        const DeliveryInfoList &uris
                                                        ) = 0;
 
+      // PENDING DELIVERY MESSAGES TABLE
+      // ===============================
+      // int    index             [auto, unique]
+      // int    messageIndex      // index of message in messages table
+      // String remoteFolder      // deliver to remote folder
+      // bool   copyToSent        // copy to sent folder
+
+      virtual int insertPendingDeliveryMessage(
+                                               int messageIndex,
+                                               const char *remoteFolder,
+                                               bool copyToSendFolder
+                                               ) = 0;
+
+      virtual void getBatchOfMessagesToDeliver(PendingDeliveryMessageList &outPending) = 0;
+
+
       // LIST TABLE
       // ==========
       // int    index           [auto, unique]
@@ -668,7 +759,9 @@ namespace openpeer
       // bool   needsDownload   [default *true*]
       // bool   failedDownload  [default false]
 
-      virtual void addOrUpdateListID(const char *listID) = 0;
+      virtual int addOrUpdateListID(const char *listID) = 0;
+
+      virtual bool hasListID(const char *listID) = 0;
 
       virtual void notifyListFailedToDownload(int index) = 0;
 
@@ -751,7 +844,14 @@ namespace openpeer
                                  SendingKeyInfo &outInfo
                                  ) = 0;
 
+      // find an active sending key for this URI
+      virtual bool getActiveSendingKey(
+                                       const char *uri,
+                                       SendingKeyInfo &outInfo
+                                       );
+
       virtual bool addOrUpdateSendingKey(const SendingKeyInfo &inInfo) = 0;
+
 
       // RECEIVING KEYS TABLE
       // ====================
@@ -792,7 +892,7 @@ ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSendQueryDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSendQueryPtr, IServicePushMailboxSendQueryPtr)
-ZS_DECLARE_PROXY_METHOD_1(onPushMailboxQueryPushStatesChanged, IServicePushMailboxSendQueryPtr)
+ZS_DECLARE_PROXY_METHOD_1(onPushMailboxSendQueryPushStatesChanged, IServicePushMailboxSendQueryPtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxRegisterQueryDelegate)
