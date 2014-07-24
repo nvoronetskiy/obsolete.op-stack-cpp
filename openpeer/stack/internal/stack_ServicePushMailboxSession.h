@@ -713,6 +713,8 @@ namespace openpeer
         bool stepPendingDelivery();
         bool stepPendingDeliveryUpdateRequest();
 
+        bool stepPrepareVersionedFolderMessages();
+
         bool stepBackgroundingReady();
 
         void postStep();
@@ -723,6 +725,8 @@ namespace openpeer
         void cancel();
         void connectionFailure();
         void connectionReset();
+
+        void notifyChangedFolder(const String &folderName);
 
         bool send(MessagePtr message) const;
         IMessageMonitorPtr sendRequest(
@@ -746,6 +750,7 @@ namespace openpeer
         bool areAnyMessagesDownloadingData();
         bool areAnyListsFetching();
         bool areKeysAndSentFolderReady();
+        bool areAnyMessagesDecrypting();
         bool areAnyMessagesUploading();
 
         bool extractKeyingBundle(
@@ -969,6 +974,7 @@ namespace openpeer
 
         bool mRefreshFolders;
         FolderNameMap mMonitoredFolders;
+        FolderNameMap mNotifiedMonitoredFolders;
         IMessageMonitorPtr mFoldersGetMonitor;
 
         TimerPtr mNextFoldersUpdateTimer;
@@ -1011,6 +1017,8 @@ namespace openpeer
         MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
         IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
         IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
+
+        bool mRefreshVersionedFolders;
       };
 
       //-----------------------------------------------------------------------

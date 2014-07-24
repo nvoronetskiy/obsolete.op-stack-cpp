@@ -248,7 +248,9 @@ namespace openpeer
         mRefreshPendingDelivery(true),
         mDeliveryMaxChunkSize(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES)),
         mLastChannel(0),
-        mPendingDeliveryPrecheckRequired(true)
+        mPendingDeliveryPrecheckRequired(true),
+
+        mRefreshVersionedFolders(true)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -344,7 +346,7 @@ namespace openpeer
             delegate->onServicePushMailboxSessionStateChanged(pThis, mCurrentState);
           }
 
-          for (FolderNameMap::const_iterator iter = mMonitoredFolders.begin(); iter != mMonitoredFolders.end(); ++iter)
+          for (FolderNameMap::const_iterator iter = mNotifiedMonitoredFolders.begin(); iter != mNotifiedMonitoredFolders.end(); ++iter)
           {
             const FolderName &folderName = (*iter).first;
             delegate->onServicePushMailboxSessionFolderChanged(pThis, folderName);
@@ -590,7 +592,9 @@ namespace openpeer
           }
         }
 
-        int messageIndex = mDB->insertMessage(messageID, to, peerFilePublic->getPeerURI(), cc, bcc, message.mMessageType, message.mMimeType, encoding, message.mPushType, message.mPushValues, message.mCustomPushData, message.mSent, sent, encryptedMessage, message.mFullMessage);
+        int messageIndex = mDB->insertMessage(messageID, to, peerFilePublic->getPeerURI(), cc, bcc, message.mMessageType, message.mMimeType, encoding, message.mPushType, message.mPushValues, message.mCustomPushData, message.mSent, sent, encryptedMessage, message.mFullMessage, true);
+
+        mRefreshVersionedFolders = true;
 
         if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == messageIndex) {
           ZS_LOG_ERROR(Detail, log("failed to insert message into the database"))
@@ -777,6 +781,8 @@ namespace openpeer
             }
 
             PushStatePeerDetailList &useList = (*found).second;
+
+            if (info.mURI.isEmpty()) continue;
 
             PushStatePeerDetail detail;
             detail.mURI = info.mURI;
@@ -1340,14 +1346,36 @@ namespace openpeer
 
           if (PushMessageFolderInfo::Disposition_Remove == info.mDisposition) {
             ZS_LOG_DEBUG(log("folder was removed") + ZS_PARAM("folder name", name))
-            mDB->removeFolder(name);
+
+            int folderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+            if (mDB->getFolderIndex(name, folderIndex)) {
+              ZS_THROW_INVALID_ASSUMPTION_IF(folderIndex < 0)
+
+              mDB->removeAllMessagesFromFolder(folderIndex);
+              mDB->removeAllVersionedMessagesFromFolder(folderIndex);
+              mDB->removeFolder(folderIndex);
+            }
+
             mRefreshKeysAndSentFolder = true;
             continue;
           }
 
           if (info.mRenamed) {
             ZS_LOG_DEBUG(log("folder was renamed (removing old folder)") + ZS_PARAM("folder name", info.mName) + ZS_PARAM("new name", info.mRenamed))
-            mDB->removeFolder(info.mName);
+            int folderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+            if (mDB->getFolderIndex(info.mRenamed, folderIndex)) {
+              ZS_THROW_INVALID_ASSUMPTION_IF(folderIndex < 0)
+
+              mDB->removeAllMessagesFromFolder(folderIndex);
+              mDB->removeAllVersionedMessagesFromFolder(folderIndex);
+              mDB->removeFolder(folderIndex);
+            }
+
+            if (mDB->getFolderIndex(info.mName, folderIndex)) {
+              ZS_THROW_INVALID_ASSUMPTION_IF(folderIndex < 0)
+              mDB->updateFolderName(folderIndex, info.mName);
+            }
+
             name = info.mRenamed;
             mRefreshKeysAndSentFolder = true;
           }
@@ -1412,6 +1440,8 @@ namespace openpeer
           mDB->setLastDownloadedVersionForFolders(String());
           mLastActivity = zsLib::now();
 
+          mDB->flushFolderVersionedMessages();
+          mDB->flushFolderMessages();
           mDB->flushFolders();
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -1563,7 +1593,7 @@ namespace openpeer
             case PushMessageInfo::Disposition_Remove: {
               ZS_LOG_TRACE(log("message removed in folder") + ZS_PARAM("folder name", originalFolderInfo.mName) + ZS_PARAM("message id", message.mID))
 
-              mDB->addRemovedVersionedMessageEntryIfMessageNotRemoved(updateInfo.mInfo.mIndex, message.mID);
+              mDB->addRemovedFolderVersionedMessageEntryIfMessageNotRemoved(updateInfo.mInfo.mIndex, message.mID);
               mDB->removeMessageFromFolder(updateInfo.mInfo.mIndex, message.mID);
               break;
             }
@@ -1878,8 +1908,11 @@ namespace openpeer
                              info.mPushInfo.mCustom,
                              info.mSent,
                              info.mExpires,
-                             info.mLength
+                             info.mLength,
+                             true
                              );
+
+          mRefreshVersionedFolders = true;
 
           {
             String listID =  extractListID(info.mTo);
@@ -2227,6 +2260,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "refresh folders", mRefreshFolders);
         IHelper::debugAppend(resultEl, "monitored folders", mMonitoredFolders.size());
+        IHelper::debugAppend(resultEl, "notified monitored folders", mNotifiedMonitoredFolders.size());
         IHelper::debugAppend(resultEl, "folders get monitor", mFoldersGetMonitor ? mFoldersGetMonitor->getID() : 0);
 
         IHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
@@ -2264,6 +2298,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "last channel", mLastChannel);
         IHelper::debugAppend(resultEl, "pending delivery pre-check required", mPendingDeliveryPrecheckRequired);
         IHelper::debugAppend(resultEl, "pending delivery pre-check messages metadata get monitor", mPendingDeliveryPrecheckMessageMetaDataGetMonitor ? mPendingDeliveryPrecheckMessageMetaDataGetMonitor->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
 
         return resultEl;
       }
@@ -2316,10 +2352,10 @@ namespace openpeer
         if (!stepProcessKeysFolder()) goto post_step;
         if (!stepDecryptMessages()) goto post_step;
 
-        if (!stepDecryptMessages()) goto post_step;
-
         if (!stepPendingDelivery()) goto post_step;
         if (!stepPendingDeliveryUpdateRequest()) goto post_step;
+
+        if (!stepPrepareVersionedFolderMessages()) goto post_step;
 
       post_step:
         postStep();
@@ -3496,7 +3532,7 @@ namespace openpeer
               receivingInfo.mExpires = bundle.mExpires;
 
               mDB->addOrUpdateReceivingKey(receivingInfo);
-              mDB->notifyDecryptNowForKeys(receivingInfo.mKeyID);
+              mDB->notifyMessageDecryptNowForKeys(receivingInfo.mKeyID);
 
               mRefreshMessagesNeedingDecryption = true;
             }
@@ -3656,7 +3692,7 @@ namespace openpeer
                 ZS_LOG_DEBUG(log("received answer passphrase") + ZS_PARAM("keying id", bundle.mReferencedKeyID) + ZS_PARAM("passphrase", receivingInfo.mPassphrase))
 
                 mDB->addOrUpdateReceivingKey(receivingInfo);
-                mDB->notifyDecryptNowForKeys(receivingInfo.mKeyID);
+                mDB->notifyMessageDecryptNowForKeys(receivingInfo.mKeyID);
 
                 mRefreshMessagesNeedingDecryption = true;
               } else {
@@ -3692,7 +3728,7 @@ namespace openpeer
         mDB->getBatchOfMessagesNeedingDecrypting(OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, messages);
 
         if (messages.size() < 1) {
-          ZS_LOG_TRACE(log("no messages are needing decryption at this time"))
+          ZS_LOG_DEBUG(log("no messages are needing decryption at this time"))
           mRefreshMessagesNeedingDecryption = false;
           return true;
         }
@@ -3705,6 +3741,13 @@ namespace openpeer
 
           {
             IHelper::SplitMap split;
+
+            if (info.mEncoding.isEmpty()) {
+              ZS_LOG_DEBUG(log("message was not encoded thus the encrypted data is the decrypted data") + ZS_PARAM("message index", info.mMessageIndex))
+              mDB->notifyMessageDecrypted(info.mMessageIndex, info.mData, true);
+              mRefreshVersionedFolders = true;
+              continue;
+            }
 
             IHelper::split(info.mEncoding, split, ':');
             if (split.size() != 5) {
@@ -3750,18 +3793,19 @@ namespace openpeer
             ZS_THROW_INVALID_ASSUMPTION_IF(!decryptedData)
 
             ZS_LOG_DEBUG(log("message is now decrypted") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
-            mDB->notifyDecrypted(info.mMessageIndex, decryptedData);
+            mDB->notifyMessageDecrypted(info.mMessageIndex, decryptedData, true);
+            mRefreshVersionedFolders = true;
             continue;
           }
 
         failed_to_decrypt:
           {
-            mDB->notifyDecryptionFailure(info.mMessageIndex);
+            mDB->notifyMessageDecryptionFailure(info.mMessageIndex);
             continue;
           }
         decrypt_later:
           {
-            mDB->notifyDecryptLater(info.mMessageIndex, keyID);
+            mDB->notifyMessageDecryptLater(info.mMessageIndex, keyID);
             continue;
           }
         }
@@ -3926,8 +3970,72 @@ namespace openpeer
 
         services::ITransportStreamWriterDelegateProxy::create(mThisWeak.lock())->onTransportStreamWriterReady(mWriter);
 
-        // HERE
+        return true;
+      }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepPrepareVersionedFolderMessages()
+      {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingNotificationInfo MessageNeedingNotificationInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingNotificationList MessageNeedingNotificationList;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderIndex FolderIndex;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderIndexList FolderIndexList;
+
+        typedef std::map<FolderIndex, FolderIndex> FoldersUpdatedMap;
+
+        if (!mRefreshVersionedFolders) {
+          ZS_LOG_TRACE(log("no need to refresh versioned folders"))
+          return true;
+        }
+
+        MessageNeedingNotificationList needingNotification;
+        mDB->getBatchOfMessagesNeedingNotification(needingNotification);
+
+        if (needingNotification.size() < 1) {
+          ZS_LOG_DEBUG(log("no messages need notification at this time"))
+          mRefreshVersionedFolders = false;
+          return true;
+        }
+
+        FoldersUpdatedMap updatedFolders;
+
+        for (MessageNeedingNotificationList::iterator iter = needingNotification.begin(); iter != needingNotification.end(); ++iter) {
+          MessageNeedingNotificationInfo &info = (*iter);
+
+          {
+            if (info.mDataLength > 0) {
+              if (!info.mHasDecryptedData) {
+                ZS_LOG_TRACE(log("cannot add to version table yet as data is not decrypted"))
+                goto clear_notification;
+              }
+            }
+
+            FolderIndexList folders;
+            mDB->getFoldersWithMessage(info.mMessageID, folders);
+
+            for (FolderIndexList::iterator folderIter = folders.begin(); folderIter != folders.end(); ++folderIter) {
+              FolderIndex folderIndex = (*folderIter);
+
+              mDB->addFolderVersionedMessage(folderIndex, info.mMessageID);
+              updatedFolders[folderIndex] = folderIndex;
+            }
+          }
+
+        clear_notification:
+          mDB->clearMessageNeedsNotification(info.mIndex);
+        }
+
+        for (FoldersUpdatedMap::iterator iter = updatedFolders.begin(); iter != updatedFolders.end(); ++iter)
+        {
+          FolderIndex index = (*iter).second;
+          String name = mDB->getFolderName(index);
+          if (name.isEmpty()) continue;
+
+          notifyChangedFolder(name);
+        }
+
+        // try to do some more notification
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
       }
 
@@ -4207,6 +4315,18 @@ namespace openpeer
 #define WARNING_CLEAR_OUT_SESSION_STATE 1
 #define WARNING_CLEAR_OUT_SESSION_STATE 2
         
+      }
+
+      //---------------------------------------------------------------------
+      void ServicePushMailboxSession::notifyChangedFolder(const String &folderName)
+      {
+        if (mMonitoredFolders.end() == mMonitoredFolders.find(folderName)) {
+          ZS_LOG_TRACE(log("folder not monitored thus ignoring notification"))
+          return;
+        }
+
+        mSubscriptions.delegate()->onServicePushMailboxSessionFolderChanged(mThisWeak.lock(), folderName);
+        mNotifiedMonitoredFolders[folderName] = folderName;
       }
 
       //---------------------------------------------------------------------
@@ -4507,6 +4627,13 @@ namespace openpeer
         if (mKeyFolderUpdateMonitor) return false;
         if (mSentFolderUpdateMonitor) return false;
         return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyMessagesDecrypting()
+      {
+        if (mRefreshMessagesNeedingDecryption) return true;
+        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -4900,7 +5027,8 @@ namespace openpeer
         IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
 
         ValueList empty;
-        int index = mDB->insertMessage(messageID, toURI, peerFilePublic->getPeerURI(), NULL, NULL, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE, NULL, empty, ElementPtr(), zsLib::now(), inBundle.mExpires, output, SecureByteBlockPtr());
+        int index = mDB->insertMessage(messageID, toURI, peerFilePublic->getPeerURI(), NULL, NULL, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE, NULL, empty, ElementPtr(), zsLib::now(), inBundle.mExpires, output, SecureByteBlockPtr(), false);
+
         if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == index) {
           ZS_LOG_ERROR(Detail, log("failed to insert keying message into messages table") + ZS_PARAM("message id", messageID))
           return false;

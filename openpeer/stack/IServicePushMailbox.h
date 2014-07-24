@@ -336,6 +336,10 @@ namespace openpeer
       typedef std::list<FolderNeedingUpdateInfo> FolderNeedingUpdateList;
 
       //-----------------------------------------------------------------------
+      typedef int FolderIndex;
+      typedef std::list<FolderIndex> FolderIndexList;
+
+      //-----------------------------------------------------------------------
       struct MessageNeedingUpdateInfo
       {
         int mIndex;
@@ -351,6 +355,17 @@ namespace openpeer
         size_t mDataLength;
       };
       typedef std::list<MessageNeedingDataInfo> MessageNeedingDataList;
+
+      //-----------------------------------------------------------------------
+      struct MessageNeedingNotificationInfo
+      {
+        int mIndex;
+        String mMessageID;
+        size_t mDataLength;
+        bool mHasData;
+        bool mHasDecryptedData;
+      };
+      typedef std::list<MessageNeedingNotificationInfo> MessageNeedingNotificationList;
 
       //-----------------------------------------------------------------------
       struct DeliveryInfo
@@ -471,17 +486,13 @@ namespace openpeer
       // Time   updateNext
 
       //-----------------------------------------------------------------------
-      // PURPOSE: Deletet all folders and folder related data
-      // NOTE:    All data in "Folders Table", "Folder Message Table" and
-      //          "Version Folder Messages Table" are deleted.
+      // PURPOSE: Deletet all folders from folders table
+      // NOTE:    All data in "Folders Table" is deleted
       virtual void flushFolders() = 0;
 
       //-----------------------------------------------------------------------
-      // PURPOSE: Deletet a folder and all related data for the folder
-      // NOTE:    Deletes folder entry and any related messages to the folder
-      //          in "Folder Messages" Table or messages in "Versioned Folder
-      //          Messages Table"
-      virtual void removeFolder(const char *inFolderName) = 0;
+      // PURPOSE: Deletet a folder from the folders table
+      virtual void removeFolder(int folderIndex) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: find the index of an existing folder (if one exists)
@@ -491,6 +502,8 @@ namespace openpeer
                                   int &outFolderIndex
                                   ) = 0;
 
+      virtual String getFolderName(int folderIndex) = 0;
+
       //-----------------------------------------------------------------------
       // PURPOSE: Add or update a record in the "Folders Table"
       virtual void addOrUpdateFolder(
@@ -499,6 +512,13 @@ namespace openpeer
                                      ULONG totalUnreadMessages,
                                      ULONG totalMessages
                                      ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Rename an existing folder's name
+      virtual void updateFolderName(
+                                    int infolderIndex,
+                                    const char *newfolderName
+                                    ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Update a record in the "Folders Table"
@@ -536,6 +556,8 @@ namespace openpeer
       // int    folderIndex
       // String messageID
 
+      virtual void flushFolderMessages() = 0;
+
       virtual void addMessageToFolderIfNotPresent(
                                                   int folderIndex,
                                                   const char *messageID
@@ -548,24 +570,36 @@ namespace openpeer
 
       virtual void removeAllMessagesFromFolder(int folderIndex) = 0;
 
+      virtual void getFoldersWithMessage(
+                                         const char *messageID,
+                                         FolderIndexList &outFolders
+                                         ) = 0;
+
+
 
       // FOLDER VERSIONED MESSAGES TABLE
       // ===============================
       // int    index               [auto, unique]
       // int    folderIndex
       // String messageID
-      // String downloadedVersion
-      // bool   removedFlag   [default = false where true = removed]
+      // bool   removedFlag         [default = false (i.e. true = message is removed)]
+
+      virtual void flushFolderVersionedMessages() = 0;
+
+      virtual void addFolderVersionedMessage(
+                                             int folderIndex,
+                                             const char *messageID
+                                             ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: If the last message entry for a given folder index contains
       //          the message ID but does not have a "removedFlag" true then
       //          add a new entry for this message entry for the folder that
       //          contains the removed flag being true.
-      virtual void addRemovedVersionedMessageEntryIfMessageNotRemoved(
-                                                                      int folderIndex,
-                                                                      const char *messageID
-                                                                      ) = 0;
+      virtual void addRemovedFolderVersionedMessageEntryIfMessageNotRemoved(
+                                                                            int folderIndex,
+                                                                            const char *messageID
+                                                                            ) = 0;
 
       virtual void removeAllVersionedMessagesFromFolder(int folderIndex) = 0;
 
@@ -584,7 +618,7 @@ namespace openpeer
       // String mimeType
       // String encoding
       // String pushType
-      // ValueList pushValues       small amount of data can be converted into an encoded string or put into its own table assoicated to message
+      // ValueList pushValues       small amount of data can be converted into an encoded string or put into its own table associated to message
       // Time   sent
       // Time   expires
       // Time   dataLength
@@ -597,6 +631,7 @@ namespace openpeer
       // String decryptKeyID
       // bool   decryptLater          [default false]
       // bool   decryptFailure        [default false]
+      // bool   needsNotification     [default false]
 
       //-----------------------------------------------------------------------
       // PURPOSE: Create an entry for a message or update it to notify that
@@ -623,7 +658,8 @@ namespace openpeer
                                  ElementPtr pushCustomData,     // will be ElementPtr() if no custom data
                                  Time sent,
                                  Time expires,
-                                 size_t dataLength
+                                 size_t dataLength,
+                                 bool needsNotification
                                  ) = 0;
 
       //-----------------------------------------------------------------------
@@ -643,7 +679,8 @@ namespace openpeer
                                 Time sent,
                                 Time expires,
                                 SecureByteBlockPtr data,
-                                SecureByteBlockPtr decryptedData
+                                SecureByteBlockPtr decryptedData,
+                                bool needsNotifications
                                 ) = 0;
 
       //-----------------------------------------------------------------------
@@ -753,19 +790,24 @@ namespace openpeer
                                                        MessagesNeedingDecryptingList &outMessagesToDecrypt
                                                        ) = 0;
 
-      virtual void notifyDecryptLater(
-                                      int messageIndex,
-                                      const char *decryptKeyID
-                                      ) = 0;
+      virtual void notifyMessageDecryptLater(
+                                             int messageIndex,
+                                             const char *decryptKeyID
+                                             ) = 0;
 
-      virtual void notifyDecryptionFailure(int messageIndex) = 0;
+      virtual void notifyMessageDecryptionFailure(int messageIndex) = 0;
 
-      virtual void notifyDecryptNowForKeys(const char *whereDecryptKeyIDIs) = 0;
+      virtual void notifyMessageDecryptNowForKeys(const char *whereDecryptKeyIDIs) = 0;
 
-      virtual void notifyDecrypted(
-                                   int messageIndex,
-                                   SecureByteBlockPtr decryptedData
-                                   ) = 0;
+      virtual void notifyMessageDecrypted(
+                                          int messageIndex,
+                                          SecureByteBlockPtr decryptedData,
+                                          bool needsNotification
+                                          ) = 0;
+
+      virtual void getBatchOfMessagesNeedingNotification(MessageNeedingNotificationList &outNeedsNotification) = 0;
+
+      virtual void clearMessageNeedsNotification(int messageIndex) = 0;
 
 
       // MESSAGES DELIVERY STATE TABLE
