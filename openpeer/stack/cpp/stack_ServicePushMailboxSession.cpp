@@ -252,7 +252,9 @@ namespace openpeer
         mLastChannel(0),
         mPendingDeliveryPrecheckRequired(true),
 
-        mRefreshVersionedFolders(true)
+        mRefreshVersionedFolders(true),
+
+        mRefreshMessagesNeedingExpiry(true)
       {
         ZS_LOG_BASIC(log("created"))
 
@@ -463,6 +465,8 @@ namespace openpeer
         // since we just started monitoring, indicate that the folder has changed
         mSubscriptions.delegate()->onServicePushMailboxSessionFolderChanged(mThisWeak.lock(), folderName);
 
+        mLastActivity = zsLib::now(); // register activity to cause connection to restart if not started
+
         // wake up and refresh the folders list to start the monitor process on this folder
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -491,7 +495,7 @@ namespace openpeer
         int folderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
         String uniqueID;
 
-        if (!mDB->getFolderUniqueID(inFolder, folderIndex, uniqueID)) {
+        if (!mDB->getFolderIndexAndUniqueID(inFolder, folderIndex, uniqueID)) {
           ZS_LOG_WARNING(Detail, log("no information about the folder exists") + ZS_PARAM("folder", inFolder))
           return false;
         }
@@ -673,7 +677,7 @@ namespace openpeer
         SendingKeyInfo info;
 
         // figure out which sending key to use
-        if (mDB->getActiveSendingKey(allURI, info)) {
+        if (mDB->getActiveSendingKey(allURI, zsLib::now(), info)) {
           ZS_LOG_TRACE(log("obtained active sending key for URI") + ZS_PARAM("uri", allURI))
         } else {
           deliverNewSendingKey(allURI, allPeers, info.mKeyID, info.mRSAPassphrase, info.mExpires);
@@ -717,6 +721,8 @@ namespace openpeer
         mDB->insertPendingDeliveryMessage(messageIndex, remoteFolder, copyToSentFolder, flags);
         mRefreshPendingDelivery = true;
 
+        mLastActivity = zsLib::now(); // register activity to cause connection to restart if not started
+
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
         return query;
@@ -750,9 +756,7 @@ namespace openpeer
 
         mMessagesToMarkRead[messageID] = messageID;
 
-        mRequiresConnection = true;
-
-        mDoNotRetryConnectionBefore = Time();
+        mLastActivity = zsLib::now(); // register activity to cause connection to restart if not started
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -768,9 +772,7 @@ namespace openpeer
 
         mMessagesToRemove[messageID] = messageID;
 
-        mRequiresConnection = true;
-
-        mDoNotRetryConnectionBefore = Time();
+        mLastActivity = zsLib::now(); // register activity to cause connection to restart if not started
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -2496,14 +2498,15 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
 
+        IHelper::debugAppend(resultEl, "refresh needing expiry", mRefreshMessagesNeedingExpiry);
+
         return resultEl;
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::step()
       {
-        if ((isShuttingDown()) ||
-            (isShutdown())) {
+        if (isShutdown()) {
           ZS_LOG_DEBUG(log("step - already shutting down / shutdown"))
           cancel();
           return;
@@ -2553,6 +2556,10 @@ namespace openpeer
         if (!stepPrepareVersionedFolderMessages()) goto post_step;
 
         if (!stepMarkReadOrRemove()) goto post_step;
+
+        if (!stepExpireMessages()) goto post_step;
+
+        if (!stepBackgroundingReady()) goto post_step;
 
       post_step:
         postStep();
@@ -2625,7 +2632,8 @@ namespace openpeer
 
         Time now = zsLib::now();
 
-        bool shouldConnect = ((mLastActivity + mInactivityTimeout > now) ||
+        bool activity = (Time() != mLastActivity) && (mLastActivity + mInactivityTimeout > now);
+        bool shouldConnect = ((activity) ||
                               (mRequiresConnection));
 
         if (mBackgroundingEnabled) {
@@ -2860,6 +2868,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepRead()
       {
+        if (!mReader) {
+          ZS_LOG_TRACE(log("step read - no reader present"))
+          return false;
+        }
+
         while (true) {
           ITransportStream::StreamHeaderPtr header;
 
@@ -3089,9 +3102,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepRegisterQueries()
       {
-        ZS_LOG_TRACE(log("step register queries"))
 
-        if (mRegisterQueries.size() < 1) return true;
+        if (mRegisterQueries.size() < 1) {
+          ZS_LOG_TRACE(log("step register queries - no register queries"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("step register queries - issuing registrations"))
 
         PushSubscriptionInfoList subscriptions;
         RegisterQueryList queriesNeedingRequest;
@@ -3305,9 +3322,7 @@ namespace openpeer
         }
 
         if (oldSendIndex != mSentFolderIndex) {
-          ZS_LOG_TRACE(log("sent folder needs processing"))
-#define WARNING_TODO_SENT_FOLDER_NEEDS_PROCESSING 1
-#define WARNING_TODO_SENT_FOLDER_NEEDS_PROCESSING 2
+          ZS_LOG_TRACE(log("sent folder needs processing (normal message update process should handle this case)"))
         }
 
         if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) {
@@ -3570,7 +3585,7 @@ namespace openpeer
 
         ListsNeedingDownloadList downloadList;
 
-        mDB->getBatchOfListNeedingDownload(downloadList);
+        mDB->getBatchOfListsNeedingDownload(downloadList);
 
         if (downloadList.size() < 1) {
           ZS_LOG_DEBUG(log("all lists have downloaded"))
@@ -3790,6 +3805,7 @@ namespace openpeer
                 String rawKeyID = extractRawSendingKeyID(bundle.mReferencedKeyID, isDHKey);
 
                 SendingKeyInfo sendingInfo;
+                sendingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
                 if (!mDB->getSendingKey(rawKeyID, sendingInfo)) {
                   ZS_LOG_WARNING(Detail, log("sending key is not known on this device") + ZS_PARAM("key id", bundle.mReferencedKeyID))
                   goto post_processing;
@@ -3863,6 +3879,7 @@ namespace openpeer
               } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER == bundle.mMode) {
                 // remote party is answering and giving a passphrase which represents their sending passphrase (i.e. which is used as a local receiving key)
                 ReceivingKeyInfo receivingInfo;
+                receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
 
                 if (!mDB->getReceivingKey(bundle.mReferencedKeyID, receivingInfo)) {
                   ZS_LOG_WARNING(Detail, log("never created an offer so this answer is not related") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("from", info.mFrom) + ZS_PARAM("uri", receivingInfo.mURI))
@@ -4201,7 +4218,9 @@ namespace openpeer
           mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         }
 
-        services::ITransportStreamWriterDelegateProxy::create(mThisWeak.lock())->onTransportStreamWriterReady(mWriter);
+        if (mWriter) {
+          services::ITransportStreamWriterDelegateProxy::create(mThisWeak.lock())->onTransportStreamWriterReady(mWriter);
+        }
 
         return true;
       }
@@ -4337,27 +4356,139 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::stepBackgroundingReady()
+      bool ServicePushMailboxSession::stepExpireMessages()
       {
-        if (!mBackgroundingEnabled) {
-          ZS_LOG_TRACE(log("backgrounding not enabled"))
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingExpiryInfo MessagesNeedingExpiryInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingExpiryList MessagesNeedingExpiryList;
+
+        if (!mRefreshMessagesNeedingExpiry) {
+          ZS_LOG_TRACE(log("no need to check for expiry at this time"))
           return true;
         }
 
-        bool backgroundingReady = (mRegisterQueries.size() < 1) &&
-                                  (!mFoldersGetMonitor);
-
-#define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 1
-#define WARNING_ADD_CHECKS_TO_SEE_IF_BACKGROUNDING_READY 2
-
-        if (!backgroundingReady) {
-          ZS_LOG_TRACE(log("backgrounding is not ready yet") + toDebug())
+        if (areAnyMessagesUploading()) {
+          ZS_LOG_TRACE(log("will not attempt to expire messages while uploading"))
           return true;
+        }
+
+        if (areAnyMessagesUpdating()) {
+          ZS_LOG_TRACE(log("will not attempt to expire messages while updating messages"))
+          return true;
+        }
+
+        if (areAnyMessagesDownloadingData()) {
+          ZS_LOG_TRACE(log("will not attempt to expire messages while downloading message data"))
+          return true;
+        }
+
+        if (areAnyMessagesDecrypting()) {
+          ZS_LOG_TRACE(log("will not attempt to expire messages while messages are decrypting"))
+          return true;
+        }
+
+        if (areAnyMessagesMarkReadOrDeleting()) {
+          ZS_LOG_TRACE(log("will not attempt to expire messages while messages are being marked read or deleted"))
+          return true;
+        }
+
+        MessagesNeedingExpiryList needsExpiry;
+        mDB->getBatchOfMessagesNeedingExpiry(
+                                             zsLib::now(),
+                                             needsExpiry
+                                             );
+
+        if (needsExpiry.size() < 1) {
+          ZS_LOG_DEBUG(log("no messages needing expiry at this time"))
+          mRefreshMessagesNeedingExpiry = false;
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("expiring messages") + ZS_PARAM("total", needsExpiry.size()))
+
+        for (MessagesNeedingExpiryList::iterator iter = needsExpiry.begin(); iter != needsExpiry.end(); ++iter) {
+          MessagesNeedingExpiryInfo &info = (*iter);
+
+          handleMessageGone(info.mMessageID);
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepBackgroundingReady()
+      {
+        bool check = mBackgroundingEnabled || (isShuttingDown());
+
+        if (!check) {
+          ZS_LOG_TRACE(log("backgrounding not enabled and not shutting down"))
+          return true;
+        }
+
+        if (areRegisterQueriesActive()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - register queries are still active"))
+          return false;
+        }
+
+        if (isFolderListUpdating()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - folder list is updating"))
+          return false;
+        }
+
+        if (areAnyFoldersUpdating()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - folders still updating"))
+          return false;
+        }
+
+        if (areAnyMessagesUpdating()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - messages are updating"))
+          return false;
+        }
+
+        if (areAnyMessagesDownloadingData()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - messages downloading data"))
+          return false;
+        }
+
+        if (areAnyListsFetching()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - lists are being fetched"))
+          return false;
+        }
+
+        if (areAnyMessagesUploading()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - messages are uploading"))
+          return false;
+        }
+
+        if (areAnyMessagesMarkReadOrDeleting()) {
+          ZS_LOG_TRACE(log("backgrounding not ready - mark read or delete message is still pending"))
+          return false;
         }
 
         ZS_LOG_DEBUG(log("backgrounding is now ready"))
 
+        if (mNextFoldersUpdateTimer) {
+          mNextFoldersUpdateTimer->cancel();
+          mNextFoldersUpdateTimer.reset();
+        }
+
+        mRequiresConnection = false;
+
+        // now inactive
+        mLastActivity = Time();
+
+        if (mTCPMessaging) {
+          ZS_LOG_DEBUG(log("waiting for TCP messaging to shutdown"))
+          return false;
+        }
+
         mBackgroundingNotifier.reset();
+
+        if (isShuttingDown()) {
+          ZS_LOG_DEBUG(log("now ready to complete shutdown process"))
+          cancel(true);
+          return false;
+        }
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return false;
@@ -4372,6 +4503,13 @@ namespace openpeer
       void ServicePushMailboxSession::setState(SessionStates state)
       {
         if (state == mCurrentState) return;
+
+        if (SessionState_ShuttingDown == mCurrentState) {
+          if (SessionState_Shutdown != state) {
+            ZS_LOG_WARNING(Insane, log("cannot go into state while shutting down (probably okay)") + ZS_PARAM("new state", toString(state)))
+            return;
+          }
+        }
 
         ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
         mCurrentState = state;
@@ -4403,7 +4541,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::cancel()
+      void ServicePushMailboxSession::cancel(bool completed)
       {
         if (isShutdown()) {
           ZS_LOG_DEBUG(log("already shutdown"))
@@ -4413,44 +4551,18 @@ namespace openpeer
         ZS_LOG_DEBUG(log("shutting down"))
         setState(SessionState_ShuttingDown);
 
-        if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
+        if (!completed) {
+          if (!mGracefulShutdownReference) mGracefulShutdownReference = mThisWeak.lock();
+        } else {
+          mGracefulShutdownReference.reset();
+        }
 
         if (mGracefulShutdownReference) {
-
-#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_UPLOADED 1
-#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_UPLOADED 2
-
-#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_DOWNLOADED 1
-#define WARNING_MAKE_SURE_ALL_MESSAGES_ARE_DOWNLOADED 2
-
-          if (mTCPMessaging) {
-            mTCPMessaging->shutdown();
-
-            if (ITCPMessaging::SessionState_Shutdown != mTCPMessaging->getState()) {
-              ZS_LOG_DEBUG(log("waiting for TCP messaging to shutdown"))
-              return;
-            }
-          }
+          IWakeDelegateProxy::create(mGracefulShutdownReference)->onWake();
+          return;
         }
 
         setState(SessionState_Shutdown);
-
-        // scope: clean out send queries
-        {
-          for (SendQueryMap::iterator iter = mSendQueries.begin(); iter != mSendQueries.end(); ++iter)
-          {
-            SendQueryPtr query = (*iter).second.lock();
-            if (!query) continue;
-
-            query->cancel();
-          }
-
-          mSendQueries.clear();
-        }
-
-        if (mTCPMessaging) {
-          mTCPMessaging->shutdown();
-        }
 
         mGracefulShutdownReference.reset();
 
@@ -4468,6 +4580,26 @@ namespace openpeer
           mReachabilitySubscription.reset();
         }
 
+        if (mLockboxSubscription) {
+          mLockboxSubscription->cancel();
+          mLockboxSubscription.reset();
+        }
+
+        if (mRetryTimer) {
+          mRetryTimer->cancel();
+          mRetryTimer.reset();
+        }
+
+        if (mServerLookup) {
+          mServerLookup->cancel();
+          mServerLookup.reset();
+        }
+
+        if (mNextFoldersUpdateTimer) {
+          mNextFoldersUpdateTimer->cancel();
+          mNextFoldersUpdateTimer.reset();
+        }
+
         // clean out any pending queries
         for (RegisterQueryList::iterator iter_doNotUse = mRegisterQueries.begin(); iter_doNotUse != mRegisterQueries.end(); )
         {
@@ -4480,6 +4612,18 @@ namespace openpeer
         }
 
         mRegisterQueries.clear();
+        // scope: clean out send queries
+        {
+          for (SendQueryMap::iterator iter = mSendQueries.begin(); iter != mSendQueries.end(); ++iter)
+          {
+            SendQueryPtr query = (*iter).second.lock();
+            if (!query) continue;
+
+            query->cancel();
+          }
+
+          mSendQueries.clear();
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -4524,6 +4668,9 @@ namespace openpeer
 
         mServerIP = IPAddress();
 
+        //.....................................................................
+        // connection setup
+
         if (mAccessMonitor) {
           mAccessMonitor->cancel();
           mAccessMonitor.reset();
@@ -4536,6 +4683,13 @@ namespace openpeer
           mGrantQuery.reset();
         }
 
+        if (mGrantWait) {
+          mGrantWait->cancel();
+          mGrantWait.reset();
+
+          get(mObtainedLock) = false;
+        }
+
         if (mGrantMonitor) {
           mGrantMonitor->cancel();
           mGrantMonitor.reset();
@@ -4546,10 +4700,21 @@ namespace openpeer
           mPeerValidateMonitor.reset();
         }
 
+
+        //.....................................................................
+        // folder list updating
+
         if (mFoldersGetMonitor) {
           mFoldersGetMonitor->cancel();
           mFoldersGetMonitor.reset();
         }
+
+
+        //.....................................................................
+        // folder updating
+
+        mRefreshFoldersNeedingUpdate = mRefreshFoldersNeedingUpdate || (mFoldersNeedingUpdate.size() > 0);
+        mFoldersNeedingUpdate.clear();
 
         for (MonitorList::iterator iter = mFolderGetMonitors.begin(); iter != mFolderGetMonitors.end(); ++iter) {
           IMessageMonitorPtr monitor = (*iter);
@@ -4558,34 +4723,11 @@ namespace openpeer
           monitor.reset();
         }
 
-        mRefreshFoldersNeedingUpdate = mRefreshFoldersNeedingUpdate || (mFoldersNeedingUpdate.size() > 0);
-        mFoldersNeedingUpdate.clear();
 
-        if (mMessageMetaDataGetMonitor) {
-          mMessageMetaDataGetMonitor->cancel();
-          mMessageMetaDataGetMonitor.reset();
-        }
+        //.....................................................................
+        // keys and folder creation
 
-        mRefreshMessagesNeedingUpdate = mRefreshMessagesNeedingUpdate || (mMessagesNeedingUpdate.size() > 0);
-        mMessagesNeedingUpdate.clear();
-
-        if (mMessageDataGetMonitor) {
-          mMessageDataGetMonitor->cancel();
-          mMessageDataGetMonitor.reset();
-        }
-
-        mRefreshMessagesNeedingData = mRefreshMessagesNeedingData || (mMessagesNeedingData.size() > 0);
-        mMessagesNeedingData.clear();
-        mMessagesNeedingDataChannels.clear();
-        mPendingChannelData.clear();
-
-        if (mListFetchMonitor) {
-          mListFetchMonitor->cancel();
-          mListFetchMonitor.reset();
-        }
-
-        mRefreshListsNeedingDownload = true;
-        mListsNeedingDownload.clear();
+        mRefreshKeysAndSentFolder = true;
 
         if (mKeyFolderUpdateMonitor) {
           mKeyFolderUpdateMonitor->cancel();
@@ -4597,7 +4739,52 @@ namespace openpeer
           mSentFolderUpdateMonitor.reset();
         }
 
-        mRefreshKeysAndSentFolder = true;
+
+        //.....................................................................
+        // messages needing update
+
+        mRefreshMessagesNeedingUpdate = mRefreshMessagesNeedingUpdate || (mMessagesNeedingUpdate.size() > 0);
+        mMessagesNeedingUpdate.clear();
+
+        if (mMessageMetaDataGetMonitor) {
+          mMessageMetaDataGetMonitor->cancel();
+          mMessageMetaDataGetMonitor.reset();
+        }
+
+
+        //.....................................................................
+        // messages needing data
+
+        mRefreshMessagesNeedingData = mRefreshMessagesNeedingData || (mMessagesNeedingData.size() > 0);
+        mMessagesNeedingData.clear();
+        mMessagesNeedingDataChannels.clear();
+        if (mMessageDataGetMonitor) {
+          mMessageDataGetMonitor->cancel();
+          mMessageDataGetMonitor.reset();
+        }
+
+        mPendingChannelData.clear();
+
+
+        //.....................................................................
+        // list fetching
+
+        mRefreshListsNeedingDownload = true;
+        mListsNeedingDownload.clear();
+
+        if (mListFetchMonitor) {
+          mListFetchMonitor->cancel();
+          mListFetchMonitor.reset();
+        }
+
+
+        //.....................................................................
+        // pending delivery
+
+        mRefreshPendingDelivery = mRefreshPendingDelivery || (mPendingDelivery.size() > 0);
+        mPendingDelivery.clear();
+        mPendingDeliveryPrecheckRequired = mRefreshPendingDelivery;
+        mPendingDeliveryMessageUpdateRequest.reset();
 
         if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
           mPendingDeliveryPrecheckMessageMetaDataGetMonitor->cancel();
@@ -4612,10 +4799,9 @@ namespace openpeer
           mPendingDeliveryMessageUpdateUploadCompleteMonitor.reset();
         }
 
-        mRefreshPendingDelivery = mRefreshPendingDelivery || (mPendingDelivery.size() > 0);
-        mPendingDelivery.clear();
-        mPendingDeliveryPrecheckRequired = mRefreshPendingDelivery;
-        mPendingDeliveryMessageUpdateRequest.reset();
+
+        //.....................................................................
+        // mark read or delete message
 
         for (MonitorList::iterator iter = mMarkingMonitors.begin(); iter != mMarkingMonitors.end(); ++iter) {
           IMessageMonitorPtr monitor = (*iter);
@@ -4624,14 +4810,29 @@ namespace openpeer
         }
         mMarkingMonitors.clear();
 
+
+        //.....................................................................
+        // wire cleanup
+
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
           mTCPMessaging.reset();
         }
 
-#define WARNING_CLEAR_OUT_SESSION_STATE 1
-#define WARNING_CLEAR_OUT_SESSION_STATE 2
-        
+        if (mWireStream) {
+          mWireStream->cancel();
+          mWireStream.reset();
+        }
+
+        if (mReader) {
+          mReader->cancel();
+          mReader.reset();
+        }
+
+        if (mWriter) {
+          mWriter->cancel();
+          mWriter.reset();
+        }
       }
 
       //---------------------------------------------------------------------
@@ -4754,7 +4955,7 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("folder needs update") + ZS_PARAM("name", info.mName) + ZS_PARAM("version", info.mVersion))
 
-          mDB->updateFolderIfExits(info.mName, info.mVersion);
+          mDB->updateFolderServerVersionIfFolderExists(info.mName, info.mVersion);
         }
 
         for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter)
@@ -4769,7 +4970,7 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("message needs meta data update") + ZS_PARAM("message id", info.mID) + ZS_PARAM("server version", info.mVersion))
 
-          mDB->updateMessageIfExists(info.mID, info.mVersion);
+          mDB->updateMessageServerVersionIfExists(info.mID, info.mVersion);
         }
 
         ZS_LOG_DEBUG(log("finished processing change notification"))
@@ -5007,7 +5208,14 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::isFolderListUpdating()
+      bool ServicePushMailboxSession::areRegisterQueriesActive() const
+      {
+        if (mRegisterQueries.size() > 0) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::isFolderListUpdating() const
       {
         if (mRefreshFolders) return true;
         if (mFoldersGetMonitor) return true;
@@ -5015,7 +5223,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyFoldersUpdating()
+      bool ServicePushMailboxSession::areAnyFoldersUpdating() const
       {
         if (mRefreshFoldersNeedingUpdate) return true;
         if (mFoldersNeedingUpdate.size() > 0) return true;
@@ -5024,7 +5232,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyMessagesUpdating()
+      bool ServicePushMailboxSession::areAnyMessagesUpdating() const
       {
         if (mRefreshMessagesNeedingUpdate) return true;
         if (mMessagesNeedingUpdate.size() > 0) return true;
@@ -5033,7 +5241,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyMessagesDownloadingData()
+      bool ServicePushMailboxSession::areAnyMessagesDownloadingData() const
       {
         if (mRefreshMessagesNeedingData) return true;
         if (mMessagesNeedingData.size() > 0) return true;
@@ -5042,7 +5250,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyListsFetching()
+      bool ServicePushMailboxSession::areAnyListsFetching() const
       {
         if (mRefreshListsNeedingDownload) return true;
         if (mListsNeedingDownload.size() > 0) return true;
@@ -5051,7 +5259,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areKeysAndSentFolderReady()
+      bool ServicePushMailboxSession::areKeysAndSentFolderReady() const
       {
         if (mRefreshKeysAndSentFolder) return false;
         if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) return false;
@@ -5062,14 +5270,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyMessagesDecrypting()
+      bool ServicePushMailboxSession::areAnyMessagesDecrypting() const
       {
         if (mRefreshMessagesNeedingDecryption) return true;
         return false;
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areAnyMessagesUploading()
+      bool ServicePushMailboxSession::areAnyMessagesUploading() const
       {
         if (mRefreshPendingDelivery) return true;
         if (mPendingDelivery.size() > 0) return true;
@@ -5078,6 +5286,27 @@ namespace openpeer
         if (mPendingDeliveryMessageUpdateErrorMonitor) return true;
         if (mPendingDeliveryMessageUpdateUploadCompleteMonitor) return true;
         return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyFoldersNeedingVersionedMessages() const
+      {
+        return mRefreshVersionedFolders;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyMessagesMarkReadOrDeleting() const
+      {
+        if (mMessagesToMarkRead.size() > 0) return true;
+        if (mMessagesToRemove.size() > 0) return true;
+        if (mMarkingMonitors.size() > 0) return true;
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::areAnyMessagesExpiring() const
+      {
+        return mRefreshMessagesNeedingExpiry;
       }
 
       //-----------------------------------------------------------------------
@@ -5393,9 +5622,9 @@ namespace openpeer
         }
 
         return (outEphemeralPrivateKey.hasData()) &&
-        (outEphemeralPublicKey.hasData()) &&
-        (outPrivateKey) &&
-        (outPublicKey);
+               (outEphemeralPublicKey.hasData()) &&
+               (outPrivateKey) &&
+               (outPublicKey);
       }
 
       //-----------------------------------------------------------------------

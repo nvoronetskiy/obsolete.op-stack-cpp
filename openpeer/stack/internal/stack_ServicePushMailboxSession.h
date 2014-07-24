@@ -719,6 +719,8 @@ namespace openpeer
 
         bool stepMarkReadOrRemove();
 
+        bool stepExpireMessages();
+
         bool stepBackgroundingReady();
 
         void postStep();
@@ -726,7 +728,7 @@ namespace openpeer
         void setState(SessionStates state);
         void setError(WORD errorCode, const char *reason = NULL);
 
-        void cancel();
+        void cancel(bool completed = false);
         void connectionFailure();
         void connectionReset();
 
@@ -756,14 +758,18 @@ namespace openpeer
 
         virtual String prepareMessageID(const String &inMessageID);
 
-        bool isFolderListUpdating();
-        bool areAnyFoldersUpdating();
-        bool areAnyMessagesUpdating();
-        bool areAnyMessagesDownloadingData();
-        bool areAnyListsFetching();
-        bool areKeysAndSentFolderReady();
-        bool areAnyMessagesDecrypting();
-        bool areAnyMessagesUploading();
+        bool areRegisterQueriesActive() const;
+        bool isFolderListUpdating() const;
+        bool areAnyFoldersUpdating() const;
+        bool areAnyMessagesUpdating() const;
+        bool areAnyMessagesDownloadingData() const;
+        bool areAnyListsFetching() const;
+        bool areKeysAndSentFolderReady() const;
+        bool areAnyMessagesDecrypting() const;
+        bool areAnyMessagesUploading() const;
+        bool areAnyFoldersNeedingVersionedMessages() const;
+        bool areAnyMessagesMarkReadOrDeleting() const;
+        bool areAnyMessagesExpiring() const;
 
         bool extractKeyingBundle(
                                  SecureByteBlockPtr buffer,
@@ -984,6 +990,7 @@ namespace openpeer
 
         SendQueryMap mSendQueries;
 
+        // folder list updating
         bool mRefreshFolders;
         FolderNameMap mMonitoredFolders;
         FolderNameMap mNotifiedMonitoredFolders;
@@ -991,20 +998,24 @@ namespace openpeer
 
         TimerPtr mNextFoldersUpdateTimer;
 
+        // folder updating
         bool mRefreshFoldersNeedingUpdate;
         FolderUpdateMap mFoldersNeedingUpdate;
         MonitorList mFolderGetMonitors;
 
+        // keys and folder creation
         bool mRefreshKeysAndSentFolder;
         int mKeysFolderIndex;
         int mSentFolderIndex;
         IMessageMonitorPtr mKeyFolderUpdateMonitor;
         IMessageMonitorPtr mSentFolderUpdateMonitor;
 
+        // messages needing update
         bool mRefreshMessagesNeedingUpdate;
         MessageUpdateMap mMessagesNeedingUpdate;
         IMessageMonitorPtr mMessageMetaDataGetMonitor;
 
+        // messages needing data
         bool mRefreshMessagesNeedingData;
         MessageDataMap mMessagesNeedingData;
         ChannelToMessageMap mMessagesNeedingDataChannels;
@@ -1012,6 +1023,7 @@ namespace openpeer
 
         PendingChannelDataList mPendingChannelData;
 
+        // list fetching
         bool mRefreshListsNeedingDownload;
         ListDownloadMap mListsNeedingDownload;
         IMessageMonitorPtr mListFetchMonitor;
@@ -1020,6 +1032,7 @@ namespace openpeer
 
         bool mRefreshMessagesNeedingDecryption;
 
+        // pending delivery
         bool mRefreshPendingDelivery;
         size_t mDeliveryMaxChunkSize;
         ChannelID mLastChannel;
@@ -1032,9 +1045,12 @@ namespace openpeer
 
         bool mRefreshVersionedFolders;
 
+        // mark read or delete message
         MessageMap mMessagesToMarkRead;
         MessageMap mMessagesToRemove;
         MonitorList mMarkingMonitors;
+
+        bool mRefreshMessagesNeedingExpiry;
       };
 
       //-----------------------------------------------------------------------
