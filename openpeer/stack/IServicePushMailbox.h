@@ -186,7 +186,19 @@ namespace openpeer
 
       virtual void monitorFolder(const char *folderName) = 0;
 
-      // if returns false then all messages for the folder must be flushed and call with String() as the last version to download new contacts
+      //-----------------------------------------------------------------------
+      // PURPOSE: Fetch a batch of new or removed messages for a folder since
+      //          the last version
+      // RETURNS: true if successful, false if not successful or for a version
+      //          conflict.
+      // NOTES:   Keep calling again until inLastVersionDownloaded is the same
+      //          as outUpdatedToVersion to retreive all updates. When false is
+      //          returned the version passed in must be considered invalid
+      //          and all messages for a folder need to be flushed then
+      //          the routine should be called again with a String() version
+      //          to get all the messages from the start. If the routien returns
+      //          false and the version passed in was String() then the folder
+      //          cannot be fetched.
       virtual bool getFolderMessageUpdates(
                                            const char *inFolder,
                                            String inLastVersionDownloaded,    // pass in String() if no previous version known
@@ -368,6 +380,16 @@ namespace openpeer
       typedef std::list<MessageNeedingNotificationInfo> MessageNeedingNotificationList;
 
       //-----------------------------------------------------------------------
+      struct FolderVersionedMessagesInfo
+      {
+        int mIndex;
+        int mFolderIndex;
+        String mMessageID;
+        bool mRemovedFlag;
+      };
+      typedef std::list<FolderVersionedMessagesInfo> FolderVersionedMessagesList;
+
+      //-----------------------------------------------------------------------
       struct DeliveryInfo
       {
         String mURI;
@@ -394,6 +416,7 @@ namespace openpeer
         int     mMessageIndex;
         String  mRemoteFolder;
         bool    mCopyToSent;
+        int     mSubscribeFlags;
       };
 
       //-----------------------------------------------------------------------
@@ -502,6 +525,12 @@ namespace openpeer
                                   int &outFolderIndex
                                   ) = 0;
 
+      virtual bool getFolderUniqueID(
+                                     const char *inFolderName,
+                                     int &outFolderIndex,
+                                     String &outUniqueID
+                                     ) = 0;
+
       virtual String getFolderName(int folderIndex) = 0;
 
       //-----------------------------------------------------------------------
@@ -602,6 +631,12 @@ namespace openpeer
                                                                             ) = 0;
 
       virtual void removeAllVersionedMessagesFromFolder(int folderIndex) = 0;
+
+      virtual void getBatchOfFolderVersionedMessagesAfterIndex(
+                                                               int versionIndex, // if < 0 then return all 0 or >
+                                                               int folderIndex,
+                                                               FolderVersionedMessagesList &outFolderVersionsMessages
+                                                               ) = 0;
 
 
       // MESSAGES TABLE
@@ -836,11 +871,13 @@ namespace openpeer
       // int    messageIndex      // index of message in messages table
       // String remoteFolder      // deliver to remote folder
       // bool   copyToSent        // copy to sent folder
+      // int    subscribeChanges
 
       virtual int insertPendingDeliveryMessage(
                                                int messageIndex,
                                                const char *remoteFolder,
-                                               bool copyToSendFolder
+                                               bool copyToSendFolder,
+                                               int subscribeFlags
                                                ) = 0;
 
       virtual void getBatchOfMessagesToDeliver(PendingDeliveryMessageList &outPending) = 0;

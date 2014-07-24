@@ -72,6 +72,7 @@
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 
+#include <zsLib/Numeric.h>
 #include <zsLib/Stringize.h>
 
 #define OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME ".sent"
@@ -96,6 +97,7 @@ namespace openpeer
     namespace internal
     {
       using CryptoPP::SHA1;
+      using zsLib::Numeric;
 
       typedef IStackForInternal UseStack;
 
@@ -474,11 +476,117 @@ namespace openpeer
                                                               MessageIDListPtr &outMessagesRemoved
                                                               )
       {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderVersionedMessagesInfo FolderVersionedMessagesInfo;
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderVersionedMessagesList FolderVersionedMessagesList;
+
+        typedef std::map<MessageID, MessageID> RemovedMap;
+        typedef std::map<MessageID, PushMessagePtr> AddedMap;
+
         outUpdatedToVersion = String();
         outMessagesAdded = PushMessageListPtr();
         outMessagesRemoved = MessageIDListPtr();
 
-        return false;
+        AutoRecursiveLock lock(*this);
+
+        int folderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        String uniqueID;
+
+        if (!mDB->getFolderUniqueID(inFolder, folderIndex, uniqueID)) {
+          ZS_LOG_WARNING(Detail, log("no information about the folder exists") + ZS_PARAM("folder", inFolder))
+          return false;
+        }
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == folderIndex)
+
+        int versionIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+
+        if (inLastVersionDownloaded.hasData()) {
+          IHelper::SplitMap split;
+          IHelper::split(inLastVersionDownloaded, split, '-');
+          if (split.size() != 2) {
+            ZS_LOG_WARNING(Detail, log("version string is not legal") + ZS_PARAM("version", inLastVersionDownloaded))
+            return false;
+          }
+
+          if (split[0] != uniqueID) {
+            ZS_LOG_WARNING(Detail, log("version conflict detected") + ZS_PARAM("input version", split[0]) + ZS_PARAM("current version", uniqueID))
+            return false;
+          }
+
+          try {
+            versionIndex = Numeric<int>(split[1]);
+          } catch (Numeric<int>::ValueOutOfRange &) {
+            ZS_LOG_WARNING(Detail, log("version index is not legal") + ZS_PARAM("version index", split[1]))
+            return false;
+          }
+        }
+
+        FolderVersionedMessagesList versionedMessages;
+        mDB->getBatchOfFolderVersionedMessagesAfterIndex(versionIndex, folderIndex, versionedMessages);
+
+
+        AddedMap allAdded;
+
+        AddedMap added;
+        RemovedMap removed;
+
+        for (FolderVersionedMessagesList::iterator iter = versionedMessages.begin(); iter != versionedMessages.end(); ++iter)
+        {
+          FolderVersionedMessagesInfo &info = (*iter);
+          if (info.mRemovedFlag) {
+            AddedMap::iterator found = added.find(info.mMessageID);
+            if (found != added.end()) {
+              // was added but is now removed
+              added.erase(found);
+            }
+
+            removed[info.mMessageID] = info.mMessageID;
+            continue;
+          }
+
+          // scope check to see if the message was removed in this batch because it's now being added (back?)
+          {
+            RemovedMap::iterator found = removed.find(info.mMessageID);
+            if (found != removed.end()) {
+              removed.erase(found);
+            }
+          }
+
+          // scope: check if this was added before during this call
+          {
+            AddedMap::iterator found = allAdded.find(info.mMessageID);
+            if (found != allAdded.end()) {
+              added[info.mMessageID] = (*found).second;
+              continue;
+            }
+          }
+
+          PushMessagePtr message = getPushMessage(info.mMessageID);
+          if (!message) {
+            ZS_LOG_WARNING(Detail, log("contains added version message that does not exist (removed later?)") + ZS_PARAM("message id", info.mMessageID))
+            continue;
+          }
+          added[info.mMessageID] = message;
+          allAdded[info.mMessageID] = message;
+        }
+
+        allAdded.clear();
+
+        outMessagesAdded = PushMessageListPtr(new PushMessageList);
+        for (AddedMap::iterator iter = added.begin(); iter != added.end(); ++iter) {
+          outMessagesAdded->push_back((*iter).second);
+        }
+
+        added.clear();
+
+        outMessagesRemoved = MessageIDListPtr(new MessageIDList);
+        for (RemovedMap::iterator iter = removed.begin(); iter != removed.end(); ++iter) {
+          outMessagesRemoved->push_back((*iter).second);
+        }
+
+        removed.clear();
+
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -602,7 +710,14 @@ namespace openpeer
           return query;
         }
 
-        mDB->insertPendingDeliveryMessage(messageIndex, remoteFolder, copyToSentFolder);
+        int flags = 0;
+        for (PushStateDetailMap::const_iterator iter = message.mPushStateDetails.begin(); iter != message.mPushStateDetails.end(); ++iter)
+        {
+          PushStates flag = (*iter).first;
+          flags = flags | ((int)(flag));
+        }
+
+        mDB->insertPendingDeliveryMessage(messageIndex, remoteFolder, copyToSentFolder, flags);
         mRefreshPendingDelivery = true;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
@@ -628,15 +743,39 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::markPushMessageRead(const char *messageID)
+      void ServicePushMailboxSession::markPushMessageRead(const char *inMessageID)
       {
+        ZS_LOG_DEBUG(log("mark push message as read") + ZS_PARAM("message id", inMessageID))
         AutoRecursiveLock lock(*this);
+
+        String messageID(inMessageID);
+        ZS_THROW_INVALID_ARGUMENT_IF(messageID.isEmpty())
+
+        mMessagesToMarkRead[messageID] = messageID;
+
+        mRequiresConnection = true;
+
+        mDoNotRetryConnectionBefore = Time();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::deletePushMessage(const char *messageID)
+      void ServicePushMailboxSession::deletePushMessage(const char *inMessageID)
       {
+        ZS_LOG_DEBUG(log("message needs to be deleted") + ZS_PARAM("message id", inMessageID))
         AutoRecursiveLock lock(*this);
+
+        String messageID(inMessageID);
+        ZS_THROW_INVALID_ARGUMENT_IF(messageID.isEmpty())
+
+        mMessagesToRemove[messageID] = messageID;
+
+        mRequiresConnection = true;
+
+        mDoNotRetryConnectionBefore = Time();
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
 
       //-----------------------------------------------------------------------
@@ -1541,7 +1680,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        FolderGetMonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
+        MonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
         if (found == mFolderGetMonitors.end()) {
           ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
@@ -1619,7 +1758,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        FolderGetMonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
+        MonitorList::iterator found = std::find(mFolderGetMonitors.begin(), mFolderGetMonitors.end(), monitor);
         if (found == mFolderGetMonitors.end()) {
           ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
           return false;
@@ -2013,6 +2152,8 @@ namespace openpeer
           ZS_LOG_TRACE(log("message upload error monitor completed") + IMessageMonitor::toDebug(monitor))
           mPendingDeliveryMessageUpdateErrorMonitor->cancel();
           mPendingDeliveryMessageUpdateErrorMonitor.reset();
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return false;
         }
 
@@ -2039,9 +2180,27 @@ namespace openpeer
           }
 
           mPendingDelivery.erase(mPendingDelivery.begin());
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
         }
 
+        for (MonitorList::iterator iter_doNotUse = mMarkingMonitors.begin(); iter_doNotUse != mMarkingMonitors.end(); )
+        {
+          MonitorList::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          IMessageMonitorPtr markingMonitor = (*current);
+          if (markingMonitor == monitor) {
+            ZS_LOG_DEBUG(log("marking monitor is compelte") + IMessageMonitor::toDebug(monitor))
+          }
+
+          mMarkingMonitors.erase(current);
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return true;
+        }
+        
         ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
         return false;
       }
@@ -2064,6 +2223,25 @@ namespace openpeer
           return true;
         }
 
+        for (MonitorList::iterator iter_doNotUse = mMarkingMonitors.begin(); iter_doNotUse != mMarkingMonitors.end(); )
+        {
+          MonitorList::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          IMessageMonitorPtr markingMonitor = (*current);
+          if (markingMonitor == monitor) {
+            ZS_LOG_DEBUG(log("marking monitor is compelte") + IMessageMonitor::toDebug(monitor))
+          }
+
+          mMarkingMonitors.erase(current);
+          if (IHTTP::HTTPStatusCode_NotFound != result->errorCode()) {
+            connectionFailure();
+          }
+
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return true;
+        }
+        
         ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
         return false;
       }
@@ -2301,6 +2479,11 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
 
+        IHelper::debugAppend(resultEl, "messages to mark read", mMessagesToMarkRead.size());
+        IHelper::debugAppend(resultEl, "messages to remove", mMessagesToRemove.size());
+
+        IHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
+
         return resultEl;
       }
 
@@ -2356,6 +2539,8 @@ namespace openpeer
         if (!stepPendingDeliveryUpdateRequest()) goto post_step;
 
         if (!stepPrepareVersionedFolderMessages()) goto post_step;
+
+        if (!stepMarkReadOrRemove()) goto post_step;
 
       post_step:
         postStep();
@@ -3823,6 +4008,22 @@ namespace openpeer
         typedef IServicePushMailboxDatabaseAbstractionDelegate::PendingDeliveryMessageInfo PendingDeliveryMessageInfo;
         typedef IServicePushMailboxDatabaseAbstractionDelegate::PendingDeliveryMessageList PendingDeliveryMessageList;
 
+        static PushStates checkStates[] =
+        {
+          PushState_Read,
+          PushState_Answered,
+          PushState_Flagged,
+          PushState_Deleted,
+          PushState_Draft,
+          PushState_Recent,
+          PushState_Delivered,
+          PushState_Sent,
+          PushState_Pushed,
+          PushState_Error,
+
+          PushState_None
+        };
+
         if (mPendingDelivery.size() > 0) {
           ZS_LOG_TRACE(log("already have messages that are pending delivery"))
           return true;
@@ -3913,6 +4114,26 @@ namespace openpeer
           }
 
           fetchMessages.push_back(processedInfo.mMessage.mID);
+
+          if (0 != processedInfo.mInfo.mSubscribeFlags) {
+            PushMessageInfo::FlagInfoMap flags;
+
+            for (int index = 0; checkStates[index] != PushState_None; ++index) {
+              if (0 == (processedInfo.mInfo.mSubscribeFlags & checkStates[index])) continue;
+
+              PushMessageInfo::FlagInfo flag;
+
+              flag.mDisposition = PushMessageInfo::FlagInfo::Disposition_Subscribe;
+              flag.mFlag = PushMessageInfo::FlagInfo::toFlag(IServicePushMailboxSession::toString(checkStates[index]));
+              if (PushMessageInfo::FlagInfo::Flag_NA == flag.mFlag) {
+                ZS_LOG_WARNING(Detail, log("flag was not understood") + ZS_PARAM("flag", IServicePushMailboxSession::toString(checkStates[index])))
+                continue;
+              }
+
+              flags[flag.mFlag] = flag;
+            }
+          }
+
           mPendingDelivery[processedInfo.mMessage.mID] = processedInfo;
         }
 
@@ -4036,6 +4257,61 @@ namespace openpeer
 
         // try to do some more notification
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepMarkReadOrRemove()
+      {
+        if (areAnyMessagesUploading()) {
+          ZS_LOG_TRACE(log("cannot mark read and remove messages while uploading"))
+          return true;
+        }
+
+        for (MessageMap::iterator iter = mMessagesToMarkRead.begin(); iter != mMessagesToMarkRead.end(); ++iter)
+        {
+          String &messageID = (*iter).second;
+
+          MessageUpdateRequestPtr request = MessageUpdateRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+
+          PushMessageInfo info;
+          info.mDisposition = PushMessageInfo::Disposition_Update;
+          info.mID = messageID;
+
+          PushMessageInfo::FlagInfoMap flags;
+          PushMessageInfo::FlagInfo flag;
+          flag.mDisposition = PushMessageInfo::FlagInfo::Disposition_Update;
+          flag.mFlag = PushMessageInfo::FlagInfo::Flag_Read;
+          flags[PushMessageInfo::FlagInfo::Flag_Read] = flag;
+
+          request->messageInfo(info);
+
+          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          mMarkingMonitors.push_back(monitor);
+        }
+
+        mMessagesToMarkRead.clear();
+
+        for (MessageMap::iterator iter = mMessagesToRemove.begin(); iter != mMessagesToRemove.end(); ++iter)
+        {
+          String &messageID = (*iter).second;
+
+          MessageUpdateRequestPtr request = MessageUpdateRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
+
+          PushMessageInfo info;
+          info.mDisposition = PushMessageInfo::Disposition_Remove;
+          info.mID = messageID;
+
+          request->messageInfo(info);
+
+          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          mMarkingMonitors.push_back(monitor);
+        }
+
+        mMessagesToRemove.clear();
+
         return true;
       }
 
@@ -4241,7 +4517,7 @@ namespace openpeer
           mFoldersGetMonitor.reset();
         }
 
-        for (FolderGetMonitorList::iterator iter = mFolderGetMonitors.begin(); iter != mFolderGetMonitors.end(); ++iter) {
+        for (MonitorList::iterator iter = mFolderGetMonitors.begin(); iter != mFolderGetMonitors.end(); ++iter) {
           IMessageMonitorPtr monitor = (*iter);
 
           monitor->cancel();
@@ -5034,7 +5310,7 @@ namespace openpeer
           return false;
         }
 
-        mDB->insertPendingDeliveryMessage(index, OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME, false);
+        mDB->insertPendingDeliveryMessage(index, OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME, false, 0);
         mRefreshPendingDelivery = true;
 
         return true;

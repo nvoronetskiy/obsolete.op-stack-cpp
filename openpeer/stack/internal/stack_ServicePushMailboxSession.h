@@ -205,7 +205,7 @@ namespace openpeer
 
         typedef std::map<FolderName, ProcessedFolderNeedingUpdateInfo> FolderUpdateMap;
 
-        typedef std::list<IMessageMonitorPtr> FolderGetMonitorList;
+        typedef std::list<IMessageMonitorPtr> MonitorList;
 
         struct ProcessedMessageNeedingUpdateInfo
         {
@@ -275,6 +275,8 @@ namespace openpeer
 
           IPeerPtr mValidationPeer;
         };
+
+        typedef std::map<MessageID, MessageID> MessageMap;
 
       protected:
         ServicePushMailboxSession(
@@ -715,6 +717,8 @@ namespace openpeer
 
         bool stepPrepareVersionedFolderMessages();
 
+        bool stepMarkReadOrRemove();
+
         bool stepBackgroundingReady();
 
         void postStep();
@@ -981,7 +985,7 @@ namespace openpeer
 
         bool mRefreshFoldersNeedingUpdate;
         FolderUpdateMap mFoldersNeedingUpdate;
-        FolderGetMonitorList mFolderGetMonitors;
+        MonitorList mFolderGetMonitors;
 
         bool mRefreshKeysAndSentFolder;
         int mKeysFolderIndex;
@@ -1019,6 +1023,10 @@ namespace openpeer
         IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
 
         bool mRefreshVersionedFolders;
+
+        MessageMap mMessagesToMarkRead;
+        MessageMap mMessagesToRemove;
+        MonitorList mMarkingMonitors;
       };
 
       //-----------------------------------------------------------------------
