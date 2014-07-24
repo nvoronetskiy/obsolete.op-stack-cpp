@@ -660,9 +660,6 @@ namespace openpeer
       // Blob   data
       // Blob   decryptedData
       // bool   processedKey          [default false]
-      // bool   needListFetch         [default false]
-      // bool   updateFailed          [default false]
-      // bool   dataDownloadFailed    [default false]
       // String decryptKeyID
       // bool   decryptLater          [default false]
       // bool   decryptFailure        [default false]
@@ -675,6 +672,16 @@ namespace openpeer
                                       const char *messageID,
                                       const char *serverVersion
                                       ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Get the index of a message if the message exists
+      // RETURNS: true if message exists, otherwise false
+      virtual bool getMessageIndex(
+                                   const char *messageID,
+                                   int &outMessageIndex
+                                   ) = 0;
+
+      virtual void removeMessage(int messageIndex) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Update meta data for a message
@@ -764,18 +771,12 @@ namespace openpeer
                                          const char *serverVersion
                                          ) = 0;
 
-      virtual void notifyMessageFailedToUpdate(int index) = 0;
-
-      virtual void notifyMessageRemovedFromServer(const char *messageID) = 0;
-
       //-----------------------------------------------------------------------
       // PURPOSE: Update the data on a message
       virtual void updateMessageData(
                                      int index,
                                      const SecureByteBlock &buffer
                                      ) = 0;
-
-      virtual void notifyMessageFailedToDownloadData(int index) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a small batch of messages whose server version does not
@@ -871,7 +872,7 @@ namespace openpeer
       // int    messageIndex      // index of message in messages table
       // String remoteFolder      // deliver to remote folder
       // bool   copyToSent        // copy to sent folder
-      // int    subscribeChanges
+      // int    subscribeFlags
 
       virtual int insertPendingDeliveryMessage(
                                                int messageIndex,
@@ -881,6 +882,8 @@ namespace openpeer
                                                ) = 0;
 
       virtual void getBatchOfMessagesToDeliver(PendingDeliveryMessageList &outPending) = 0;
+
+      virtual void removePendingDeliveryMessageByMessageIndex(int messageIndex) = 0;
 
       virtual void removePendingDeliveryMessage(int pendingIndex) = 0;
 

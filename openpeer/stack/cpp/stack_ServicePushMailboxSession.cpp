@@ -605,10 +605,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        String messageID = message.mMessageID;
-        if (messageID.isEmpty()) {
-          messageID = IHelper::randomString(32);
-        }
+        String messageID = prepareMessageID(message.mMessageID);
 
         Time sent = message.mSent;
         if (Time() == sent) sent = zsLib::now();
@@ -1876,7 +1873,7 @@ namespace openpeer
           // this message failed to download
           ZS_LOG_WARNING(Detail, log("message data failed to download") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
 
-          mDB->notifyMessageFailedToDownloadData(processedInfo.mInfo.mIndex);
+          handleMessageGone(processedInfo.mInfo.mMessageID);
 
           mRefreshFolders = true;
           mRefreshFoldersNeedingUpdate = true;
@@ -2091,7 +2088,7 @@ namespace openpeer
           // this message failed to download
           ZS_LOG_WARNING(Detail, log("message failed to download") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
 
-          mDB->notifyMessageFailedToUpdate(processedInfo.mInfo.mIndex);
+          handleMessageGone(processedInfo.mInfo.mMessageID);
 
           mRefreshFolders = true;
           mRefreshFoldersNeedingUpdate = true;
@@ -2166,7 +2163,7 @@ namespace openpeer
 
           ProcessedPendingDeliveryMessageInfo &processedInfo = mPendingDelivery.begin()->second;
 
-          ZS_LOG_DEBUG(log("message upload compelte") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
+          ZS_LOG_DEBUG(log("message upload complete") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
           mDB->removePendingDeliveryMessage(processedInfo.mInfo.mIndex);
 
           SendQueryMap::iterator foundQuery = mSendQueries.find(processedInfo.mMessage.mID);
@@ -2191,8 +2188,20 @@ namespace openpeer
           ++iter_doNotUse;
 
           IMessageMonitorPtr markingMonitor = (*current);
-          if (markingMonitor == monitor) {
-            ZS_LOG_DEBUG(log("marking monitor is compelte") + IMessageMonitor::toDebug(monitor))
+          if (markingMonitor != monitor) continue;
+
+          ZS_LOG_DEBUG(log("marking monitor is complete") + IMessageMonitor::toDebug(monitor))
+
+          MessageUpdateRequestPtr request = MessageUpdateRequest::convert(monitor->getMonitoredMessage());
+
+          handelUpdateMessageGone(request, false);
+
+          if (PushMessageInfo::Disposition_Update == request->messageInfo().mDisposition) {
+            MessageMap::iterator found = mMessagesToMarkRead.find(request->messageInfo().mID);
+            if (found != mMessagesToMarkRead.end()) {
+              ZS_LOG_DEBUG(log("message is now marked read") + ZS_PARAM("message id", request->messageInfo().mID))
+              mMessagesToMarkRead.erase(found);
+            }
           }
 
           mMarkingMonitors.erase(current);
@@ -2229,12 +2238,15 @@ namespace openpeer
           ++iter_doNotUse;
 
           IMessageMonitorPtr markingMonitor = (*current);
-          if (markingMonitor == monitor) {
-            ZS_LOG_DEBUG(log("marking monitor is compelte") + IMessageMonitor::toDebug(monitor))
-          }
+          if (markingMonitor != monitor) continue;
+
+          ZS_LOG_DEBUG(log("marking monitor is complete") + IMessageMonitor::toDebug(monitor))
 
           mMarkingMonitors.erase(current);
-          if (IHTTP::HTTPStatusCode_NotFound != result->errorCode()) {
+
+          if (IHTTP::HTTPStatusCode_NotFound == result->errorCode()) {
+            handelUpdateMessageGone(MessageUpdateRequest::convert(monitor->getMonitoredMessage()), IHTTP::HTTPStatusCode_NotFound == result->errorCode());
+          } else {
             connectionFailure();
           }
 
@@ -4268,6 +4280,19 @@ namespace openpeer
           return true;
         }
 
+        if (mMarkingMonitors.size() > 0) {
+          ZS_LOG_TRACE(log("cannot mark read or removed while active mark read/removed is in progress"))
+          return true;
+        }
+
+        if ((mMessagesToMarkRead.size() < 1) &&
+            (mMessagesToRemove.size() < 1)) {
+          ZS_LOG_TRACE(log("no messages to mark read or removed at this time"))
+          return true;
+        }
+
+        ZS_LOG_DEBUG(log("marking read or removed") + ZS_PARAM("read", mMessagesToMarkRead.size()) + ZS_PARAM("remove", mMessagesToRemove.size()))
+
         for (MessageMap::iterator iter = mMessagesToMarkRead.begin(); iter != mMessagesToMarkRead.end(); ++iter)
         {
           String &messageID = (*iter).second;
@@ -4291,8 +4316,6 @@ namespace openpeer
           mMarkingMonitors.push_back(monitor);
         }
 
-        mMessagesToMarkRead.clear();
-
         for (MessageMap::iterator iter = mMessagesToRemove.begin(); iter != mMessagesToRemove.end(); ++iter)
         {
           String &messageID = (*iter).second;
@@ -4309,8 +4332,6 @@ namespace openpeer
           IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
           mMarkingMonitors.push_back(monitor);
         }
-
-        mMessagesToRemove.clear();
 
         return true;
       }
@@ -4413,6 +4434,19 @@ namespace openpeer
         }
 
         setState(SessionState_Shutdown);
+
+        // scope: clean out send queries
+        {
+          for (SendQueryMap::iterator iter = mSendQueries.begin(); iter != mSendQueries.end(); ++iter)
+          {
+            SendQueryPtr query = (*iter).second.lock();
+            if (!query) continue;
+
+            query->cancel();
+          }
+
+          mSendQueries.clear();
+        }
 
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
@@ -4583,6 +4617,13 @@ namespace openpeer
         mPendingDeliveryPrecheckRequired = mRefreshPendingDelivery;
         mPendingDeliveryMessageUpdateRequest.reset();
 
+        for (MonitorList::iterator iter = mMarkingMonitors.begin(); iter != mMarkingMonitors.end(); ++iter) {
+          IMessageMonitorPtr monitor = (*iter);
+
+          monitor->cancel();
+        }
+        mMarkingMonitors.clear();
+
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
           mTCPMessaging.reset();
@@ -4722,7 +4763,7 @@ namespace openpeer
           if (info.mDisposition == PushMessageInfo::Disposition_Remove) {
             ZS_LOG_DEBUG(log("message is removed") + ZS_PARAM("message id", info.mID))
 
-            mDB->notifyMessageRemovedFromServer(info.mID);
+            handleMessageGone(info.mID);
             continue;
           }
 
@@ -4768,6 +4809,105 @@ namespace openpeer
         result->listToURIs(listResults);
 
         send(result);
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::handelUpdateMessageGone(
+                                                              MessageUpdateRequestPtr request,
+                                                              bool notFoundError
+                                                              )
+      {
+        if (!request) {
+          ZS_LOG_WARNING(Detail, log("request was not provided"))
+          return;
+        }
+
+        const PushMessageInfo &info = request->messageInfo();
+        if (PushMessageInfo::Disposition_Remove == info.mDisposition) {
+          handleMessageGone(info.mID);
+          return;
+        }
+
+        if (!notFoundError) {
+          ZS_LOG_TRACE(log("request was for update and message isn't gone so nothing to do") + info.toDebug())
+          return;
+        }
+
+        ZS_LOG_WARNING(Detail, log("message was requested to update but the message is now gone"))
+
+        handleMessageGone(info.mID);
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::handleMessageGone(const String &messageID)
+      {
+        typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderIndexList FolderIndexList;
+
+        ZS_LOG_DEBUG(log("message is now gone") + ZS_PARAM("message id", messageID))
+
+        // scope: removal message is gone
+        {
+          MessageMap::iterator found = mMessagesToRemove.find(messageID);
+          if (found != mMessagesToRemove.end()) {
+            mMessagesToRemove.erase(found);
+          }
+        }
+
+        // scope: marking read message is gone
+        {
+          MessageMap::iterator found = mMessagesToMarkRead.find(messageID);
+          if (found != mMessagesToMarkRead.end()) {
+            mMessagesToMarkRead.erase(found);
+          }
+        }
+
+        int index = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        if (!mDB->getMessageIndex(messageID, index)) {
+          ZS_LOG_WARNING(Detail, log("message is not in local database"))
+          return;
+        }
+
+        // scope: screen out pending delivery
+        {
+          PendingDeliveryMap::iterator found = mPendingDelivery.find(messageID);
+          if (found != mPendingDelivery.end()) {
+            if (found == mPendingDelivery.begin()) {
+              if (mPendingDeliveryMessageUpdateRequest) {
+                ZS_LOG_WARNING(Detail, log("cannot remove message that is pending delivery and being uploaded at this time") + ZS_PARAM("message id", messageID))
+                return;
+              }
+            }
+
+            mPendingDelivery.erase(found);
+          }
+        }
+
+        // scope: kill send query (if exists)
+        {
+          SendQueryMap::iterator found = mSendQueries.find(messageID);
+          if (found != mSendQueries.end()) {
+            SendQueryPtr query = (*found).second.lock();
+            if (query) {
+              query->notifyRemoved();
+              query->cancel();
+            }
+            mSendQueries.erase(found);
+          }
+        }
+
+        FolderIndexList folderIndexes;
+        mDB->getFoldersWithMessage(messageID, folderIndexes);
+
+        // notify that this message is now removed in the version table
+        for (FolderIndexList::iterator iter = folderIndexes.begin(); iter != folderIndexes.end(); ++iter) {
+          int folderIndex = (*iter);
+          mDB->addRemovedFolderVersionedMessageEntryIfMessageNotRemoved(folderIndex, messageID);
+          mDB->removeMessageFromFolder(folderIndex, messageID);
+        }
+
+        mDB->removeMessageDeliveryStatesForMessage(index);
+        mDB->removePendingDeliveryMessageByMessageIndex(index);
+        mDB->removeMessage(index);
       }
 
       //-----------------------------------------------------------------------
@@ -4850,6 +4990,22 @@ namespace openpeer
         }
       }
 
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSession::prepareMessageID(const String &inMessageID)
+      {
+        String messageID = inMessageID;
+        if (messageID.isEmpty()) {
+          messageID = IHelper::randomString(32);
+        }
+
+        if (std::string::npos == messageID.find('@')) {
+          // must append the default domain
+          messageID = messageID + "@" + mBootstrappedNetwork->getDomain();
+        }
+
+        return messageID;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::isFolderListUpdating()
       {
@@ -5293,7 +5449,7 @@ namespace openpeer
           return false;
         }
 
-        String messageID = IHelper::randomString(20);
+        String messageID = prepareMessageID(String());
 
         if (!mPeerFiles) {
           ZS_LOG_WARNING(Detail, log("peer files missing"))

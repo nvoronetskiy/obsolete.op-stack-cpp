@@ -167,6 +167,25 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::SendQuery::notifyRemoved()
+      {
+        ZS_LOG_WARNING(Detail, log("message was removed") + ZS_PARAM("message id", mMessageID))
+
+        AutoRecursiveLock lock(*this);
+
+        if (mDelegate) {
+          try {
+            mDelegate->onPushMailboxSendQueryPushStatesChanged(mThisWeak.lock());
+          } catch (IServicePushMailboxSendQueryDelegateProxy::Exceptions::DelegateGone &) {
+            ZS_LOG_WARNING(Detail, log("delegate gone"))
+            mDelegate.reset();
+          }
+        }
+
+        cancel();
+      }
+
+      //-----------------------------------------------------------------------
       void ServicePushMailboxSession::SendQuery::notifyDeliveryInfoChanged(const PushMessageInfo::FlagInfoMap &flags)
       {
         ZS_LOG_DEBUG(log("message delivery information changed") + ZS_PARAM("message id", mMessageID))

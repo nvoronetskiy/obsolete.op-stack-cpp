@@ -80,6 +80,7 @@ namespace openpeer
 
           // (duplicate) virtual void cancel();
           virtual void notifyUploaded();
+          virtual void notifyRemoved();
           virtual void notifyDeliveryInfoChanged(const PushMessageInfo::FlagInfoMap &flags);
           virtual const String &getMessageID() const {return mMessageID;}
 

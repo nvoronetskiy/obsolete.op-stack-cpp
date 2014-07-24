@@ -742,11 +742,19 @@ namespace openpeer
 
         virtual void handleChanged(ChangedNotifyPtr notify);
         virtual void handleListFetch(ListFetchRequestPtr request);
+        virtual void handelUpdateMessageGone(
+                                             MessageUpdateRequestPtr request,
+                                             bool notFoundError
+                                             );
+        virtual void handleMessageGone(const String &messageID);
+
         virtual void handleChannelMessage(
                                           DWORD channel,
                                           SecureByteBlockPtr buffer
                                           );
         virtual void processChannelMessages();
+
+        virtual String prepareMessageID(const String &inMessageID);
 
         bool isFolderListUpdating();
         bool areAnyFoldersUpdating();
