@@ -133,6 +133,7 @@
 		00AF4DDF171DFACB00DCA0A8 /* LockboxContentGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DDD171DFACA00DCA0A8 /* LockboxContentGetResult.cpp */; };
 		00AF4DE4171E2EE500DCA0A8 /* LockboxContentSetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DE2171E2EE200DCA0A8 /* LockboxContentSetRequest.cpp */; };
 		00AF4DE5171E2EE500DCA0A8 /* LockboxContentSetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00AF4DE3171E2EE400DCA0A8 /* LockboxContentSetResult.cpp */; };
+		00C3EAEF19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00C3EAEE19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp */; };
 		00D560D31948A7BD00CA65A6 /* stack_ServicePeerFileLookup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00D560D01948A7BD00CA65A6 /* stack_ServicePeerFileLookup.cpp */; };
 		00D560D41948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00D560D11948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */; };
 		00D560D51948A7BD00CA65A6 /* stack_ServicePushMailboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00D560D21948A7BD00CA65A6 /* stack_ServicePushMailboxSession.cpp */; };
@@ -489,6 +490,8 @@
 		00AF4DE3171E2EE400DCA0A8 /* LockboxContentSetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LockboxContentSetResult.cpp; sourceTree = "<group>"; };
 		00AF4DE6171E2EFD00DCA0A8 /* LockboxContentSetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LockboxContentSetRequest.h; sourceTree = "<group>"; };
 		00AF4DE7171E2EFF00DCA0A8 /* LockboxContentSetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LockboxContentSetResult.h; sourceTree = "<group>"; };
+		00C3EAED198319F600D7AE29 /* stack_ServicePushMailboxSession_SendQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_SendQuery.h; sourceTree = "<group>"; };
+		00C3EAEE19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_SendQuery.cpp; sourceTree = "<group>"; };
 		00D560CA1948A76200CA65A6 /* IServicePeerFileLookupQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServicePeerFileLookupQuery.h; sourceTree = "<group>"; };
 		00D560CB1948A76200CA65A6 /* IServicePushMailbox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServicePushMailbox.h; sourceTree = "<group>"; };
 		00D560CC1948A78A00CA65A6 /* stack_IServiceLockboxSessionForInternal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IServiceLockboxSessionForInternal.h; sourceTree = "<group>"; };
@@ -723,8 +726,9 @@
 				0063B6B816CA8E8A00E6DB4D /* stack_ServiceLockboxSession.cpp */,
 				00384C3F175A8B3C00113845 /* stack_ServiceNamespaceGrantSession.cpp */,
 				00D560D01948A7BD00CA65A6 /* stack_ServicePeerFileLookup.cpp */,
-				00D560D11948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */,
 				00D560D21948A7BD00CA65A6 /* stack_ServicePushMailboxSession.cpp */,
+				00D560D11948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */,
+				00C3EAEE19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp */,
 				0063B6B916CA8E8A00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp */,
 				0063B6BA16CA8E8A00E6DB4D /* stack_Stack.cpp */,
 				004B8DA9189C2D3200D4F6A8 /* stack_Settings.cpp */,
@@ -777,8 +781,9 @@
 				0063B6DD16CA8E8A00E6DB4D /* stack_ServiceLockboxSession.h */,
 				00384C41175A8B4E00113845 /* stack_ServiceNamespaceGrantSession.h */,
 				00D560CD1948A78A00CA65A6 /* stack_ServicePeerFileLookup.h */,
-				00D560CE1948A78A00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.h */,
 				00D560CF1948A78A00CA65A6 /* stack_ServicePushMailboxSession.h */,
+				00D560CE1948A78A00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.h */,
+				00C3EAED198319F600D7AE29 /* stack_ServicePushMailboxSession_SendQuery.h */,
 				0063B6DE16CA8E8A00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.h */,
 				0063B6DF16CA8E8A00E6DB4D /* stack_Stack.h */,
 				004B8DA8189C2D2400D4F6A8 /* stack_Settings.h */,
@@ -1381,6 +1386,7 @@
 				0063B8A116CA8E8B00E6DB4D /* ServicesGetRequest.cpp in Sources */,
 				0063B8A216CA8E8B00E6DB4D /* ServicesGetResult.cpp in Sources */,
 				00D5611E1948A7F200CA65A6 /* NamespaceGrantChallengeValidateResult.cpp in Sources */,
+				00C3EAEF19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp in Sources */,
 				0063B8A816CA8E8B00E6DB4D /* CertificatesGetRequest.cpp in Sources */,
 				0063B8A916CA8E8B00E6DB4D /* CertificatesGetResult.cpp in Sources */,
 				0063B8AA16CA8E8B00E6DB4D /* MessageFactoryCertificates.cpp in Sources */,
