@@ -932,7 +932,7 @@ namespace openpeer
         AutoWORD mLastError;
         String mLastErrorReason;
 
-        UseAccountWeakPtr mAccount;
+        UseAccountPtr mAccount;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
 

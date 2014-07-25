@@ -119,7 +119,6 @@ namespace openpeer
       struct PushMessage
       {
         MessageID mMessageID;             // system will assign this value
-        String mMessageVersion;           // system will assign this value
 
         String mMessageType;
         String mMimeType;
@@ -165,8 +164,8 @@ namespace openpeer
       virtual IServicePushMailboxPtr getService() const = 0;
 
       virtual SessionStates getState(
-                                     WORD *lastErrorCode,
-                                     String *lastErrorReason
+                                     WORD *lastErrorCode = NULL,
+                                     String *lastErrorReason = NULL
                                      ) const = 0;
 
       virtual void shutdown() = 0;

@@ -192,6 +192,7 @@ namespace openpeer
         friend interaction IServiceCertificates;
         friend interaction IServiceIdentity;
         friend interaction IServiceLockbox;
+        friend interaction IServicePushMailbox;
         friend interaction IServiceSalt;
 
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkManagerForBootstrappedNetwork, UseBootstrappedNetworkManager)

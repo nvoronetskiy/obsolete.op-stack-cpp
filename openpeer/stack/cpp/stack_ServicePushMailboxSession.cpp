@@ -99,13 +99,13 @@ namespace openpeer
       using CryptoPP::SHA1;
       using zsLib::Numeric;
 
-      typedef IStackForInternal UseStack;
-
       using services::IHelper;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       typedef message::IMessageHelper IMessageHelper;
+
+      ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
 
       ZS_DECLARE_USING_PTR(openpeer::services, IBackgrounding)
 
@@ -258,7 +258,7 @@ namespace openpeer
       {
         ZS_LOG_BASIC(log("created"))
 
-        mDefaultSubscription = mSubscriptions.subscribe(delegate, IStackForInternal::queueDelegate());
+        mDefaultSubscription = mSubscriptions.subscribe(delegate, UseStack::queueDelegate());
       }
 
       //-----------------------------------------------------------------------
@@ -319,7 +319,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!databaseDelegate) // must not be NULL
 
-        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(IStackForInternal::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, Account::convert(account), ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
+        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, Account::convert(account), ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -334,12 +334,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IServicePushMailboxSessionSubscriptionPtr ServicePushMailboxSession::subscribe(IServicePushMailboxSessionDelegatePtr originalDelegate)
       {
-        ZS_LOG_DETAIL(log("subscribing to socket state"))
+        ZS_LOG_DETAIL(log("subscribing to push mailbox state"))
 
         AutoRecursiveLock lock(*this);
         if (!originalDelegate) return mDefaultSubscription;
 
-        IServicePushMailboxSessionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate);
+        IServicePushMailboxSessionSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
         IServicePushMailboxSessionDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
@@ -641,13 +641,6 @@ namespace openpeer
           return query;
         }
 
-        AccountPtr account = Account::convert(mAccount.lock());
-        if (!account) {
-          ZS_LOG_ERROR(Detail, log("account is not present thus cannot deliver message"))
-          query->cancel();
-          return query;
-        }
-
         if (!mPeerFiles) {
           ZS_LOG_ERROR(Detail, log("peer files are not present thus cannot send a message"))
           query->cancel();
@@ -870,17 +863,11 @@ namespace openpeer
 
         result->mTo = convertFromDatabaseList(to);
 
-        AccountPtr account = Account::convert(mAccount.lock());
-        if (!account) {
-          ZS_LOG_WARNING(Detail, log("account is gone thus cannot obtain push message information"))
-          return PushMessagePtr();
-        }
-
         if (mPeerFiles) {
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
 
           if (from == peerFilePublic->getPeerURI()) {
-            ILocationPtr location = ILocation::getForLocal(account);
+            ILocationPtr location = ILocation::getForLocal(Account::convert(mAccount));
             if (location) {
               result->mFrom = location->getPeer();
             }
@@ -888,7 +875,7 @@ namespace openpeer
         }
 
         if (!result->mFrom) {
-          result->mFrom = IPeer::create(account, from);
+          result->mFrom = IPeer::create(Account::convert(mAccount), from);
         }
 
         result->mCC = convertFromDatabaseList(cc);
@@ -3681,13 +3668,6 @@ namespace openpeer
           return true;
         }
 
-        UseAccountPtr account = mAccount.lock();
-        if (!account) {
-          ZS_LOG_WARNING(Detail, log("cannot process messages while account is gone"))
-          cancel();
-          return true;
-        }
-
         MessagesNeedingKeyingProcessingList messages;
         mDB->getBatchOfMessagesNeedingKeysProcessing(mKeysFolderIndex, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, messages);
 
@@ -5372,7 +5352,7 @@ namespace openpeer
             }
           }
 
-          IPeerPtr peer = IPeer::getFromSignature(Account::convert(mAccount.lock()), keyingEl);
+          IPeerPtr peer = IPeer::getFromSignature(Account::convert(mAccount), keyingEl);
           if (!peer) {
             ZS_LOG_WARNING(Detail, log("cannot process keying material from unknown peer"))
             return false;
@@ -6050,13 +6030,11 @@ namespace openpeer
 
         mDB->addOrUpdateSendingKey(info);
 
-        AccountPtr account = Account::convert(mAccount.lock());
-
         for (PeerOrIdentityList::iterator iter = peerList->begin(); iter != peerList->end(); ++iter) {
           const String &dest = (*iter);
           if (dest.isEmpty()) continue;
 
-          IPeerPtr peer = IPeer::create(account, dest);
+          IPeerPtr peer = IPeer::create(Account::convert(mAccount), dest);
           if (!peer) {
             ZS_LOG_WARNING(Detail, log("failed to create peer") + ZS_PARAM("peer", dest))
             continue;

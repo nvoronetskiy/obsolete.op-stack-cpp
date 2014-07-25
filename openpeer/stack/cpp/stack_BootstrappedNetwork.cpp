@@ -1538,6 +1538,20 @@ namespace openpeer
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     #pragma mark
+    #pragma mark IServicePushMailbox
+    #pragma mark
+
+    //-------------------------------------------------------------------------
+    IServicePushMailboxPtr IServicePushMailbox::createServicePushMailboxFrom(IBootstrappedNetworkPtr bootstrappedNetwork)
+    {
+      return internal::BootstrappedNetwork::createServicePushMailboxFrom(bootstrappedNetwork);
+    }
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
     #pragma mark IServiceSalt
     #pragma mark
 
