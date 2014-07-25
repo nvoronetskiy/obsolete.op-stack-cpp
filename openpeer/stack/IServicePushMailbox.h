@@ -95,6 +95,7 @@ namespace openpeer
 
       static const char *toString(PushStates state);
       static PushStates toPushState(const char *state);
+      static bool canSubscribeState(PushStates state);
 
       typedef String ValueType;
       typedef std::list<ValueType> ValueList;
@@ -708,6 +709,15 @@ namespace openpeer
                                                                int folderIndex,
                                                                FolderVersionedMessagesList &outFolderVersionsMessages
                                                                ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: obtain the last version index available for any message whose
+      //          folderIndex matches the "inFolderIndex" value
+      // RETURNS: true if a record was found otherwise false
+      virtual bool getLastFolderVersionedMessageForFolder(
+                                                          int inFolderIndex,
+                                                          int &outVersionIndex
+                                                          ) = 0;
 
 
       // ======================================================================

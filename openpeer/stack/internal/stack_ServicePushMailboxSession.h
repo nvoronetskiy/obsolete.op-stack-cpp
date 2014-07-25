@@ -193,7 +193,8 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::bootstrapped_servers::ServersGetResult, ServersGetResult)
 
         typedef String FolderName;
-        typedef std::map<FolderName, FolderName> FolderNameMap;
+        typedef int FolderIndex;
+        typedef std::map<FolderName, FolderIndex> FolderNameMap;
 
         struct ProcessedFolderNeedingUpdateInfo
         {
@@ -700,7 +701,7 @@ namespace openpeer
         bool stepCheckFoldersNeedingUpdate();
         bool stepFolderGet();
 
-        bool stepMakeKeysAndSentFolders();
+        bool stepMakeMonitoredFolders();
 
         bool stepCheckMessagesNeedingUpdate();
         bool stepMessagesMetaDataGet();
@@ -766,7 +767,7 @@ namespace openpeer
         bool areAnyMessagesUpdating() const;
         bool areAnyMessagesDownloadingData() const;
         bool areAnyListsFetching() const;
-        bool areKeysAndSentFolderReady() const;
+        bool areMonitoredFoldersReady() const;
         bool areAnyMessagesDecrypting() const;
         bool areAnyMessagesUploading() const;
         bool areAnyFoldersNeedingVersionedMessages() const;
@@ -1005,12 +1006,9 @@ namespace openpeer
         FolderUpdateMap mFoldersNeedingUpdate;
         MonitorList mFolderGetMonitors;
 
-        // keys and folder creation
-        bool mRefreshKeysAndSentFolder;
-        int mKeysFolderIndex;
-        int mSentFolderIndex;
-        IMessageMonitorPtr mKeyFolderUpdateMonitor;
-        IMessageMonitorPtr mSentFolderUpdateMonitor;
+        // monitored folder creation
+        bool mRefreshMonitorFolderCreation;
+        IMessageMonitorPtr mFolderCreationUpdateMonitor;
 
         // messages needing update
         bool mRefreshMessagesNeedingUpdate;

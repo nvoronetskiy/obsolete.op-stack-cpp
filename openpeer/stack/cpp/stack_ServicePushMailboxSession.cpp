@@ -233,9 +233,7 @@ namespace openpeer
 
         mRefreshFoldersNeedingUpdate(true),
 
-        mRefreshKeysAndSentFolder(true),
-        mKeysFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN),
-        mSentFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN),
+        mRefreshMonitorFolderCreation(true),
 
         mRefreshMessagesNeedingUpdate(true),
 
@@ -280,8 +278,8 @@ namespace openpeer
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_PUSH_MAILBOX_PHASE));
         mReachabilitySubscription = IReachability::subscribe(mThisWeak.lock());
 
-        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
-        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME;
+        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        mMonitoredFolders[OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME] = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -457,7 +455,10 @@ namespace openpeer
           return;
         }
 
-        mMonitoredFolders[folderName] = folderName;
+        mMonitoredFolders[folderName] = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+
+        // need to possible create missing monitored folder
+        mRefreshMonitorFolderCreation = true;
 
         // need to recheck which folders need an update
         mRefreshFoldersNeedingUpdate = true;
@@ -534,9 +535,13 @@ namespace openpeer
         AddedMap added;
         RemovedMap removed;
 
+        int lastVersionFound = versionIndex;
+
         for (FolderVersionedMessagesList::iterator iter = versionedMessages.begin(); iter != versionedMessages.end(); ++iter)
         {
           FolderVersionedMessagesInfo &info = (*iter);
+          lastVersionFound = info.mIndex;
+
           if (info.mRemovedFlag) {
             AddedMap::iterator found = added.find(info.mMessageID);
             if (found != added.end()) {
@@ -590,15 +595,35 @@ namespace openpeer
 
         removed.clear();
 
+        if (lastVersionFound >= 0) {
+          outUpdatedToVersion = uniqueID + "-" + string(lastVersionFound);
+        }
+
         return true;
       }
 
       //-----------------------------------------------------------------------
       String ServicePushMailboxSession::getLatestDownloadVersionAvailableForFolder(const char *inFolder)
       {
-#define WARNING_TODO 1
-#define WARNING_TODO 2
-        return String();
+        ZS_LOG_DEBUG(log("get latest download version available for folder") + ZS_PARAM("folder", inFolder))
+
+        AutoRecursiveLock lock(*this);
+
+        int folderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        String uniqueID;
+
+        if (!mDB->getFolderIndexAndUniqueID(inFolder, folderIndex, uniqueID)) {
+          ZS_LOG_WARNING(Detail, log("no information about the folder exists") + ZS_PARAM("folder", inFolder))
+          return String();
+        }
+
+        int versionIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        if (!mDB->getLastFolderVersionedMessageForFolder(folderIndex, versionIndex)) {
+          ZS_LOG_WARNING(Detail, log("no versioned messages exist for the folder") + ZS_PARAM("folder", inFolder))
+          return String();
+        }
+
+        return uniqueID + "-" + string(versionIndex);
       }
 
       //-----------------------------------------------------------------------
@@ -1489,7 +1514,7 @@ namespace openpeer
               mDB->removeFolder(folderIndex);
             }
 
-            mRefreshKeysAndSentFolder = true;
+            mRefreshMonitorFolderCreation = true;
             continue;
           }
 
@@ -1510,7 +1535,7 @@ namespace openpeer
             }
 
             name = info.mRenamed;
-            mRefreshKeysAndSentFolder = true;
+            mRefreshMonitorFolderCreation = true;
           }
 
           ZS_LOG_DEBUG(log("folder was updated/added") + info.toDebug())
@@ -1569,7 +1594,7 @@ namespace openpeer
 
           mRefreshFolders = true;
           mRefreshFoldersNeedingUpdate = true;
-          mRefreshKeysAndSentFolder = true;
+          mRefreshMonitorFolderCreation = true;
           mDB->setLastDownloadedVersionForFolders(String());
           mLastActivity = zsLib::now();
 
@@ -1604,19 +1629,10 @@ namespace openpeer
         ZS_LOG_DEBUG(log("folder update result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        if (mKeyFolderUpdateMonitor == monitor) {
-          mKeyFolderUpdateMonitor.reset();
+        if (mFolderCreationUpdateMonitor == monitor) {
+          mFolderCreationUpdateMonitor.reset();
 
-          ZS_LOG_DEBUG(log("key folder was updated"))
-          mRefreshFolders = true;
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return true;
-        }
-
-        if (mSentFolderUpdateMonitor == monitor) {
-          mSentFolderUpdateMonitor.reset();
-
-          ZS_LOG_DEBUG(log("sent folder was updated"))
+          ZS_LOG_DEBUG(log("folder was updated"))
           mRefreshFolders = true;
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
@@ -1636,18 +1652,10 @@ namespace openpeer
         ZS_LOG_ERROR(Debug, log("folder update error result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        if (mKeyFolderUpdateMonitor == monitor) {
-          mKeyFolderUpdateMonitor.reset();
+        if (mFolderCreationUpdateMonitor == monitor) {
+          mFolderCreationUpdateMonitor.reset();
 
-          ZS_LOG_ERROR(Detail, log("failed to update keys folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
-          connectionFailure();
-          return true;
-        }
-
-        if (mSentFolderUpdateMonitor == monitor) {
-          mSentFolderUpdateMonitor.reset();
-
-          ZS_LOG_ERROR(Detail, log("failed to update sent folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
+          ZS_LOG_ERROR(Detail, log("failed to create folder") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
           connectionFailure();
           return true;
         }
@@ -2456,11 +2464,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
         IHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
 
-        IHelper::debugAppend(resultEl, "refresh keys and sent folder", mRefreshKeysAndSentFolder);
-        IHelper::debugAppend(resultEl, "keys folder index", string(mKeysFolderIndex));
-        IHelper::debugAppend(resultEl, "send folder index", string(mSentFolderIndex));
-        IHelper::debugAppend(resultEl, "key folder update monitor", mKeyFolderUpdateMonitor ? mKeyFolderUpdateMonitor->getID() : 0);
-        IHelper::debugAppend(resultEl, "sent folder update monitor", mSentFolderUpdateMonitor ? mSentFolderUpdateMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "refresh monitored folder creation", mRefreshMonitorFolderCreation);
+        IHelper::debugAppend(resultEl, "folder creation monitor", mFolderCreationUpdateMonitor ? mFolderCreationUpdateMonitor->getID() : 0);
 
         IHelper::debugAppend(resultEl, "refresh messages needing update", mRefreshMessagesNeedingUpdate);
         IHelper::debugAppend(resultEl, "messages needing update", mMessagesNeedingUpdate.size());
@@ -2531,7 +2536,7 @@ namespace openpeer
         if (!stepCheckFoldersNeedingUpdate()) goto post_step;
         if (!stepFolderGet()) goto post_step;
 
-        if (!stepMakeKeysAndSentFolders()) goto post_step;
+        if (!stepMakeMonitoredFolders()) goto post_step;
 
         if (!stepCheckMessagesNeedingUpdate()) goto post_step;
         if (!stepMessagesMetaDataGet()) goto post_step;
@@ -3283,7 +3288,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::stepMakeKeysAndSentFolders()
+      bool ServicePushMailboxSession::stepMakeMonitoredFolders()
       {
         if ((isFolderListUpdating()) ||
             (areAnyFoldersUpdating())) {
@@ -3291,64 +3296,50 @@ namespace openpeer
           return true;
         }
 
-        if ((mKeyFolderUpdateMonitor) ||
-            (mSentFolderUpdateMonitor)) {
-          ZS_LOG_TRACE(log("still waiting on keys and send folder"))
+        if (mFolderCreationUpdateMonitor) {
+          ZS_LOG_TRACE(log("folder is being created"))
           return true;
         }
 
-        if (!mRefreshKeysAndSentFolder) {
-          ZS_LOG_TRACE(log("no need to refresh keys and sent folder at this time"))
+        if (!mRefreshMonitorFolderCreation) {
+          ZS_LOG_TRACE(log("do not need to update folders at this time"))
           return true;
         }
 
-        int oldKeysIndex = mKeysFolderIndex;
-        int oldSendIndex = mSentFolderIndex;
+        for (FolderNameMap::iterator iter = mMonitoredFolders.begin(); iter != mMonitoredFolders.end(); ++iter)
+        {
+          const String &folderName = (*iter).first;
+          int &index = (*iter).second;
 
-        mKeysFolderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
-        mSentFolderIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+          index = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
 
-        mDB->getFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME, mKeysFolderIndex);
-        mDB->getFolderIndex(OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME, mSentFolderIndex);
+          // check with database to make sure folder is still value
+          if (mDB->getFolderIndex(folderName, index)) {
+            ZS_LOG_DEBUG(log("folder index found") + ZS_PARAM("folder name", folderName) + ZS_PARAM("folder index", index))
+            continue;
+          }
 
-        if (oldKeysIndex != mKeysFolderIndex) {
-          ZS_LOG_TRACE(log("keys folder needs processing"))
-          mRefreshKeysFolderNeedsProcessing = true;
-        }
-
-        if (oldSendIndex != mSentFolderIndex) {
-          ZS_LOG_TRACE(log("sent folder needs processing (normal message update process should handle this case)"))
-        }
-
-        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) {
-          ZS_LOG_DEBUG(log("creating keys folder on server") + ZS_PARAM("folder name", OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME))
+          ZS_LOG_DEBUG(log("creating keys folder on server") + ZS_PARAM("folder name", folderName))
 
           FolderUpdateRequestPtr request = FolderUpdateRequest::create();
           request->domain(mBootstrappedNetwork->getDomain());
 
           PushMessageFolderInfo info;
           info.mDisposition = PushMessageFolderInfo::Disposition_Update;
-          info.mName = OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME;
+          info.mName = folderName;
 
           request->folderInfo(info);
 
-          mKeyFolderUpdateMonitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          mFolderCreationUpdateMonitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          break;
         }
 
-        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mSentFolderIndex) {
-          ZS_LOG_DEBUG(log("creating sent folder on server") + ZS_PARAM("folder name", OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME))
-
-          FolderUpdateRequestPtr request = FolderUpdateRequest::create();
-          request->domain(mBootstrappedNetwork->getDomain());
-
-          PushMessageFolderInfo info;
-          info.mDisposition = PushMessageFolderInfo::Disposition_Update;
-          info.mName = OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME;
-
-          request->folderInfo(info);
-
-          mSentFolderUpdateMonitor = sendRequest(IMessageMonitorResultDelegate<FolderGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        if (mFolderCreationUpdateMonitor) {
+          ZS_LOG_TRACE(log("folder creation in progress"))
+          return true;
         }
+
+        mRefreshMonitorFolderCreation = false;
 
         return true;
       }
@@ -3666,7 +3657,7 @@ namespace openpeer
         typedef IServicePushMailboxDatabaseAbstractionDelegate::ReceivingKeyInfo ReceivingKeyInfo;
         typedef IServicePushMailboxDatabaseAbstractionDelegate::SendingKeyInfo SendingKeyInfo;
 
-        if (!areKeysAndSentFolderReady()) {
+        if (!areMonitoredFoldersReady()) {
           ZS_LOG_TRACE(log("cannot process keys folder until keys and sent folder are ready"))
           return true;
         }
@@ -3676,8 +3667,14 @@ namespace openpeer
           return true;
         }
 
+        FolderNameMap::iterator found = mMonitoredFolders.find(OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME);
+        ZS_THROW_BAD_STATE_IF(found == mMonitoredFolders.end())
+
+        int keysFolderIndex = (*found).second;
+        ZS_THROW_BAD_STATE_IF(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == keysFolderIndex)
+
         MessagesNeedingKeyingProcessingList messages;
-        mDB->getBatchOfMessagesNeedingKeysProcessing(mKeysFolderIndex, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, messages);
+        mDB->getBatchOfMessagesNeedingKeysProcessing(keysFolderIndex, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, messages);
 
         if (messages.size() < 1) {
           ZS_LOG_DEBUG(log("no keys in keying folder needing processing at this time"))
@@ -4140,7 +4137,7 @@ namespace openpeer
 
               PushMessageInfo::FlagInfo flag;
 
-              flag.mDisposition = PushMessageInfo::FlagInfo::Disposition_Subscribe;
+              flag.mDisposition = IServicePushMailboxSession::canSubscribeState(checkStates[index]) ? PushMessageInfo::FlagInfo::Disposition_Subscribe : PushMessageInfo::FlagInfo::Disposition_Update;
               flag.mFlag = PushMessageInfo::FlagInfo::toFlag(IServicePushMailboxSession::toString(checkStates[index]));
               if (PushMessageInfo::FlagInfo::Flag_NA == flag.mFlag) {
                 ZS_LOG_WARNING(Detail, log("flag was not understood") + ZS_PARAM("flag", IServicePushMailboxSession::toString(checkStates[index])))
@@ -4692,6 +4689,7 @@ namespace openpeer
         //.....................................................................
         // folder list updating
 
+        mRefreshFolders = true;
         if (mFoldersGetMonitor) {
           mFoldersGetMonitor->cancel();
           mFoldersGetMonitor.reset();
@@ -4715,16 +4713,10 @@ namespace openpeer
         //.....................................................................
         // keys and folder creation
 
-        mRefreshKeysAndSentFolder = true;
-
-        if (mKeyFolderUpdateMonitor) {
-          mKeyFolderUpdateMonitor->cancel();
-          mKeyFolderUpdateMonitor.reset();
-        }
-
-        if (mSentFolderUpdateMonitor) {
-          mSentFolderUpdateMonitor->cancel();
-          mSentFolderUpdateMonitor.reset();
+        mRefreshMonitorFolderCreation = true;
+        if (mFolderCreationUpdateMonitor) {
+          mFolderCreationUpdateMonitor->cancel();
+          mFolderCreationUpdateMonitor.reset();
         }
 
 
@@ -4832,7 +4824,7 @@ namespace openpeer
         }
 
         mSubscriptions.delegate()->onServicePushMailboxSessionFolderChanged(mThisWeak.lock(), folderName);
-        mNotifiedMonitoredFolders[folderName] = folderName;
+        mNotifiedMonitoredFolders[folderName] = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
       }
 
       //---------------------------------------------------------------------
@@ -4935,7 +4927,7 @@ namespace openpeer
           if (info.mDisposition == PushMessageFolderInfo::Disposition_Remove) {
             ZS_LOG_DEBUG(log("folder is removed") + ZS_PARAM("name", info.mName))
             mRefreshFolders = true;
-            mRefreshKeysAndSentFolder = true;
+            mRefreshMonitorFolderCreation = true;
             continue;
           }
 
@@ -5247,13 +5239,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::areKeysAndSentFolderReady() const
+      bool ServicePushMailboxSession::areMonitoredFoldersReady() const
       {
-        if (mRefreshKeysAndSentFolder) return false;
-        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mKeysFolderIndex) return false;
-        if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == mSentFolderIndex) return false;
-        if (mKeyFolderUpdateMonitor) return false;
-        if (mSentFolderUpdateMonitor) return false;
+        if (mRefreshMonitorFolderCreation) return false;
+        if (mFolderCreationUpdateMonitor) return false;
         return true;
       }
 
@@ -6201,6 +6190,27 @@ namespace openpeer
       return PushState_None;
     }
 
+    //-------------------------------------------------------------------------
+    bool IServicePushMailboxSession::canSubscribeState(PushStates state)
+    {
+      switch (state) {
+        case PushState_None:      return false;
+
+        case PushState_Read:      return false;
+        case PushState_Answered:  return false;
+        case PushState_Flagged:   return false;
+        case PushState_Deleted:   return false;
+        case PushState_Draft:     return false;
+        case PushState_Recent:    return false;
+        case PushState_Delivered: return true;
+        case PushState_Sent:      return true;
+        case PushState_Pushed:    return true;
+        case PushState_Error:     return true;
+      }
+
+      return "UNDEFINED";
+    }
+    
     //-------------------------------------------------------------------------
     ElementPtr IServicePushMailboxSession::toDebug(IServicePushMailboxSessionPtr session)
     {
