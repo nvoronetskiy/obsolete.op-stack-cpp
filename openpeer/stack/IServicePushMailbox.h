@@ -200,11 +200,13 @@ namespace openpeer
       //          cannot be fetched.
       virtual bool getFolderMessageUpdates(
                                            const char *inFolder,
-                                           String inLastVersionDownloaded,    // pass in String() if no previous version known
+                                           const String &inLastVersionDownloaded,    // pass in String() if no previous version known
                                            String &outUpdatedToVersion,       // updated to this version (if same as passed in then no change available)
                                            PushMessageListPtr &outMessagesAdded,
                                            MessageIDListPtr &outMessagesRemoved
                                            ) = 0;
+
+      virtual String getLatestDownloadVersionAvailableForFolder(const char *inFolder) = 0;
 
       virtual IServicePushMailboxSendQueryPtr sendMessage(
                                                           IServicePushMailboxSendQueryDelegatePtr delegate,

@@ -474,7 +474,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::getFolderMessageUpdates(
                                                               const char *inFolder,
-                                                              String inLastVersionDownloaded,
+                                                              const String &inLastVersionDownloaded,
                                                               String &outUpdatedToVersion,
                                                               PushMessageListPtr &outMessagesAdded,
                                                               MessageIDListPtr &outMessagesRemoved
@@ -591,6 +591,14 @@ namespace openpeer
         removed.clear();
 
         return true;
+      }
+
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSession::getLatestDownloadVersionAvailableForFolder(const char *inFolder)
+      {
+#define WARNING_TODO 1
+#define WARNING_TODO 2
+        return String();
       }
 
       //-----------------------------------------------------------------------

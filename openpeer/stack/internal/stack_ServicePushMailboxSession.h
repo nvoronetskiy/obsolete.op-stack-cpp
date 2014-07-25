@@ -348,11 +348,13 @@ namespace openpeer
 
         virtual bool getFolderMessageUpdates(
                                              const char *inFolder,
-                                             String inLastVersionDownloaded,
+                                             const String &inLastVersionDownloaded,
                                              String &outUpdatedToVersion,
                                              PushMessageListPtr &outMessagesAdded,
                                              MessageIDListPtr &outMessagesRemoved
                                              );
+
+        String getLatestDownloadVersionAvailableForFolder(const char *inFolder);
 
         virtual IServicePushMailboxSendQueryPtr sendMessage(
                                                             IServicePushMailboxSendQueryDelegatePtr delegate,
