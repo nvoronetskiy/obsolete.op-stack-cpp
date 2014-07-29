@@ -723,7 +723,7 @@ namespace openpeer
           if (!encryptMessage(keyID, passphrase, *message.mFullMessage, encoding, encryptedMessage)) {
             ZS_LOG_ERROR(Detail, log("failed to encrypt emssage"))
             encoding = String();
-            encryptedMessage = SecureByteBlockPtr(new SecureByteBlock(*message.mFullMessage));
+            encryptedMessage = IHelper::clone(message.mFullMessage);
           }
         }
 
@@ -2308,6 +2308,7 @@ namespace openpeer
           }
 
           mDB->updateListURIs(processedInfo.mInfo.mIndex, uris);
+          mDB->notifyListDownloaded(processedInfo.mInfo.mIndex);
 
           mListsNeedingDownload.erase(found);
         }
@@ -5947,6 +5948,7 @@ namespace openpeer
         }
 
         mDB->updateListURIs(index, uris);
+        mDB->notifyListDownloaded(index);
 
         return listURI;
       }

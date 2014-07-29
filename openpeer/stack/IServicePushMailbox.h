@@ -861,7 +861,7 @@ namespace openpeer
       // PURPOSE: update the data on an existing message
       virtual void updateMessageData(
                                      int messageIndex,
-                                     const SecureByteBlock &buffer
+                                     const SecureByteBlock &data
                                      ) = 0;
 
       //-----------------------------------------------------------------------
@@ -989,6 +989,7 @@ namespace openpeer
                                                        const char *flag,
                                                        const DeliveryInfoList &uris
                                                        ) = 0;
+
       //-----------------------------------------------------------------------
       // PURPOSE: retrivies every entry whose "messageIndex" matches the
       //          the supplied value
@@ -1050,6 +1051,12 @@ namespace openpeer
       //          list table
       // RETURNS: true if an entry exists, otherwise false
       virtual bool hasListID(const char *listID) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: marks a list as having downloaded
+      // NOTES:   set the "needsDownload" flag and the "faledDownload" flag to
+      //          false
+      virtual void notifyListDownloaded(int index) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: marks a list as having failed to download
