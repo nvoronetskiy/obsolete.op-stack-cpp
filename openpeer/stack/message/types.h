@@ -336,7 +336,7 @@ namespace openpeer
           typedef String Value;
           typedef std::list<Value> ValueList;
 
-          String mType;
+          String mServiceType;
 
           ValueList mValues;
           ElementPtr mCustom;
@@ -349,6 +349,8 @@ namespace openpeer
                          bool overwriteExisting = true
                          );
         };
+
+        typedef std::list<PushInfo> PushInfoList;
 
         struct FlagInfo
         {
@@ -471,7 +473,8 @@ namespace openpeer
         String mMimeType;
         String mEncoding;
 
-        PushInfo mPushInfo;
+        String mPushType;
+        PushInfoList mPushInfos;
 
         Time mSent;
         Time mExpires;

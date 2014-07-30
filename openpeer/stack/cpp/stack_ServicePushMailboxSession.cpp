@@ -209,6 +209,50 @@ namespace openpeer
 
         return escaped;
       }
+
+      //-----------------------------------------------------------------------
+      static void copy(const message::PushMessageInfo::PushInfoList &source, IServicePushMailboxSession::PushInfoList &dest)
+      {
+        typedef PushMessageInfo::PushInfo SourceType;
+        typedef PushMessageInfo::PushInfoList SourceListType;
+        typedef IServicePushMailboxSession::PushInfo DestType;
+        typedef IServicePushMailboxSession::PushInfoList DestListType;
+
+        for (SourceListType::const_iterator iter = source.begin(); iter != source.end(); ++iter)
+        {
+          const SourceType &sourceValue = (*iter);
+
+          DestType destValue;
+
+          destValue.mServiceType = sourceValue.mServiceType;
+          destValue.mValues = sourceValue.mValues;
+          destValue.mCustom = sourceValue.mCustom ? sourceValue.mCustom->clone()->toElement() : ElementPtr();
+
+          dest.push_back(destValue);
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      static void copy(const IServicePushMailboxSession::PushInfoList &source, message::PushMessageInfo::PushInfoList &dest)
+      {
+        typedef IServicePushMailboxSession::PushInfo SourceType;
+        typedef IServicePushMailboxSession::PushInfoList SourceListType;
+        typedef PushMessageInfo::PushInfo DestType;
+        typedef PushMessageInfo::PushInfoList DestListType;
+
+        for (SourceListType::const_iterator iter = source.begin(); iter != source.end(); ++iter)
+        {
+          const SourceType &sourceValue = (*iter);
+
+          DestType destValue;
+
+          destValue.mServiceType = sourceValue.mServiceType;
+          destValue.mValues = sourceValue.mValues;
+          destValue.mCustom = sourceValue.mCustom ? sourceValue.mCustom->clone()->toElement() : ElementPtr();
+
+          dest.push_back(destValue);
+        }
+      }
       
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -753,7 +797,23 @@ namespace openpeer
           }
         }
 
-        int messageIndex = mDB->insertMessage(messageID, to, peerFilePublic->getPeerURI(), cc, bcc, message.mMessageType, message.mMimeType, encoding, message.mPushType, message.mPushValues, message.mCustomPushData, message.mSent, sent, encryptedMessage, message.mFullMessage, true);
+        int messageIndex = mDB->insertMessage(
+                                              messageID,
+                                              to,
+                                              peerFilePublic->getPeerURI(),
+                                              cc,
+                                              bcc,
+                                              message.mMessageType,
+                                              message.mMimeType,
+                                              encoding,
+                                              message.mPushType,
+                                              message.mPushInfos,
+                                              message.mSent,
+                                              sent,
+                                              encryptedMessage,
+                                              message.mFullMessage,
+                                              true
+                                              );
 
         mRefreshVersionedFolders = true;
 
@@ -908,8 +968,7 @@ namespace openpeer
                                                  result->mMessageType,
                                                  result->mMimeType,
                                                  result->mPushType,
-                                                 result->mPushValues,
-                                                 result->mCustomPushData,
+                                                 result->mPushInfos,
                                                  result->mSent,
                                                  result->mExpires,
                                                  result->mFullMessage
@@ -2075,6 +2134,9 @@ namespace openpeer
                                                      );
           }
 
+          PushInfoList pushInfos;
+          copy(info.mPushInfos, pushInfos);
+
           mDB->updateMessage(
                              processedInfo.mInfo.mIndex,
                              info.mVersion,
@@ -2085,9 +2147,8 @@ namespace openpeer
                              info.mType,
                              info.mMimeType,
                              info.mEncoding,
-                             info.mPushInfo.mType,
-                             info.mPushInfo.mValues,
-                             info.mPushInfo.mCustom,
+                             info.mPushType,
+                             pushInfos,
                              info.mSent,
                              info.mExpires,
                              info.mLength,
@@ -4138,6 +4199,8 @@ namespace openpeer
           String cc;
           String bcc;
 
+          PushInfoList pushInfos;
+
           bool found = mDB->getMessageDetails(
                                               info.mMessageIndex,
                                               processedInfo.mMessage.mID,
@@ -4148,9 +4211,8 @@ namespace openpeer
                                               processedInfo.mMessage.mType,
                                               processedInfo.mMessage.mMimeType,
                                               processedInfo.mMessage.mEncoding,
-                                              processedInfo.mMessage.mPushInfo.mType,
-                                              processedInfo.mMessage.mPushInfo.mValues,
-                                              processedInfo.mMessage.mPushInfo.mCustom,
+                                              processedInfo.mMessage.mPushType,
+                                              pushInfos,
                                               processedInfo.mMessage.mSent,
                                               processedInfo.mMessage.mExpires,
                                               processedInfo.mData
@@ -4161,6 +4223,9 @@ namespace openpeer
             mDB->removePendingDeliveryMessage(info.mIndex);
             continue;
           }
+
+          copy(pushInfos, processedInfo.mMessage.mPushInfos);
+
 
           if (processedInfo.mData) {
             ZS_LOG_TRACE(log("allocating a sending channel ID"))
@@ -5810,8 +5875,23 @@ namespace openpeer
 
         IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
 
-        ValueList empty;
-        int index = mDB->insertMessage(messageID, toURI, peerFilePublic->getPeerURI(), NULL, NULL, OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE, OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE, NULL, empty, ElementPtr(), zsLib::now(), inBundle.mExpires, output, SecureByteBlockPtr(), false);
+        PushInfoList empty;
+        int index = mDB->insertMessage(
+                                       messageID,
+                                       toURI,
+                                       peerFilePublic->getPeerURI(),
+                                       NULL,
+                                       NULL,
+                                       OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE,
+                                       OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE,
+                                       OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE,
+                                       NULL,
+                                       empty,
+                                       zsLib::now(),
+                                       inBundle.mExpires,
+                                       output,
+                                       SecureByteBlockPtr(),
+                                       false);
 
         if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN == index) {
           ZS_LOG_ERROR(Detail, log("failed to insert keying message into messages table") + ZS_PARAM("message id", messageID))

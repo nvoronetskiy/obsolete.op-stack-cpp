@@ -117,6 +117,15 @@ namespace openpeer
 
       typedef std::map<PushStates, PushStatePeerDetailList> PushStateDetailMap;
 
+      struct PushInfo
+      {
+        String mServiceType;              // e.g. "apns" or "gcm"
+        ValueList mValues;                // values related to mapped type
+        ElementPtr mCustom;               // extended push related custom data
+      };
+
+      typedef std::list<PushInfo> PushInfoList;
+
       struct PushMessage
       {
         MessageID mMessageID;             // system will assign this value
@@ -126,8 +135,7 @@ namespace openpeer
         SecureByteBlockPtr mFullMessage;
 
         String mPushType;
-        ValueList mPushValues;            // values related to mapped type
-        ElementPtr mCustomPushData;       // extended push related custom data
+        PushInfoList mPushInfos;
 
         Time mSent;                       // when was the message sent
         Time mExpires;                    // optional, system will assign a long life time if not specified
@@ -339,7 +347,7 @@ namespace openpeer
     interaction IServicePushMailboxDatabaseAbstractionDelegateTypes
     {
       //-----------------------------------------------------------------------
-      typedef IServicePushMailboxSession::ValueList ValueList;
+      typedef IServicePushMailboxSession::PushInfoList PushInfoList;
 
       //-----------------------------------------------------------------------
       struct FolderNeedingUpdateInfo
@@ -737,7 +745,7 @@ namespace openpeer
       // String mimeType
       // String encoding
       // String pushType
-      // ValueList pushValues       small amount of data can be converted into an encoded string or put into its own table associated to message
+      // PushInfoList pushInfos       // small amount of data can be converted into an encoded string or put into its own table associated to message
       // Time   sent
       // Time   expires
       // Time   dataLength
@@ -782,8 +790,7 @@ namespace openpeer
                                  const char *mimeType,
                                  const char *encoding,
                                  const char *pushType,
-                                 const ValueList &pushValues,   // list will be empty is no values
-                                 ElementPtr pushCustomData,     // will be ElementPtr() if no custom data
+                                 const PushInfoList &pushInfos, // list will be empty is no values
                                  Time sent,
                                  Time expires,
                                  size_t dataLength,
@@ -803,8 +810,7 @@ namespace openpeer
                                 const char *mimeType,
                                 const char *encoding,
                                 const char *pushType,
-                                const ValueList &pushValues,  // list will be empty is no values
-                                ElementPtr pushCustomData,    // will be ElementPtr() if no custom data
+                                const PushInfoList &pushInfos, // list will be empty is no values
                                 Time sent,
                                 Time expires,
                                 SecureByteBlockPtr data,
@@ -821,12 +827,11 @@ namespace openpeer
                                      String &outFrom,
                                      String &outCC,
                                      String &outBCC,
-                                     String &type,
-                                     String &mimeType,
-                                     String &encoding,
-                                     String &pushType,
-                                     ValueList &outPushValues,
-                                     ElementPtr &outPushCustomData,
+                                     String &outType,
+                                     String &outMimeType,
+                                     String &outEncoding,
+                                     String &outPushType,
+                                     PushInfoList &outPushInfos,
                                      Time &outSent,
                                      Time &outExpires,
                                      SecureByteBlockPtr &outData
@@ -841,11 +846,10 @@ namespace openpeer
                                      String &outFrom,
                                      String &outCC,
                                      String &outBCC,
-                                     String &type,
-                                     String &mimeType,
-                                     String &pushType,
-                                     ValueList &outPushValues,
-                                     ElementPtr &outPushCustomData,
+                                     String &outType,
+                                     String &outMimeType,
+                                     String &outPushType,
+                                     PushInfoList &outPushInfos,
                                      Time &outSent,
                                      Time &outExpires,
                                      SecureByteBlockPtr &outDecryptedData

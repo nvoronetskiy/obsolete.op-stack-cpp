@@ -232,6 +232,16 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static void merge(PushMessageInfo::PushInfoList &result, const PushMessageInfo::PushInfoList &source, bool overwrite)
+      {
+        if (source.size() < 1) return;
+        if (result.size() > 0) {
+          if (!overwrite) return;
+        }
+        result = source;
+      }
+
+      //-----------------------------------------------------------------------
       static void merge(PushMessageInfo::FlagInfoMap &result, const PushMessageInfo::FlagInfoMap &source, bool overwrite)
       {
         if (source.size() < 1) return;
@@ -956,7 +966,8 @@ namespace openpeer
                 (mMimeType.hasData()) ||
                 (mEncoding.hasData()) ||
 
-                (mPushInfo.hasData()) ||
+                (mPushType.hasData()) ||
+                (mPushInfos.size() > 0) ||
 
                 (Time() != mSent) ||
                 (Time() != mExpires) ||
@@ -990,7 +1001,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "mimeType", mMimeType);
         IHelper::debugAppend(resultEl, "encoding", mEncoding);
 
-        IHelper::debugAppend(resultEl, mPushInfo.toDebug());
+        IHelper::debugAppend(resultEl, "push type", mPushType);
+        IHelper::debugAppend(resultEl, "push infos", mPushInfos.size());
 
         IHelper::debugAppend(resultEl, "sent", mSent);
         IHelper::debugAppend(resultEl, "expires", mExpires);
@@ -1027,7 +1039,8 @@ namespace openpeer
         merge(mMimeType, source.mMimeType, overwriteExisting);
         merge(mEncoding, source.mEncoding, overwriteExisting);
 
-        mPushInfo.mergeFrom(source.mPushInfo, overwriteExisting);
+        merge(mPushType, source.mPushType, overwriteExisting);
+        merge(mPushInfos, source.mPushInfos, overwriteExisting);
 
         merge(mSent, source.mSent, overwriteExisting);
         merge(mExpires, source.mExpires, overwriteExisting);
@@ -1086,36 +1099,55 @@ namespace openpeer
           messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("encoding", mEncoding));
         }
 
-        if (mPushInfo.hasData()) {
+        if ((mPushType.hasData()) ||
+            (mPushInfos.size() > 0)) {
           ElementPtr pushEl = Element::create("push");
 
-          if (mPushInfo.mType.hasData()) {
-            pushEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", mPushInfo.mType));
+          if (mPushType.hasData()) {
+            pushEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", mPushType));
           }
-          if (mPushInfo.mValues.size() > 0) {
-            ElementPtr valuesEl = Element::create("values");
 
-            for (PushInfo::ValueList::const_iterator iter = mPushInfo.mValues.begin(); iter != mPushInfo.mValues.end(); ++iter) {
-              const String &value = (*iter);
-              valuesEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("value", value));
+          ElementPtr servicesEl = Element::create("services");
+
+          for (PushInfoList::const_iterator iter = mPushInfos.begin(); iter != mPushInfos.end(); ++iter) {
+            ElementPtr serviceEl = Element::create("service");
+
+            const PushInfo &pushInfo = (*iter);
+
+            if (pushInfo.mServiceType.hasData()) {
+              serviceEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", pushInfo.mServiceType));
             }
 
-            if (valuesEl->hasChildren()) {
-              pushEl->adoptAsLastChild(valuesEl);
+            if (pushInfo.mValues.size() > 0) {
+              ElementPtr valuesEl = Element::create("values");
+
+              for (PushInfo::ValueList::const_iterator iter = pushInfo.mValues.begin(); iter != pushInfo.mValues.end(); ++iter) {
+                const String &value = (*iter);
+                valuesEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("value", value));
+              }
+
+              if (valuesEl->hasChildren()) {
+                serviceEl->adoptAsLastChild(valuesEl);
+              }
+            }
+
+            if ((bool)pushInfo.mCustom) {
+              ElementPtr customEl = Element::create("custom");
+              customEl->adoptAsLastChild(pushInfo.mCustom->clone());
+              if (customEl->hasChildren()) {
+                serviceEl->adoptAsLastChild(customEl);
+              }
+            }
+
+            if (serviceEl->hasChildren()) {
+              servicesEl->adoptAsLastChild(serviceEl);
             }
           }
 
-          if ((bool)mPushInfo.mCustom) {
-            ElementPtr customEl = Element::create("custom");
-            customEl->adoptAsLastChild(mPushInfo.mCustom->clone());
-            if (customEl->hasChildren()) {
-              pushEl->adoptAsLastChild(customEl);
-            }
+          if (servicesEl->hasChildren()) {
+            pushEl->adoptAsLastChild(servicesEl);
           }
 
-          if (pushEl->hasChildren()) {
-            messageEl->adoptAsLastChild(pushEl);
-          }
         }
 
         if (Time() != mSent) {
@@ -1251,27 +1283,44 @@ namespace openpeer
 
         ElementPtr pushEl = elem->findFirstChildElement("push");
         if (pushEl) {
-          info.mPushInfo.mType = IMessageHelper::getElementTextAndDecode(pushEl->findFirstChildElement("type"));
+          info.mPushType = IMessageHelper::getElementTextAndDecode(pushEl->findFirstChildElement("type"));
 
-          ElementPtr valuesEl = pushEl->findFirstChildElement("values");
-          if (valuesEl) {
-            ElementPtr valueEl = valuesEl->findFirstChildElement("value");
-            while (valueEl) {
-              String value = IMessageHelper::getElementTextAndDecode(valueEl);
-              if (value.hasData()) {
-                info.mPushInfo.mValues.push_back(value);
+          ElementPtr servicesEl = pushEl->findFirstChildElement("services");
+          if (servicesEl) {
+            ElementPtr serviceEl = servicesEl->findFirstChildElement("service");
+
+            while (serviceEl) {
+              PushInfo pushInfo;
+
+              pushInfo.mServiceType = IMessageHelper::getElementTextAndDecode(serviceEl->findFirstChildElement("type"));
+
+              ElementPtr valuesEl = serviceEl->findFirstChildElement("values");
+              if (valuesEl) {
+                ElementPtr valueEl = valuesEl->findFirstChildElement("value");
+                while (valueEl) {
+                  String value = IMessageHelper::getElementTextAndDecode(valueEl);
+                  if (value.hasData()) {
+                    pushInfo.mValues.push_back(value);
+                  }
+
+                  valueEl = valueEl->findNextSiblingElement("value");
+                }
               }
 
-              valueEl = valueEl->findNextSiblingElement("value");
-            }
-          }
+              ElementPtr customEl = serviceEl->findFirstChildElement("custom");
 
-          ElementPtr customEl = pushEl->findFirstChildElement("custom");
+              if (customEl) {
+                ElementPtr dataEl = customEl->getFirstChildElement();
+                if (dataEl) {
+                  pushInfo.mCustom = dataEl->clone()->toElement();
+                }
+              }
 
-          if (customEl) {
-            ElementPtr dataEl = customEl->getFirstChildElement();
-            if (dataEl) {
-              info.mPushInfo.mCustom = dataEl->clone()->toElement();
+              if (pushInfo.hasData()) {
+                info.mPushInfos.push_back(pushInfo);
+              }
+
+              serviceEl = serviceEl->findNextSiblingElement("service");
             }
           }
         }
@@ -1535,7 +1584,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool PushMessageInfo::PushInfo::hasData() const
       {
-        return ((mType.hasData()) ||
+        return ((mServiceType.hasData()) ||
 
                 (mValues.size() > 0) ||
 
@@ -1547,7 +1596,7 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::PushMessageInfo::PushInfo");
 
-        IHelper::debugAppend(resultEl, "type", mType);
+        IHelper::debugAppend(resultEl, "type", mServiceType);
         IHelper::debugAppend(resultEl, "mValues", mValues.size());
         IHelper::debugAppend(resultEl, "custom", (bool)mCustom);
 
@@ -1560,7 +1609,7 @@ namespace openpeer
                                                 bool overwriteExisting
                                                 )
       {
-        merge(mType, source.mType, overwriteExisting);
+        merge(mServiceType, source.mServiceType, overwriteExisting);
         merge(mValues, source.mValues, overwriteExisting);
         merge(mCustom, source.mCustom, overwriteExisting);
       }
