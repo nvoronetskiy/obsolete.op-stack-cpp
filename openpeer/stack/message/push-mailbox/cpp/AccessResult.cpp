@@ -71,6 +71,16 @@ namespace openpeer
 
           ret->mPeerURI = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("peer"));
 
+          ElementPtr uploadMessageEl = rootEl->findFirstChildElement("uploadMessage");
+          if (uploadMessageEl) {
+            ret->mUploadMessageURL = IMessageHelper::getElementTextAndDecode(uploadMessageEl->findFirstChildElement("peer"));
+            ElementPtr stringReplacementEl = uploadMessageEl->findFirstChildElement("stringReplacements");
+            if (stringReplacementEl) {
+              ret->mUploadMessageStringReplacementMessageID = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("id"));
+              ret->mUploadMessageStringReplacementMessageSize = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("sizeRemaining"));
+            }
+          }
+
           return ret;
         }
 
@@ -79,9 +89,12 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_NamespaceGrantChallengeInfo:     return mNamespaceGrantChallengeInfo.hasData();
-            case AttributeType_PeerURI:                         return mPeerURI.hasData();
-            default:                                            break;
+            case AttributeType_NamespaceGrantChallengeInfo:               return mNamespaceGrantChallengeInfo.hasData();
+            case AttributeType_PeerURI:                                   return mPeerURI.hasData();
+            case AttributeType_UploadMessageURL:                          return mUploadMessageURL.hasData();
+            case AttributeType_UploadMessageStringReplacementMessageID:   return mUploadMessageStringReplacementMessageID.hasData();
+            case AttributeType_UploadMessageStringReplacementMessageSize: return mUploadMessageStringReplacementMessageSize.hasData();
+            default:                                                      break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }

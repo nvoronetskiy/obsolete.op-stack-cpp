@@ -48,7 +48,12 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_NamespaceGrantChallengeInfo = MessageResult::AttributeType_Last + 1,
+
             AttributeType_PeerURI,
+
+            AttributeType_UploadMessageURL,
+            AttributeType_UploadMessageStringReplacementMessageID,
+            AttributeType_UploadMessageStringReplacementMessageSize,
           };
 
         public:
@@ -71,12 +76,25 @@ namespace openpeer
           const String &peerURI() const                                             {return mPeerURI;}
           void peerURI(const String &val)                                           {mPeerURI = val;}
 
+          const String &uploadMessageURL() const                                    {return mUploadMessageURL;}
+          void uploadMessageURL(const String &val)                                  {mUploadMessageURL = val;}
+
+          const String &uploadMessageStringReplacementMessageID() const             {return mUploadMessageStringReplacementMessageID;}
+          void uploadMessageStringReplacementMessageID(const String &val)           {mUploadMessageStringReplacementMessageID = val;}
+
+          const String &uploadMessageStringReplacementMessageSize() const            {return mUploadMessageStringReplacementMessageSize;}
+          void uploadMessageStringReplacementMessageSize(const String &val)          {mUploadMessageStringReplacementMessageSize = val;}
+
         protected:
           AccessResult();
 
           NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 
           String mPeerURI;
+
+          String mUploadMessageURL;
+          String mUploadMessageStringReplacementMessageID;
+          String mUploadMessageStringReplacementMessageSize;
         };
       }
     }

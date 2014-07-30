@@ -111,6 +111,7 @@
 		0063BBD116CA92D000E6DB4D /* PeerKeepAliveResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063BB0C16CA92D000E6DB4D /* PeerKeepAliveResult.cpp */; };
 		0063C5EA193BA0960051ADA8 /* FoldersGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C5E9193BA0960051ADA8 /* FoldersGetRequest.cpp */; };
 		0063C5ED193BA4E60051ADA8 /* FoldersGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C5EC193BA4E60051ADA8 /* FoldersGetResult.cpp */; };
+		006EB43419880B9000379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006EB43319880B9000379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */; };
 		006FB4D1175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4CF175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateRequest.cpp */; };
 		006FB4D2175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4D0175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateResult.cpp */; };
 		006FB4D7175E5FDE000C53A8 /* LockboxNamespaceGrantChallengeValidateRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 006FB4D5175E5FDE000C53A8 /* LockboxNamespaceGrantChallengeValidateRequest.cpp */; };
@@ -428,6 +429,8 @@
 		0063C5EB193BA0A90051ADA8 /* FoldersGetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoldersGetRequest.h; sourceTree = "<group>"; };
 		0063C5EC193BA4E60051ADA8 /* FoldersGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FoldersGetResult.cpp; sourceTree = "<group>"; };
 		0063C5EE193BA4F80051ADA8 /* FoldersGetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoldersGetResult.h; sourceTree = "<group>"; };
+		006EB43219880A7200379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncDatabase.h; sourceTree = "<group>"; };
+		006EB43319880B9000379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_AsyncDatabase.cpp; sourceTree = "<group>"; };
 		006FB4CF175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RolodexNamespaceGrantChallengeValidateRequest.cpp; sourceTree = "<group>"; };
 		006FB4D0175E5F65000C53A8 /* RolodexNamespaceGrantChallengeValidateResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RolodexNamespaceGrantChallengeValidateResult.cpp; sourceTree = "<group>"; };
 		006FB4D3175E5F7A000C53A8 /* RolodexNamespaceGrantChallengeValidateRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RolodexNamespaceGrantChallengeValidateRequest.h; sourceTree = "<group>"; };
@@ -748,6 +751,7 @@
 				00384C43175BFEFA00113845 /* stack_ServiceNamespaceGrantSession.cpp */,
 				00D3B9AA1943B10400B7B923 /* stack_ServicePeerFileLookup.cpp */,
 				0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */,
+				006EB43319880B9000379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */,
 				00EEA37C1941F28F00B59D26 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */,
 				00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */,
 				0063BA2716CA92CF00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp */,
@@ -803,6 +807,7 @@
 				00384C42175BFEE900113845 /* stack_ServiceNamespaceGrantSession.h */,
 				00D3B9AC1943B12000B7B923 /* stack_ServicePeerFileLookup.h */,
 				0020FC43193654630065C965 /* stack_ServicePushMailboxSession.h */,
+				006EB43219880A7200379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.h */,
 				00EEA37B1941F10200B59D26 /* stack_ServicePushMailboxSession_RegisterQuery.h */,
 				0099443F197DAFA300063E17 /* stack_ServicePushMailboxSession_SendQuery.h */,
 				0063BA4C16CA92CF00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.h */,
@@ -1282,6 +1287,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0063BB6A16CA92D000E6DB4D /* stack.cpp in Sources */,
+				006EB43419880B9000379BBD /* stack_ServicePushMailboxSession_AsyncDatabase.cpp in Sources */,
 				00083C381943829000EF9F03 /* PeerFilesGetRequest.cpp in Sources */,
 				000493FE193FC14A00500EA6 /* MessageFactoryBootstrappedServers.cpp in Sources */,
 				0063BB6B16CA92D000E6DB4D /* stack_Account.cpp in Sources */,

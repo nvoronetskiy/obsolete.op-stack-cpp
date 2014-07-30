@@ -152,6 +152,7 @@ namespace openpeer
       static IServicePushMailboxSessionPtr create(
                                                   IServicePushMailboxSessionDelegatePtr delegate,
                                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                  IMessageQueuePtr databaseDelegateAsyncQueue,
                                                   IServicePushMailboxPtr servicePushMailbox,
                                                   IAccountPtr account,
                                                   IServiceNamespaceGrantSessionPtr grantSession,
@@ -1209,6 +1210,28 @@ namespace openpeer
       // NOTES:   if "mIndex" is < 0 then a new key is to be added otherwise an
       //          existing key is to be updated
       virtual void addOrUpdateReceivingKey(const ReceivingKeyInfo &inInfo) = 0;
+
+
+      // ======================================================================
+      // ======================================================================
+      // MISC
+      // ======================================================================
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: stores a buffer to a temporary file
+      // RETURNS: file name containing binary data or String() if failed
+      virtual String storeToTemporaryFile(const SecureByteBlock &buffer) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: notifies the API that a file needs to be uploaded to a URL
+      // NOTES:   - this upload should occur even while the application goes
+      //            to the background
+      //          - this method is called asynchronously on the application's
+      //            thread
+      virtual void asyncNotifyPostFileDataToURL(
+                                                const char *url,
+                                                const char *fileNameContainingData
+                                                ) = 0;
     };
   }
 

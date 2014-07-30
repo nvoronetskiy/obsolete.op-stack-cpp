@@ -1021,6 +1021,7 @@ namespace openpeer
       ServicePushMailboxSessionPtr IServicePushMailboxSessionFactory::create(
                                                                              IServicePushMailboxSessionDelegatePtr delegate,
                                                                              IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                                             IMessageQueuePtr databaseDelegateAsyncQueue,
                                                                              IServicePushMailboxPtr servicePushMailbox,
                                                                              IAccountPtr account,
                                                                              IServiceNamespaceGrantSessionPtr grantSession,
@@ -1028,7 +1029,7 @@ namespace openpeer
                                                                              )
       {
         if (this) {}
-        return ServicePushMailboxSession::create(delegate, databaseDelegate, servicePushMailbox, account, grantSession, lockboxSession);
+        return ServicePushMailboxSession::create(delegate, databaseDelegate, databaseDelegateAsyncQueue, servicePushMailbox, account, grantSession, lockboxSession);
       }
 
       //-----------------------------------------------------------------------

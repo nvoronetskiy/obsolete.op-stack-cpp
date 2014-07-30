@@ -188,6 +188,29 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      // http://www.zedwood.com/article/cpp-urlencode-function
+      // from: http://codepad.org/lCypTglt
+      static String urlencode(const String &s)
+      {
+        //RFC 3986 section 2.3 Unreserved Characters (January 2005)
+        const std::string unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~";
+
+        std::string escaped = "";
+        for(size_t i=0; i < s.length(); i++) {
+          if (unreserved.find_first_of(s[i]) != std::string::npos) {
+            escaped.push_back(s[i]);
+          } else {
+            escaped.append("%");
+            char buf[3];
+            sprintf(buf, "%.2X", s[i]);
+            escaped.append(buf);
+          }
+        }
+
+        return escaped;
+      }
+      
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -201,6 +224,7 @@ namespace openpeer
                                                            BootstrappedNetworkPtr network,
                                                            IServicePushMailboxSessionDelegatePtr delegate,
                                                            IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                           IMessageQueuePtr databaseDelegateAsyncQueue,
                                                            AccountPtr account,
                                                            ServiceNamespaceGrantSessionPtr grantSession,
                                                            ServiceLockboxSessionPtr lockboxSession
@@ -257,6 +281,7 @@ namespace openpeer
         ZS_LOG_BASIC(log("created"))
 
         mDefaultSubscription = mSubscriptions.subscribe(delegate, UseStack::queueDelegate());
+        mAsyncDB = AsyncDatabase::create(databaseDelegateAsyncQueue, databaseDelegate);
       }
 
       //-----------------------------------------------------------------------
@@ -309,6 +334,7 @@ namespace openpeer
       ServicePushMailboxSessionPtr ServicePushMailboxSession::create(
                                                                      IServicePushMailboxSessionDelegatePtr delegate,
                                                                      IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                                     IMessageQueuePtr databaseDelegateAsyncQueue,
                                                                      IServicePushMailboxPtr servicePushMailbox,
                                                                      IAccountPtr account,
                                                                      IServiceNamespaceGrantSessionPtr grantSession,
@@ -317,7 +343,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!databaseDelegate) // must not be NULL
 
-        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, Account::convert(account), ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
+        ServicePushMailboxSessionPtr pThis(new ServicePushMailboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(servicePushMailbox), delegate, databaseDelegate, databaseDelegateAsyncQueue, Account::convert(account), ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(lockboxSession)));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -1040,40 +1066,52 @@ namespace openpeer
           return;
         }
 
-        if ((!mPendingDeliveryMessageUpdateRequest) ||
-            (mPendingDelivery.size() < 1)) {
+        if (mPendingDelivery.size() < 1) {
           ZS_LOG_TRACE(log("message upload is not required at this time"))
           return;
         }
 
-        ProcessedPendingDeliveryMessageInfo &processedInfo = mPendingDelivery.begin()->second;
+        for (PendingDeliveryMap::iterator iter = mPendingDelivery.begin(); iter != mPendingDelivery.end(); ++iter)
+        {
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*iter).second;
 
-        if (!processedInfo.mData) {
-          ZS_LOG_TRACE(log("uploading message contains no data to upload"))
-          return;
+          if (!processedInfo.mData) {
+            ZS_LOG_TRACE(log("uploading message contains no data to upload"))
+            return;
+          }
+
+          if (processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
+            ZS_LOG_TRACE(log("message upload is already complete"))
+            return;
+          }
+
+          if (processedInfo.mTempFileName.hasData()) {
+            ZS_LOG_TRACE(log("delivering the message via local file instead") + ZS_PARAM("file", processedInfo.mTempFileName))
+            return;
+          }
+
+          size_t totalToSend = processedInfo.mData->SizeInBytes();
+          totalToSend -= processedInfo.mSent;
+
+          if (totalToSend > mDeliveryMaxChunkSize) {
+            totalToSend = mDeliveryMaxChunkSize;
+          }
+
+          ITCPMessaging::ChannelHeaderPtr header(new ITCPMessaging::ChannelHeader);
+          header->mChannelID = processedInfo.mMessage.mChannelID;
+
+          writer->write(&(processedInfo.mData->BytePtr()[processedInfo.mSent]), totalToSend, header);
+
+          processedInfo.mSent += totalToSend;
+
+          if (processedInfo.mSent != totalToSend) {
+            ZS_LOG_TRACE(log("will wait for next write ready to send next chunk of data"))
+            return;
+          }
+
+          // all data is now sent thus need to monitor for final result
+          processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
         }
-
-        size_t totalToSend = processedInfo.mData->SizeInBytes();
-        totalToSend -= processedInfo.mSent;
-
-        if (totalToSend > mDeliveryMaxChunkSize) {
-          totalToSend = mDeliveryMaxChunkSize;
-        }
-
-        ITCPMessaging::ChannelHeaderPtr header(new ITCPMessaging::ChannelHeader);
-        header->mChannelID = processedInfo.mMessage.mChannelID;
-
-        writer->write(&(processedInfo.mData->BytePtr()[processedInfo.mSent]), totalToSend, header);
-
-        processedInfo.mSent += totalToSend;
-
-        if (processedInfo.mSent != totalToSend) {
-          ZS_LOG_TRACE(log("will wait for next write ready to send next chunk of data"))
-          return;
-        }
-
-        // all data is now sent thus need to monitor for final result
-        mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
 
         step();
       }
@@ -1345,6 +1383,9 @@ namespace openpeer
         }
 
         mPeerURIFromAccessResult = result->peerURI();
+        mUploadMessageURL = result->uploadMessageURL();
+        mUploadMessageStringReplacementMessageID = result->uploadMessageStringReplacementMessageID();
+        mUploadMessageStringReplacementMessageSize = result->uploadMessageStringReplacementMessageSize();
 
         mNamespaceGrantChallengeInfo = result->namespaceGrantChallengeInfo();
 
@@ -2150,41 +2191,47 @@ namespace openpeer
         ZS_LOG_DEBUG(log("message update result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        if (monitor == mPendingDeliveryMessageUpdateErrorMonitor) {
-          ZS_LOG_TRACE(log("message upload error monitor completed") + IMessageMonitor::toDebug(monitor))
-          mPendingDeliveryMessageUpdateErrorMonitor->cancel();
-          mPendingDeliveryMessageUpdateErrorMonitor.reset();
 
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return false;
-        }
+        for (PendingDeliveryMap::iterator iter_doNotUse = mPendingDelivery.begin(); iter_doNotUse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
 
-        if (monitor == mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
-          mPendingDeliveryMessageUpdateUploadCompleteMonitor.reset();
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
 
-          mPendingDeliveryMessageUpdateRequest.reset();
+          if (monitor == processedInfo.mPendingDeliveryMessageUpdateErrorMonitor) {
+            ZS_LOG_TRACE(log("message upload error monitor completed") + IMessageMonitor::toDebug(monitor))
+            processedInfo.mPendingDeliveryMessageUpdateErrorMonitor->cancel();
+            processedInfo.mPendingDeliveryMessageUpdateErrorMonitor.reset();
 
-          ZS_THROW_BAD_STATE_IF(mPendingDelivery.size() < 1)
-
-          ProcessedPendingDeliveryMessageInfo &processedInfo = mPendingDelivery.begin()->second;
-
-          ZS_LOG_DEBUG(log("message upload complete") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
-          mDB->removePendingDeliveryMessage(processedInfo.mInfo.mIndex);
-
-          SendQueryMap::iterator foundQuery = mSendQueries.find(processedInfo.mMessage.mID);
-          if (foundQuery != mSendQueries.end()) {
-            SendQueryPtr query = (*foundQuery).second.lock();
-            if (query) {
-              query->notifyUploaded();
-            } else {
-              mSendQueries.erase(foundQuery);
-            }
+            IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+            return false;
           }
 
-          mPendingDelivery.erase(mPendingDelivery.begin());
+          if (monitor == processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor.reset();
+            processedInfo.mPendingDeliveryMessageUpdateRequest.reset();
 
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return true;
+            ZS_THROW_BAD_STATE_IF(mPendingDelivery.size() < 1)
+
+            ZS_LOG_DEBUG(log("message upload complete") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
+            mDB->removePendingDeliveryMessage(processedInfo.mInfo.mIndex);
+
+            SendQueryMap::iterator foundQuery = mSendQueries.find(processedInfo.mMessage.mID);
+            if (foundQuery != mSendQueries.end()) {
+              SendQueryPtr query = (*foundQuery).second.lock();
+              if (query) {
+                query->notifyUploaded();
+              } else {
+                mSendQueries.erase(foundQuery);
+              }
+            }
+
+            mPendingDelivery.erase(current);
+            
+            IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+            return true;
+          }
         }
 
         for (MonitorList::iterator iter_doNotUse = mMarkingMonitors.begin(); iter_doNotUse != mMarkingMonitors.end(); )
@@ -2231,10 +2278,18 @@ namespace openpeer
         ZS_LOG_ERROR(Detail, log("failed to update message") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
 
         AutoRecursiveLock lock(*this);
-        if ((monitor == mPendingDeliveryMessageUpdateErrorMonitor) ||
-            (monitor == mPendingDeliveryMessageUpdateUploadCompleteMonitor)) {
-          connectionFailure();
-          return true;
+        for (PendingDeliveryMap::iterator iter_doNotUse = mPendingDelivery.begin(); iter_doNotUse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if ((monitor == processedInfo.mPendingDeliveryMessageUpdateErrorMonitor) ||
+              (monitor == processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor)) {
+            connectionFailure();
+            return true;
+          }
         }
 
         for (MonitorList::iterator iter_doNotUse = mMarkingMonitors.begin(); iter_doNotUse != mMarkingMonitors.end(); )
@@ -2488,15 +2543,16 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "refresh messages needing decryption", mRefreshMessagesNeedingDecryption);
 
         IHelper::debugAppend(resultEl, "refresh pending delivery", mRefreshPendingDelivery);
+        IHelper::debugAppend(resultEl, "max delivery chunk size", mDeliveryMaxChunkSize);
         IHelper::debugAppend(resultEl, "last channel", mLastChannel);
         IHelper::debugAppend(resultEl, "pending delivery pre-check required", mPendingDeliveryPrecheckRequired);
+        IHelper::debugAppend(resultEl, "pending delivery", mPendingDelivery.size());
         IHelper::debugAppend(resultEl, "pending delivery pre-check messages metadata get monitor", mPendingDeliveryPrecheckMessageMetaDataGetMonitor ? mPendingDeliveryPrecheckMessageMetaDataGetMonitor->getID() : 0);
 
         IHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
 
         IHelper::debugAppend(resultEl, "messages to mark read", mMessagesToMarkRead.size());
         IHelper::debugAppend(resultEl, "messages to remove", mMessagesToRemove.size());
-
         IHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
 
         IHelper::debugAppend(resultEl, "refresh needing expiry", mRefreshMessagesNeedingExpiry);
@@ -2553,6 +2609,7 @@ namespace openpeer
 
         if (!stepPendingDelivery()) goto post_step;
         if (!stepPendingDeliveryUpdateRequest()) goto post_step;
+        if (!stepDeliverViaURL()) goto post_step;
 
         if (!stepPrepareVersionedFolderMessages()) goto post_step;
 
@@ -4173,44 +4230,130 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepPendingDeliveryUpdateRequest()
       {
-        if (mPendingDeliveryMessageUpdateRequest) {
-          ZS_LOG_TRACE(log("already issues pending delivery message update request"))
-          return true;
-        }
-
         if (mPendingDelivery.size() < 1) {
           ZS_LOG_TRACE(log("no messages need uploading at this time"))
           return true;
         }
 
-        ZS_THROW_BAD_STATE_IF(mPendingDeliveryMessageUpdateErrorMonitor)
-        ZS_THROW_BAD_STATE_IF(mPendingDeliveryMessageUpdateUploadCompleteMonitor)
+        bool issuedUpload = false;
 
-        ProcessedPendingDeliveryMessageInfo &processedInfo = mPendingDelivery.begin()->second;
+        for (PendingDeliveryMap::iterator iter_doNotuse = mPendingDelivery.begin(); iter_doNotuse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotuse;
+          ++iter_doNotuse;
 
-        ZS_LOG_DEBUG(log("issuing request to upload next message") + ZS_PARAM("message id", processedInfo.mMessage.mID))
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
 
-        MessageUpdateRequestPtr request = MessageUpdateRequest::create();
-        request->domain(mBootstrappedNetwork->getDomain());
+          if (processedInfo.mPendingDeliveryMessageUpdateRequest) {
+            ZS_LOG_TRACE(log("already issues pending delivery message update request"))
+            continue;
+          }
 
-        request->messageInfo(processedInfo.mMessage);
+          ZS_THROW_BAD_STATE_IF(processedInfo.mPendingDeliveryMessageUpdateErrorMonitor)
+          ZS_THROW_BAD_STATE_IF(processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor)
+          
+          ZS_LOG_DEBUG(log("issuing request to upload next message") + ZS_PARAM("message id", processedInfo.mMessage.mID))
 
-        mPendingDeliveryMessageUpdateErrorMonitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          MessageUpdateRequestPtr request = MessageUpdateRequest::create();
+          request->domain(mBootstrappedNetwork->getDomain());
 
-        mPendingDeliveryMessageUpdateRequest = request;
+          request->messageInfo(processedInfo.mMessage);
 
-        if (0 == processedInfo.mMessage.mChannelID) {
-          // message contains no data thus can immediately expect final result
-          mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          processedInfo.mPendingDeliveryMessageUpdateErrorMonitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+
+          processedInfo.mPendingDeliveryMessageUpdateRequest = request;
+
+          if (0 == processedInfo.mMessage.mChannelID) {
+            // message contains no data thus can immediately expect final result
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          } else {
+            issuedUpload = true;
+          }
         }
 
-        if (mWriter) {
+        if ((issuedUpload) &&
+            (mWriter) &&
+            (!mBackgroundingEnabled)) {
           services::ITransportStreamWriterDelegateProxy::create(mThisWeak.lock())->onTransportStreamWriterReady(mWriter);
         }
 
         return true;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepDeliverViaURL()
+      {
+        if (!mBackgroundingEnabled) {
+          ZS_LOG_TRACE(log("not in backgrounding mode thus no need to deliver via local file and URL"))
+          return true;
+        }
+
+        for (PendingDeliveryMap::iterator iter_doNotuse = mPendingDelivery.begin(); iter_doNotuse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotuse;
+          ++iter_doNotuse;
+
+          const String &messageID = (*current).first;
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if (!processedInfo.mData) {
+            ZS_LOG_TRACE(log("message does not have data to deliver"))
+            continue;
+          }
+
+          if (processedInfo.mTempFileName.hasData()) {
+            ZS_LOG_TRACE(log("already attempting to deliver via temporary file"))
+            continue;
+          }
+
+          if (processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
+            ZS_LOG_TRACE(log("already completed upload process for this message"))
+            continue;
+          }
+
+          if (processedInfo.mSent >= processedInfo.mData->SizeInBytes()) {
+            ZS_LOG_WARNING(Detail, log("already uploaded entire message") + ZS_PARAM("sent", processedInfo.mSent) + ZS_PARAM("total", processedInfo.mData->SizeInBytes()))
+            continue;
+          }
+
+          size_t totalRemaining = processedInfo.mData->SizeInBytes() - processedInfo.mSent;
+
+          SecureByteBlockPtr buffer = IHelper::convertToBuffer(&(processedInfo.mData->BytePtr()[processedInfo.mSent]), totalRemaining);
+
+          processedInfo.mTempFileName = mDB->storeToTemporaryFile(*buffer);
+          processedInfo.mDeliveryURL = mUploadMessageURL;
+
+          // replace message ID
+          {
+            size_t found = processedInfo.mDeliveryURL.find(mUploadMessageStringReplacementMessageID);
+            if (String::npos != found) {
+              String replaceMessageID = urlencode(messageID);
+              processedInfo.mDeliveryURL.replace(found, mUploadMessageStringReplacementMessageID.size(), replaceMessageID);
+            }
+          }
+
+          // replace size
+          {
+            size_t found = processedInfo.mDeliveryURL.find(mUploadMessageStringReplacementMessageSize);
+            if (String::npos != found) {
+              String replaceMessageSize = string(totalRemaining);
+              processedInfo.mDeliveryURL.replace(found, mUploadMessageStringReplacementMessageID.size(), replaceMessageSize);
+            }
+          }
+
+          if (processedInfo.mTempFileName.hasData()) {
+            ZS_LOG_DEBUG(log("going to deliver push message via URL") + ZS_PARAM("url", processedInfo.mDeliveryURL) + ZS_PARAM("file", processedInfo.mTempFileName))
+
+            IServicePushMailboxSessionAsyncDatabaseDelegateProxy::create(mAsyncDB)->asyncNotifyPostFileDataToURL(processedInfo.mDeliveryURL, processedInfo.mTempFileName);
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          } else {
+            ZS_LOG_DEBUG(log("unable to send via URL as file could not be created") + ZS_PARAM("url", processedInfo.mDeliveryURL))
+          }
+        }
+
+        return true;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepPrepareVersionedFolderMessages()
       {
@@ -4763,22 +4906,27 @@ namespace openpeer
         // pending delivery
 
         mRefreshPendingDelivery = mRefreshPendingDelivery || (mPendingDelivery.size() > 0);
-        mPendingDelivery.clear();
         mPendingDeliveryPrecheckRequired = mRefreshPendingDelivery;
-        mPendingDeliveryMessageUpdateRequest.reset();
 
         if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
           mPendingDeliveryPrecheckMessageMetaDataGetMonitor->cancel();
           mPendingDeliveryPrecheckMessageMetaDataGetMonitor.reset();
         }
-        if (mPendingDeliveryMessageUpdateErrorMonitor) {
-          mPendingDeliveryMessageUpdateErrorMonitor->cancel();
-          mPendingDeliveryMessageUpdateErrorMonitor.reset();
+
+        for (PendingDeliveryMap::iterator iter = mPendingDelivery.begin(); iter != mPendingDelivery.end(); ++iter) {
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*iter).second;
+
+          if (processedInfo.mPendingDeliveryMessageUpdateErrorMonitor) {
+            processedInfo.mPendingDeliveryMessageUpdateErrorMonitor->cancel();
+            processedInfo.mPendingDeliveryMessageUpdateErrorMonitor.reset();
+          }
+          if (processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor->cancel();
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor.reset();
+          }
         }
-        if (mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
-          mPendingDeliveryMessageUpdateUploadCompleteMonitor->cancel();
-          mPendingDeliveryMessageUpdateUploadCompleteMonitor.reset();
-        }
+
+        mPendingDelivery.clear();
 
 
         //.....................................................................
@@ -5053,11 +5201,11 @@ namespace openpeer
         {
           PendingDeliveryMap::iterator found = mPendingDelivery.find(messageID);
           if (found != mPendingDelivery.end()) {
-            if (found == mPendingDelivery.begin()) {
-              if (mPendingDeliveryMessageUpdateRequest) {
-                ZS_LOG_WARNING(Detail, log("cannot remove message that is pending delivery and being uploaded at this time") + ZS_PARAM("message id", messageID))
-                return;
-              }
+            ProcessedPendingDeliveryMessageInfo &processedInfo = (*found).second;
+
+            if (processedInfo.mPendingDeliveryMessageUpdateRequest) {
+              ZS_LOG_WARNING(Detail, log("cannot remove message that is pending delivery and being uploaded at this time") + ZS_PARAM("message id", messageID))
+              return;
             }
 
             mPendingDelivery.erase(found);
@@ -5260,9 +5408,6 @@ namespace openpeer
         if (mRefreshPendingDelivery) return true;
         if (mPendingDelivery.size() > 0) return true;
         if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) return true;
-        if (mPendingDeliveryMessageUpdateRequest) return true;
-        if (mPendingDeliveryMessageUpdateErrorMonitor) return true;
-        if (mPendingDeliveryMessageUpdateUploadCompleteMonitor) return true;
         return false;
       }
 
@@ -6223,13 +6368,14 @@ namespace openpeer
     IServicePushMailboxSessionPtr IServicePushMailboxSession::create(
                                                                      IServicePushMailboxSessionDelegatePtr delegate,
                                                                      IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                                     IMessageQueuePtr databaseDelegateAsyncQueue,
                                                                      IServicePushMailboxPtr servicePushMailbox,
                                                                      IAccountPtr account,
                                                                      IServiceNamespaceGrantSessionPtr grantSession,
                                                                      IServiceLockboxSessionPtr lockboxSession
                                                                      )
     {
-      return internal::IServicePushMailboxSessionFactory::singleton().create(delegate, databaseDelegate, servicePushMailbox, account, grantSession, lockboxSession);
+      return internal::IServicePushMailboxSessionFactory::singleton().create(delegate, databaseDelegate, databaseDelegateAsyncQueue, servicePushMailbox, account, grantSession, lockboxSession);
     }
 
 

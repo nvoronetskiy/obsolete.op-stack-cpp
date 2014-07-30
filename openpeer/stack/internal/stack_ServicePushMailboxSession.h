@@ -111,6 +111,14 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(openpeer::services, ITCPMessagingDelegate)
       ZS_DECLARE_USING_PTR(openpeer::services, ITransportStreamReaderDelegate)
 
+      interaction IServicePushMailboxSessionAsyncDatabaseDelegate
+      {
+        virtual void asyncNotifyPostFileDataToURL(
+                                                  const char *url,
+                                                  const char *fileNameContainingData
+                                                  ) = 0;
+      };
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -159,6 +167,8 @@ namespace openpeer
 
         ZS_DECLARE_CLASS_PTR(SendQuery)
         typedef std::map<MessageID, SendQueryWeakPtr> SendQueryMap;
+
+        ZS_DECLARE_CLASS_PTR(AsyncDatabase)
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
@@ -258,8 +268,15 @@ namespace openpeer
 
           PushMessageInfo mMessage;
 
+          String mTempFileName;
+          String mDeliveryURL;
+
           size_t mSent;
           SecureByteBlockPtr mData;
+
+          MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
+          IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
+          IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
         };
         typedef std::map<MessageID, ProcessedPendingDeliveryMessageInfo> PendingDeliveryMap;
 
@@ -285,6 +302,7 @@ namespace openpeer
                                   BootstrappedNetworkPtr network,
                                   IServicePushMailboxSessionDelegatePtr delegate,
                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                  IMessageQueuePtr databaseDelegateAsyncQueue,
                                   AccountPtr account,
                                   ServiceNamespaceGrantSessionPtr grantSession,
                                   ServiceLockboxSessionPtr lockboxSession
@@ -313,6 +331,7 @@ namespace openpeer
         static ServicePushMailboxSessionPtr create(
                                                    IServicePushMailboxSessionDelegatePtr delegate,
                                                    IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                   IMessageQueuePtr databaseDelegateAsyncQueue,
                                                    IServicePushMailboxPtr servicePushMailbox,
                                                    IAccountPtr account,
                                                    IServiceNamespaceGrantSessionPtr grantSession,
@@ -716,6 +735,7 @@ namespace openpeer
         bool stepDecryptMessages();
 
         bool stepPendingDelivery();
+        bool stepDeliverViaURL();
         bool stepPendingDeliveryUpdateRequest();
 
         bool stepPrepareVersionedFolderMessages();
@@ -907,6 +927,10 @@ namespace openpeer
                             );
 
       public:
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncDatabase.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
+
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_RegisterQuery.h>
 #undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
@@ -929,6 +953,7 @@ namespace openpeer
         IServicePushMailboxSessionSubscriptionPtr mDefaultSubscription;
 
         IServicePushMailboxDatabaseAbstractionDelegatePtr mDB;
+        AsyncDatabasePtr mAsyncDB;
 
         SessionStates mCurrentState;
 
@@ -980,6 +1005,9 @@ namespace openpeer
         IPAddress mServerIP;
 
         String mPeerURIFromAccessResult;
+        String mUploadMessageURL;
+        String mUploadMessageStringReplacementMessageID;
+        String mUploadMessageStringReplacementMessageSize;
 
         NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 
@@ -1039,9 +1067,6 @@ namespace openpeer
         bool mPendingDeliveryPrecheckRequired;
         PendingDeliveryMap mPendingDelivery;
         IMessageMonitorPtr mPendingDeliveryPrecheckMessageMetaDataGetMonitor;
-        MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
-        IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
-        IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
 
         bool mRefreshVersionedFolders;
 
@@ -1068,6 +1093,7 @@ namespace openpeer
         virtual ServicePushMailboxSessionPtr create(
                                                     IServicePushMailboxSessionDelegatePtr delegate,
                                                     IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                    IMessageQueuePtr databaseDelegateAsyncQueue,
                                                     IServicePushMailboxPtr servicePushMailbox,
                                                     IAccountPtr account,
                                                     IServiceNamespaceGrantSessionPtr grantSession,
@@ -1078,3 +1104,7 @@ namespace openpeer
     }
   }
 }
+
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDatabaseDelegate)
+ZS_DECLARE_PROXY_METHOD_2(asyncNotifyPostFileDataToURL, const char *, const char *)
+ZS_DECLARE_PROXY_END()
