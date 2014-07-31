@@ -296,49 +296,49 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ILocationPtr Publication::getCreatorLocation() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mCreatorLocation;
       }
 
       //-----------------------------------------------------------------------
       String Publication::getName() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mName;
       }
 
       //-----------------------------------------------------------------------
       String Publication::getMimeType() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mMimeType;
       }
 
       //-----------------------------------------------------------------------
       ULONG Publication::getVersion() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mVersion;
       }
 
       //-----------------------------------------------------------------------
       ULONG Publication::getBaseVersion() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mBaseVersion;
       }
 
       //-----------------------------------------------------------------------
       ULONG Publication::getLineage() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mLineage;
       }
 
       //-----------------------------------------------------------------------
       IPublication::Encodings Publication::getEncoding() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mDocument) {
           return Encoding_JSON;
         }
@@ -348,21 +348,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Time Publication::getExpires() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mExpires;
       }
 
       //-----------------------------------------------------------------------
       ILocationPtr Publication::getPublishedLocation() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mPublishedLocation;
       }
 
       //-----------------------------------------------------------------------
       const IPublicationMetaData::PublishToRelationshipsMap &Publication::getRelationships() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mPublishedRelationships;
       }
 
@@ -419,7 +419,7 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->mThisWeakPublication = pThis;
         pThis->mPublication = pThis;
-        pThis->mDocument = CacheableDocument::create(documentToBeAdopted);
+        pThis->mDocument = CacheableDocument::create(*pThis, documentToBeAdopted);
         pThis->init();
         return pThis;
       }
@@ -442,7 +442,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Publication::update(const SecureByteBlock &data)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         mData = SecureByteBlockPtr(new SecureByteBlock(data.SizeInBytes()));
         memcpy(*mData, data, data.SizeInBytes());
@@ -458,7 +458,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!updatedDocumentToBeAdopted)
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         ZS_LOG_DETAIL(debug("updating document"))
         if (ZS_IS_LOGGING(Trace)) {
           ZS_LOG_DEBUG(log("..............................................................................."))
@@ -478,7 +478,7 @@ namespace openpeer
         if (!diffElem) {
           mDiffDocuments.clear();
 
-          mDocument = CacheableDocument::create(updatedDocumentToBeAdopted);
+          mDocument = CacheableDocument::create(*this, updatedDocumentToBeAdopted);
           return;
         }
 
@@ -495,9 +495,9 @@ namespace openpeer
         // this is a difference document
         IDiff::process(doc, updatedDocumentToBeAdopted);
 
-        mDocument = CacheableDocument::create(doc);
+        mDocument = CacheableDocument::create(*this, doc);
 
-        mDiffDocuments[mVersion] = CacheableDocument::create(updatedDocumentToBeAdopted);
+        mDiffDocuments[mVersion] = CacheableDocument::create(*this, updatedDocumentToBeAdopted);
 
         ZS_LOG_DEBUG(debug("updating document complete"))
 
@@ -522,21 +522,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SecureByteBlockPtr Publication::getRawData(AutoRecursiveLockPtr &outDocumentLock) const
       {
-        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(mLock));
+        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(*this));
         return mData;
       }
 
       //-----------------------------------------------------------------------
       DocumentPtr Publication::getJSON(AutoRecursiveLockPtr &outDocumentLock) const
       {
-        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(mLock));
+        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(*this));
         return mDocument->getDocument();
       }
 
       //-----------------------------------------------------------------------
       IPublication::RelationshipListPtr Publication::getAsContactList() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_TRACE(debug("getting publication as contact list"))
 
@@ -588,14 +588,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Publication::getCreatorLocation(bool) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mCreatorLocation;
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Publication::getPublishedLocation(bool) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mPublishedLocation;
       }
 
@@ -605,7 +605,7 @@ namespace openpeer
                                    bool ignoreLineage
                                    ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return PublicationMetaData::isMatching(metaData, ignoreLineage);
       }
 
@@ -615,28 +615,28 @@ namespace openpeer
                                    bool ignoreLineage
                                    ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return PublicationMetaData::isLessThan(metaData, ignoreLineage);
       }
 
       //-----------------------------------------------------------------------
       void Publication::setVersion(ULONG version)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mVersion = version;
       }
 
       //-----------------------------------------------------------------------
       void Publication::setBaseVersion(ULONG version)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mBaseVersion = version;
       }
 
       //-----------------------------------------------------------------------
       void Publication::setCreatorLocation(LocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mCreatorLocation = location;
 
         ZS_LOG_TRACE(debug("updated internal publication creator information"))
@@ -645,7 +645,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Publication::setPublishedLocation(LocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mPublishedLocation = location;
 
         ZS_LOG_TRACE(debug("updated internal publication published to contact information"))
@@ -654,7 +654,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Publication::setExpires(Time expires)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         ZS_LOG_TRACE(log("updating expires time") + ZS_PARAM("was", mExpires) + ZS_PARAM("now", expires))
 
         mExpires = expires;
@@ -663,14 +663,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Time Publication::getCacheExpires() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mCacheExpires;
       }
 
       //-----------------------------------------------------------------------
       void Publication::setCacheExpires(Time expires)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mCacheExpires = expires;
       }
 
@@ -683,7 +683,7 @@ namespace openpeer
         if (NULL != noThrowVersionMismatched)
           *noThrowVersionMismatched = false;
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DETAIL(debug("updating from fetched publication"))
 
@@ -708,7 +708,7 @@ namespace openpeer
 
             IDiff::process(doc, publication->mDocument->getDocument());
 
-            mDocument = CacheableDocument::create(doc);
+            mDocument = CacheableDocument::create(*this, doc);
           } else {
             mDocument = publication->mDocument;
           }
@@ -744,7 +744,7 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(fromVersionNumber > toVersionNumber)
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         outOutputSizeInBytes = 0;
 
         if (!mDocument) {
@@ -791,7 +791,7 @@ namespace openpeer
       {
         outOutputSizeInBytes = 0;
 
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         if (!mDocument) {
           getDiffVersionsOutputSize(0, 0, outOutputSizeInBytes);
@@ -804,7 +804,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ElementPtr Publication::toDebug() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         ElementPtr resultEl = Element::create("Publication");
 
@@ -874,7 +874,7 @@ namespace openpeer
               doc->adoptAsLastChild(node);
               node = next;
             }
-            pThis->mDocument = CacheableDocument::create(doc);
+            pThis->mDocument = CacheableDocument::create(*pThis, doc);
             break;
           }
         }
@@ -888,7 +888,7 @@ namespace openpeer
                                     ULONG toVersion
                                     ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         ZS_LOG_DEBUG(log("requested JSON diffs") + ZS_PARAM("from version", ioFromVersion) + ZS_PARAM("to version", toVersion))
 
@@ -1038,12 +1038,15 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Publication::CacheableDocument::CacheableDocument(DocumentPtr document) :
+      Publication::CacheableDocument::CacheableDocument(
+                                                        const SharedRecursiveLock &lock,
+                                                        DocumentPtr document
+                                                        ) :
         MessageQueueAssociator(UseStack::queueStack()),
-        SharedRecursiveLock(SharedRecursiveLock::create()),
+        SharedRecursiveLock(lock),
         mOutputSize(0),
         mDocument(document),
-        mMoveToCacheDuration(Seconds(ISettings::getUInt(OPENPEER_STACK_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME)))
+        mMoveToCacheDuration(Seconds(ISettings::getUInt(OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME)))
       {
         ZS_LOG_DEBUG(log("created"))
       }
@@ -1055,6 +1058,7 @@ namespace openpeer
         step();
       }
 
+      //-----------------------------------------------------------------------
       Publication::CacheableDocument::~CacheableDocument()
       {
         mThisWeak.reset();
@@ -1076,11 +1080,14 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Publication::CacheableDocumentPtr Publication::CacheableDocument::create(DocumentPtr document)
+      Publication::CacheableDocumentPtr Publication::CacheableDocument::create(
+                                                                               const SharedRecursiveLock &lock,
+                                                                               DocumentPtr document
+                                                                               )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!document)
 
-        CacheableDocumentPtr pThis(new CacheableDocument(document));
+        CacheableDocumentPtr pThis(new CacheableDocument(lock, document));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;

@@ -199,7 +199,7 @@ namespace openpeer
                                                LocationPtr publishedLocation,
                                                Time expires
                                                ) :
-        mID(zsLib::createPUID()),
+        SharedRecursiveLock(SharedRecursiveLock::create()),
         mVersion(version),
         mBaseVersion(baseVersion),
         mLineage(lineage),
@@ -258,14 +258,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPublicationPtr PublicationMetaData::toPublication() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return Publication::convert(mPublication);
       }
 
       //-----------------------------------------------------------------------
       ILocationPtr PublicationMetaData::getCreatorLocation() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getCreatorLocation();
         return mCreatorLocation;
       }
@@ -273,7 +273,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String PublicationMetaData::getName() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getName();
         return mName;
       }
@@ -281,7 +281,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String PublicationMetaData::getMimeType() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getMimeType();
         return mMimeType;
       }
@@ -289,7 +289,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ULONG PublicationMetaData::getVersion() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getVersion();
         return mVersion;
       }
@@ -297,7 +297,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ULONG PublicationMetaData::getBaseVersion() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getBaseVersion();
         return mBaseVersion;
       }
@@ -305,7 +305,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ULONG PublicationMetaData::getLineage() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getLineage();
         return mLineage;
       }
@@ -313,7 +313,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       IPublicationMetaData::Encodings PublicationMetaData::getEncoding() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getEncoding();
         return mEncoding;
       }
@@ -321,7 +321,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       Time PublicationMetaData::getExpires() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getExpires();
         return mExpires;
       }
@@ -329,7 +329,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ILocationPtr PublicationMetaData::getPublishedLocation() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getPublishedLocation();
         return mPublishedLocation;
       }
@@ -337,7 +337,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       const IPublicationMetaData::PublishToRelationshipsMap &PublicationMetaData::getRelationships() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->getRelationships();
         return mPublishedRelationships;
       }
@@ -406,14 +406,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr PublicationMetaData::getCreatorLocation(bool) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mCreatorLocation;
       }
 
       //-----------------------------------------------------------------------
       LocationPtr PublicationMetaData::getPublishedLocation(bool) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         return mPublishedLocation;
       }
 
@@ -423,7 +423,7 @@ namespace openpeer
                                            bool ignoreLineage
                                            ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         const char *reason = NULL;
         if (0 != UseLocation::locationCompare(mCreatorLocation, metaData->getCreatorLocation(), reason)) {
@@ -446,7 +446,7 @@ namespace openpeer
                                            bool ignoreLineage
                                            ) const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
 
         const char *reason = "match";
 
@@ -492,42 +492,42 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void PublicationMetaData::setVersion(ULONG version)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mVersion = version;
       }
 
       //-----------------------------------------------------------------------
       void PublicationMetaData::setBaseVersion(ULONG version)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mBaseVersion = version;
       }
 
       //-----------------------------------------------------------------------
       void PublicationMetaData::setCreatorLocation(LocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mCreatorLocation = location;
       }
 
       //-----------------------------------------------------------------------
       void PublicationMetaData::setPublishedLocation(LocationPtr location)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mPublishedLocation = location;
       }
 
       //-----------------------------------------------------------------------
       void PublicationMetaData::setExpires(Time expires)
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         mExpires = expires;
       }
 
       //-----------------------------------------------------------------------
       ElementPtr PublicationMetaData::toDebug() const
       {
-        AutoRecursiveLock lock(mLock);
+        AutoRecursiveLock lock(*this);
         if (mPublication) return mPublication->toDebug();
 
         UseLocationPtr creatorLocation = Location::convert(getCreatorLocation());

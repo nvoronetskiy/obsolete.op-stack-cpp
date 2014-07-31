@@ -170,6 +170,7 @@ namespace openpeer
       #pragma mark
 
       class PublicationMetaData : public Noop,
+                                  public SharedRecursiveLock,
                                   public IPublicationMetaData,
                                   public IPublicationMetaDataForPublication,
                                   public IPublicationMetaDataForPublicationRepository,
@@ -199,7 +200,11 @@ namespace openpeer
                             LocationPtr publishedLocation,
                             Time expires
                             );
-        PublicationMetaData(Noop) : Noop(true) {}
+
+        PublicationMetaData(Noop) :
+          Noop(true),
+          SharedRecursiveLock(SharedRecursiveLock::create())
+        {}
 
         void init();
 
@@ -321,8 +326,7 @@ namespace openpeer
         #pragma mark PublicationMetaData => (data)
         #pragma mark
 
-        PUID mID;
-        mutable RecursiveLock mLock;
+        AutoPUID mID;
         PublicationMetaDataWeakPtr mThisWeak;
 
         UsePublicationPtr mPublication;
