@@ -435,6 +435,13 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      Log::Params ServicePeerFileLookup::slog(const char *message)
+      {
+        ElementPtr objectEl = Element::create("ServicePeerFileLookup");
+        return Log::Params(message, objectEl);
+      }
+
+      //-----------------------------------------------------------------------
       Log::Params ServicePeerFileLookup::debug(const char *message) const
       {
         return Log::Params(message, toDebug());
