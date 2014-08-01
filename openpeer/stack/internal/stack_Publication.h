@@ -40,7 +40,7 @@
 
 #include <boost/shared_array.hpp>
 
-#define OPENPEER_STACK_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME "openpeer/stack/move-publication-to-cache-time-in-seconds"
+#define OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME "openpeer/stack/move-publication-to-cache-time-in-seconds"
 
 namespace openpeer
 {
@@ -483,7 +483,10 @@ namespace openpeer
                                   public ITimerDelegate
         {
         protected:
-          CacheableDocument(DocumentPtr document);
+          CacheableDocument(
+                            const SharedRecursiveLock &lock,
+                            DocumentPtr document
+                            );
 
           void init();
 
@@ -495,7 +498,10 @@ namespace openpeer
           #pragma mark Publication::CacheableDocument => friend Publication
           #pragma mark
 
-          static CacheableDocumentPtr create(DocumentPtr document);
+          static CacheableDocumentPtr create(
+                                             const SharedRecursiveLock &lock,
+                                             DocumentPtr document
+                                             );
 
           size_t getOutputSize() const;
           DocumentPtr getDocument() const;

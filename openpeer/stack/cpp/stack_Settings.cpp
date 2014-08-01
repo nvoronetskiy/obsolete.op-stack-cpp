@@ -172,6 +172,7 @@ namespace openpeer
 
         setUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS, 60*60*2);
         setUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES, 10*1024);
+        setUInt(OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME, 120);
       }
 
       //-----------------------------------------------------------------------
