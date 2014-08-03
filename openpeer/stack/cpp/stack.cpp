@@ -44,8 +44,9 @@ namespace openpeer
 {
   namespace stack
   {
-    using internal::Helper;
-    typedef services::IHelper OPIHelper;
+    ZS_DECLARE_TYPEDEF_PTR(internal::Helper, UseHelper)
+    ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+
     using zsLib::string;
     using namespace zsLib::XML;
 
@@ -97,12 +98,12 @@ namespace openpeer
     {
       ElementPtr resultEl = Element::create("stack::Candidate");
 
-      OPIHelper::debugAppend(resultEl, IICESocket::Candidate::toDebug());
-      OPIHelper::debugAppend(resultEl, "class", mNamespace);
+      UseServicesHelper::debugAppend(resultEl, IICESocket::Candidate::toDebug());
+      UseServicesHelper::debugAppend(resultEl, "class", mNamespace);
 
-      OPIHelper::debugAppend(resultEl, "transport", mTransport);
-      OPIHelper::debugAppend(resultEl, "access token", mAccessToken);
-      OPIHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
+      UseServicesHelper::debugAppend(resultEl, "transport", mTransport);
+      UseServicesHelper::debugAppend(resultEl, "access token", mAccessToken);
+      UseServicesHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
 
       return resultEl;
     }
@@ -141,16 +142,16 @@ namespace openpeer
     {
       ElementPtr resultEl = Element::create("LocationInfo");
 
-      OPIHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
-      OPIHelper::debugAppend(resultEl, "IP address", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
-      OPIHelper::debugAppend(resultEl, "device ID", mDeviceID);
-      OPIHelper::debugAppend(resultEl, "user agent", mUserAgent);
-      OPIHelper::debugAppend(resultEl, "os", mOS);
-      OPIHelper::debugAppend(resultEl, "system", mSystem);
-      OPIHelper::debugAppend(resultEl, "host", mHost);
-      OPIHelper::debugAppend(resultEl, "candidates final", mCandidatesFinal);
-      OPIHelper::debugAppend(resultEl, "candidates version", mCandidatesVersion);
-      OPIHelper::debugAppend(resultEl, "candidates", mCandidates.size());
+      UseServicesHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
+      UseServicesHelper::debugAppend(resultEl, "IP address", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
+      UseServicesHelper::debugAppend(resultEl, "device ID", mDeviceID);
+      UseServicesHelper::debugAppend(resultEl, "user agent", mUserAgent);
+      UseServicesHelper::debugAppend(resultEl, "os", mOS);
+      UseServicesHelper::debugAppend(resultEl, "system", mSystem);
+      UseServicesHelper::debugAppend(resultEl, "host", mHost);
+      UseServicesHelper::debugAppend(resultEl, "candidates final", mCandidatesFinal);
+      UseServicesHelper::debugAppend(resultEl, "candidates version", mCandidatesVersion);
+      UseServicesHelper::debugAppend(resultEl, "candidates", mCandidates.size());
 
       return resultEl;
     }
