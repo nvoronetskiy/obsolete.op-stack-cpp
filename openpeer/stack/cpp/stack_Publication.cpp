@@ -1048,7 +1048,7 @@ namespace openpeer
         mDocument(document),
         mMoveToCacheDuration(Seconds(ISettings::getUInt(OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME)))
       {
-        ZS_LOG_DEBUG(log("created") + ZS_PARAM("move to cache time (s)", mMoveToCacheDuration.seconds()))
+        ZS_LOG_DEBUG(log("created") + ZS_PARAM("move to cache time (s)", mMoveToCacheDuration))
       }
 
       //-----------------------------------------------------------------------
