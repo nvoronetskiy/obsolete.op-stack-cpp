@@ -264,7 +264,6 @@ namespace openpeer
           {
             foundOtherElements = true;
             ++index;
-            if (foundOtherWithID) continue;
 
             String sibID = prevSibling->getAttributeValue("id");
             if (sibID == id) foundOtherWithID = true;
