@@ -62,6 +62,12 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "Diff");
+      }
+
+      //-----------------------------------------------------------------------
       const char *toActionString(DiffActions action)
       {
         switch (action)
@@ -128,8 +134,14 @@ namespace openpeer
           size_t bracketOpenPos = subPath.find('[');
           if (bracketOpenPos != String::npos) {
             size_t bracketClosePos = subPath.find(']');
-            if (bracketClosePos == String::npos) return false;
-            if (bracketOpenPos > bracketClosePos) return false;
+            if (bracketClosePos == String::npos) {
+              ZS_LOG_WARNING(Detail, slog("failed to find close \"]\" in parse path") + ZS_PARAM("sub path", subPath))
+              return false;
+            }
+            if (bracketOpenPos > bracketClosePos) {
+              ZS_LOG_WARNING(Detail, slog("\"]\" is sooner than \"[\" in parse path") + ZS_PARAM("sub path", subPath))
+              return false;
+            }
 
             String indexStr = subPath.substr(bracketOpenPos+1, bracketClosePos - bracketOpenPos - 1);
             subPath = subPath.substr(0, bracketOpenPos);
@@ -147,7 +159,7 @@ namespace openpeer
               try {
                 index = (int)(Numeric<Index>(indexStr));
               } catch(Numeric<Index>::ValueOutOfRange &) {
-                ZS_LOG_WARNING(Detail, Log::Params("failed to parse diff path list since index was not a number", "Diff") + ZS_PARAM("index", indexStr))
+                ZS_LOG_WARNING(Detail, slog("failed to parse diff path list since index was not a number") + ZS_PARAM("index", indexStr))
                 return false;
               }
             }
@@ -187,9 +199,11 @@ namespace openpeer
             while (true) {
               if (!current) return ElementPtr();
               AttributePtr attributeID = current->findAttribute("id");
-              if (attributeID->getValue() == attributeIDName) {
-                // found what we were looking for...
-                break;
+              if (attributeID) {
+                if (attributeID->getValue() == attributeIDName) {
+                  // found what we were looking for...
+                  break;
+                }
               }
               current = current->findNextSiblingElement(component.first);
             }
@@ -292,7 +306,8 @@ namespace openpeer
               subPathStr = name + "[" + string(index) + "]";
             } else {
               if ((String::npos == id.find('\"')) &&
-                  (String::npos == id.find('\''))) {
+                  (String::npos == id.find('\'')) &&
+                  (String::npos == id.find('/'))) {
                 // safe to use the ID since it does not include a double quote or single quote in the string
                 subPathStr += name + "[\"" + id + "\"]";
               } else {
