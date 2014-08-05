@@ -33,6 +33,7 @@
 #include <openpeer/stack/internal/stack.h>
 
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/ISettings.h>
 
 #include <zsLib/XML.h>
 
@@ -42,6 +43,8 @@ namespace openpeer
 {
   namespace stack
   {
+    ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseServicesSettings)
+
     namespace internal
     {
       using services::IHelper;
@@ -194,9 +197,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return String();
         }
 
+        if (!delegate) return UseServicesSettings::getString(key);
         return delegate->getString(key);
       }
 
@@ -207,9 +210,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return 0;
         }
 
+        if (!delegate) return UseServicesSettings::getInt(key);
         return delegate->getInt(key);
       }
 
@@ -220,9 +223,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return 0;
         }
 
+        if (!delegate) return UseServicesSettings::getUInt(key);
         return delegate->getUInt(key);
       }
 
@@ -233,9 +236,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return 0;
         }
 
+        if (!delegate) return UseServicesSettings::getBool(key);
         return delegate->getBool(key);
       }
 
@@ -246,9 +249,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return 0;
         }
 
+        if (!delegate) return UseServicesSettings::getFloat(key);
         return delegate->getFloat(key);
       }
 
@@ -259,9 +262,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return 0;
         }
 
+        if (!delegate) return UseServicesSettings::getDouble(key);
         return delegate->getDouble(key);
       }
 
@@ -275,9 +278,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setString(key, value);
+          return;
+        }
         delegate->setString(key, value);
       }
 
@@ -291,9 +297,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setInt(key, value);
+          return;
+        }
         delegate->setInt(key, value);
       }
 
@@ -307,9 +316,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setUInt(key, value);
+          return;
+        }
         delegate->setUInt(key, value);
       }
 
@@ -323,9 +335,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setBool(key, value);
+          return;
+        }
         delegate->setBool(key, value);
       }
 
@@ -339,9 +354,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setFloat(key, value);
+          return;
+        }
         delegate->setFloat(key, value);
       }
 
@@ -355,9 +373,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::setDouble(key, value);
+          return;
+        }
         delegate->setDouble(key, value);
       }
 
@@ -368,9 +389,12 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
-          if (!delegate) return;
         }
 
+        if (!delegate) {
+          UseServicesSettings::clear(key);
+          return;
+        }
         delegate->clear(key);
       }
 
@@ -420,7 +444,7 @@ namespace openpeer
                               const char *value
                               )
     {
-      return services::ISettings::setString(key, value);
+      return UseServicesSettings::setString(key, value);
     }
 
     //-------------------------------------------------------------------------
@@ -429,7 +453,7 @@ namespace openpeer
                            LONG value
                            )
     {
-      return services::ISettings::setInt(key, value);
+      return UseServicesSettings::setInt(key, value);
     }
 
     //-------------------------------------------------------------------------
@@ -438,7 +462,7 @@ namespace openpeer
                             ULONG value
                             )
     {
-      return services::ISettings::setUInt(key, value);
+      return UseServicesSettings::setUInt(key, value);
     }
 
     //-------------------------------------------------------------------------
@@ -447,7 +471,7 @@ namespace openpeer
                             bool value
                             )
     {
-      return services::ISettings::setBool(key, value);
+      return UseServicesSettings::setBool(key, value);
     }
 
     //-------------------------------------------------------------------------
@@ -456,7 +480,7 @@ namespace openpeer
                              float value
                              )
     {
-      return services::ISettings::setFloat(key, value);
+      return UseServicesSettings::setFloat(key, value);
     }
 
     //-------------------------------------------------------------------------
@@ -465,19 +489,19 @@ namespace openpeer
                               double value
                               )
     {
-      return services::ISettings::setDouble(key, value);
+      return UseServicesSettings::setDouble(key, value);
     }
 
     //-------------------------------------------------------------------------
     void ISettings::clear(const char *key)
     {
-      return services::ISettings::clear(key);
+      return UseServicesSettings::clear(key);
     }
     
     //-------------------------------------------------------------------------
     bool ISettings::apply(const char *jsonSettings)
     {
-      return services::ISettings::apply(jsonSettings);
+      return UseServicesSettings::apply(jsonSettings);
     }
 
     //-------------------------------------------------------------------------

@@ -173,6 +173,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IPeer)
     ZS_DECLARE_INTERACTION_PTR(IPeerSubscription)
     ZS_DECLARE_INTERACTION_PTR(IPublication)
+    ZS_DECLARE_INTERACTION_PTR(IPublicationLocker)
     ZS_DECLARE_INTERACTION_PTR(IPublicationMetaData)
     ZS_DECLARE_INTERACTION_PTR(IPublicationPublisher)
     ZS_DECLARE_INTERACTION_PTR(IPublicationFetcher)
