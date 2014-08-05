@@ -419,7 +419,7 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->mThisWeakPublication = pThis;
         pThis->mPublication = pThis;
-        pThis->mDocument = CacheableDocument::create(*pThis, documentToBeAdopted);
+        pThis->mDocument = CacheableDocument::create(documentToBeAdopted);
         pThis->init();
         return pThis;
       }
@@ -478,7 +478,8 @@ namespace openpeer
         if (!diffElem) {
           mDiffDocuments.clear();
 
-          mDocument = CacheableDocument::create(*this, updatedDocumentToBeAdopted);
+          mDocument = CacheableDocument::create(updatedDocumentToBeAdopted);
+          updatedDocumentToBeAdopted.reset(); // document has been adopted
           return;
         }
 
@@ -490,14 +491,15 @@ namespace openpeer
           mDiffDocuments.clear();
         }
 
-        DocumentPtr doc = mDocument->getDocument()->clone()->toDocument();
+        DocumentPtr doc;
+
+        {
+          AutoRecursiveLockPtr docLock;
+          doc = mDocument->getDocument(docLock)->clone()->toDocument();
+        }
 
         // this is a difference document
         IDiff::process(doc, updatedDocumentToBeAdopted);
-
-        mDocument = CacheableDocument::create(*this, doc);
-
-        mDiffDocuments[mVersion] = CacheableDocument::create(*this, updatedDocumentToBeAdopted);
 
         ZS_LOG_DEBUG(debug("updating document complete"))
 
@@ -510,6 +512,12 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
         }
+
+        mDocument = CacheableDocument::create(doc);
+        doc.reset();  // document has been adopted
+
+        mDiffDocuments[mVersion] = CacheableDocument::create(updatedDocumentToBeAdopted);
+        updatedDocumentToBeAdopted.reset(); // document has been adopted
       }
 
       //-----------------------------------------------------------------------
@@ -520,17 +528,27 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      SecureByteBlockPtr Publication::getRawData(AutoRecursiveLockPtr &outDocumentLock) const
+      SecureByteBlockPtr Publication::getRawData(IPublicationLockerPtr &outPublicationLock) const
       {
-        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(*this));
+        outPublicationLock = PublicationLock::create(
+                                                     mThisWeakPublication.lock(),
+                                                     AutoRecursiveLockPtr(new AutoRecursiveLock(*this)),
+                                                     CacheableDocumentPtr()
+                                                     );
         return mData;
       }
 
       //-----------------------------------------------------------------------
-      DocumentPtr Publication::getJSON(AutoRecursiveLockPtr &outDocumentLock) const
+      DocumentPtr Publication::getJSON(IPublicationLockerPtr &outPublicationLock) const
       {
-        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(*this));
-        return mDocument->getDocument();
+        AutoRecursiveLockPtr docLock;
+        DocumentPtr doc = mDocument->getDocument(docLock);
+        outPublicationLock = PublicationLock::create(
+                                                     mThisWeakPublication.lock(),
+                                                     docLock,
+                                                     mDocument
+                                                     );
+        return doc;
       }
 
       //-----------------------------------------------------------------------
@@ -549,7 +567,8 @@ namespace openpeer
           return result;
         }
 
-        DocumentPtr doc = mDocument->getDocument();
+        AutoRecursiveLockPtr docLock;
+        DocumentPtr doc = mDocument->getDocument(docLock);
 
         ElementPtr contactsEl = doc->findFirstChildElement("contacts");
         if (!contactsEl) {
@@ -693,7 +712,10 @@ namespace openpeer
           mData = publication->mData;
           mDocument.reset();
         } else {
-          ElementPtr diffEl = publication->mDocument->getDocument()->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
+          AutoRecursiveLockPtr pubDocLock;
+          DocumentPtr pubDoc = publication->mDocument->getDocument(pubDocLock);
+
+          ElementPtr diffEl = pubDoc->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
           if (diffEl) {
             if (publication->mBaseVersion != mVersion + 1) {
               if (NULL != noThrowVersionMismatched) {
@@ -704,11 +726,17 @@ namespace openpeer
               return;
             }
 
-            DocumentPtr doc = mDocument->getDocument()->clone()->toDocument();
+            DocumentPtr doc;
 
-            IDiff::process(doc, publication->mDocument->getDocument());
+            {
+              AutoRecursiveLockPtr docLock;
+              doc = mDocument->getDocument(docLock)->clone()->toDocument();
+            }
 
-            mDocument = CacheableDocument::create(*this, doc);
+            IDiff::process(doc, pubDoc);
+
+            mDocument = CacheableDocument::create(doc);
+            doc.reset();  // document is adopted
           } else {
             mDocument = publication->mDocument;
           }
@@ -874,7 +902,8 @@ namespace openpeer
               doc->adoptAsLastChild(node);
               node = next;
             }
-            pThis->mDocument = CacheableDocument::create(*pThis, doc);
+            pThis->mDocument = CacheableDocument::create(doc);
+            doc.reset();  // document has been adopted
             break;
           }
         }
@@ -914,7 +943,8 @@ namespace openpeer
         if (0 == ioFromVersion) {
           ZS_LOG_DEBUG(debug("first time publishing or fetching document thus returning entire document"))
 
-          ElementPtr firstEl = mDocument->getDocument()->getFirstChildElement();
+          AutoRecursiveLockPtr docLock;
+          ElementPtr firstEl = mDocument->getDocument(docLock)->getFirstChildElement();
           if (!firstEl) return firstEl;
           return firstEl->clone();
         }
@@ -957,13 +987,15 @@ namespace openpeer
 
           try {
             if (!cloned) {
-              cloned = doc->getDocument()->clone()->toDocument();
+              AutoRecursiveLockPtr docLock;
+              cloned = doc->getDocument(docLock)->clone()->toDocument();
               diffOutputEl = cloned->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
             } else {
               diffOutputEl = cloned->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
 
               // we need to process all elements and insert them into the other...
-              ElementPtr diffEl = doc->getDocument()->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
+              AutoRecursiveLockPtr docLock;
+              ElementPtr diffEl = doc->getDocument(docLock)->findFirstChildElementChecked(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);
 
               ElementPtr itemEl = diffEl->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ITEM_ELEMENT_NAME);
               while (itemEl) {
@@ -1016,7 +1048,8 @@ namespace openpeer
           ZS_LOG_DEBUG(log("..............................................................................."))
           ZS_LOG_DEBUG(log("..............................................................................."))
           if (mDocument) {
-            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("json", internal::toString(mDocument->getDocument())))
+            AutoRecursiveLockPtr docLock;
+            ZS_LOG_BASIC(log("publication contains JSON") + ZS_PARAM("json", internal::toString(mDocument->getDocument(docLock))))
           } else if (mData) {
             ZS_LOG_BASIC(log("publication contains binary data") + ZS_PARAM("length", mData ? mData->SizeInBytes() : 0))
           } else {
@@ -1080,14 +1113,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Publication::CacheableDocumentPtr Publication::CacheableDocument::create(
-                                                                               const SharedRecursiveLock &lock,
-                                                                               DocumentPtr document
-                                                                               )
+      Publication::CacheableDocumentPtr Publication::CacheableDocument::create(DocumentPtr document)
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!document)
 
-        CacheableDocumentPtr pThis(new CacheableDocument(lock, document));
+        CacheableDocumentPtr pThis(new CacheableDocument(SharedRecursiveLock::create(), document));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -1107,9 +1137,9 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      DocumentPtr Publication::CacheableDocument::getDocument() const
+      DocumentPtr Publication::CacheableDocument::getDocument(AutoRecursiveLockPtr &outDocumentLock) const
       {
-        AutoRecursiveLock lock(*this);
+        outDocumentLock = AutoRecursiveLockPtr(new AutoRecursiveLock(*this));
 
         CacheableDocument *pThis = const_cast<CacheableDocument *>(this);
 
