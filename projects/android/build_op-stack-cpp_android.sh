@@ -49,7 +49,7 @@ echo "------ Building op-stack-cpp for ANDROID platform -------"
 pushd `pwd`
 mkdir -p ./../../../build/android/op-stack-cpp
 
-rm -rf ./obj/*
+#rm -rf ./obj/*
 export ANDROIDNDK_PATH=$Input
 export NDK_PROJECT_PATH=`pwd`
 ndk-build APP_PLATFORM=android-9
@@ -59,5 +59,5 @@ echo "-------- Installing op-stack-cpp libs -----"
 cp -r ./obj/local/armeabi/lib* ./../../../build/android/op-stack-cpp/
 
 #clean
-rm -rf ./obj
+#rm -rf ./obj
 
