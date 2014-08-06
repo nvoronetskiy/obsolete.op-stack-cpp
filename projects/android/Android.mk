@@ -61,7 +61,7 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Fetcher.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_PeerCache.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionIncoming.cpp \
-		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionoutgoing.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionOutgoing.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Publisher.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Remover.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_SubscriptionLocal.cpp \
@@ -69,7 +69,12 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_ServiceCertificatesValidateQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServiceIdentitySession.cpp \
 		   $(SOURCE_PATH)/stack_ServiceLockboxSession.cpp \
-		  $(SOURCE_PATH)/stack_ServiceNamespaceGrantSession.cpp \
+		   $(SOURCE_PATH)/stack_ServicePeerFileLookup.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncDatabase.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_RegisterQuery.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_SendQuery.cpp \
+		   $(SOURCE_PATH)/stack_ServiceNamespaceGrantSession.cpp \
 		   $(SOURCE_PATH)/stack_ServiceSaltFetchSignedSaltQuery.cpp \
 		   $(SOURCE_PATH)/stack_Settings.cpp \
                    $(SOURCE_PATH)/stack_javascript.cpp \
@@ -84,9 +89,9 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageRequestUnknown.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_MessageResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/cpp/stack_message_messages.cpp \
-		   $(MESSAGE_SOURCE_PATH)/bootstrapped-finder/cpp/FindersGetRequest.cpp \
-		   $(MESSAGE_SOURCE_PATH)/bootstrapped-finder/cpp/FindersGetResult.cpp \
-		   $(MESSAGE_SOURCE_PATH)/bootstrapped-finder/cpp/MessageFactoryBootstrappedFinder.cpp \
+		   $(MESSAGE_SOURCE_PATH)/bootstrapped-servers/cpp/ServersGetRequest.cpp \
+		   $(MESSAGE_SOURCE_PATH)/bootstrapped-servers/cpp/ServersGetResult.cpp \
+		   $(MESSAGE_SOURCE_PATH)/bootstrapped-servers/cpp/MessageFactoryBootstrappedServers.cpp \
 		   $(MESSAGE_SOURCE_PATH)/bootstrapper/cpp/MessageFactoryBootstrapper.cpp \
 		   $(MESSAGE_SOURCE_PATH)/bootstrapper/cpp/ServicesGetRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/bootstrapper/cpp/ServicesGetResult.cpp \
@@ -94,8 +99,8 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(MESSAGE_SOURCE_PATH)/certificates/cpp/CertificatesGetResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/certificates/cpp/MessageFactoryCertificates.cpp \
 		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessCompleteNotify.cpp \
-		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessLockboxUpdateRequest.cpp \
-		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessLockboxUpdateResult.cpp \
+		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessNamespaceGrantChallengeValidateRequest.cpp \
+		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessNamespaceGrantChallengeValidateResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessRolodexCredentialsGetRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessRolodexCredentialsGetResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/identity/cpp/IdentityAccessStartNotify.cpp \
@@ -128,6 +133,10 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		  $(MESSAGE_SOURCE_PATH)/peer/cpp/MessageFactoryPeer.cpp \
 		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerServicesGetRequest.cpp \
 		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerServicesGetResult.cpp \
+		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerFilesGetRequest.cpp \
+		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerFilesGetResult.cpp \
+		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerFileSetRequest.cpp \
+		  $(MESSAGE_SOURCE_PATH)/peer/cpp/PeerFileSetResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/MessageFactoryPeerCommon.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerDeleteRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-common/cpp/PeerDeleteResult.cpp \
@@ -159,6 +168,30 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-to-peer/cpp/PeerIdentifyResult.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-to-peer/cpp/PeerKeepAliveRequest.cpp \
 		   $(MESSAGE_SOURCE_PATH)/peer-to-peer/cpp/PeerKeepAliveResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/AccessRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/AccessResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/ChangedNotify.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FolderGetRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FolderGetResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FolderUpdateRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FolderUpdateResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FoldersGetRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/FoldersGetResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/ListFetchRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/ListFetchResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessageFactoryPushMailbox.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessageUpdateRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessageUpdateResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessagesDataGetRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessagesDataGetResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessagesMetaDataGetRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/MessagesMetaDataGetResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/NamespaceGrantChallengeValidateRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/NamespaceGrantChallengeValidateResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/PeerValidateRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/PeerValidateResult.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/RegisterPushRequest.cpp \
+$(MESSAGE_SOURCE_PATH)/push-mailbox/cpp/RegisterPushResult.cpp \
 		  $(MESSAGE_SOURCE_PATH)/rolodex/cpp/MessageFactoryRolodex.cpp \
 		  $(MESSAGE_SOURCE_PATH)/rolodex/cpp/RolodexAccessRequest.cpp \
 		  $(MESSAGE_SOURCE_PATH)/rolodex/cpp/RolodexAccessResult.cpp \
