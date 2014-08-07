@@ -92,11 +92,24 @@ namespace openpeer
 
       virtual void update(const RelationshipList &relationships) = 0;
 
-      virtual SecureByteBlockPtr getRawData(AutoRecursiveLockPtr &outDocumentLock) const = 0;
+      virtual SecureByteBlockPtr getRawData(IPublicationLockerPtr &outPublicationLock) const = 0;
 
-      virtual DocumentPtr getJSON(AutoRecursiveLockPtr &outDocumentLock) const = 0;
+      virtual DocumentPtr getJSON(IPublicationLockerPtr &outPublicationLock) const = 0;
 
       virtual RelationshipListPtr getAsContactList() const = 0;
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IPublicationLocker
+    #pragma mark
+
+    interaction IPublicationLocker
+    {
+      virtual ~IPublicationLocker() {} // make polymorphic
     };
   }
 }

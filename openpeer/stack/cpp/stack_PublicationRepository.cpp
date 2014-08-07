@@ -1623,7 +1623,7 @@ namespace openpeer
               }
             } else {
               bool okayToCreate = true;
-              AutoRecursiveLockPtr docLock;
+              IPublicationLockerPtr docLock;
               DocumentPtr doc = publication->getJSON(docLock);
               if (doc) {
                 ElementPtr diffEl = doc->findFirstChildElement(OPENPEER_STACK_DIFF_DOCUMENT_ROOT_ELEMENT_NAME);

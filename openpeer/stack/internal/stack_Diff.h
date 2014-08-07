@@ -83,7 +83,7 @@ namespace openpeer
                                              );
 
       protected:
-        static Log::Params log(const char *message);
+        static Log::Params slog(const char *message);
       };
     }
   }

@@ -126,7 +126,7 @@ namespace openpeer
 
         virtual const PublishToRelationshipsMap &getRelationships() const = 0;
 
-        virtual DocumentPtr getJSON(AutoRecursiveLockPtr &outDocumentLock) const = 0;
+        virtual DocumentPtr getJSON(IPublicationLockerPtr &outPublicationLock) const = 0;
 
         virtual RelationshipListPtr getAsContactList() const = 0;
 
@@ -244,6 +244,8 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(CacheableDocument)
         ZS_DECLARE_TYPEDEF_PTR(CacheableDocument, DiffDocument)
 
+        ZS_DECLARE_CLASS_PTR(PublicationLock)
+
         typedef ULONG VersionNumber;
 
         typedef std::map<VersionNumber, DiffDocumentPtr> DiffDocumentMap;
@@ -340,9 +342,9 @@ namespace openpeer
 
         virtual void update(const RelationshipList &relationships);
 
-        virtual SecureByteBlockPtr getRawData(AutoRecursiveLockPtr &outDocumentLock) const;
+        virtual SecureByteBlockPtr getRawData(IPublicationLockerPtr &outPublicationLock) const;
 
-        virtual DocumentPtr getJSON(AutoRecursiveLockPtr &outDocumentLock) const;
+        virtual DocumentPtr getJSON(IPublicationLockerPtr &outPublicationLock) const;
 
         virtual RelationshipListPtr getAsContactList() const;
 
@@ -392,7 +394,7 @@ namespace openpeer
 
         virtual LocationPtr getPublishedLocation(bool) const;
 
-        // (duplicate) virtual DocumentPtr getJSON(AutoRecursiveLockPtr &outDocumentLock) const;
+        // (duplicate) virtual DocumentPtr getJSON(IPublicationLockerPtr &outPublicationLock) const;
 
         // (duplicate) virtual RelationshipListPtr getAsContactList() const;
 
@@ -498,13 +500,10 @@ namespace openpeer
           #pragma mark Publication::CacheableDocument => friend Publication
           #pragma mark
 
-          static CacheableDocumentPtr create(
-                                             const SharedRecursiveLock &lock,
-                                             DocumentPtr document
-                                             );
+          static CacheableDocumentPtr create(DocumentPtr document);
 
           size_t getOutputSize() const;
-          DocumentPtr getDocument() const;
+          DocumentPtr getDocument(AutoRecursiveLockPtr &outDocumentLock) const;
 
         protected:
           //-------------------------------------------------------------------
@@ -543,6 +542,36 @@ namespace openpeer
 
           mutable AutoBool mPreviouslyStored;
           mutable TimerPtr mMoveToCacheTimer;
+        };
+
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Publication::PublicationLock
+        #pragma mark
+
+        class PublicationLock : public IPublicationLocker
+        {
+        public:
+          static PublicationLockPtr create(
+                                           IPublicationPtr publication,
+                                           AutoRecursiveLockPtr autoRecursiveLock,
+                                           CacheableDocumentPtr cacheableDocument
+                                           )
+          {
+            PublicationLockPtr pThis(new PublicationLock);
+            pThis->mPublication = publication;
+            pThis->mAutoLock = autoRecursiveLock;
+            pThis->mDocument = cacheableDocument;
+            return pThis;
+          }
+
+        private:
+          IPublicationPtr mPublication;
+          AutoRecursiveLockPtr mAutoLock;
+          CacheableDocumentPtr mDocument;
         };
 
       protected:
