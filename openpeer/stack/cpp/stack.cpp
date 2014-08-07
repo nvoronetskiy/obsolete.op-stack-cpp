@@ -236,9 +236,9 @@ namespace openpeer
       if ((accessSecretProofEncrypted.hasData()) &&
           (encryptionPassphrase)) {
 
-        SecureByteBlockPtr accessSeretProof = stack::IHelper::splitDecrypt(*OPIHelper::hash(encryptionPassphrase, OPIHelper::HashAlgorthm_SHA256), accessSecretProofEncrypted);
+        SecureByteBlockPtr accessSeretProof = stack::IHelper::splitDecrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), accessSecretProofEncrypted);
         if (accessSeretProof) {
-          ret.mAccessSecretProof = OPIHelper::convertToString(*accessSeretProof);
+          ret.mAccessSecretProof = UseServicesHelper::convertToString(*accessSeretProof);
         }
       }
 
@@ -311,7 +311,7 @@ namespace openpeer
 
       if ((mAccessSecretProof.hasData()) &&
           (encryptionPassphrase)) {
-        String accessSecretProofEncrypted = stack::IHelper::splitEncrypt(*OPIHelper::hash(encryptionPassphrase, OPIHelper::HashAlgorthm_SHA256), *OPIHelper::convertToBuffer(mAccessSecretProof));
+        String accessSecretProofEncrypted = stack::IHelper::splitEncrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), *UseServicesHelper::convertToBuffer(mAccessSecretProof));
         candidateEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProofEncrypted", accessSecretProofEncrypted));
       }
 
@@ -374,7 +374,7 @@ namespace openpeer
       for (ProtocolList::const_iterator iter = protocols.begin(); iter != protocols.end(); ++iter)
       {
         const Protocol &protocol = (*iter);
-        OPIHelper::debugAppend(resultEl, protocol.toDebug());
+        UseServicesHelper::debugAppend(resultEl, protocol.toDebug());
       }
 
       return resultEl;
@@ -400,8 +400,8 @@ namespace openpeer
     {
       ElementPtr resultEl = Element::create("stack::Candidate::Protocol");
 
-      OPIHelper::debugAppend(resultEl, "transport", mTransport);
-      OPIHelper::debugAppend(resultEl, "host", mHost);
+      UseServicesHelper::debugAppend(resultEl, "transport", mTransport);
+      UseServicesHelper::debugAppend(resultEl, "host", mHost);
 
       return resultEl;
     }
