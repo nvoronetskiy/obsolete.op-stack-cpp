@@ -361,7 +361,8 @@ namespace openpeer
                                                                    const char *sound,
                                                                    const char *action,
                                                                    const char *launchImage,
-                                                                   unsigned int priority
+                                                                   unsigned int priority,
+                                                                   const ValueNameList &valueNames
                                                                    );
 
         virtual void monitorFolder(const char *folderName);

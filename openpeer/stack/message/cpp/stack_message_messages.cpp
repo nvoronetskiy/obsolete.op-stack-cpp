@@ -1118,12 +1118,10 @@ namespace openpeer
               serviceEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("type", pushInfo.mServiceType));
             }
 
-            if (pushInfo.mValues.size() > 0) {
-              ElementPtr valuesEl = Element::create("values");
-
-              for (PushInfo::ValueList::const_iterator iter = pushInfo.mValues.begin(); iter != pushInfo.mValues.end(); ++iter) {
-                const String &value = (*iter);
-                valuesEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("value", value));
+            if ((bool)pushInfo.mValues) {
+              ElementPtr valuesEl = pushInfo.mValues->clone()->toElement();
+              if ("values" != valuesEl->getValue()) {
+                valuesEl->setValue("values");
               }
 
               if (valuesEl->hasChildren()) {
@@ -1132,8 +1130,10 @@ namespace openpeer
             }
 
             if ((bool)pushInfo.mCustom) {
-              ElementPtr customEl = Element::create("custom");
-              customEl->adoptAsLastChild(pushInfo.mCustom->clone());
+              ElementPtr customEl = pushInfo.mCustom->clone()->toElement();
+              if ("custom" != customEl->getValue()) {
+                customEl->setValue("custom");
+              }
               if (customEl->hasChildren()) {
                 serviceEl->adoptAsLastChild(customEl);
               }
@@ -1296,24 +1296,12 @@ namespace openpeer
 
               ElementPtr valuesEl = serviceEl->findFirstChildElement("values");
               if (valuesEl) {
-                ElementPtr valueEl = valuesEl->findFirstChildElement("value");
-                while (valueEl) {
-                  String value = IMessageHelper::getElementTextAndDecode(valueEl);
-                  if (value.hasData()) {
-                    pushInfo.mValues.push_back(value);
-                  }
-
-                  valueEl = valueEl->findNextSiblingElement("value");
-                }
+                pushInfo.mValues = valuesEl->clone()->toElement();
               }
 
               ElementPtr customEl = serviceEl->findFirstChildElement("custom");
-
               if (customEl) {
-                ElementPtr dataEl = customEl->getFirstChildElement();
-                if (dataEl) {
-                  pushInfo.mCustom = dataEl->clone()->toElement();
-                }
+                pushInfo.mCustom = customEl->clone()->toElement();
               }
 
               if (pushInfo.hasData()) {
@@ -1586,8 +1574,7 @@ namespace openpeer
       {
         return ((mServiceType.hasData()) ||
 
-                (mValues.size() > 0) ||
-
+                ((bool)mValues) ||
                 ((bool)mCustom));
       }
 
@@ -1597,7 +1584,7 @@ namespace openpeer
         ElementPtr resultEl = Element::create("message::PushMessageInfo::PushInfo");
 
         IHelper::debugAppend(resultEl, "type", mServiceType);
-        IHelper::debugAppend(resultEl, "mValues", mValues.size());
+        IHelper::debugAppend(resultEl, "mValues", (bool)mValues);
         IHelper::debugAppend(resultEl, "custom", (bool)mCustom);
 
         return resultEl;
@@ -1776,7 +1763,9 @@ namespace openpeer
 
                 (mLaunchImage.hasData()) ||
 
-                (0 != mPriority));
+                (0 != mPriority) ||
+
+                (mValueNames.size() > 0));
       }
 
       //-----------------------------------------------------------------------
@@ -1801,6 +1790,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "launch image", mLaunchImage);
 
         IHelper::debugAppend(resultEl, "priority", mPriority);
+
+        IHelper::debugAppend(resultEl, "value names", mValueNames.size());
 
         return resultEl;
       }
@@ -1828,6 +1819,8 @@ namespace openpeer
         merge(mLaunchImage, source.mLaunchImage, overwriteExisting);
 
         merge(mPriority, source.mPriority, overwriteExisting);
+
+        merge(mValueNames, source.mValueNames, overwriteExisting);
       }
 
       //-----------------------------------------------------------------------
@@ -1871,6 +1864,20 @@ namespace openpeer
           subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("priority", string(mPriority)));
         }
 
+        if (mValueNames.size() > 0) {
+          ElementPtr valuesEl = Element::create("values");
+          for (ValueNameList::const_iterator iter = mValueNames.begin(); iter != mValueNames.end(); ++iter)
+          {
+            const ValueName &valueName = (*iter);
+            if (valueName.hasData()) {
+              valuesEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("value", valueName));
+            }
+          }
+          if (valuesEl->hasChildren()) {
+            subscriptionEl->adoptAsLastChild(valuesEl);
+          }
+        }
+
         return subscriptionEl;
       }
 
@@ -1903,6 +1910,18 @@ namespace openpeer
         try {
           info.mPriority = Numeric<decltype(info.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElement("priority")));
         } catch(Numeric<decltype(info.mPriority)>::ValueOutOfRange &) {
+        }
+
+        ElementPtr valuesEl = elem->findFirstChildElement("values");
+        if (valuesEl) {
+          ElementPtr valueEl = valuesEl->findFirstChildElement("value");
+          while (valueEl) {
+            ValueName valueName = IMessageHelper::getElementTextAndDecode(valueEl);
+            if (valueName.hasData()) {
+              info.mValueNames.push_back(valueName);
+            }
+            valueEl = valueEl->findNextSiblingElement("value");
+          }
         }
 
         return info;

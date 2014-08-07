@@ -333,12 +333,9 @@ namespace openpeer
       {
         struct PushInfo
         {
-          typedef String Value;
-          typedef std::list<Value> ValueList;
-
           String mServiceType;
 
-          ValueList mValues;
+          ElementPtr mValues;
           ElementPtr mCustom;
 
           bool hasData() const;
@@ -563,6 +560,9 @@ namespace openpeer
 
       struct PushSubscriptionInfo
       {
+        typedef String ValueName;
+        typedef std::list<ValueName> ValueNameList;
+
         String mFolder;
 
         Time mExpires;
@@ -580,6 +580,8 @@ namespace openpeer
         String mLaunchImage;
 
         ULONG mPriority;
+
+        ValueNameList mValueNames;
 
         PushSubscriptionInfo() :
           mUnreadBadge(false),

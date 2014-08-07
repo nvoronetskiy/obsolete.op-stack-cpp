@@ -225,7 +225,7 @@ namespace openpeer
           DestType destValue;
 
           destValue.mServiceType = sourceValue.mServiceType;
-          destValue.mValues = sourceValue.mValues;
+          destValue.mValues = sourceValue.mValues ? sourceValue.mValues->clone()->toElement() : ElementPtr();
           destValue.mCustom = sourceValue.mCustom ? sourceValue.mCustom->clone()->toElement() : ElementPtr();
 
           dest.push_back(destValue);
@@ -247,7 +247,7 @@ namespace openpeer
           DestType destValue;
 
           destValue.mServiceType = sourceValue.mServiceType;
-          destValue.mValues = sourceValue.mValues;
+          destValue.mValues = sourceValue.mValues ? sourceValue.mValues->clone()->toElement() : ElementPtr();
           destValue.mCustom = sourceValue.mCustom ? sourceValue.mCustom->clone()->toElement() : ElementPtr();
 
           dest.push_back(destValue);
@@ -469,7 +469,8 @@ namespace openpeer
                                                                                     const char *sound,
                                                                                     const char *action,
                                                                                     const char *launchImage,
-                                                                                    unsigned int priority
+                                                                                    unsigned int priority,
+                                                                                    const ValueNameList &valueNames
                                                                                     )
       {
         AutoRecursiveLock lock(*this);
@@ -489,6 +490,7 @@ namespace openpeer
         info.mAction = String(action);
         info.mLaunchImage = String(launchImage);
         info.mPriority = priority;
+        info.mValueNames = valueNames;
 
         mDeviceToken = deviceToken;
 

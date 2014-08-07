@@ -97,8 +97,8 @@ namespace openpeer
       static PushStates toPushState(const char *state);
       static bool canSubscribeState(PushStates state);
 
-      typedef String ValueType;
-      typedef std::list<ValueType> ValueList;
+      typedef String ValueName;
+      typedef std::list<ValueName> ValueNameList;
 
       typedef String PeerOrIdentityURI;
       typedef String MessageID;
@@ -119,8 +119,8 @@ namespace openpeer
 
       struct PushInfo
       {
-        String mServiceType;              // e.g. "apns" or "gcm"
-        ValueList mValues;                // values related to mapped type
+        String mServiceType;              // e.g. "apns", "gcm", or "all"
+        ElementPtr mValues;               // "values" related to mapped type
         ElementPtr mCustom;               // extended push related custom data
       };
 
@@ -183,14 +183,15 @@ namespace openpeer
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                  IServicePushMailboxRegisterQueryDelegatePtr delegate,
                                                                  const char *deviceToken,
-                                                                 const char *folder,        // what folder to monitor for push requests
-                                                                 Time expires,              // how long should the registrration to the device last
-                                                                 const char *mappedType,    // for APNS maps to "loc-key"
-                                                                 bool unreadBadge,          // true causes total unread messages to be displayed in badge
-                                                                 const char *sound,         // what sound to play upon receiving a message. For APNS, maps to "sound" field
-                                                                 const char *action,        // for APNS, maps to "action-loc-key"
-                                                                 const char *launchImage,   // for APNS, maps to "launch-image"
-                                                                 unsigned int priority      // for APNS, maps to push priority
+                                                                 const char *folder,              // what folder to monitor for push requests
+                                                                 Time expires,                    // how long should the registrration to the device last
+                                                                 const char *mappedType,          // for APNS maps to "loc-key"
+                                                                 bool unreadBadge,                // true causes total unread messages to be displayed in badge
+                                                                 const char *sound,               // what sound to play upon receiving a message. For APNS, maps to "sound" field
+                                                                 const char *action,              // for APNS, maps to "action-loc-key"
+                                                                 const char *launchImage,         // for APNS, maps to "launch-image"
+                                                                 unsigned int priority,           // for APNS, maps to push priority
+                                                                 const ValueNameList &valueNames  // list of values requested from each push from the push server (in order they should be delivered); empty = all values
                                                                  ) = 0;
 
       virtual void monitorFolder(const char *folderName) = 0;
