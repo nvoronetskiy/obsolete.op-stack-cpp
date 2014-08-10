@@ -450,6 +450,9 @@ namespace openpeer
         virtual PublicationRepositoryPtr createPublicationRepository(AccountPtr account);
       };
 
+
+      class PublicationRepositoryFactory : public IFactory<IPublicationRepositoryFactory> {};
+
     }
   }
 }

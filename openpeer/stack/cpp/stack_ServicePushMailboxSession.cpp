@@ -6333,6 +6333,35 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServicePushMailboxSessionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServicePushMailboxSessionFactory &IServicePushMailboxSessionFactory::singleton()
+      {
+        return ServicePushMailboxSessionFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServicePushMailboxSessionPtr IServicePushMailboxSessionFactory::create(
+                                                                             IServicePushMailboxSessionDelegatePtr delegate,
+                                                                             IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
+                                                                             IMessageQueuePtr databaseDelegateAsyncQueue,
+                                                                             IServicePushMailboxPtr servicePushMailbox,
+                                                                             IAccountPtr account,
+                                                                             IServiceNamespaceGrantSessionPtr grantSession,
+                                                                             IServiceLockboxSessionPtr lockboxSession
+                                                                             )
+      {
+        if (this) {}
+        return ServicePushMailboxSession::create(delegate, databaseDelegate, databaseDelegateAsyncQueue, servicePushMailbox, account, grantSession, lockboxSession);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

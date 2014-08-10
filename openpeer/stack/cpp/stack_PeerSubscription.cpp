@@ -363,6 +363,41 @@ namespace openpeer
 
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerSubscriptionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerSubscriptionFactory &IPeerSubscriptionFactory::singleton()
+      {
+        return PeerSubscriptionFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PeerSubscriptionPtr IPeerSubscriptionFactory::subscribeAll(
+                                                                 AccountPtr account,
+                                                                 IPeerSubscriptionDelegatePtr delegate
+                                                                 )
+      {
+        if (this) {}
+        return PeerSubscription::subscribeAll(account, delegate);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerSubscriptionPtr IPeerSubscriptionFactory::subscribe(
+                                                              IPeerPtr peer,
+                                                              IPeerSubscriptionDelegatePtr delegate
+                                                              )
+      {
+        if (this) {}
+        return PeerSubscription::subscribe(peer, delegate);
+      }
+
     }
 
     //-------------------------------------------------------------------------

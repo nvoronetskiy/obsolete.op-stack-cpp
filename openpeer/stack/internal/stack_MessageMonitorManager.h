@@ -296,6 +296,8 @@ namespace openpeer
         virtual MessageMonitorManagerPtr createMessageMonitorManager();
       };
 
+      class MessageMonitorManagerFactory : public IFactory<IMessageMonitorManagerFactory> {};
+
     }
   }
 }

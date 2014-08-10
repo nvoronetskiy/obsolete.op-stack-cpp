@@ -382,6 +382,8 @@ namespace openpeer
                                );
       };
 
+      class PeerFactory : public IFactory<IPeerFactory> {};
+
     }
   }
 }

@@ -2390,6 +2390,46 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceLockboxSessionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServiceLockboxSessionFactory &IServiceLockboxSessionFactory::singleton()
+      {
+        return ServiceLockboxSessionFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceLockboxSessionPtr IServiceLockboxSessionFactory::login(
+                                                                    IServiceLockboxSessionDelegatePtr delegate,
+                                                                    IServiceLockboxPtr serviceLockbox,
+                                                                    IServiceNamespaceGrantSessionPtr grantSession,
+                                                                    IServiceIdentitySessionPtr identitySession,
+                                                                    bool forceNewAccount
+                                                                    )
+      {
+        if (this) {}
+        return ServiceLockboxSession::login(delegate, serviceLockbox, grantSession, identitySession, forceNewAccount);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceLockboxSessionPtr IServiceLockboxSessionFactory::relogin(
+                                                                      IServiceLockboxSessionDelegatePtr delegate,
+                                                                      IServiceLockboxPtr serviceLockbox,
+                                                                      IServiceNamespaceGrantSessionPtr grantSession,
+                                                                      const char *lockboxAccountID,
+                                                                      const SecureByteBlock &lockboxKey
+                                                                      )
+      {
+        if (this) {}
+        return ServiceLockboxSession::relogin(delegate, serviceLockbox, grantSession, lockboxAccountID, lockboxKey);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

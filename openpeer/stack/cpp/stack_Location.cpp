@@ -625,6 +625,56 @@ namespace openpeer
       {
         return Log::Params(message, toDebug());
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ILocationFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ILocationFactory &ILocationFactory::singleton()
+      {
+        return LocationFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr ILocationFactory::getForLocal(IAccountPtr account)
+      {
+        if (this) {}
+        return Location::getForLocal(account);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr ILocationFactory::getForFinder(IAccountPtr account)
+      {
+        if (this) {}
+        return Location::getForFinder(account);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr ILocationFactory::getForPeer(
+                                               IPeerPtr peer,
+                                               const char *locationID
+                                               )
+      {
+        if (this) {}
+        return Location::getForPeer(peer, locationID);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr ILocationFactory::create(
+                                           IMessageSourcePtr messageSource,
+                                           const char *peerURI,
+                                           const char *locationID
+                                           )
+      {
+        if (this) {}
+        return Location::create(messageSource, peerURI, locationID);
+      }
+
     }
 
     //-------------------------------------------------------------------------

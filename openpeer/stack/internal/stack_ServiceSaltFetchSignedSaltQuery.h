@@ -199,6 +199,8 @@ namespace openpeer
                                                                    );
       };
 
+      class ServiceSaltFetchSignedSaltQueryFactory : public IFactory<IServiceSaltFetchSignedSaltQueryFactory> {};
+
     }
   }
 }

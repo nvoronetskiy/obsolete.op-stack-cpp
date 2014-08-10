@@ -390,6 +390,30 @@ namespace openpeer
         ZS_LOG_DEBUG(log("sending signed salt get request"))
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceSaltFetchSignedSaltQueryFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServiceSaltFetchSignedSaltQueryFactory &IServiceSaltFetchSignedSaltQueryFactory::singleton()
+      {
+        return ServiceSaltFetchSignedSaltQueryFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceSaltFetchSignedSaltQueryPtr IServiceSaltFetchSignedSaltQueryFactory::fetchSignedSalt(
+                                                                                                  IServiceSaltFetchSignedSaltQueryDelegatePtr delegate,
+                                                                                                  IServiceSaltPtr serviceSalt,
+                                                                                                  UINT totalToFetch
+                                                                                                  )
+      {
+        if (this) {}
+        return ServiceSaltFetchSignedSaltQuery::fetchSignedSalt(delegate, serviceSalt, totalToFetch);
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

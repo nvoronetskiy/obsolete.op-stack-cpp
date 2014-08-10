@@ -220,6 +220,28 @@ namespace openpeer
       {
         return Log::Params(message, "BootstrappedNetworkManager");
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IBootstrappedNetworkManagerFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IBootstrappedNetworkManagerFactory &IBootstrappedNetworkManagerFactory::singleton()
+      {
+        return BootstrappedNetworkManagerFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      BootstrappedNetworkManagerPtr IBootstrappedNetworkManagerFactory::createBootstrappedNetworkManager()
+      {
+        if (this) {}
+        return BootstrappedNetworkManager::create();
+      }
+
     }
   }
 }

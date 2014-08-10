@@ -620,6 +620,8 @@ namespace openpeer
                                                                                                );
       };
 
+      class AccountPeerLocationFactory : public IFactory<IAccountPeerLocationFactory> {};
+
     }
   }
 }

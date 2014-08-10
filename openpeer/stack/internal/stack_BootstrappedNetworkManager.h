@@ -167,6 +167,7 @@ namespace openpeer
         virtual BootstrappedNetworkManagerPtr createBootstrappedNetworkManager();
       };
 
+      class BootstrappedNetworkManagerFactory : public IFactory<IBootstrappedNetworkManagerFactory> {};
     }
   }
 }

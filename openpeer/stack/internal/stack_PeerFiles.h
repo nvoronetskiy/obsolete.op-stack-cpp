@@ -156,6 +156,8 @@ namespace openpeer
                                              ElementPtr privatePeerRootElement
                                              );
       };
+
+      class PeerFilesFactory : public IFactory<IPeerFilesFactory> {};
       
     }
   }

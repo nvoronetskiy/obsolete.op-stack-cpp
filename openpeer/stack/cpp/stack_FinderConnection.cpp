@@ -1829,6 +1829,50 @@ namespace openpeer
       {
         return internal::IFinderConnectionRelayChannelFactory::singleton().connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IFinderConnectionRelayChannelFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IFinderConnectionRelayChannelFactory &IFinderConnectionRelayChannelFactory::singleton()
+      {
+        return FinderConnectionRelayChannelFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      IFinderConnectionPtr IFinderConnectionRelayChannelFactory::connect(
+                                                                         IFinderConnectionDelegatePtr delegate,
+                                                                         const IPAddress &remoteFinderIP,
+                                                                         ITransportStreamPtr receiveStream,
+                                                                         ITransportStreamPtr sendStream
+                                                                         )
+      {
+        if (this) {}
+        return FinderConnection::connect(delegate, remoteFinderIP, receiveStream, sendStream);
+      }
+
+      //-----------------------------------------------------------------------
+      IFinderConnectionRelayChannelPtr IFinderConnectionRelayChannelFactory::connect(
+                                                                                     IFinderConnectionRelayChannelDelegatePtr delegate,
+                                                                                     const IPAddress &remoteFinderIP,
+                                                                                     const char *localContextID,
+                                                                                     const char *remoteContextID,
+                                                                                     const char *relayDomain,
+                                                                                     const char *relayAccessToken,
+                                                                                     const char *relayAccessSecretProof,
+                                                                                     ITransportStreamPtr receiveStream,
+                                                                                     ITransportStreamPtr sendStream
+                                                                                     )
+      {
+        if (this) {}
+        return FinderConnection::connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
+      }
+
     }
   }
 }

@@ -618,6 +618,8 @@ namespace openpeer
                                                  const char *reloginKey
                                                  );
       };
+
+      class ServiceIdentitySessionFactory : public IFactory<IServiceIdentitySessionFactory> {};
     }
   }
 }

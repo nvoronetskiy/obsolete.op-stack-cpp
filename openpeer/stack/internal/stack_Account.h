@@ -954,6 +954,8 @@ namespace openpeer
                                   );
       };
 
+      class AccountFactory : public IFactory<IAccountFactory> {};
+
     }
   }
 }

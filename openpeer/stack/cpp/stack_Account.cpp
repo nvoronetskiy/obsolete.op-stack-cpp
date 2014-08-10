@@ -3361,6 +3361,30 @@ namespace openpeer
         return mLocations.size();
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IAccountFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IAccountFactory &IAccountFactory::singleton()
+      {
+        return AccountFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      AccountPtr IAccountFactory::create(
+                                         IAccountDelegatePtr delegate,
+                                         IServiceLockboxSessionPtr peerContactSession
+                                         )
+      {
+        if (this) {}
+        return Account::create(delegate, peerContactSession);
+      }
+      
     }
 
     //-------------------------------------------------------------------------

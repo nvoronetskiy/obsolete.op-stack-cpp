@@ -443,6 +443,52 @@ namespace openpeer
         return resultEl;
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IKeyGeneratorFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IKeyGeneratorFactory &IKeyGeneratorFactory::singleton()
+      {
+        return KeyGeneratorFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generatePeerFiles(
+                                                              IKeyGeneratorDelegatePtr delegate,
+                                                              const char *password,
+                                                              ElementPtr signedSaltEl,
+                                                              IKeyGeneratorPtr rsaKeyGenerator
+                                                              )
+      {
+        if (this) {}
+        return KeyGenerator::generatePeerFiles(delegate, password, signedSaltEl, rsaKeyGenerator);
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generateRSA(
+                                                        IKeyGeneratorDelegatePtr delegate,
+                                                        size_t keySizeInBits
+                                                        )
+      {
+        if (this) {}
+        return KeyGenerator::generateRSA(delegate, keySizeInBits);
+      }
+
+      //-----------------------------------------------------------------------
+      KeyGeneratorPtr IKeyGeneratorFactory::generateDHKeyDomain(
+                                                                IKeyGeneratorDelegatePtr delegate,
+                                                                size_t keySizeInBits
+                                                                )
+      {
+        if (this) {}
+        return KeyGenerator::generateDHKeyDomain(delegate, keySizeInBits);
+      }
+
     }
 
     //-------------------------------------------------------------------------

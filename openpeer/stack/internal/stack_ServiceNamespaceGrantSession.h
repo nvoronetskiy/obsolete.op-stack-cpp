@@ -512,6 +512,8 @@ namespace openpeer
                                                        const char *grantID
                                                        );
       };
+
+      class ServiceNamespaceGrantSessionFactory : public IFactory<IServiceNamespaceGrantSessionFactory> {};
       
     }
   }

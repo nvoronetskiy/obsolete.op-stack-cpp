@@ -245,6 +245,32 @@ namespace openpeer
 
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageIncomingFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IMessageIncomingFactory &IMessageIncomingFactory::singleton()
+      {
+        return MessageIncomingFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      IMessageIncomingForAccount::ForAccountPtr IMessageIncomingFactory::create(
+                                                                                AccountPtr account,
+                                                                                LocationPtr location,
+                                                                                message::MessagePtr message
+                                                                                )
+      {
+        if (this) {}
+        return MessageIncoming::create(account, location, message);
+      }
+
     }
 
     //-------------------------------------------------------------------------

@@ -481,6 +481,57 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageMonitorFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IMessageMonitorFactory &IMessageMonitorFactory::singleton()
+      {
+        return MessageMonitorFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      MessageMonitorPtr IMessageMonitorFactory::monitor(
+                                                        IMessageMonitorDelegatePtr delegate,
+                                                        message::MessagePtr requestMessage,
+                                                        Duration timeout
+                                                        )
+      {
+        if (this) {}
+        return MessageMonitor::monitor(delegate, requestMessage, timeout);
+      }
+
+      //-----------------------------------------------------------------------
+      MessageMonitorPtr IMessageMonitorFactory::monitorAndSendToLocation(
+                                                                         IMessageMonitorDelegatePtr delegate,
+                                                                         ILocationPtr peerLocation,
+                                                                         message::MessagePtr message,
+                                                                         Duration timeout
+                                                                         )
+      {
+        if (this) {}
+        return MessageMonitor::monitorAndSendToLocation(delegate, peerLocation, message, timeout);
+      }
+
+      //-----------------------------------------------------------------------
+      MessageMonitorPtr IMessageMonitorFactory::monitorAndSendToService(
+                                                                        IMessageMonitorDelegatePtr delegate,
+                                                                        IBootstrappedNetworkPtr bootstrappedNetwork,
+                                                                        const char *serviceType,
+                                                                        const char *serviceMethodName,
+                                                                        message::MessagePtr message,
+                                                                        Duration timeout
+                                                                        )
+      {
+        if (this) {}
+        return MessageMonitor::monitorAndSendToService(delegate, bootstrappedNetwork, serviceType, serviceMethodName, message, timeout);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

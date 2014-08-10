@@ -377,6 +377,8 @@ namespace openpeer
                                                                 Time expires
                                                                 );
       };
+
+      class PublicationMetaDataFactory : public IFactory<IPublicationMetaDataFactory> {};
       
     }
   }

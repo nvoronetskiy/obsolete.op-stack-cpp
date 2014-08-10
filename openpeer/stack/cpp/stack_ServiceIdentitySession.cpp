@@ -3027,6 +3027,62 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceIdentitySessionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServiceIdentitySessionFactory &IServiceIdentitySessionFactory::singleton()
+      {
+        return ServiceIdentitySessionFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceIdentitySessionPtr IServiceIdentitySessionFactory::loginWithIdentity(
+                                                                                  IServiceIdentitySessionDelegatePtr delegate,
+                                                                                  IServiceIdentityPtr provider,
+                                                                                  IServiceNamespaceGrantSessionPtr grantSession,
+                                                                                  IServiceLockboxSessionPtr existingLockbox,
+                                                                                  const char *outerFrameURLUponReload,
+                                                                                  const char *identityURI_or_identityBaseURI
+                                                                                  )
+      {
+        if (this) {}
+        return ServiceIdentitySession::loginWithIdentity(delegate, provider, grantSession, existingLockbox, outerFrameURLUponReload, identityURI_or_identityBaseURI);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceIdentitySessionPtr IServiceIdentitySessionFactory::loginWithIdentityPreauthorized(
+                                                                                               IServiceIdentitySessionDelegatePtr delegate,
+                                                                                               IServiceIdentityPtr provider,
+                                                                                               IServiceNamespaceGrantSessionPtr grantSession,
+                                                                                               IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
+                                                                                               const char *identityURI,
+                                                                                               const char *identityAccessToken,
+                                                                                               const char *identityAccessSecret,
+                                                                                               Time identityAccessSecretExpires
+                                                                                               )
+      {
+        if (this) {}
+        return ServiceIdentitySession::loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityAccessToken, identityAccessSecret, identityAccessSecretExpires);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceIdentitySessionPtr IServiceIdentitySessionFactory::reload(
+                                                                       BootstrappedNetworkPtr provider,
+                                                                       IServiceNamespaceGrantSessionPtr grantSession,
+                                                                       IServiceLockboxSessionPtr existingLockbox,
+                                                                       const char *identityURI,
+                                                                       const char *reloginKey
+                                                                       )
+      {
+        if (this) {}
+        return ServiceIdentitySession::reload(provider, grantSession, existingLockbox, identityURI, reloginKey);
+      }
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

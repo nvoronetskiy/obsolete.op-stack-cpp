@@ -316,6 +316,30 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceCertificatesValidateQueryFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServiceCertificatesValidateQueryFactory &IServiceCertificatesValidateQueryFactory::singleton()
+      {
+        return ServiceCertificatesValidateQueryFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceCertificatesValidateQueryPtr IServiceCertificatesValidateQueryFactory::queryIfValidSignature(
+                                                                                                          IServiceCertificatesValidateQueryDelegatePtr delegate,
+                                                                                                          ElementPtr signedElement
+                                                                                                          )
+      {
+        if (this) {}
+        return ServiceCertificatesValidateQuery::queryIfValidSignature(delegate, signedElement);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

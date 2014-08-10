@@ -860,6 +860,61 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerFilePrivateFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerFilePrivateFactory &IPeerFilePrivateFactory::singleton()
+      {
+        return PeerFilePrivateFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      bool IPeerFilePrivateFactory::generate(
+                                             PeerFilesPtr peerFiles,
+                                             PeerFilePrivatePtr &outPeerFilePrivate,
+                                             PeerFilePublicPtr &outPeerFilePublic,
+                                             const char *password,
+                                             ElementPtr signedSalt
+                                             )
+      {
+        if (this) {}
+        return PeerFilePrivate::generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, IRSAPrivateKeyPtr(), IRSAPublicKeyPtr(), password, signedSalt);
+      }
+
+      //-----------------------------------------------------------------------
+      bool IPeerFilePrivateFactory::generate(
+                                             PeerFilesPtr peerFiles,
+                                             PeerFilePrivatePtr &outPeerFilePrivate,
+                                             PeerFilePublicPtr &outPeerFilePublic,
+                                             IRSAPrivateKeyPtr rsaPrivateKey,
+                                             IRSAPublicKeyPtr rsaPublicKey,
+                                             const char *password,
+                                             ElementPtr signedSalt
+                                             )
+      {
+        if (this) {}
+        return PeerFilePrivate::generate(peerFiles, outPeerFilePrivate, outPeerFilePublic, rsaPrivateKey, rsaPublicKey, password, signedSalt);
+      }
+
+      //-----------------------------------------------------------------------
+      bool IPeerFilePrivateFactory::loadFromElement(
+                                                    PeerFilesPtr peerFiles,
+                                                    PeerFilePrivatePtr &outPeerFilePrivate,
+                                                    PeerFilePublicPtr &outPeerFilePublic,
+                                                    const char *password,
+                                                    ElementPtr peerFileRootElement
+                                                    )
+      {
+        if (this) {}
+        return PeerFilePrivate::loadFromElement(peerFiles, outPeerFilePrivate, outPeerFilePublic, password, peerFileRootElement);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

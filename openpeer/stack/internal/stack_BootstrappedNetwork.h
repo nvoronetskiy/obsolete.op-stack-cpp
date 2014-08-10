@@ -550,6 +550,8 @@ namespace openpeer
                                                );
       };
 
+      class BootstrappedNetworkFactory : public IFactory<IBootstrappedNetworkFactory> {};
+
     }
   }
 }

@@ -571,6 +571,38 @@ namespace openpeer
       {
         return Log::Params(message, toDebug());
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPublicationMetaDataFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPublicationMetaDataFactory &IPublicationMetaDataFactory::singleton()
+      {
+        return PublicationMetaDataFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationMetaDataPtr IPublicationMetaDataFactory::creatPublicationMetaData(
+                                                                                   ULONG version,
+                                                                                   ULONG baseVersion,
+                                                                                   ULONG lineage,
+                                                                                   LocationPtr creatorLocation,
+                                                                                   const char *name,
+                                                                                   const char *mimeType,
+                                                                                   Encodings encoding,
+                                                                                   const PublishToRelationshipsMap &relationships,
+                                                                                   LocationPtr publishedLocation,
+                                                                                   Time expires
+                                                                                   )
+      {
+        if (this) {}
+        return PublicationMetaData::create(version, baseVersion, lineage, creatorLocation, name, mimeType, encoding, relationships, publishedLocation, expires);
+      }
     }
 
     //-------------------------------------------------------------------------

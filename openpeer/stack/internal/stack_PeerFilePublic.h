@@ -241,6 +241,8 @@ namespace openpeer
                                                   );
       };
 
+      class PeerFilePublicFactory : public IFactory<IPeerFilePublicFactory> {};
+
     }
   }
 }

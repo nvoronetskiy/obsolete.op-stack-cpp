@@ -271,6 +271,8 @@ namespace openpeer
                                                           Duration timeout
                                                           );
       };
+
+      class MessageMonitorFactory : public IFactory<IMessageMonitorFactory> {};
       
     }
   }

@@ -871,6 +871,56 @@ namespace openpeer
                                                                          remotePublicKey
                                                                          );
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IFinderRelayChannelFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IFinderRelayChannelFactory &IFinderRelayChannelFactory::singleton()
+      {
+        return FinderRelayChannelFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      FinderRelayChannelPtr IFinderRelayChannelFactory::connect(
+                                                                IFinderRelayChannelDelegatePtr delegate,
+                                                                AccountPtr account,
+                                                                ITransportStreamPtr receiveStream,
+                                                                ITransportStreamPtr sendStream,
+                                                                IPAddress remoteFinderIP,
+                                                                const char *localContextID,
+                                                                const char *remoteContextID,
+                                                                const char *relayDomain,
+                                                                const char *relayAccessToken,
+                                                                const char *relayAccessSecretProof,
+                                                                IDHPrivateKeyPtr localPrivateKey,
+                                                                IDHPublicKeyPtr localPublicKey,
+                                                                IDHPublicKeyPtr remotePublicKey
+                                                                )
+      {
+        if (this) {}
+        return FinderRelayChannel::connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, localPrivateKey, localPublicKey, remotePublicKey);
+      }
+
+      //-----------------------------------------------------------------------
+      FinderRelayChannelPtr IFinderRelayChannelFactory::createIncoming(
+                                                                       IFinderRelayChannelDelegatePtr delegate,
+                                                                       AccountPtr account,
+                                                                       ITransportStreamPtr outerReceiveStream,
+                                                                       ITransportStreamPtr outerSendStream,
+                                                                       ITransportStreamPtr wireReceiveStream,
+                                                                       ITransportStreamPtr wireSendStream
+                                                                       )
+      {
+        if (this) {}
+        return FinderRelayChannel::createIncoming(delegate, account, outerReceiveStream, outerSendStream, wireReceiveStream, wireSendStream);
+      }
+
     }
   }
 }

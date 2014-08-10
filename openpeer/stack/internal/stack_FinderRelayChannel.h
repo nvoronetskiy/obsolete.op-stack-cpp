@@ -327,6 +327,8 @@ namespace openpeer
                                                      );
       };
 
+      class FinderRelayChannelFactory : public IFactory<IFinderRelayChannelFactory> {};
+
     }
   }
 }

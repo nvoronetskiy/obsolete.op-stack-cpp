@@ -731,6 +731,57 @@ namespace openpeer
         }
         return ElementPtr();
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerFilePublicFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerFilePublicFactory &IPeerFilePublicFactory::singleton()
+      {
+        return PeerFilePublicFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr IPeerFilePublicFactory::loadFromElement(ElementPtr publicPeerRootElement)
+      {
+        if (this) {}
+        return PeerFilePublic::loadFromElement(publicPeerRootElement);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr IPeerFilePublicFactory::loadFromCache(const char *peerURI)
+      {
+        if (this) {}
+        return PeerFilePublic::loadFromCache(peerURI);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr IPeerFilePublicFactory::createFromPublicKey(
+                                                                    PeerFilesPtr peerFiles,
+                                                                    DocumentPtr publicDoc,
+                                                                    IRSAPublicKeyPtr publicKey,
+                                                                    const String &peerURI
+                                                                    )
+      {
+        if (this) {}
+        return PeerFilePublic::createFromPublicKey(peerFiles, publicDoc, publicKey, peerURI);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilePublicPtr IPeerFilePublicFactory::loadFromElement(
+                                                                PeerFilesPtr peerFiles,
+                                                                DocumentPtr publicDoc
+                                                                )
+      {
+        if (this) {}
+        return PeerFilePublic::loadFromElement(peerFiles, publicDoc);
+      }
+
     }
 
     //-------------------------------------------------------------------------

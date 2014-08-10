@@ -190,6 +190,8 @@ namespace openpeer
                                                                  );
       };
 
+      class MessageIncomingFactory : public IFactory<IMessageIncomingFactory> {};
+
     }
   }
 }

@@ -289,6 +289,8 @@ namespace openpeer
                                      ElementPtr peerFileRootElement
                                      );
       };
+
+      class PeerFilePrivateFactory : public IFactory<IPeerFilePrivateFactory> {};
       
     }
   }

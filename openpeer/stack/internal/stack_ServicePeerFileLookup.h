@@ -320,6 +320,8 @@ namespace openpeer
         virtual ServicePeerFileLookupPtr createServicePeerFileLookup();
       };
 
+      class ServicePeerFileLookupFactory : public IFactory<IServicePeerFileLookupFactory> {};
+
     }
   }
 }

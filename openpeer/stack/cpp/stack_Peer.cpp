@@ -596,6 +596,51 @@ namespace openpeer
       {
         return Log::Params(message, toDebug());
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerFactory &IPeerFactory::singleton()
+      {
+        return PeerFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr IPeerFactory::create(
+                                   AccountPtr account,
+                                   IPeerFilePublicPtr peerFilePublic
+                                   )
+      {
+        if (this) {}
+        return Peer::create(account, peerFilePublic);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr IPeerFactory::getFromSignature(
+                                             AccountPtr account,
+                                             ElementPtr signedElement
+                                             )
+      {
+        if (this) {}
+        return Peer::getFromSignature(account, signedElement);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr IPeerFactory::create(
+                                   AccountPtr account,
+                                   const char *peerURI
+                                   )
+      {
+        if (this) {}
+        return Peer::create(account, peerURI);
+      }
+
     }
 
     //-------------------------------------------------------------------------

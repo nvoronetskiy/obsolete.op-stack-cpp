@@ -222,6 +222,8 @@ namespace openpeer
                                               IPeerSubscriptionDelegatePtr delegate
                                               );
       };
+
+      class PeerSubscriptionFactory : public IFactory<IPeerSubscriptionFactory> {};
       
     }
   }

@@ -33,6 +33,7 @@
 
 #include <openpeer/stack/types.h>
 #include <openpeer/stack/message/types.h>
+#include <openpeer/services/IFactory.h>
 
 #define OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES "https://meta.openpeer.org/candidate/ice"
 #define OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY   "https://meta.openpeer.org/candidate/finder-relay"
@@ -115,6 +116,8 @@ namespace openpeer
 
       ZS_DECLARE_USING_PROXY(services, IWakeDelegate)
       ZS_DECLARE_USING_PROXY(services, IBackgroundingDelegate)
+
+      using services::IFactory;
 
       using namespace message;
 

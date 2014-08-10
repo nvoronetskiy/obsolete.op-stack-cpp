@@ -1337,6 +1337,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceNamespaceGrantSessionFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServiceNamespaceGrantSessionFactory &IServiceNamespaceGrantSessionFactory::singleton()
+      {
+        return ServiceNamespaceGrantSessionFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceNamespaceGrantSessionPtr IServiceNamespaceGrantSessionFactory::create(
+                                                                                   IServiceNamespaceGrantSessionDelegatePtr delegate,
+                                                                                   const char *outerFrameURLUponReload,
+                                                                                   const char *grantID
+                                                                                   )
+      {
+        if (this) {}
+        return ServiceNamespaceGrantSession::create(delegate, outerFrameURLUponReload, grantID);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
 
     //-------------------------------------------------------------------------

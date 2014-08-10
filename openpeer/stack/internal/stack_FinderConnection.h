@@ -541,6 +541,8 @@ namespace openpeer
                                                          ITransportStreamPtr sendStream
                                                          );
       };
+
+      class FinderConnectionRelayChannelFactory : public IFactory<IFinderConnectionRelayChannelFactory> {};
       
     }
   }

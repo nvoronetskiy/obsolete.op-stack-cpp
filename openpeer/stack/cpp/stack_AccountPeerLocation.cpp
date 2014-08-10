@@ -2578,6 +2578,45 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IAccountPeerLocationFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IAccountPeerLocationFactory &IAccountPeerLocationFactory::singleton()
+      {
+        return AccountPeerLocationFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      IAccountPeerLocationForAccount::ForAccountPtr IAccountPeerLocationFactory::createFromIncomingPeerLocationFind(
+                                                                                                                    IAccountPeerLocationDelegatePtr delegate,
+                                                                                                                    AccountPtr outer,
+                                                                                                                    PeerLocationFindRequestPtr request,
+                                                                                                                    IDHPrivateKeyPtr localPrivateKey,
+                                                                                                                    IDHPublicKeyPtr localPublicKey
+                                                                                                                    )
+      {
+        if (this) {}
+        return AccountPeerLocation::createFromIncomingPeerLocationFind(delegate, outer, request, localPrivateKey, localPublicKey);
+      }
+
+      //-----------------------------------------------------------------------
+      IAccountPeerLocationForAccount::ForAccountPtr IAccountPeerLocationFactory::createFromPeerLocationFindResult(
+                                                                                                                  IAccountPeerLocationDelegatePtr delegate,
+                                                                                                                  AccountPtr outer,
+                                                                                                                  PeerLocationFindRequestPtr request,
+                                                                                                                  LocationInfoPtr locationInfo
+                                                                                                                  )
+      {
+        if (this) {}
+        return AccountPeerLocation::createFromPeerLocationFindResult(delegate, outer, request, locationInfo);
+      }
+      
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
     }
   }
 }

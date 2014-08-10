@@ -1756,6 +1756,27 @@ namespace openpeer
         mPeerSubscriptionsOutgoing.clear();
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPublicationRepositoryFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPublicationRepositoryFactory &IPublicationRepositoryFactory::singleton()
+      {
+        return PublicationRepositoryFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationRepositoryPtr IPublicationRepositoryFactory::createPublicationRepository(AccountPtr account)
+      {
+        if (this) {}
+        return PublicationRepository::create(account);
+      }
+
     }
 
     //-------------------------------------------------------------------------

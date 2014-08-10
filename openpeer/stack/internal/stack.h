@@ -33,10 +33,10 @@
 
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/internal/stack_Account.h>
-#include <openpeer/stack/internal/stack_Cache.h>
-#include <openpeer/stack/internal/stack_Diff.h>
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_BootstrappedNetworkManager.h>
+#include <openpeer/stack/internal/stack_Cache.h>
+#include <openpeer/stack/internal/stack_Diff.h>
 #include <openpeer/stack/internal/stack_IFinderRelayChannel.h>
 #include <openpeer/stack/internal/stack_FinderRelayChannel.h>
 #include <openpeer/stack/internal/stack_IFinderConnection.h>

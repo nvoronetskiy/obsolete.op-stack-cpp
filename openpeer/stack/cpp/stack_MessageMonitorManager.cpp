@@ -550,6 +550,28 @@ namespace openpeer
       {
         return Log::Params(message, "stack::MessageMonitorManager");
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageMonitorManagerFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IMessageMonitorManagerFactory &IMessageMonitorManagerFactory::singleton()
+      {
+        return MessageMonitorManagerFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      MessageMonitorManagerPtr IMessageMonitorManagerFactory::createMessageMonitorManager()
+      {
+        if (this) {}
+        return MessageMonitorManager::create();
+      }
+
     }
   }
 }

@@ -194,6 +194,8 @@ namespace openpeer
                                                     size_t keySizeInBits
                                                     );
       };
+
+      class KeyGeneratorFactory : public IFactory<IKeyGeneratorFactory> {};
       
     }
   }

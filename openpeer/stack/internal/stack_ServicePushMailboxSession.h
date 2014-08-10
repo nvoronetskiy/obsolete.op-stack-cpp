@@ -78,7 +78,7 @@
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DEFAULT_DH_KEY_DOMAIN "openpeer/stack/push-mailbox-default-dh-key-domain"
 
-#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "http://meta.openpeer.org/2014/06/17/json-push-mailbox-key#aes-cfb-32-16-16-sha1-md5"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "https://meta.openpeer.org/2014/06/17/referenced-key#aes-cfb-32-16-16-sha1-md5"
 
 #define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
 #define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
@@ -1101,6 +1101,8 @@ namespace openpeer
                                                     IServiceLockboxSessionPtr lockboxSession
                                                     );
       };
+
+      class ServicePushMailboxSessionFactory : public IFactory<IServicePushMailboxSessionFactory> {};
       
     }
   }

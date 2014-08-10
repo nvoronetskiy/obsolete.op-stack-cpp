@@ -167,6 +167,8 @@ namespace openpeer
                                                                           );
       };
 
+      class ServiceCertificatesValidateQueryFactory : public IFactory<IServiceCertificatesValidateQueryFactory> {};
+
     }
   }
 }

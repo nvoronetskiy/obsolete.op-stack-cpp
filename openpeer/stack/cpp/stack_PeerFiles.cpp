@@ -215,6 +215,54 @@ namespace openpeer
 
         return resultEl;
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPeerFilesFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerFilesFactory &IPeerFilesFactory::singleton()
+      {
+        return PeerFilesFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilesPtr IPeerFilesFactory::generate(
+                                               const char *password,
+                                               ElementPtr signedSaltBundleEl
+                                               )
+      {
+        if (this) {}
+        return PeerFiles::generate(password, signedSaltBundleEl);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerFilesPtr IPeerFilesFactory::generate(
+                                               IRSAPrivateKeyPtr privateKey,
+                                               IRSAPublicKeyPtr publicKey,
+                                               const char *password,
+                                               ElementPtr signedSaltBundleEl
+                                               )
+      {
+        if (this) {}
+        return PeerFiles::generate(privateKey, publicKey, password, signedSaltBundleEl);
+      }
+
+
+      //-----------------------------------------------------------------------
+      PeerFilesPtr IPeerFilesFactory::loadFromElement(
+                                                      const char *password,
+                                                      ElementPtr privatePeerRootElement
+                                                      )
+      {
+        if (this) {}
+        return PeerFiles::loadFromElement(password, privatePeerRootElement);
+      }
+
     }
 
     //-------------------------------------------------------------------------

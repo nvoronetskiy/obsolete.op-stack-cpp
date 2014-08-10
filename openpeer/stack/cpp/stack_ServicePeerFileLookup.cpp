@@ -825,6 +825,28 @@ namespace openpeer
           outMap[uri] = uri;
         }
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServicePeerFileLookupFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IServicePeerFileLookupFactory &IServicePeerFileLookupFactory::singleton()
+      {
+        return ServicePeerFileLookupFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      ServicePeerFileLookupPtr IServicePeerFileLookupFactory::createServicePeerFileLookup()
+      {
+        if (this) {}
+        return ServicePeerFileLookup::create();
+      }
+
     }
 
     //-------------------------------------------------------------------------

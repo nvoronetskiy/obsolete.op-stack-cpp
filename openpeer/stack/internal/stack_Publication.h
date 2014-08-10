@@ -651,6 +651,8 @@ namespace openpeer
                                       Time expires
                                       );
       };
+
+      class PublicationFactory : public IFactory<IPublicationFactory> {};
       
     }
   }

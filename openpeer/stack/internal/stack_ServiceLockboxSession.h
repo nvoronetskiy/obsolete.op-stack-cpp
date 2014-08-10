@@ -673,6 +673,8 @@ namespace openpeer
                                                  const SecureByteBlock &lockboxKey
                                                  );
       };
+
+      class ServiceLockboxSessionFactory : public IFactory<IServiceLockboxSessionFactory> {};
       
     }
   }

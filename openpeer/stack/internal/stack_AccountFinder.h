@@ -406,6 +406,8 @@ namespace openpeer
                                                                );
       };
 
+      class AccountFinderFactory : public IFactory<IAccountFinderFactory> {};
+
     }
   }
 }

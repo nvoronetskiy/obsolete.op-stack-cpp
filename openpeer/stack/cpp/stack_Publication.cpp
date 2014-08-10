@@ -1251,6 +1251,70 @@ namespace openpeer
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IPublicationFactory
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPublicationFactory &IPublicationFactory::singleton()
+      {
+        return PublicationFactory::singleton();
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr IPublicationFactory::create(
+                                                 LocationPtr creatorLocation,
+                                                 const char *name,
+                                                 const char *mimeType,
+                                                 const SecureByteBlock &data,
+                                                 const PublishToRelationshipsMap &publishToRelationships,
+                                                 LocationPtr publishedLocation,
+                                                 Time expires
+                                                 )
+      {
+        if (this) {}
+        return Publication::create(creatorLocation, name, mimeType, data, publishToRelationships, publishedLocation, expires);
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr IPublicationFactory::create(
+                                                 LocationPtr creatorLocation,
+                                                 const char *name,
+                                                 const char *mimeType,
+                                                 DocumentPtr documentToBeAdopted,
+                                                 const PublishToRelationshipsMap &publishToRelationships,
+                                                 LocationPtr publishedLocation,
+                                                 Time expires
+                                                 )
+      {
+        if (this) {}
+        return Publication::create(creatorLocation, name, mimeType, documentToBeAdopted, publishToRelationships, publishedLocation, expires);
+      }
+
+      //-----------------------------------------------------------------------
+      PublicationPtr IPublicationFactory::create(
+                                                 ULONG version,
+                                                 ULONG baseVersion,
+                                                 ULONG lineage,
+                                                 LocationPtr creatorLocation,
+                                                 const char *name,
+                                                 const char *mimeType,
+                                                 ElementPtr dataEl,
+                                                 Encodings encoding,
+                                                 const PublishToRelationshipsMap &publishToRelationships,
+                                                 LocationPtr publishedLocation,
+                                                 Time expires
+                                                 )
+      {
+        if (this) {}
+        return Publication::create(version, baseVersion, lineage, creatorLocation, name, mimeType, dataEl, encoding, publishToRelationships, publishedLocation, expires);
+      }
+      
     }
 
     //-------------------------------------------------------------------------

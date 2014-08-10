@@ -410,6 +410,8 @@ namespace openpeer
                                    );
       };
 
+      class LocationFactory : public IFactory<ILocationFactory> {};
+
     }
   }
 }
