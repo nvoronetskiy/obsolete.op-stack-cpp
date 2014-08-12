@@ -52,8 +52,9 @@ namespace openpeer
             AttributeType_PeerURI,
 
             AttributeType_UploadMessageURL,
-            AttributeType_UploadMessageStringReplacementMessageID,
-            AttributeType_UploadMessageStringReplacementMessageSize,
+            AttributeType_DownloadMessageURL,
+            AttributeType_StringReplacementMessageID,
+            AttributeType_StringReplacementMessageSize,
           };
 
         public:
@@ -79,11 +80,14 @@ namespace openpeer
           const String &uploadMessageURL() const                                    {return mUploadMessageURL;}
           void uploadMessageURL(const String &val)                                  {mUploadMessageURL = val;}
 
-          const String &uploadMessageStringReplacementMessageID() const             {return mUploadMessageStringReplacementMessageID;}
-          void uploadMessageStringReplacementMessageID(const String &val)           {mUploadMessageStringReplacementMessageID = val;}
+          const String &downloadMessageURL() const                                  {return mDownloadMessageURL;}
+          void downloadMessageURL(const String &val)                                {mDownloadMessageURL = val;}
 
-          const String &uploadMessageStringReplacementMessageSize() const            {return mUploadMessageStringReplacementMessageSize;}
-          void uploadMessageStringReplacementMessageSize(const String &val)          {mUploadMessageStringReplacementMessageSize = val;}
+          const String &stringReplacementMessageID() const                          {return mStringReplacementMessageID;}
+          void stringReplacementMessageID(const String &val)                        {mStringReplacementMessageID = val;}
+
+          const String &stringReplacementMessageSize() const                        {return mStringReplacementMessageSize;}
+          void stringReplacementMessageSize(const String &val)                      {mStringReplacementMessageSize = val;}
 
         protected:
           AccessResult();
@@ -93,8 +97,9 @@ namespace openpeer
           String mPeerURI;
 
           String mUploadMessageURL;
-          String mUploadMessageStringReplacementMessageID;
-          String mUploadMessageStringReplacementMessageSize;
+          String mDownloadMessageURL;
+          String mStringReplacementMessageID;
+          String mStringReplacementMessageSize;
         };
       }
     }

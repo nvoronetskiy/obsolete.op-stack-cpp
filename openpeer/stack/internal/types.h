@@ -172,6 +172,7 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionWaitDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServiceLockboxSessionForInternalDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionAsyncDatabaseDelegate)
+      ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionAsyncDelegate)
 
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderRelayChannelSubscription, IFinderRelayChannelDelegate)
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderConnectionSubscription, IFinderConnectionDelegate)

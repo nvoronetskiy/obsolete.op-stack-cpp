@@ -973,6 +973,7 @@ namespace openpeer
                 (Time() != mExpires) ||
 
                 (0 != mLength) ||
+                (0 != mRemaining) ||
 
                 (mFolders.size() > 0) ||
 
@@ -1008,6 +1009,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "expires", mExpires);
 
         IHelper::debugAppend(resultEl, "length", mLength);
+        IHelper::debugAppend(resultEl, "length", mRemaining);
 
         IHelper::debugAppend(resultEl, "folders", mFolders.size());
 
@@ -1046,6 +1048,7 @@ namespace openpeer
         merge(mExpires, source.mExpires, overwriteExisting);
 
         merge(mLength, source.mLength, overwriteExisting);
+        merge(mRemaining, source.mRemaining, overwriteExisting);
 
         merge(mFolders, source.mFolders, overwriteExisting);
 
@@ -1160,6 +1163,9 @@ namespace openpeer
 
         if (0 != mLength) {
           messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("length", string(mLength)));
+        }
+        if (0 != mRemaining) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("remaining", string(mRemaining)));
         }
 
         if (mFolders.size() > 0) {
@@ -1319,6 +1325,10 @@ namespace openpeer
         try {
           info.mLength = Numeric<decltype(info.mLength)>(IMessageHelper::getElementText(elem->findFirstChildElement("length")));
         } catch(Numeric<decltype(info.mLength)>::ValueOutOfRange &) {
+        }
+        try {
+          info.mRemaining = Numeric<decltype(info.mRemaining)>(IMessageHelper::getElementText(elem->findFirstChildElement("remaining")));
+        } catch(Numeric<decltype(info.mRemaining)>::ValueOutOfRange &) {
         }
 
         ElementPtr foldersEl = elem->findFirstChildElement("folders");

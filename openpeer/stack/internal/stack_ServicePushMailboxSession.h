@@ -35,6 +35,7 @@
 
 #include <openpeer/stack/IBootstrappedNetwork.h>
 #include <openpeer/stack/IServicePushMailbox.h>
+#include <openpeer/stack/IServicePushMailboxDatabaseAbstractionDelegate.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 
 #include <openpeer/stack/internal/stack_Account.h>
@@ -80,12 +81,12 @@
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "https://meta.openpeer.org/2014/06/17/referenced-key#aes-cfb-32-16-16-sha1-md5"
 
-#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
-#define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
 
-#define OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS     "openpeer/stack/push-mailbox-max-message-upload-time-in-seconds"
-#define OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-upload-chunk-size-in-bytes"
-
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS     "openpeer/stack/push-mailbox-max-message-upload-time-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-upload-chunk-size-in-bytes"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_TO_MEMORY_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-to-memory-size-in-bytes"
 
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI       "pki"
@@ -97,6 +98,7 @@
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE "keying"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME "key:"
+#define OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME "temp-key:"
 
 namespace openpeer
 {
@@ -111,12 +113,47 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(openpeer::services, ITCPMessagingDelegate)
       ZS_DECLARE_USING_PTR(openpeer::services, ITransportStreamReaderDelegate)
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServicePushMailboxSessionAsyncDatabaseDelegate
+      #pragma mark
+
       interaction IServicePushMailboxSessionAsyncDatabaseDelegate
       {
-        virtual void asyncNotifyPostFileDataToURL(
-                                                  const char *url,
-                                                  const char *fileNameContainingData
-                                                  ) = 0;
+        virtual void asyncUploadFileDataToURL(
+                                              const char *url,
+                                              const char *fileNameContainingData,
+                                              size_t totalFileSizeInBytes,
+                                              size_t remainingBytesToUpload,
+                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
+                                              ) = 0;
+
+        virtual void asyncDownloadDataFromURL(
+                                              const char *getURL,
+                                              const char *fileNameToAppendData,
+                                              size_t finalFileSizeInBytes,
+                                              size_t remainingBytesToBeDownloaded,
+                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
+                                              ) = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServicePushMailboxSessionAsyncDelegate
+      #pragma mark
+
+      interaction IServicePushMailboxSessionAsyncDelegate
+      {
+        virtual void onNotifierComplete(
+                                        const char *messageID,
+                                        bool wasSuccessful
+                                        ) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -131,6 +168,7 @@ namespace openpeer
                                         public zsLib::MessageQueueAssociator,
                                         public SharedRecursiveLock,
                                         public IServicePushMailboxSession,
+                                        public IServicePushMailboxSessionAsyncDelegate,
                                         public IMessageSource,
                                         public ITimerDelegate,
                                         public ITCPMessagingDelegate,
@@ -169,6 +207,9 @@ namespace openpeer
         typedef std::map<MessageID, SendQueryWeakPtr> SendQueryMap;
 
         ZS_DECLARE_CLASS_PTR(AsyncDatabase)
+        ZS_DECLARE_CLASS_PTR(AsyncEncrypt)
+        ZS_DECLARE_CLASS_PTR(AsyncDecrypt)
+        ZS_DECLARE_CLASS_PTR(AsyncNotifier)
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(IBootstrappedNetworkForServices, UseBootstrappedNetwork)
@@ -184,6 +225,9 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(services::IReachability, IReachability)
         ZS_DECLARE_TYPEDEF_PTR(services::IReachabilitySubscription, IReachabilitySubscription)
         ZS_DECLARE_TYPEDEF_PTR(services::IReachability::InterfaceTypes, InterfaceTypes)
+
+        ZS_DECLARE_TYPEDEF_PTR(services::IDecryptor, UseDecryptor)
+        ZS_DECLARE_TYPEDEF_PTR(services::IEncryptor, UseEncryptor)
 
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::AccessResult, AccessResult)
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::NamespaceGrantChallengeValidateResult, NamespaceGrantChallengeValidateResult)
@@ -206,6 +250,21 @@ namespace openpeer
         typedef int FolderIndex;
         typedef std::map<FolderName, FolderIndex> FolderNameMap;
 
+        typedef std::list<IMessageMonitorPtr> MonitorList;
+
+        typedef DWORD ChannelID;
+        typedef std::map<ChannelID, MessageID> ChannelToMessageMap;
+
+        typedef std::pair<ChannelID, SecureByteBlockPtr> PendingChannelData;
+        typedef std::list<PendingChannelData> PendingChannelDataList;
+
+        typedef std::map<MessageID, MessageID> MessageMap;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedFolderNeedingUpdateInfo
+        #pragma mark
+
         struct ProcessedFolderNeedingUpdateInfo
         {
           typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateInfo FolderNeedingUpdateInfo;
@@ -216,7 +275,10 @@ namespace openpeer
 
         typedef std::map<FolderName, ProcessedFolderNeedingUpdateInfo> FolderUpdateMap;
 
-        typedef std::list<IMessageMonitorPtr> MonitorList;
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedMessageNeedingUpdateInfo
+        #pragma mark
 
         struct ProcessedMessageNeedingUpdateInfo
         {
@@ -228,6 +290,10 @@ namespace openpeer
 
         typedef std::map<MessageID, ProcessedMessageNeedingUpdateInfo> MessageUpdateMap;
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedMessageNeedingDataInfo
+        #pragma mark
 
         struct ProcessedMessageNeedingDataInfo
         {
@@ -240,15 +306,38 @@ namespace openpeer
 
           size_t mReceivedData;
           SecureByteBlockPtr mBuffer;
+
+          String mDeliveryURL;
         };
 
         typedef std::map<MessageID, ProcessedMessageNeedingDataInfo> MessageDataMap;
 
-        typedef DWORD ChannelID;
-        typedef std::map<ChannelID, MessageID> ChannelToMessageMap;
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedMessagesNeedingDecryptingInfo
+        #pragma mark
 
-        typedef std::pair<ChannelID, SecureByteBlockPtr> PendingChannelData;
-        typedef std::list<PendingChannelData> PendingChannelDataList;
+        struct ProcessedMessagesNeedingDecryptingInfo
+        {
+          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingDecryptingInfo MessagesNeedingDecryptingInfo;
+
+          MessagesNeedingDecryptingInfo mInfo;
+
+          AsyncDecryptPtr mDecryptor;
+          String mDecryptedFileName;
+
+          String mPassphraseID;
+          String mPassphrase;
+          String mSalt;
+          String mProof;
+        };
+
+        typedef std::map<MessageID, ProcessedMessagesNeedingDecryptingInfo> MessageDecryptionMap;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedListsNeedingDownloadInfo
+        #pragma mark
 
         struct ProcessedListsNeedingDownloadInfo
         {
@@ -260,6 +349,11 @@ namespace openpeer
         typedef String ListID;
         typedef std::map<ListID, ProcessedListsNeedingDownloadInfo> ListDownloadMap;
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => ProcessedPendingDeliveryMessageInfo
+        #pragma mark
+
         struct ProcessedPendingDeliveryMessageInfo
         {
           typedef IServicePushMailboxDatabaseAbstractionDelegate::PendingDeliveryMessageInfo PendingDeliveryMessageInfo;
@@ -268,17 +362,30 @@ namespace openpeer
 
           PushMessageInfo mMessage;
 
-          String mTempFileName;
+          String mDecryptedFileName;
+          AsyncEncryptPtr mEncryptor;
+
+          String mEncryptedFileName;
+
           String mDeliveryURL;
 
           size_t mSent;
           SecureByteBlockPtr mData;
 
+          IMessageMonitorPtr mPendingDeliveryPrecheckMessageMetaDataGetMonitor;
+
           MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
           IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
           IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
+
+          ProcessedPendingDeliveryMessageInfo();
         };
         typedef std::map<MessageID, ProcessedPendingDeliveryMessageInfo> PendingDeliveryMap;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => KeyingBundle
+        #pragma mark
 
         struct KeyingBundle
         {
@@ -293,8 +400,6 @@ namespace openpeer
 
           IPeerPtr mValidationPeer;
         };
-
-        typedef std::map<MessageID, MessageID> MessageMap;
 
       protected:
         ServicePushMailboxSession(
@@ -403,6 +508,16 @@ namespace openpeer
 
         virtual void notifyComplete(SendQuery &query);
         virtual PushMessagePtr getPushMessage(const String &messageID);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSession => IServicePushMailboxSessionAsyncDelegate
+        #pragma mark
+
+        virtual void onNotifierComplete(
+                                        const char *messageID,
+                                        bool wasSuccessful
+                                        );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -734,10 +849,12 @@ namespace openpeer
 
         bool stepProcessKeysFolder();
         bool stepDecryptMessages();
+        bool stepDecryptMessagesAsync();
 
         bool stepPendingDelivery();
-        bool stepDeliverViaURL();
+        bool stepPendingDeliveryEncryptMessages();
         bool stepPendingDeliveryUpdateRequest();
+        bool stepDeliverViaURL();
 
         bool stepPrepareVersionedFolderMessages();
 
@@ -768,7 +885,7 @@ namespace openpeer
 
         virtual void handleChanged(ChangedNotifyPtr notify);
         virtual void handleListFetch(ListFetchRequestPtr request);
-        virtual void handelUpdateMessageGone(
+        virtual void handleUpdateMessageGone(
                                              MessageUpdateRequestPtr request,
                                              bool notFoundError
                                              );
@@ -910,6 +1027,12 @@ namespace openpeer
                                   Time &outExpires
                                   );
 
+        UseEncryptorPtr prepareEncryptor(const String &tempEncodingScheme);
+        String finalizeEncodingScheme(
+                                      const String &tempEncodingScheme,
+                                      const String &sourceHexHash
+                                      );
+
         bool encryptMessage(
                             const String &inPassphraseID,
                             const String &inPassphrase,
@@ -917,6 +1040,19 @@ namespace openpeer
                             String &outEncodingScheme,
                             SecureByteBlockPtr &outEncryptedMessage
                             );
+
+        UseDecryptorPtr prepareDecryptor(
+                                         const String &inPassphraseID,
+                                         const String &inPassphrase,
+                                         const String &inSalt
+                                         );
+        bool validateDecryption(
+                                const String &inPassphraseID,
+                                const String &inPassphrase,
+                                const String &inSalt,
+                                const String &inDataHash,
+                                const String &inProof
+                                );
 
         bool decryptMessage(
                             const String &inPassphraseID,
@@ -927,10 +1063,24 @@ namespace openpeer
                             SecureByteBlockPtr &outDecryptedMessage
                             );
 
+        ChannelID pickNextChannel();
+
       public:
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncDatabase.h>
 #undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
+
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DECRYPT
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncDecrypt.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DECRYPT
+
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_ENCRYPT
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncEncrypt.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_ENCRYPT
+
+#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_NOTIFIER
+#include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncNotifier.h>
+#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_NOTIFIER
 
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_REGISTER_QUERY
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_RegisterQuery.h>
@@ -1007,8 +1157,9 @@ namespace openpeer
 
         String mPeerURIFromAccessResult;
         String mUploadMessageURL;
-        String mUploadMessageStringReplacementMessageID;
-        String mUploadMessageStringReplacementMessageSize;
+        String mDownloadMessageURL;
+        String mStringReplacementMessageID;
+        String mStringReplacementMessageSize;
 
         NamespaceGrantChallengeInfo mNamespaceGrantChallengeInfo;
 
@@ -1049,6 +1200,7 @@ namespace openpeer
         MessageDataMap mMessagesNeedingData;
         ChannelToMessageMap mMessagesNeedingDataChannels;
         IMessageMonitorPtr mMessageDataGetMonitor;
+        size_t mMaxMessageDownloadToMemorySize;
 
         PendingChannelDataList mPendingChannelData;
 
@@ -1060,6 +1212,7 @@ namespace openpeer
         bool mRefreshKeysFolderNeedsProcessing;
 
         bool mRefreshMessagesNeedingDecryption;
+        MessageDecryptionMap mMessagesNeedingDecryption;
 
         // pending delivery
         bool mRefreshPendingDelivery;
@@ -1067,7 +1220,6 @@ namespace openpeer
         ChannelID mLastChannel;
         bool mPendingDeliveryPrecheckRequired;
         PendingDeliveryMap mPendingDelivery;
-        IMessageMonitorPtr mPendingDeliveryPrecheckMessageMetaDataGetMonitor;
 
         bool mRefreshVersionedFolders;
 
@@ -1109,5 +1261,11 @@ namespace openpeer
 }
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDatabaseDelegate)
-ZS_DECLARE_PROXY_METHOD_2(asyncNotifyPostFileDataToURL, const char *, const char *)
+ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxDatabaseAbstractionNotifierPtr, IServicePushMailboxDatabaseAbstractionNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_5(asyncUploadFileDataToURL, const char *, const char *, size_t, size_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_5(asyncDownloadDataFromURL, const char *, const char *, size_t, size_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
+ZS_DECLARE_PROXY_END()
+
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDelegate)
+ZS_DECLARE_PROXY_METHOD_2(onNotifierComplete, const char *, bool)
 ZS_DECLARE_PROXY_END()

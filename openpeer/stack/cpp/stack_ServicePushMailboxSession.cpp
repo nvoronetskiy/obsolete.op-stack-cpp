@@ -61,6 +61,8 @@
 #include <openpeer/services/IDHKeyDomain.h>
 #include <openpeer/services/IDHPrivateKey.h>
 #include <openpeer/services/IDHPublicKey.h>
+#include <openpeer/services/IDecryptor.h>
+#include <openpeer/services/IEncryptor.h>
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/ITCPMessaging.h>
@@ -75,10 +77,10 @@
 #include <zsLib/Numeric.h>
 #include <zsLib/Stringize.h>
 
+#include <sys/stat.h>
+
 #define OPENPEER_STACK_PUSH_MAILBOX_SENT_FOLDER_NAME ".sent"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYS_FOLDER_NAME "keys"
-
-#define OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN (-1)
 
 #define OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE "text/json"
 #define OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_RSA "RSA"
@@ -99,13 +101,15 @@ namespace openpeer
       using CryptoPP::SHA1;
       using zsLib::Numeric;
 
-      using services::IHelper;
+      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       typedef message::IMessageHelper IMessageHelper;
 
       ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
+
+      ZS_DECLARE_TYPEDEF_PTR(openpeer::services::ISettings, UseSettings)
 
       ZS_DECLARE_USING_PTR(openpeer::services, IBackgrounding)
 
@@ -156,8 +160,8 @@ namespace openpeer
                                            bool &outIsDHKey
                                            )
       {
-        IHelper::SplitMap split;
-        IHelper::split(inKeyID, split, '-');
+        UseServicesHelper::SplitMap split;
+        UseServicesHelper::split(inKeyID, split, '-');
         if (split.size() != 2) return String();
 
         if (split[1] == OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_TYPE_DH) {
@@ -172,7 +176,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       static String generateSendingKeyID()
       {
-        return IHelper::randomString(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_LENGTH);
+        return UseServicesHelper::randomString(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_LENGTH);
       }
 
       //-----------------------------------------------------------------------
@@ -306,6 +310,7 @@ namespace openpeer
         mRefreshMessagesNeedingUpdate(true),
 
         mRefreshMessagesNeedingData(true),
+        mMaxMessageDownloadToMemorySize(UseSettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_TO_MEMORY_SIZE_IN_BYTES)),
 
         mRefreshListsNeedingDownload(true),
 
@@ -314,7 +319,7 @@ namespace openpeer
         mRefreshMessagesNeedingDecryption(true),
 
         mRefreshPendingDelivery(true),
-        mDeliveryMaxChunkSize(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES)),
+        mDeliveryMaxChunkSize(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES)),
         mLastChannel(0),
         mPendingDeliveryPrecheckRequired(true),
 
@@ -578,8 +583,8 @@ namespace openpeer
         int versionIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
 
         if (inLastVersionDownloaded.hasData()) {
-          IHelper::SplitMap split;
-          IHelper::split(inLastVersionDownloaded, split, '-');
+          UseServicesHelper::SplitMap split;
+          UseServicesHelper::split(inLastVersionDownloaded, split, '-');
           if (split.size() != 2) {
             ZS_LOG_WARNING(Detail, log("version string is not legal") + ZS_PARAM("version", inLastVersionDownloaded))
             return false;
@@ -612,7 +617,7 @@ namespace openpeer
         for (FolderVersionedMessagesList::iterator iter = versionedMessages.begin(); iter != versionedMessages.end(); ++iter)
         {
           FolderVersionedMessagesInfo &info = (*iter);
-          lastVersionFound = info.mIndex;
+          lastVersionFound = info.mFolderVersionedMessageIndex;
 
           if (info.mRemovedFlag) {
             AddedMap::iterator found = added.find(info.mMessageID);
@@ -786,16 +791,23 @@ namespace openpeer
           info.mTotalWithPassphrase = 0;
         }
 
-        String keyID = (info.mListSize == info.mTotalWithPassphrase ? makeDHSendingKeyID(info.mKeyID) :makeRSASendingKeyID(info.mKeyID));
+        String keyID = (info.mListSize == info.mTotalWithPassphrase ? makeDHSendingKeyID(info.mKeyID) : makeRSASendingKeyID(info.mKeyID));
         String passphrase = (info.mListSize == info.mTotalWithPassphrase ? info.mDHPassphrase : info.mRSAPassphrase);
 
+        String encryptedFileName;
         String encoding;
         SecureByteBlockPtr encryptedMessage;
         if (message.mFullMessage) {
           if (!encryptMessage(keyID, passphrase, *message.mFullMessage, encoding, encryptedMessage)) {
             ZS_LOG_ERROR(Detail, log("failed to encrypt emssage"))
             encoding = String();
-            encryptedMessage = IHelper::clone(message.mFullMessage);
+            encryptedMessage = UseServicesHelper::clone(message.mFullMessage);
+          }
+        } else {
+          encryptedFileName = message.mFullMessageFileName;
+          if (encryptedFileName.hasData()) {
+            String salt = UseServicesHelper::randomString(16*8/5);
+            encoding =  OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME + salt + ":" + keyID + ":" + passphrase;
           }
         }
 
@@ -812,6 +824,7 @@ namespace openpeer
                                               message.mPushInfos,
                                               message.mSent,
                                               sent,
+                                              encryptedFileName,
                                               encryptedMessage,
                                               message.mFullMessage,
                                               true
@@ -973,7 +986,8 @@ namespace openpeer
                                                  result->mPushInfos,
                                                  result->mSent,
                                                  result->mExpires,
-                                                 result->mFullMessage
+                                                 result->mFullMessage,
+                                                 result->mFullMessageFileName
                                                  );
 
         if (!hasMessage) {
@@ -1039,6 +1053,77 @@ namespace openpeer
         }
 
         return result;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession => IServicePushMailboxSessionAsyncDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::onNotifierComplete(
+                                                         const char *messageID,
+                                                         bool wasSuccessful
+                                                         )
+      {
+        AutoRecursiveLock lock(*this);
+
+        // scope: check pending delivery
+        {
+          PendingDeliveryMap::iterator found = mPendingDelivery.find(messageID);
+          if (found != mPendingDelivery.end()) {
+            ZS_LOG_DEBUG(log("notified upload complete for pending message") + ZS_PARAM("message ID", messageID))
+
+            ProcessedPendingDeliveryMessageInfo &processedInfo = (*found).second;
+
+            if (!processedInfo.mPendingDeliveryMessageUpdateRequest) {
+              ZS_LOG_WARNING(Detail, log("notifieed complete but no update request was sent (or request already completed)") + ZS_PARAM("message ID", messageID))
+              return;
+            }
+
+            if (processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
+              ZS_LOG_WARNING(Detail, log("notifieed complete but already waiting for completion") + ZS_PARAM("message ID", messageID))
+              return;
+            }
+
+            // now that the upload has finished the response from the upload request should complete
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+
+            IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+            return;
+          }
+        }
+
+        // scope: check pending download
+        {
+          MessageDataMap::iterator found = mMessagesNeedingData.find(messageID);
+          if (found != mMessagesNeedingData.end()) {
+            ZS_LOG_DEBUG(log("notified download complete for message needing data") + ZS_PARAM("message ID", messageID) + ZS_PARAM("was successful", wasSuccessful))
+
+            ProcessedMessageNeedingDataInfo &processedInfo = (*found).second;
+
+            mDB->notifyDownload(processedInfo.mInfo.mMessageIndex, wasSuccessful);
+
+            if (wasSuccessful) {
+              mRefreshFolders = true;
+              mRefreshFoldersNeedingUpdate = true;
+              mRefreshMessagesNeedingData = true;
+            } else {
+              ZS_LOG_ERROR(Detail, log("notified download complete failed") + ZS_PARAM("message ID", messageID))
+
+              // database should clear the flag after a period of time to cause the download to happen again later
+              mDB->notifyDownloadFailure(processedInfo.mInfo.mMessageIndex);
+            }
+
+            mMessagesNeedingData.erase(found);
+            IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          }
+        }
+
+        ZS_LOG_TRACE(log("notified complete but message was not found anywhere needing notification") + ZS_PARAM("message ID", messageID) + ZS_PARAM("was successful", wasSuccessful))
       }
 
       //-----------------------------------------------------------------------
@@ -1146,8 +1231,8 @@ namespace openpeer
             return;
           }
 
-          if (processedInfo.mTempFileName.hasData()) {
-            ZS_LOG_TRACE(log("delivering the message via local file instead") + ZS_PARAM("file", processedInfo.mTempFileName))
+          if (processedInfo.mEncryptedFileName.hasData()) {
+            ZS_LOG_TRACE(log("delivering the message via local file instead") + ZS_PARAM("file", processedInfo.mEncryptedFileName))
             return;
           }
 
@@ -1445,8 +1530,9 @@ namespace openpeer
 
         mPeerURIFromAccessResult = result->peerURI();
         mUploadMessageURL = result->uploadMessageURL();
-        mUploadMessageStringReplacementMessageID = result->uploadMessageStringReplacementMessageID();
-        mUploadMessageStringReplacementMessageSize = result->uploadMessageStringReplacementMessageSize();
+        mDownloadMessageURL = result->uploadMessageURL();
+        mStringReplacementMessageID = result->stringReplacementMessageID();
+        mStringReplacementMessageSize = result->stringReplacementMessageSize();
 
         mNamespaceGrantChallengeInfo = result->namespaceGrantChallengeInfo();
 
@@ -1829,21 +1915,21 @@ namespace openpeer
 
               ZS_LOG_TRACE(log("message updated in folder") + ZS_PARAM("folder name", originalFolderInfo.mName) + ZS_PARAM("message id", message.mID))
 
-              mDB->addMessageToFolderIfNotPresent(updateInfo.mInfo.mIndex, message.mID);
+              mDB->addMessageToFolderIfNotPresent(updateInfo.mInfo.mFolderIndex, message.mID);
               mDB->addOrUpdateMessage(message.mID, message.mVersion);
               break;
             }
             case PushMessageInfo::Disposition_Remove: {
               ZS_LOG_TRACE(log("message removed in folder") + ZS_PARAM("folder name", originalFolderInfo.mName) + ZS_PARAM("message id", message.mID))
 
-              mDB->addRemovedFolderVersionedMessageEntryIfMessageNotRemoved(updateInfo.mInfo.mIndex, message.mID);
-              mDB->removeMessageFromFolder(updateInfo.mInfo.mIndex, message.mID);
+              mDB->addRemovedFolderVersionedMessageEntryIfMessageNotRemoved(updateInfo.mInfo.mFolderIndex, message.mID);
+              mDB->removeMessageFromFolder(updateInfo.mInfo.mFolderIndex, message.mID);
               break;
             }
           }
         }
 
-        mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, folderInfo.mVersion, folderInfo.mUpdateNext);
+        mDB->updateFolderDownloadInfo(updateInfo.mInfo.mFolderIndex, folderInfo.mVersion, folderInfo.mUpdateNext);
 
         mFoldersNeedingUpdate.erase(foundNeedingUpdate);
 
@@ -1891,11 +1977,11 @@ namespace openpeer
               ZS_LOG_WARNING(Detail, log("folder version download conflict detected") + originalFolderInfo.toDebug())
 
               // this folder conflicted, purge it and reload it
-              mDB->removeAllMessagesFromFolder(updateInfo.mInfo.mIndex);
-              mDB->removeAllVersionedMessagesFromFolder(updateInfo.mInfo.mIndex);
-              mDB->resetFolderUniqueID(updateInfo.mInfo.mIndex);
+              mDB->removeAllMessagesFromFolder(updateInfo.mInfo.mFolderIndex);
+              mDB->removeAllVersionedMessagesFromFolder(updateInfo.mInfo.mFolderIndex);
+              mDB->resetFolderUniqueID(updateInfo.mInfo.mFolderIndex);
 
-              mDB->updateFolderDownloadInfo(updateInfo.mInfo.mIndex, String(), zsLib::now());
+              mDB->updateFolderDownloadInfo(updateInfo.mInfo.mFolderIndex, String(), zsLib::now());
             } else {
               hasConnectionFailure = true;
             }
@@ -1972,6 +2058,11 @@ namespace openpeer
             continue;
           }
 
+          if (processedInfo.mInfo.mEncryptedFileName.hasData()) {
+            ZS_LOG_TRACE(log("downloading via URL and not via channel") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
+            continue;
+          }
+
           if (0 != processedInfo.mChannelID) {
             ZS_LOG_TRACE(log("this message received download channel information") + ZS_PARAM("message id", processedInfo.mInfo.mMessageID))
             continue;
@@ -2037,45 +2128,65 @@ namespace openpeer
         ZS_LOG_DEBUG(log("messages meta data get result received") + IMessageMonitor::toDebug(monitor))
 
         AutoRecursiveLock lock(*this);
-        if (monitor == mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
-          mPendingDeliveryPrecheckMessageMetaDataGetMonitor.reset();
 
-          const PushMessageInfoList &messages = result->messages();
+        const PushMessageInfoList &messages = result->messages();
 
-          for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter)
+        bool handled = false;
+
+        for (PendingDeliveryMap::iterator iter_doNotUse = mPendingDelivery.begin(); iter_doNotUse != mPendingDelivery.end();)
+        {
+          PendingDeliveryMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          const String &messageID = (*current).first;
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if (processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor != monitor) continue;
+
+          processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor.reset();
+
+          handled = true;
+
+          for (PushMessageInfoList::const_iterator messIter = messages.begin(); messIter != messages.end(); ++messIter)
           {
-            const PushMessageInfo &info = (*iter);
+            const PushMessageInfo &pushInfo = (*messIter);
 
-            PendingDeliveryMap::iterator found = mPendingDelivery.find(info.mID);
-            if (found == mPendingDelivery.end()) {
-              ZS_LOG_WARNING(Detail, log("pre-checked message that is not pending delivery") + ZS_PARAM("message ID", info.mID))
-              continue;
+            if (pushInfo.mID != messageID) continue;
+
+            if (0 != pushInfo.mRemaining) {
+              ZS_LOG_DEBUG(log("message is partially delivered") + ZS_PARAM("message ID", messageID))
+
+              processedInfo.mSent = pushInfo.mLength - pushInfo.mRemaining;
+              IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+              goto next_iter_pending_delivery;
             }
 
-            ProcessedPendingDeliveryMessageInfo &processedInfo = (*found).second;
+            ZS_LOG_DEBUG(log("message is already delivered") + ZS_PARAM("message ID", messageID))
 
-            ZS_LOG_WARNING(Detail, log("no need to re-upload message as server already has message") + ZS_PARAM("message ID", info.mID) + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
+            mDB->removePendingDeliveryMessage(processedInfo.mInfo.mPendingDeliveryMessageIndex);
 
-            mDB->removePendingDeliveryMessage(processedInfo.mInfo.mIndex);
-
-            SendQueryMap::iterator foundQuery = mSendQueries.find(info.mID);
+            SendQueryMap::iterator foundQuery = mSendQueries.find(pushInfo.mID);
             if (foundQuery != mSendQueries.end()) {
               SendQueryPtr query = (*foundQuery).second.lock();
 
               if (query) {
                 query->notifyUploaded();
-                query->notifyDeliveryInfoChanged(info.mFlags);
+                query->notifyDeliveryInfoChanged(pushInfo.mFlags);
               } else {
                 mSendQueries.erase(foundQuery);
               }
             }
 
-            mPendingDelivery.erase(found);
+            mPendingDelivery.erase(current);
+            goto next_iter_pending_delivery;
           }
 
-          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-          return true;
+        next_iter_pending_delivery:
+          {
+          }
         }
+
+        if (handled) return true;
 
         if (monitor != mMessageMetaDataGetMonitor) {
           ZS_LOG_WARNING(Detail, log("notified about obsolete monitor") + IMessageMonitor::toDebug(monitor))
@@ -2083,8 +2194,6 @@ namespace openpeer
         }
 
         mMessageMetaDataGetMonitor.reset();
-
-        const PushMessageInfoList &messages = result->messages();
 
         for (PushMessageInfoList::const_iterator iter = messages.begin(); iter != messages.end(); ++iter)
         {
@@ -2110,7 +2219,7 @@ namespace openpeer
             }
           }
 
-          mDB->removeMessageDeliveryStatesForMessage(processedInfo.mInfo.mIndex);
+          mDB->removeMessageDeliveryStatesForMessage(processedInfo.mInfo.mMessageIndex);
 
           for (PushMessageInfo::FlagInfoMap::const_iterator flagIter = info.mFlags.begin(); flagIter != info.mFlags.end(); ++flagIter) {
 
@@ -2130,7 +2239,7 @@ namespace openpeer
             }
 
             mDB->updateMessageDeliverStateForMessage(
-                                                     processedInfo.mInfo.mIndex,
+                                                     processedInfo.mInfo.mMessageIndex,
                                                      PushMessageInfo::FlagInfo::toString(flagInfo.mFlag),
                                                      deliveryInfos
                                                      );
@@ -2140,7 +2249,7 @@ namespace openpeer
           copy(info.mPushInfos, pushInfos);
 
           mDB->updateMessage(
-                             processedInfo.mInfo.mIndex,
+                             processedInfo.mInfo.mMessageIndex,
                              info.mVersion,
                              info.mTo,
                              info.mFrom,
@@ -2218,14 +2327,20 @@ namespace openpeer
                                                                               message::MessageResultPtr result
                                                                               )
       {
-        ZS_LOG_ERROR(Debug, log("messages meta data get error result received") + IMessageMonitor::toDebug(monitor))
-
         ZS_LOG_ERROR(Detail, log("failed to get message metadata") + IMessageMonitor::toDebug(monitor) + ZS_PARAM("error", result->errorCode()) + ZS_PARAM("reason", result->errorReason()))
 
         AutoRecursiveLock lock(*this);
-        if (monitor == mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
-          connectionFailure();
-          return true;
+        for (PendingDeliveryMap::iterator iter_doNotUse = mPendingDelivery.begin(); iter_doNotUse != mPendingDelivery.end();)
+        {
+          PendingDeliveryMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if (processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor == monitor) {
+            connectionFailure();
+            return true;
+          }
         }
 
         if (monitor != mMessageMetaDataGetMonitor) {
@@ -2277,8 +2392,8 @@ namespace openpeer
 
             ZS_THROW_BAD_STATE_IF(mPendingDelivery.size() < 1)
 
-            ZS_LOG_DEBUG(log("message upload complete") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mIndex))
-            mDB->removePendingDeliveryMessage(processedInfo.mInfo.mIndex);
+            ZS_LOG_DEBUG(log("message upload complete") + processedInfo.mMessage.toDebug() + ZS_PARAM("pending index", processedInfo.mInfo.mPendingDeliveryMessageIndex))
+            mDB->removePendingDeliveryMessage(processedInfo.mInfo.mPendingDeliveryMessageIndex);
 
             SendQueryMap::iterator foundQuery = mSendQueries.find(processedInfo.mMessage.mID);
             if (foundQuery != mSendQueries.end()) {
@@ -2309,7 +2424,7 @@ namespace openpeer
 
           MessageUpdateRequestPtr request = MessageUpdateRequest::convert(monitor->getMonitoredMessage());
 
-          handelUpdateMessageGone(request, false);
+          handleUpdateMessageGone(request, false);
 
           if (PushMessageInfo::Disposition_Update == request->messageInfo().mDisposition) {
             MessageMap::iterator found = mMessagesToMarkRead.find(request->messageInfo().mID);
@@ -2368,7 +2483,7 @@ namespace openpeer
           mMarkingMonitors.erase(current);
 
           if (IHTTP::HTTPStatusCode_NotFound == result->errorCode()) {
-            handelUpdateMessageGone(MessageUpdateRequest::convert(monitor->getMonitoredMessage()), IHTTP::HTTPStatusCode_NotFound == result->errorCode());
+            handleUpdateMessageGone(MessageUpdateRequest::convert(monitor->getMonitoredMessage()), IHTTP::HTTPStatusCode_NotFound == result->errorCode());
           } else {
             connectionFailure();
           }
@@ -2425,8 +2540,8 @@ namespace openpeer
             continue;
           }
 
-          mDB->updateListURIs(processedInfo.mInfo.mIndex, uris);
-          mDB->notifyListDownloaded(processedInfo.mInfo.mIndex);
+          mDB->updateListURIs(processedInfo.mInfo.mListIndex, uris);
+          mDB->notifyListDownloaded(processedInfo.mInfo.mListIndex);
 
           mListsNeedingDownload.erase(found);
         }
@@ -2442,7 +2557,7 @@ namespace openpeer
             continue;
           }
 
-          mDB->notifyListFailedToDownload(processedInfo.mInfo.mIndex);
+          mDB->notifyListFailedToDownload(processedInfo.mInfo.mListIndex);
 
           mListsNeedingDownload.erase(current);
         }
@@ -2485,7 +2600,7 @@ namespace openpeer
       Log::Params ServicePushMailboxSession::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("ServicePushMailboxSession");
-        IHelper::debugAppend(objectEl, "id", mID);
+        UseServicesHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
 
@@ -2502,123 +2617,127 @@ namespace openpeer
 
         ElementPtr resultEl = Element::create("ServicePushMailboxSession");
 
-        IHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
 
-        IHelper::debugAppend(resultEl, "graceful shutdown reference", (bool)mGracefulShutdownReference);
+        UseServicesHelper::debugAppend(resultEl, "graceful shutdown reference", (bool)mGracefulShutdownReference);
 
-        IHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
-        IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
+        UseServicesHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
+        UseServicesHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
 
-        IHelper::debugAppend(resultEl, "db", (bool)mDB);
+        UseServicesHelper::debugAppend(resultEl, "db", (bool)mDB);
 
-        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        UseServicesHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
-        IHelper::debugAppend(resultEl, "error code", mLastError);
-        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+        UseServicesHelper::debugAppend(resultEl, "error code", mLastError);
+        UseServicesHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
-        IHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
+        UseServicesHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
 
-        IHelper::debugAppend(resultEl, "backgrounding subscription id", mBackgroundingSubscription ? mBackgroundingSubscription->getID() : 0);
-        IHelper::debugAppend(resultEl, "backgrounding notifier", (bool)mBackgroundingNotifier);
-        IHelper::debugAppend(resultEl, "backgrounding enabled", mBackgroundingEnabled);
+        UseServicesHelper::debugAppend(resultEl, "backgrounding subscription id", mBackgroundingSubscription ? mBackgroundingSubscription->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "backgrounding notifier", (bool)mBackgroundingNotifier);
+        UseServicesHelper::debugAppend(resultEl, "backgrounding enabled", mBackgroundingEnabled);
 
-        IHelper::debugAppend(resultEl, "reachability subscription", mReachabilitySubscription ? mReachabilitySubscription->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "reachability subscription", mReachabilitySubscription ? mReachabilitySubscription->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "lockbox subscription", mLockboxSubscription ? mLockboxSubscription->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "lockbox subscription", mLockboxSubscription ? mLockboxSubscription->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "sent via object id", mSentViaObjectID);
+        UseServicesHelper::debugAppend(resultEl, "sent via object id", mSentViaObjectID);
 
-        IHelper::debugAppend(resultEl, "tcp messaging id", mTCPMessaging ? mTCPMessaging->getID() : 0);
-        IHelper::debugAppend(resultEl, "wire stream", mWireStream ? mWireStream->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "tcp messaging id", mTCPMessaging ? mTCPMessaging->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "wire stream", mWireStream ? mWireStream->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "reader id", mReader ? mReader->getID() : 0);
-        IHelper::debugAppend(resultEl, "writer id", mWriter ? mWriter->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "reader id", mReader ? mReader->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "writer id", mWriter ? mWriter->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "lockbox", mLockbox ? mLockbox->getID() : 0);
-        IHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
-        IHelper::debugAppend(resultEl, IPeerFiles::toDebug(mPeerFiles));
+        UseServicesHelper::debugAppend(resultEl, "lockbox", mLockbox ? mLockbox->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, mLockboxInfo.toDebug());
+        UseServicesHelper::debugAppend(resultEl, IPeerFiles::toDebug(mPeerFiles));
 
-        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant query id", mGrantQuery ? mGrantQuery->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "obtained lock", mObtainedLock);
+        UseServicesHelper::debugAppend(resultEl, "obtained lock", mObtainedLock);
 
-        IHelper::debugAppend(resultEl, "required connection", mRequiresConnection);
-        IHelper::debugAppend(resultEl, "inactivty timeout (s)", mInactivityTimeout);
-        IHelper::debugAppend(resultEl, "last activity", mLastActivity);
+        UseServicesHelper::debugAppend(resultEl, "required connection", mRequiresConnection);
+        UseServicesHelper::debugAppend(resultEl, "inactivty timeout (s)", mInactivityTimeout);
+        UseServicesHelper::debugAppend(resultEl, "last activity", mLastActivity);
 
-        IHelper::debugAppend(resultEl, "default last try duration (ms)", mDefaultLastRetryDuration);
-        IHelper::debugAppend(resultEl, "last try duration (ms)", mLastRetryDuration);
-        IHelper::debugAppend(resultEl, "do not retry connection before", mDoNotRetryConnectionBefore);
-        IHelper::debugAppend(resultEl, "retry timer", mRetryTimer ? mRetryTimer->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "default last try duration (ms)", mDefaultLastRetryDuration);
+        UseServicesHelper::debugAppend(resultEl, "last try duration (ms)", mLastRetryDuration);
+        UseServicesHelper::debugAppend(resultEl, "do not retry connection before", mDoNotRetryConnectionBefore);
+        UseServicesHelper::debugAppend(resultEl, "retry timer", mRetryTimer ? mRetryTimer->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "server list", mPushMailboxServers.size());
-        IHelper::debugAppend(resultEl, "server lookup id", mServerLookup ? mServerLookup->getID() : 0);
-        IHelper::debugAppend(resultEl, "server srv record", (bool)mServerSRV);
-        IHelper::debugAppend(resultEl, "server ip", string(mServerIP));
+        UseServicesHelper::debugAppend(resultEl, "server list", mPushMailboxServers.size());
+        UseServicesHelper::debugAppend(resultEl, "server lookup id", mServerLookup ? mServerLookup->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "server srv record", (bool)mServerSRV);
+        UseServicesHelper::debugAppend(resultEl, "server ip", string(mServerIP));
 
-        IHelper::debugAppend(resultEl, "peer uri from access result", mPeerURIFromAccessResult);
+        UseServicesHelper::debugAppend(resultEl, "peer uri from access result", mPeerURIFromAccessResult);
+        UseServicesHelper::debugAppend(resultEl, "upload message url", mUploadMessageURL);
+        UseServicesHelper::debugAppend(resultEl, "upload message url", mDownloadMessageURL);
+        UseServicesHelper::debugAppend(resultEl, "string replacement message id", mStringReplacementMessageID);
+        UseServicesHelper::debugAppend(resultEl, "string replacement message size", mStringReplacementMessageSize);
 
-        IHelper::debugAppend(resultEl, mNamespaceGrantChallengeInfo.toDebug());
+        UseServicesHelper::debugAppend(resultEl, mNamespaceGrantChallengeInfo.toDebug());
 
-        IHelper::debugAppend(resultEl, "servers get monitor", mServersGetMonitor ? mServersGetMonitor->getID() : 0);
-        IHelper::debugAppend(resultEl, "access monitor", mAccessMonitor ? mAccessMonitor->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant monitor", mGrantMonitor ? mGrantMonitor->getID() : 0);
-        IHelper::debugAppend(resultEl, "peer validate monitor", mPeerValidateMonitor ? mPeerValidateMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "servers get monitor", mServersGetMonitor ? mServersGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "access monitor", mAccessMonitor ? mAccessMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant monitor", mGrantMonitor ? mGrantMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "peer validate monitor", mPeerValidateMonitor ? mPeerValidateMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "device token", mDeviceToken);
-        IHelper::debugAppend(resultEl, "register queries", mRegisterQueries.size());
+        UseServicesHelper::debugAppend(resultEl, "device token", mDeviceToken);
+        UseServicesHelper::debugAppend(resultEl, "register queries", mRegisterQueries.size());
 
-        IHelper::debugAppend(resultEl, "send queries", mSendQueries.size());
+        UseServicesHelper::debugAppend(resultEl, "send queries", mSendQueries.size());
 
-        IHelper::debugAppend(resultEl, "refresh folders", mRefreshFolders);
-        IHelper::debugAppend(resultEl, "monitored folders", mMonitoredFolders.size());
-        IHelper::debugAppend(resultEl, "notified monitored folders", mNotifiedMonitoredFolders.size());
-        IHelper::debugAppend(resultEl, "folders get monitor", mFoldersGetMonitor ? mFoldersGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh folders", mRefreshFolders);
+        UseServicesHelper::debugAppend(resultEl, "monitored folders", mMonitoredFolders.size());
+        UseServicesHelper::debugAppend(resultEl, "notified monitored folders", mNotifiedMonitoredFolders.size());
+        UseServicesHelper::debugAppend(resultEl, "folders get monitor", mFoldersGetMonitor ? mFoldersGetMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "refresh folders needing update", mRefreshFoldersNeedingUpdate);
-        IHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
-        IHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
+        UseServicesHelper::debugAppend(resultEl, "refresh folders needing update", mRefreshFoldersNeedingUpdate);
+        UseServicesHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
+        UseServicesHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
 
-        IHelper::debugAppend(resultEl, "refresh monitored folder creation", mRefreshMonitorFolderCreation);
-        IHelper::debugAppend(resultEl, "folder creation monitor", mFolderCreationUpdateMonitor ? mFolderCreationUpdateMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh monitored folder creation", mRefreshMonitorFolderCreation);
+        UseServicesHelper::debugAppend(resultEl, "folder creation monitor", mFolderCreationUpdateMonitor ? mFolderCreationUpdateMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "refresh messages needing update", mRefreshMessagesNeedingUpdate);
-        IHelper::debugAppend(resultEl, "messages needing update", mMessagesNeedingUpdate.size());
-        IHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageMetaDataGetMonitor ? mMessageMetaDataGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh messages needing update", mRefreshMessagesNeedingUpdate);
+        UseServicesHelper::debugAppend(resultEl, "messages needing update", mMessagesNeedingUpdate.size());
+        UseServicesHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageMetaDataGetMonitor ? mMessageMetaDataGetMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "refresh messages needing data", mRefreshMessagesNeedingData);
-        IHelper::debugAppend(resultEl, "messages needing data", mMessagesNeedingData.size());
-        IHelper::debugAppend(resultEl, "messages needing data channels", mMessagesNeedingDataChannels.size());
-        IHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageDataGetMonitor ? mMessageDataGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh messages needing data", mRefreshMessagesNeedingData);
+        UseServicesHelper::debugAppend(resultEl, "messages needing data", mMessagesNeedingData.size());
+        UseServicesHelper::debugAppend(resultEl, "messages needing data channels", mMessagesNeedingDataChannels.size());
+        UseServicesHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageDataGetMonitor ? mMessageDataGetMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "pending channel data", mPendingChannelData.size());
+        UseServicesHelper::debugAppend(resultEl, "pending channel data", mPendingChannelData.size());
 
-        IHelper::debugAppend(resultEl, "refresh lists needing download", mRefreshListsNeedingDownload);
-        IHelper::debugAppend(resultEl, "lists to download", mListsNeedingDownload.size());
-        IHelper::debugAppend(resultEl, "list fetch monitor", mListFetchMonitor ? mListFetchMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh lists needing download", mRefreshListsNeedingDownload);
+        UseServicesHelper::debugAppend(resultEl, "lists to download", mListsNeedingDownload.size());
+        UseServicesHelper::debugAppend(resultEl, "list fetch monitor", mListFetchMonitor ? mListFetchMonitor->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "refresh keys folder needs processing", mRefreshKeysFolderNeedsProcessing);
+        UseServicesHelper::debugAppend(resultEl, "refresh keys folder needs processing", mRefreshKeysFolderNeedsProcessing);
 
-        IHelper::debugAppend(resultEl, "refresh messages needing decryption", mRefreshMessagesNeedingDecryption);
+        UseServicesHelper::debugAppend(resultEl, "refresh messages needing decryption", mRefreshMessagesNeedingDecryption);
+        UseServicesHelper::debugAppend(resultEl, "messages needing decryption", mMessagesNeedingDecryption.size());
 
-        IHelper::debugAppend(resultEl, "refresh pending delivery", mRefreshPendingDelivery);
-        IHelper::debugAppend(resultEl, "max delivery chunk size", mDeliveryMaxChunkSize);
-        IHelper::debugAppend(resultEl, "last channel", mLastChannel);
-        IHelper::debugAppend(resultEl, "pending delivery pre-check required", mPendingDeliveryPrecheckRequired);
-        IHelper::debugAppend(resultEl, "pending delivery", mPendingDelivery.size());
-        IHelper::debugAppend(resultEl, "pending delivery pre-check messages metadata get monitor", mPendingDeliveryPrecheckMessageMetaDataGetMonitor ? mPendingDeliveryPrecheckMessageMetaDataGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "refresh pending delivery", mRefreshPendingDelivery);
+        UseServicesHelper::debugAppend(resultEl, "max delivery chunk size", mDeliveryMaxChunkSize);
+        UseServicesHelper::debugAppend(resultEl, "last channel", mLastChannel);
+        UseServicesHelper::debugAppend(resultEl, "pending delivery pre-check required", mPendingDeliveryPrecheckRequired);
+        UseServicesHelper::debugAppend(resultEl, "pending delivery", mPendingDelivery.size());
 
-        IHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
+        UseServicesHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
 
-        IHelper::debugAppend(resultEl, "messages to mark read", mMessagesToMarkRead.size());
-        IHelper::debugAppend(resultEl, "messages to remove", mMessagesToRemove.size());
-        IHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
+        UseServicesHelper::debugAppend(resultEl, "messages to mark read", mMessagesToMarkRead.size());
+        UseServicesHelper::debugAppend(resultEl, "messages to remove", mMessagesToRemove.size());
+        UseServicesHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
 
-        IHelper::debugAppend(resultEl, "refresh needing expiry", mRefreshMessagesNeedingExpiry);
+        UseServicesHelper::debugAppend(resultEl, "refresh needing expiry", mRefreshMessagesNeedingExpiry);
 
         return resultEl;
       }
@@ -2669,8 +2788,10 @@ namespace openpeer
 
         if (!stepProcessKeysFolder()) goto post_step;
         if (!stepDecryptMessages()) goto post_step;
+        if (!stepDecryptMessagesAsync()) goto post_step;
 
         if (!stepPendingDelivery()) goto post_step;
+        if (!stepPendingDeliveryEncryptMessages()) goto post_step;
         if (!stepPendingDeliveryUpdateRequest()) goto post_step;
         if (!stepDeliverViaURL()) goto post_step;
 
@@ -3639,15 +3760,94 @@ namespace openpeer
 
         MessageIDList fetchMessages;
 
-        for (MessageUpdateMap::iterator iter_doNotUse = mMessagesNeedingUpdate.begin(); iter_doNotUse != mMessagesNeedingUpdate.end(); )
+        for (MessageDataMap::iterator iter_doNotUse = mMessagesNeedingData.begin(); iter_doNotUse != mMessagesNeedingData.end(); )
         {
-          MessageUpdateMap::iterator current = iter_doNotUse;
+          MessageDataMap::iterator current = iter_doNotUse;
           ++iter_doNotUse;
 
-          String messageID = (*current).first;
-          ProcessedMessageNeedingUpdateInfo &info = (*current).second;
+          const String &messageID = (*current).first;
+          ProcessedMessageNeedingDataInfo &processedInfo = (*current).second;
 
-          info.mSentRequest = true;
+          if (processedInfo.mSentRequest) {
+            ZS_LOG_TRACE(log("already sent request for message data get") + ZS_PARAM("message ID", messageID))
+            continue;
+          }
+
+          if ((processedInfo.mInfo.mEncryptedDataLength > mMaxMessageDownloadToMemorySize) ||
+              (processedInfo.mInfo.mEncryptedFileName.hasData())) { // check if this message cannot be processed in memory
+
+            if (processedInfo.mInfo.mEncryptedFileName.isEmpty()) {
+              processedInfo.mInfo.mEncryptedFileName = mDB->getStorageFileName();
+              FILE *file = fopen(processedInfo.mInfo.mEncryptedFileName, "wb");
+              if (NULL == file) {
+                ZS_LOG_ERROR(Detail, log("failed to create storage file") + ZS_PARAM("file", processedInfo.mInfo.mEncryptedFileName) + ZS_PARAM("message ID", messageID))
+                processedInfo.mInfo.mEncryptedFileName.clear();
+                continue;
+              }
+              fclose(file);
+
+              mDB->updateMessageEncryptionFileName(processedInfo.mInfo.mMessageIndex, processedInfo.mInfo.mEncryptedFileName);
+            }
+
+            if (processedInfo.mReceivedData < 1) {
+              struct stat st;
+              st.st_size = 0;
+              int result = stat(processedInfo.mInfo.mEncryptedFileName, &st);
+              if (result < 0) {
+                int error = errno;
+                ZS_LOG_ERROR(Detail, log("failed to get file size") + ZS_PARAM("file", processedInfo.mInfo.mEncryptedFileName) + ZS_PARAM("message ID", messageID) + ZS_PARAM("error", error) + ZS_PARAM("error string", strerror(error)))
+                // by clearing out the file it will attempt to create a new one
+                processedInfo.mInfo.mEncryptedFileName.clear();
+                mDB->updateMessageEncryptionFileName(processedInfo.mInfo.mMessageIndex, processedInfo.mInfo.mEncryptedFileName);
+
+                IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+                continue;
+              }
+
+              processedInfo.mReceivedData = st.st_size;
+            }
+
+            processedInfo.mSentRequest = true;
+            
+            if (processedInfo.mReceivedData >= processedInfo.mInfo.mEncryptedDataLength) {
+              ZS_LOG_TRACE(log("all data has been received") + ZS_PARAM("message ID", messageID))
+              continue;
+            }
+
+            if (processedInfo.mDeliveryURL.hasData()) {
+              ZS_LOG_TRACE(log("already attempting to delivery message via URL") + ZS_PARAM("message ID", messageID))
+              continue;
+            }
+
+            // need to issue a request to download data via URL
+
+            size_t totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mReceivedData;
+            processedInfo.mDeliveryURL = mDownloadMessageURL;
+
+            // replace message ID
+            {
+              size_t found = processedInfo.mDeliveryURL.find(mStringReplacementMessageID);
+              if (String::npos != found) {
+                String replaceMessageID = urlencode(messageID);
+                processedInfo.mDeliveryURL.replace(found, mStringReplacementMessageID.size(), replaceMessageID);
+              }
+            }
+
+            // replace size
+            {
+              size_t found = processedInfo.mDeliveryURL.find(mStringReplacementMessageSize);
+              if (String::npos != found) {
+                String replaceMessageSize = string(totalRemaining);
+                processedInfo.mDeliveryURL.replace(found, mStringReplacementMessageID.size(), replaceMessageSize);
+              }
+            }
+
+            ZS_LOG_DEBUG(log("going to fetch push message via URL") + ZS_PARAM("url", processedInfo.mDeliveryURL) + ZS_PARAM("file", processedInfo.mInfo.mEncryptedFileName))
+
+            IServicePushMailboxSessionAsyncDatabaseDelegateProxy::create(mAsyncDB)->asyncDownloadDataFromURL(processedInfo.mDeliveryURL, processedInfo.mInfo.mEncryptedFileName, processedInfo.mInfo.mEncryptedDataLength, totalRemaining, AsyncNotifier::create(getAssociatedMessageQueue(), mThisWeak.lock(), messageID));
+            continue;
+          }
+
 
           fetchMessages.push_back(messageID);
         }
@@ -3664,7 +3864,7 @@ namespace openpeer
 
         request->messageIDs(fetchMessages);
 
-        mMessageMetaDataGetMonitor = sendRequest(IMessageMonitorResultDelegate<MessagesDataGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        mMessageDataGetMonitor = sendRequest(IMessageMonitorResultDelegate<MessagesDataGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
 
         return true;
       }
@@ -3815,7 +4015,7 @@ namespace openpeer
             }
 
             KeyingBundle bundle;
-            if (!extractKeyingBundle(info.mData, bundle)) {
+            if (!extractKeyingBundle(info.mEncryptedData, bundle)) {
               ZS_LOG_WARNING(Detail, log("failed to extract information from keying bundle") + ZS_PARAM("message index", info.mMessageIndex))
               goto post_processing;
             }
@@ -3844,7 +4044,7 @@ namespace openpeer
                 goto post_processing;
               }
 
-              receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+              receivingInfo.mReceivingKeyIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
               receivingInfo.mKeyID = bundle.mReferencedKeyID;
               receivingInfo.mURI = info.mFrom;
               receivingInfo.mExpires = bundle.mExpires;
@@ -3891,7 +4091,7 @@ namespace openpeer
                     goto post_processing;
                   }
 
-                  receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+                  receivingInfo.mReceivingKeyIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
                   receivingInfo.mKeyID = bundle.mReferencedKeyID;
                   receivingInfo.mURI = info.mFrom;
                   receivingInfo.mExpires = bundle.mExpires;
@@ -3911,7 +4111,7 @@ namespace openpeer
                 String rawKeyID = extractRawSendingKeyID(bundle.mReferencedKeyID, isDHKey);
 
                 SendingKeyInfo sendingInfo;
-                sendingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+                sendingInfo.mSendingKeyIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
                 if (!mDB->getSendingKey(rawKeyID, sendingInfo)) {
                   ZS_LOG_WARNING(Detail, log("sending key is not known on this device") + ZS_PARAM("key id", bundle.mReferencedKeyID))
                   goto post_processing;
@@ -3935,7 +4135,7 @@ namespace openpeer
 
                     SecureByteBlockPtr ackBuffer;
                     if (sendingInfo.mAckDHPassphraseSet.hasData()) {
-                      ackBuffer = IHelper::convertFromBase64(sendingInfo.mAckDHPassphraseSet);
+                      ackBuffer = UseServicesHelper::convertFromBase64(sendingInfo.mAckDHPassphraseSet);
                     } else {
                       size_t totalBytes = (sendingInfo.mListSize / 8) + (sendingInfo.mListSize % 8 != 0 ? 1 : 0);
                       ackBuffer = SecureByteBlockPtr(new SecureByteBlock(totalBytes));
@@ -3960,7 +4160,7 @@ namespace openpeer
                       ZS_LOG_DEBUG(log("remote party acked DH key") + ZS_PARAM("key id", sendingInfo.mKeyID) + ZS_PARAM("total", sendingInfo.mListSize) + ZS_PARAM("total acked", sendingInfo.mTotalWithPassphrase))
 
                       if (sendingInfo.mListSize > sendingInfo.mTotalWithPassphrase) {
-                        sendingInfo.mAckDHPassphraseSet = IHelper::convertToBase64(*ackBuffer);
+                        sendingInfo.mAckDHPassphraseSet = UseServicesHelper::convertToBase64(*ackBuffer);
                       } else {
                         sendingInfo.mAckDHPassphraseSet = String();
                       }
@@ -3985,7 +4185,7 @@ namespace openpeer
               } else if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_MODE_ANSWER == bundle.mMode) {
                 // remote party is answering and giving a passphrase which represents their sending passphrase (i.e. which is used as a local receiving key)
                 ReceivingKeyInfo receivingInfo;
-                receivingInfo.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+                receivingInfo.mReceivingKeyIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
 
                 if (!mDB->getReceivingKey(bundle.mReferencedKeyID, receivingInfo)) {
                   ZS_LOG_WARNING(Detail, log("never created an offer so this answer is not related") + ZS_PARAM("key id", bundle.mReferencedKeyID) + ZS_PARAM("from", info.mFrom) + ZS_PARAM("uri", receivingInfo.mURI))
@@ -4044,6 +4244,11 @@ namespace openpeer
           return true;
         }
 
+        if (mMessagesNeedingDecryption.size() > 0) {
+          ZS_LOG_TRACE(log("messages are still pending decrypting"))
+          return true;
+        }
+
         MessagesNeedingDecryptingList messages;
         mDB->getBatchOfMessagesNeedingDecrypting(OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE, messages);
 
@@ -4060,18 +4265,23 @@ namespace openpeer
           String keyID;
 
           {
-            IHelper::SplitMap split;
+            UseServicesHelper::SplitMap split;
 
             if (info.mEncoding.isEmpty()) {
-              ZS_LOG_DEBUG(log("message was not encoded thus the encrypted data is the decrypted data") + ZS_PARAM("message index", info.mMessageIndex))
-              mDB->notifyMessageDecrypted(info.mMessageIndex, info.mData, true);
+              ZS_LOG_DEBUG(log("message was not encoded thus the encrypted data is the decrypted data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mMessageIndex))
+              if (info.mEncryptedFileName.hasData()) {
+                mDB->notifyMessageDecrypted(info.mMessageIndex, String(), info.mEncryptedFileName, true); // encrypted and decrypted point to same location
+              } else {
+                mDB->notifyMessageDecrypted(info.mMessageIndex, info.mEncryptedData, true);
+              }
+
               mRefreshVersionedFolders = true;
               continue;
             }
 
-            IHelper::split(info.mEncoding, split, ':');
+            UseServicesHelper::split(info.mEncoding, split, ':');
             if (split.size() != 5) {
-              ZS_LOG_WARNING(Detail, log("encoding scheme is not known thus cannot decrypt") + ZS_PARAM("encoding", info.mEncoding))
+              ZS_LOG_WARNING(Detail, log("encoding scheme is not known thus cannot decrypt") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("encoding", info.mEncoding))
               goto failed_to_decrypt;
             }
             if ((split[0] + ":") != OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) {
@@ -4079,7 +4289,7 @@ namespace openpeer
               goto failed_to_decrypt;
             }
 
-            String encodingNamespace = IHelper::convertToString(*IHelper::convertFromBase64(split[1]));
+            String encodingNamespace = UseServicesHelper::convertToString(*UseServicesHelper::convertFromBase64(split[1]));
             if (OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE != encodingNamespace) {
               ZS_LOG_WARNING(Detail, log("encoding namespace is not \"" OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "\" thus cannot decrypt") + ZS_PARAM("encoding", info.mEncoding))
               goto failed_to_decrypt;
@@ -4090,31 +4300,56 @@ namespace openpeer
             ReceivingKeyInfo receivingKey;
 
             if (!mDB->getReceivingKey(keyID, receivingKey)) {
-              ZS_LOG_WARNING(Detail, log("receiving key is not available key thus cannot decrypt yet") + ZS_PARAM("key id", keyID))
+              ZS_LOG_WARNING(Detail, log("receiving key is not available key thus cannot decrypt yet") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("key id", keyID))
               goto decrypt_later;
             }
 
             if (receivingKey.mPassphrase.isEmpty()) {
-              ZS_LOG_WARNING(Detail, log("receiving key does not contain passphrase yet thus cannot decrypt yet") + ZS_PARAM("key id", keyID))
+              ZS_LOG_WARNING(Detail, log("receiving key does not contain passphrase yet thus cannot decrypt yet") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("key id", keyID))
               goto decrypt_later;
             }
 
-            if (!info.mData) {
-              ZS_LOG_WARNING(Detail, log("message cannot decrypt as it has no data") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
+            if (info.mEncryptedFileName.isEmpty()) {
+              if (!info.mEncryptedData) {
+                ZS_LOG_WARNING(Detail, log("message cannot decrypt as it has no data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
+                goto failed_to_decrypt;
+              }
+
+              SecureByteBlockPtr decryptedData;
+              if (!decryptMessage(keyID, receivingKey.mPassphrase, split[3], split[4], *info.mEncryptedData, decryptedData)) {
+                ZS_LOG_WARNING(Detail, log("failed to decrypt message") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
+                goto failed_to_decrypt;
+              }
+
+              ZS_THROW_INVALID_ASSUMPTION_IF(!decryptedData)
+
+              ZS_LOG_DEBUG(log("message is now decrypted") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
+              mDB->notifyMessageDecrypted(info.mMessageIndex, decryptedData, true);
+              mRefreshVersionedFolders = true;
+              continue;
+            }
+
+            ZS_LOG_DEBUG(log("will decrypt file asynchronously") + ZS_PARAM("message ID", info.mMessageID))
+
+            // this needs more processing since it's a file
+            ProcessedMessagesNeedingDecryptingInfo processedInfo;
+
+            processedInfo.mDecryptedFileName = mDB->getStorageFileName();
+            processedInfo.mInfo = info;
+            processedInfo.mPassphraseID = keyID;
+            processedInfo.mPassphrase = receivingKey.mPassphrase;
+            processedInfo.mSalt = split[3];
+            processedInfo.mProof = split[4];
+
+            UseDecryptorPtr decryptor = prepareDecryptor(keyID, receivingKey.mPassphrase, split[3]);
+
+            processedInfo.mDecryptor = AsyncDecrypt::create(getAssociatedMessageQueue(), mThisWeak.lock(), decryptor, info.mEncryptedFileName, processedInfo.mDecryptedFileName);
+            if (processedInfo.mDecryptor) {
+              ZS_LOG_ERROR(Detail, log("failed to create asycn decryptor") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
               goto failed_to_decrypt;
             }
 
-            SecureByteBlockPtr decryptedData;
-            if (!decryptMessage(keyID, receivingKey.mPassphrase, split[3], split[4], *info.mData, decryptedData)) {
-              ZS_LOG_WARNING(Detail, log("failed to decrypt message") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
-              goto failed_to_decrypt;
-            }
-
-            ZS_THROW_INVALID_ASSUMPTION_IF(!decryptedData)
-
-            ZS_LOG_DEBUG(log("message is now decrypted") + ZS_PARAM("message index", info.mMessageIndex) + ZS_PARAM("key id", keyID))
-            mDB->notifyMessageDecrypted(info.mMessageIndex, decryptedData, true);
-            mRefreshVersionedFolders = true;
+            mMessagesNeedingDecryption[info.mMessageID] = processedInfo;
             continue;
           }
 
@@ -4134,6 +4369,63 @@ namespace openpeer
 
         // decrypt again...
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepDecryptMessagesAsync()
+      {
+        if (mMessagesNeedingDecryption.size() < 1) {
+          ZS_LOG_TRACE(log("nothing decrypting asynchronously"))
+          return true;
+        }
+
+
+        for (MessageDecryptionMap::iterator iter_doNotUse = mMessagesNeedingDecryption.begin(); iter_doNotUse != mMessagesNeedingDecryption.end();)
+        {
+          MessageDecryptionMap::iterator current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          const String &messageID = (*current).first;
+          ProcessedMessagesNeedingDecryptingInfo &processedInfo = (*current).second;
+
+          // scope: check decryption
+          {
+            if (!processedInfo.mDecryptor->isComplete()) {
+              ZS_LOG_TRACE(log("message is still decrypting") + ZS_PARAM("message ID", messageID))
+              continue;
+            }
+
+            if (!processedInfo.mDecryptor->wasSuccessful()) {
+              ZS_LOG_WARNING(Detail, log("failed to decrypt message") + ZS_PARAM("message ID", messageID))
+              goto failed_to_decrypt;
+            }
+
+            if (!validateDecryption(processedInfo.mPassphraseID, processedInfo.mPassphrase, processedInfo.mSalt, processedInfo.mDecryptor->getHash(), processedInfo.mProof)) {
+              ZS_LOG_WARNING(Detail, log("decryption proof validation failed") + ZS_PARAM("message ID", messageID))
+              goto failed_to_decrypt;
+            }
+
+            ZS_LOG_DEBUG(log("message is now decrypted") + ZS_PARAM("message ID", processedInfo.mInfo.mMessageID) + ZS_PARAM("message index", processedInfo.mInfo.mMessageIndex) + ZS_PARAM("key id", processedInfo.mPassphraseID))
+            mDB->notifyMessageDecrypted(processedInfo.mInfo.mMessageIndex, String(), processedInfo.mDecryptedFileName, true);
+
+            // remove the file from the system since the encrypted version is no longer needed
+            remove(processedInfo.mInfo.mEncryptedFileName);
+
+            mRefreshVersionedFolders = true;
+
+            mMessagesNeedingDecryption.erase(current);
+            continue;
+          }
+
+        failed_to_decrypt:
+          {
+            mDB->notifyMessageDecryptionFailure(processedInfo.mInfo.mMessageIndex);
+            mMessagesNeedingDecryption.erase(current);
+            continue;
+          }
+        }
+
         return true;
       }
 
@@ -4164,11 +4456,6 @@ namespace openpeer
           return true;
         }
 
-        if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
-          ZS_LOG_TRACE(log("waiting for pending delivery pre-check to complete"))
-          return true;
-        }
-
         if (!mRefreshPendingDelivery) {
           ZS_LOG_TRACE(log("no need to check for messages needing delivery at this time"))
           return true;
@@ -4194,7 +4481,6 @@ namespace openpeer
 
           ProcessedPendingDeliveryMessageInfo processedInfo;
           processedInfo.mInfo = info;
-          processedInfo.mSent = 0;
 
           String to;
           String from;
@@ -4217,24 +4503,40 @@ namespace openpeer
                                               pushInfos,
                                               processedInfo.mMessage.mSent,
                                               processedInfo.mMessage.mExpires,
+                                              processedInfo.mEncryptedFileName,
+                                              processedInfo.mDecryptedFileName,
                                               processedInfo.mData
                                               );
 
           if (!found) {
             ZS_LOG_ERROR(Detail, log("message pending delivery was not found") + ZS_PARAM("message index", info.mMessageIndex))
-            mDB->removePendingDeliveryMessage(info.mIndex);
+            mDB->removePendingDeliveryMessage(info.mPendingDeliveryMessageIndex);
             continue;
           }
 
           copy(pushInfos, processedInfo.mMessage.mPushInfos);
 
+          if (processedInfo.mDecryptedFileName.hasData()) {
+            if (processedInfo.mEncryptedFileName.isEmpty()) {
+              processedInfo.mEncryptedFileName = mDB->getStorageFileName();
+
+              UseEncryptorPtr encryptor =  prepareEncryptor(processedInfo.mMessage.mEncoding);
+
+              if (!encryptor) {
+                ZS_LOG_ERROR(Detail, log("failed to create encryptor for decrypted file") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+                handleMessageGone(processedInfo.mMessage.mID);
+                continue;
+              }
+
+              processedInfo.mEncryptor = AsyncEncrypt::create(getAssociatedMessageQueue(), mThisWeak.lock(), encryptor, processedInfo.mDecryptedFileName, processedInfo.mEncryptedFileName);
+            } else {
+              ZS_LOG_TRACE(log("file was previously encrypted"))
+            }
+          }
 
           if (processedInfo.mData) {
             ZS_LOG_TRACE(log("allocating a sending channel ID"))
-            processedInfo.mMessage.mChannelID = (++mLastChannel);
-            if (mLastChannel >= 0x3FFFFFFF) {  // safe wrap around (should not happen)
-              mLastChannel = 0;
-            }
+            processedInfo.mMessage.mChannelID = pickNextChannel();
           }
 
 
@@ -4252,7 +4554,6 @@ namespace openpeer
             processedInfo.mMessage.mFolders.push_back(folderInfo);
           }
 
-          fetchMessages.push_back(processedInfo.mMessage.mID);
 
           if (0 != processedInfo.mInfo.mSubscribeFlags) {
             PushMessageInfo::FlagInfoMap flags;
@@ -4273,6 +4574,7 @@ namespace openpeer
             }
           }
 
+          fetchMessages.push_back(processedInfo.mMessage.mID);
           mPendingDelivery[processedInfo.mMessage.mID] = processedInfo;
         }
 
@@ -4289,7 +4591,109 @@ namespace openpeer
 
         request->messageIDs(fetchMessages);
 
-        mPendingDeliveryPrecheckMessageMetaDataGetMonitor = sendRequest(IMessageMonitorResultDelegate<MessagesMetaDataGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+        IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessagesMetaDataGetResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+
+        for (MessageIDList::iterator iter = fetchMessages.begin(); iter != fetchMessages.end(); ++iter)
+        {
+          const String &messageID = (*iter);
+
+          PendingDeliveryMap::iterator found = mPendingDelivery.find(messageID);
+          ZS_THROW_BAD_STATE_IF(found == mPendingDelivery.end())
+
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*found).second;
+
+          processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor = monitor;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepPendingDeliveryEncryptMessages()
+      {
+        if (mPendingDelivery.size() < 1) {
+          ZS_LOG_TRACE(log("no messages need uploading at this time"))
+          return true;
+        }
+
+        for (PendingDeliveryMap::iterator iter_doNotuse = mPendingDelivery.begin(); iter_doNotuse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotuse;
+          ++iter_doNotuse;
+
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if (!processedInfo.mEncryptor) {
+            ZS_LOG_INSANE(log("message is not encrypting") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+            continue;
+          }
+
+          if (!processedInfo.mEncryptor->isComplete()) {
+            ZS_LOG_TRACE(log("message is still pending encryption") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+            continue;
+          }
+
+          if (!processedInfo.mEncryptor->wasSuccessful()) {
+            ZS_LOG_ERROR(Detail, log("message failed to encrypt") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("decrypted file name", processedInfo.mDecryptedFileName) + ZS_PARAM("encrypted file name", processedInfo.mEncryptedFileName))
+
+            handleMessageGone(processedInfo.mMessage.mID);
+            continue;
+          }
+
+          processedInfo.mMessage.mEncoding = finalizeEncodingScheme(processedInfo.mMessage.mEncoding, processedInfo.mEncryptor->getHash());
+
+          if (processedInfo.mMessage.mEncoding.isEmpty()) {
+            ZS_LOG_ERROR(Detail, log("message failed to encrypt") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("decrypted file name", processedInfo.mDecryptedFileName) + ZS_PARAM("encrypted file name", processedInfo.mEncryptedFileName))
+
+            handleMessageGone(processedInfo.mMessage.mID);
+            continue;
+          }
+
+          processedInfo.mInfo.mEncryptedDataLength = processedInfo.mEncryptor->getOutputSize();
+          processedInfo.mEncryptor.reset();
+
+          mDB->updateMessageEncodingAndEncryptedDataLength(processedInfo.mInfo.mMessageIndex, processedInfo.mMessage.mEncoding, processedInfo.mInfo.mEncryptedDataLength);
+        }
+
+        for (PendingDeliveryMap::iterator iter_doNotuse = mPendingDelivery.begin(); iter_doNotuse != mPendingDelivery.end(); )
+        {
+          PendingDeliveryMap::iterator current = iter_doNotuse;
+          ++iter_doNotuse;
+
+          ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
+
+          if ((processedInfo.mEncryptedFileName.isEmpty()) ||
+              (0 != processedInfo.mInfo.mEncryptedDataLength) ||
+              (processedInfo.mEncryptor)) {
+            ZS_LOG_INSANE(log("message does not need post encryption processing") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+            continue;
+          }
+
+          struct stat st;
+          st.st_size = 0;
+          int result = stat(processedInfo.mEncryptedFileName, &st);
+
+          if (result < 0) {
+            int error = errno;
+            ZS_LOG_ERROR(Detail, log("could not open encrypted file") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("encrypted file name", processedInfo.mEncryptedFileName) + ZS_PARAM("error", error) + ZS_PARAM("error string", strerror(error)))
+            remove(processedInfo.mEncryptedFileName);
+            handleMessageGone(processedInfo.mMessage.mID);
+            continue;
+          }
+
+          processedInfo.mInfo.mEncryptedDataLength = st.st_size;
+
+          if (0 == st.st_size) {
+            // message contains no data thus no need to send it encrypted
+            processedInfo.mDecryptedFileName.clear();
+            processedInfo.mEncryptedFileName.clear();
+            processedInfo.mData.reset();
+            processedInfo.mMessage.mEncoding.clear();
+
+            mDB->updateMessageEncodingAndFileNames(processedInfo.mInfo.mMessageIndex, String(), String(), String(), 0);
+            continue;
+          }
+        }
 
         return true;
       }
@@ -4311,8 +4715,13 @@ namespace openpeer
 
           ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
 
+          if (processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
+            ZS_LOG_TRACE(log("waiting for the pending delivery pre-check to complete") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+            continue;
+          }
+
           if (processedInfo.mPendingDeliveryMessageUpdateRequest) {
-            ZS_LOG_TRACE(log("already issues pending delivery message update request"))
+            ZS_LOG_TRACE(log("already issues pending delivery message update request") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
             continue;
           }
 
@@ -4326,11 +4735,12 @@ namespace openpeer
 
           request->messageInfo(processedInfo.mMessage);
 
-          processedInfo.mPendingDeliveryMessageUpdateErrorMonitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          processedInfo.mPendingDeliveryMessageUpdateErrorMonitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
 
           processedInfo.mPendingDeliveryMessageUpdateRequest = request;
 
-          if (0 == processedInfo.mMessage.mChannelID) {
+          if ((0 == processedInfo.mMessage.mChannelID) &&
+              (processedInfo.mEncryptedFileName.isEmpty())) {
             // message contains no data thus can immediately expect final result
             processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
           } else {
@@ -4350,8 +4760,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepDeliverViaURL()
       {
-        if (!mBackgroundingEnabled) {
-          ZS_LOG_TRACE(log("not in backgrounding mode thus no need to deliver via local file and URL"))
+        if (mPendingDelivery.size() < 1) {
+          ZS_LOG_TRACE(log("no messages need uploading at this time"))
           return true;
         }
 
@@ -4363,64 +4773,93 @@ namespace openpeer
           const String &messageID = (*current).first;
           ProcessedPendingDeliveryMessageInfo &processedInfo = (*current).second;
 
-          if (!processedInfo.mData) {
-            ZS_LOG_TRACE(log("message does not have data to deliver"))
+          if (processedInfo.mDeliveryURL.hasData()) {
+            ZS_LOG_TRACE(log("already attempting to deliver via temporary file") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
             continue;
           }
 
-          if (processedInfo.mTempFileName.hasData()) {
-            ZS_LOG_TRACE(log("already attempting to deliver via temporary file"))
+          if (processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
+            ZS_LOG_TRACE(log("waiting for the pending delivery pre-check to complete") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
             continue;
           }
 
           if (processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor) {
-            ZS_LOG_TRACE(log("already completed upload process for this message"))
+            ZS_LOG_TRACE(log("already completed upload process for this message") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
             continue;
           }
 
-          if (processedInfo.mSent >= processedInfo.mData->SizeInBytes()) {
-            ZS_LOG_WARNING(Detail, log("already uploaded entire message") + ZS_PARAM("sent", processedInfo.mSent) + ZS_PARAM("total", processedInfo.mData->SizeInBytes()))
+          if (processedInfo.mData) {
+            if (processedInfo.mSent >= processedInfo.mData->SizeInBytes()) {
+              ZS_LOG_WARNING(Detail, log("already uploaded entire message") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("sent", processedInfo.mSent) + ZS_PARAM("total", processedInfo.mData->SizeInBytes()))
+              continue;
+            }
+          } else if (processedInfo.mSent >= processedInfo.mInfo.mEncryptedDataLength) {
+            ZS_LOG_WARNING(Detail, log("already uploaded entire message") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("sent", processedInfo.mSent) + ZS_PARAM("total", processedInfo.mData->SizeInBytes()))
             continue;
           }
 
-          size_t totalRemaining = processedInfo.mData->SizeInBytes() - processedInfo.mSent;
+          if (processedInfo.mEncryptor) {
+            ZS_LOG_WARNING(Detail, log("message is in the process of being encrypted still") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("sent", processedInfo.mSent) + ZS_PARAM("total", processedInfo.mData->SizeInBytes()))
+            continue;
+          }
 
-          SecureByteBlockPtr buffer = IHelper::convertToBuffer(&(processedInfo.mData->BytePtr()[processedInfo.mSent]), totalRemaining);
+          if ((!processedInfo.mData) &&
+              (processedInfo.mEncryptedFileName.isEmpty())) {
+            ZS_LOG_TRACE(log("message does not have data to deliver"))
+            continue;
+          }
 
-          processedInfo.mTempFileName = mDB->storeToTemporaryFile(*buffer);
+          if (processedInfo.mEncryptedFileName.isEmpty()) {
+            ZS_THROW_INVALID_ASSUMPTION_IF(!processedInfo.mData)
+
+            if (!mBackgroundingEnabled) {
+              ZS_LOG_TRACE(log("no need to upload via URL when not backgrounding") + ZS_PARAM("message ID", processedInfo.mMessage.mID))
+              continue;
+            }
+
+            processedInfo.mEncryptedFileName = mDB->storeToTemporaryFile(*processedInfo.mData);
+
+            if (processedInfo.mEncryptedFileName.isEmpty()) {
+              ZS_LOG_ERROR(Detail, log("failed to store encrypted data to disk") + ZS_PARAM("message ID", processedInfo.mMessage.mID) + ZS_PARAM("size", processedInfo.mData->SizeInBytes()))
+              continue;
+            }
+
+            processedInfo.mInfo.mEncryptedDataLength = processedInfo.mData->SizeInBytes();
+
+            mDB->updateMessageEncryptionStorage(processedInfo.mInfo.mMessageIndex, processedInfo.mMessage.mID, processedInfo.mInfo.mEncryptedDataLength, SecureByteBlockPtr());
+
+            processedInfo.mData.reset();
+          }
+
+          size_t totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mSent;
           processedInfo.mDeliveryURL = mUploadMessageURL;
 
           // replace message ID
           {
-            size_t found = processedInfo.mDeliveryURL.find(mUploadMessageStringReplacementMessageID);
+            size_t found = processedInfo.mDeliveryURL.find(mStringReplacementMessageID);
             if (String::npos != found) {
               String replaceMessageID = urlencode(messageID);
-              processedInfo.mDeliveryURL.replace(found, mUploadMessageStringReplacementMessageID.size(), replaceMessageID);
+              processedInfo.mDeliveryURL.replace(found, mStringReplacementMessageID.size(), replaceMessageID);
             }
           }
 
           // replace size
           {
-            size_t found = processedInfo.mDeliveryURL.find(mUploadMessageStringReplacementMessageSize);
+            size_t found = processedInfo.mDeliveryURL.find(mStringReplacementMessageSize);
             if (String::npos != found) {
               String replaceMessageSize = string(totalRemaining);
-              processedInfo.mDeliveryURL.replace(found, mUploadMessageStringReplacementMessageID.size(), replaceMessageSize);
+              processedInfo.mDeliveryURL.replace(found, mStringReplacementMessageID.size(), replaceMessageSize);
             }
           }
 
-          if (processedInfo.mTempFileName.hasData()) {
-            ZS_LOG_DEBUG(log("going to deliver push message via URL") + ZS_PARAM("url", processedInfo.mDeliveryURL) + ZS_PARAM("file", processedInfo.mTempFileName))
+          ZS_LOG_DEBUG(log("going to deliver push message via URL") + ZS_PARAM("url", processedInfo.mDeliveryURL) + ZS_PARAM("file", processedInfo.mEncryptedFileName))
 
-            IServicePushMailboxSessionAsyncDatabaseDelegateProxy::create(mAsyncDB)->asyncNotifyPostFileDataToURL(processedInfo.mDeliveryURL, processedInfo.mTempFileName);
-            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
-          } else {
-            ZS_LOG_DEBUG(log("unable to send via URL as file could not be created") + ZS_PARAM("url", processedInfo.mDeliveryURL))
-          }
+          IServicePushMailboxSessionAsyncDatabaseDelegateProxy::create(mAsyncDB)->asyncUploadFileDataToURL(processedInfo.mDeliveryURL, processedInfo.mEncryptedFileName, processedInfo.mMessage.mLength, totalRemaining, AsyncNotifier::create(getAssociatedMessageQueue(), mThisWeak.lock(), processedInfo.mMessage.mID));
         }
 
         return true;
       }
-      
+
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepPrepareVersionedFolderMessages()
       {
@@ -4451,7 +4890,7 @@ namespace openpeer
           MessageNeedingNotificationInfo &info = (*iter);
 
           {
-            if (info.mDataLength > 0) {
+            if (info.mEncryptedDataLength > 0) {
               if (!info.mHasDecryptedData) {
                 ZS_LOG_TRACE(log("cannot add to version table yet as data is not decrypted"))
                 goto clear_notification;
@@ -4470,7 +4909,7 @@ namespace openpeer
           }
 
         clear_notification:
-          mDB->clearMessageNeedsNotification(info.mIndex);
+          mDB->clearMessageNeedsNotification(info.mMessageIndex);
         }
 
         for (FoldersUpdatedMap::iterator iter = updatedFolders.begin(); iter != updatedFolders.end(); ++iter)
@@ -4527,7 +4966,7 @@ namespace openpeer
 
           request->messageInfo(info);
 
-          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
           mMarkingMonitors.push_back(monitor);
         }
 
@@ -4544,7 +4983,7 @@ namespace openpeer
 
           request->messageInfo(info);
 
-          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
+          IMessageMonitorPtr monitor = sendRequest(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS)));
           mMarkingMonitors.push_back(monitor);
         }
 
@@ -4796,6 +5235,17 @@ namespace openpeer
           mNextFoldersUpdateTimer.reset();
         }
 
+        // clean out decrypting messages
+        for (MessageDecryptionMap::iterator iter = mMessagesNeedingDecryption.begin(); iter != mMessagesNeedingDecryption.end(); ++iter)
+        {
+          ProcessedMessagesNeedingDecryptingInfo &processedInfo = (*iter).second;
+          if (!processedInfo.mDecryptor) continue;
+
+          processedInfo.mDecryptor->cancel();
+          processedInfo.mDecryptor.reset();
+        }
+        mMessagesNeedingDecryption.clear();
+
         // clean out any pending queries
         for (RegisterQueryList::iterator iter_doNotUse = mRegisterQueries.begin(); iter_doNotUse != mRegisterQueries.end(); )
         {
@@ -4975,13 +5425,13 @@ namespace openpeer
         mRefreshPendingDelivery = mRefreshPendingDelivery || (mPendingDelivery.size() > 0);
         mPendingDeliveryPrecheckRequired = mRefreshPendingDelivery;
 
-        if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
-          mPendingDeliveryPrecheckMessageMetaDataGetMonitor->cancel();
-          mPendingDeliveryPrecheckMessageMetaDataGetMonitor.reset();
-        }
-
         for (PendingDeliveryMap::iterator iter = mPendingDelivery.begin(); iter != mPendingDelivery.end(); ++iter) {
           ProcessedPendingDeliveryMessageInfo &processedInfo = (*iter).second;
+
+          if (processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor) {
+            processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor->cancel();
+            processedInfo.mPendingDeliveryPrecheckMessageMetaDataGetMonitor.reset();
+          }
 
           if (processedInfo.mPendingDeliveryMessageUpdateErrorMonitor) {
             processedInfo.mPendingDeliveryMessageUpdateErrorMonitor->cancel();
@@ -5066,7 +5516,7 @@ namespace openpeer
 
         DocumentPtr document = message->encode();
 
-        SecureByteBlockPtr output = IHelper::writeAsJSON(document);
+        SecureByteBlockPtr output = UseServicesHelper::writeAsJSON(document);
 
         if (ZS_IS_LOGGING(Detail)) {
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -5209,7 +5659,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::handelUpdateMessageGone(
+      void ServicePushMailboxSession::handleUpdateMessageGone(
                                                               MessageUpdateRequestPtr request,
                                                               bool notFoundError
                                                               )
@@ -5352,14 +5802,14 @@ namespace openpeer
 
           ProcessedMessageNeedingDataInfo &info = (*foundData).second;
 
-          if (info.mReceivedData + buffer->SizeInBytes() > info.mInfo.mDataLength) {
+          if (info.mReceivedData + buffer->SizeInBytes() > info.mInfo.mEncryptedDataLength) {
             ZS_LOG_ERROR(Detail, log("data length does not match server length"))
             connectionFailure();
             continue;
           }
 
           if (!info.mBuffer) {
-            info.mBuffer = SecureByteBlockPtr(new SecureByteBlock(info.mInfo.mDataLength));
+            info.mBuffer = SecureByteBlockPtr(new SecureByteBlock(info.mInfo.mEncryptedDataLength));
           }
 
           ZS_LOG_DEBUG(log("receiving data from server") + ZS_PARAM("channel", data.first) + ZS_PARAM("message id", messageID) + ZS_PARAM("length", buffer->SizeInBytes()) + ZS_PARAM("total", info.mBuffer->SizeInBytes()))
@@ -5368,14 +5818,14 @@ namespace openpeer
 
           info.mReceivedData += buffer->SizeInBytes();
 
-          if (info.mReceivedData != info.mInfo.mDataLength) {
+          if (info.mReceivedData != info.mInfo.mEncryptedDataLength) {
             ZS_LOG_DEBUG(log("more data still expected"))
             continue;
           }
 
           ZS_LOG_DEBUG(log("update database record with received for message"))
 
-          mDB->updateMessageData(info.mInfo.mIndex, *info.mBuffer);
+          mDB->updateMessageEncryptedData(info.mInfo.mMessageIndex, *info.mBuffer);
 
           mRefreshKeysFolderNeedsProcessing = true;
           mRefreshMessagesNeedingDecryption = true;
@@ -5392,7 +5842,7 @@ namespace openpeer
       {
         String messageID = inMessageID;
         if (messageID.isEmpty()) {
-          messageID = IHelper::randomString(32);
+          messageID = UseServicesHelper::randomString(32);
         }
 
         if (std::string::npos == messageID.find('@')) {
@@ -5466,6 +5916,7 @@ namespace openpeer
       bool ServicePushMailboxSession::areAnyMessagesDecrypting() const
       {
         if (mRefreshMessagesNeedingDecryption) return true;
+        if (mMessagesNeedingDecryption.size() > 0) return true;
         return false;
       }
 
@@ -5474,7 +5925,6 @@ namespace openpeer
       {
         if (mRefreshPendingDelivery) return true;
         if (mPendingDelivery.size() > 0) return true;
-        if (mPendingDeliveryPrecheckMessageMetaDataGetMonitor) return true;
         return false;
       }
 
@@ -5528,7 +5978,7 @@ namespace openpeer
             return false;
           }
 
-          outBundle.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(keyingEl->findFirstChildElementChecked("expires")));
+          outBundle.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(keyingEl->findFirstChildElementChecked("expires")));
 
           outBundle.mType = IMessageHelper::getElementText(keyingEl->findFirstChildElementChecked("type"));
           if (outBundle.mType.isEmpty()) {
@@ -5590,7 +6040,7 @@ namespace openpeer
         ElementPtr keyingEl = IMessageHelper::createElementWithID("keying", inBundle.mReferencedKeyID);
 
         if (Time() != inBundle.mExpires) {
-          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(inBundle.mExpires)));
+          keyingEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(inBundle.mExpires)));
         }
 
         if (inBundle.mType.hasData()) {
@@ -5623,8 +6073,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServicePushMailboxSession::extractRSA(const String &secret)
       {
-        IHelper::SplitMap parts;
-        IHelper::split(secret, parts, ':');
+        UseServicesHelper::SplitMap parts;
+        UseServicesHelper::split(secret, parts, ':');
         if (parts.size() != 3) {
           ZS_LOG_WARNING(Detail, log("failed to extract RSA encrypted key") + ZS_PARAM("secret", secret))
           return String();
@@ -5632,7 +6082,7 @@ namespace openpeer
 
         String salt = parts[0];
         String proof = parts[1];
-        SecureByteBlockPtr encrytpedPassword = IHelper::convertFromBase64(parts[2]);
+        SecureByteBlockPtr encrytpedPassword = UseServicesHelper::convertFromBase64(parts[2]);
 
         if (!encrytpedPassword) {
           ZS_LOG_WARNING(Detail, log("failed to extract encrypted password") + ZS_PARAM("secret", secret))
@@ -5654,9 +6104,9 @@ namespace openpeer
           return String();
         }
 
-        String resultPassphrase = IHelper::convertToString(*passphrase);
+        String resultPassphrase = UseServicesHelper::convertToString(*passphrase);
 
-        String calculatedProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(resultPassphrase), "proof:" + salt, IHelper::HashAlgorthm_SHA1));
+        String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(resultPassphrase), "proof:" + salt, UseServicesHelper::HashAlgorthm_SHA1));
         if (calculatedProof != proof) {
           ZS_LOG_WARNING(Detail, log("proof for RSA key does not match") + ZS_PARAM("proof", proof) + ZS_PARAM("calculated proof", calculatedProof))
           return String();
@@ -5676,8 +6126,8 @@ namespace openpeer
         String staticPrivateKeyStr;
         String staticPublicKeyStr;
         if (mDB->getKeyDomain(inKeyDomain, staticPrivateKeyStr, staticPublicKeyStr)) {
-          outStaticPrivateKey = IHelper::convertFromBase64(staticPrivateKeyStr);
-          outStaticPublicKey = IHelper::convertFromBase64(staticPublicKeyStr);
+          outStaticPrivateKey = UseServicesHelper::convertFromBase64(staticPrivateKeyStr);
+          outStaticPublicKey = UseServicesHelper::convertFromBase64(staticPublicKeyStr);
         }
 
         if ((outStaticPrivateKey) &&
@@ -5715,7 +6165,7 @@ namespace openpeer
         ZS_THROW_INVALID_ASSUMPTION_IF(!outStaticPrivateKey)
         ZS_THROW_INVALID_ASSUMPTION_IF(!outStaticPublicKey)
 
-        mDB->addKeyDomain(inKeyDomain, IHelper::convertToBase64(*outStaticPrivateKey), IHelper::convertToBase64(*outStaticPublicKey));
+        mDB->addKeyDomain(inKeyDomain, UseServicesHelper::convertToBase64(*outStaticPrivateKey), UseServicesHelper::convertToBase64(*outStaticPublicKey));
 
         return true;
       }
@@ -5735,8 +6185,8 @@ namespace openpeer
           return false;
         }
 
-        SecureByteBlockPtr ephemeralPrivateKey = IHelper::convertFromBase64(inEphemeralPrivateKey);
-        SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(inEphemeralPublicKey);
+        SecureByteBlockPtr ephemeralPrivateKey = UseServicesHelper::convertFromBase64(inEphemeralPrivateKey);
+        SecureByteBlockPtr ephemeralPublicKey = UseServicesHelper::convertFromBase64(inEphemeralPublicKey);
 
         if ((!ephemeralPrivateKey) ||
             ((!ephemeralPublicKey))) {
@@ -5800,7 +6250,7 @@ namespace openpeer
 
           outPrivateKey->save(&staticPrivateKeyBuffer, &ephemeralPrivateKeyBuffer);
 
-          outEphemeralPrivateKey = IHelper::convertToBase64(ephemeralPrivateKeyBuffer);
+          outEphemeralPrivateKey = UseServicesHelper::convertToBase64(ephemeralPrivateKeyBuffer);
         }
         if (outPublicKey) {
           SecureByteBlock staticPublicKeyBuffer;
@@ -5808,7 +6258,7 @@ namespace openpeer
 
           outPublicKey->save(&staticPublicKeyBuffer, &ephemeralPublicKeyBuffer);
 
-          outEphemeralPublicKey = IHelper::convertToBase64(ephemeralPublicKeyBuffer);
+          outEphemeralPublicKey = UseServicesHelper::convertToBase64(ephemeralPublicKeyBuffer);
         }
 
         return (outEphemeralPrivateKey.hasData()) &&
@@ -5824,14 +6274,14 @@ namespace openpeer
                                                              IDHPublicKeyPtr &outPublicKey
                                                              )
       {
-        IHelper::SplitMap split;
-        IHelper::split(agreement, split, ':');
+        UseServicesHelper::SplitMap split;
+        UseServicesHelper::split(agreement, split, ':');
         if (split.size() != 3) {
           ZS_LOG_WARNING(Detail, log("cannot split agrement properly") + ZS_PARAM("agreement", agreement))
           return false;
         }
 
-        String domain = IHelper::convertToString(*IHelper::convertFromBase64(split[0]));
+        String domain = UseServicesHelper::convertToString(*UseServicesHelper::convertFromBase64(split[0]));
 
         IDHKeyDomain::KeyDomainPrecompiledTypes precompiledKeyDomain = IDHKeyDomain::fromNamespace(domain);
         if (IDHKeyDomain::KeyDomainPrecompiledType_Unknown == precompiledKeyDomain) {
@@ -5839,8 +6289,8 @@ namespace openpeer
           return false;
         }
 
-        SecureByteBlockPtr staticPublicKey = IHelper::convertFromBase64(split[1]);
-        SecureByteBlockPtr ephemeralPublicKey = IHelper::convertFromBase64(split[2]);
+        SecureByteBlockPtr staticPublicKey = UseServicesHelper::convertFromBase64(split[1]);
+        SecureByteBlockPtr ephemeralPublicKey = UseServicesHelper::convertFromBase64(split[2]);
 
         outPublicKey = IDHPublicKey::load(*staticPublicKey, *ephemeralPublicKey);
 
@@ -5862,7 +6312,7 @@ namespace openpeer
         DocumentPtr document = Document::create();
         document->adoptAsLastChild(keyingBundleEl);
 
-        SecureByteBlockPtr output = IHelper::writeAsJSON(document);
+        SecureByteBlockPtr output = UseServicesHelper::writeAsJSON(document);
         if (!output) {
           ZS_LOG_ERROR(Detail, log("failed to encode to json"))
           return false;
@@ -5882,15 +6332,16 @@ namespace openpeer
                                        messageID,
                                        toURI,
                                        peerFilePublic->getPeerURI(),
-                                       NULL,
-                                       NULL,
+                                       String(),
+                                       String(),
                                        OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE,
                                        OPENPEER_STACK_PUSH_MAILBOX_JSON_MIME_TYPE,
                                        OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE,
-                                       NULL,
+                                       String(),
                                        empty,
                                        zsLib::now(),
                                        inBundle.mExpires,
+                                       String(),
                                        output,
                                        SecureByteBlockPtr(),
                                        false);
@@ -5926,7 +6377,7 @@ namespace openpeer
         SecureByteBlock staticPublicKey;
         SecureByteBlock ephemeralPublicKey;
         publicKey->save(&staticPublicKey, &ephemeralPublicKey);
-        bundle.mAgreement = IHelper::convertToBase64(domain) + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+        bundle.mAgreement = UseServicesHelper::convertToBase64(domain) + ":" + UseServicesHelper::convertToBase64(staticPublicKey) + ":" + UseServicesHelper::convertToBase64(ephemeralPublicKey);
 
         return sendKeyingBundle(toURI, bundle);
       }
@@ -5951,7 +6402,7 @@ namespace openpeer
         SecureByteBlock staticPublicKey;
         SecureByteBlock ephemeralPublicKey;
         publicKey->save(&staticPublicKey, &ephemeralPublicKey);
-        bundle.mAgreement = IHelper::convertToBase64(domain) + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+        bundle.mAgreement = UseServicesHelper::convertToBase64(domain) + ":" + UseServicesHelper::convertToBase64(staticPublicKey) + ":" + UseServicesHelper::convertToBase64(ephemeralPublicKey);
 
         return sendKeyingBundle(toURI, bundle);
       }
@@ -5977,12 +6428,12 @@ namespace openpeer
           return false;
         }
 
-        SecureByteBlockPtr encryptedPassphrase = peerFilePublic->encrypt(*IHelper::convertToBuffer(passphrase));
+        SecureByteBlockPtr encryptedPassphrase = peerFilePublic->encrypt(*UseServicesHelper::convertToBuffer(passphrase));
 
-        String salt = IHelper::randomString(20);
-        String proof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(passphrase), "proof:" + salt, IHelper::HashAlgorthm_SHA1));
+        String salt = UseServicesHelper::randomString(20);
+        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), "proof:" + salt, UseServicesHelper::HashAlgorthm_SHA1));
 
-        bundle.mSecret = salt + ":" + proof + ":" + IHelper::convertToBase64(*encryptedPassphrase);
+        bundle.mSecret = salt + ":" + proof + ":" + UseServicesHelper::convertToBase64(*encryptedPassphrase);
 
         return sendKeyingBundle(toURI, bundle);
       }
@@ -6011,7 +6462,7 @@ namespace openpeer
         SecureByteBlock staticPublicKey;
         SecureByteBlock ephemeralPublicKey;
         publicKey->save(&staticPublicKey, &ephemeralPublicKey);
-        bundle.mAgreement = IHelper::convertToBase64(domain) + ":" + IHelper::convertToBase64(staticPublicKey) + ":" + IHelper::convertToBase64(ephemeralPublicKey);
+        bundle.mAgreement = UseServicesHelper::convertToBase64(domain) + ":" + UseServicesHelper::convertToBase64(staticPublicKey) + ":" + UseServicesHelper::convertToBase64(ephemeralPublicKey);
 
         int remoteKeyDomain = (int)IDHKeyDomain::KeyDomainPrecompiledType_Unknown;
         IDHPublicKeyPtr remotePublicKey;
@@ -6027,9 +6478,9 @@ namespace openpeer
 
         SecureByteBlockPtr agreementKey = privateKey->getSharedSecret(remotePublicKey);
 
-        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(IHelper::convertToHex(*agreementKey)), "push-mailbox:", IHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(UseServicesHelper::convertToHex(*agreementKey)), "push-mailbox:", UseServicesHelper::HashAlgorthm_SHA256);
 
-        bundle.mSecret = stack::IHelper::splitEncrypt(*key, *IHelper::convertToBuffer(passphrase));
+        bundle.mSecret = stack::IHelper::splitEncrypt(*key, *UseServicesHelper::convertToBuffer(passphrase));
 
         return sendKeyingBundle(toURI, bundle);
       }
@@ -6064,11 +6515,11 @@ namespace openpeer
         
         SecureByteBlockPtr agreementKey = privateKey->getSharedSecret(remotePublicKey);
         
-        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(IHelper::convertToHex(*agreementKey)), "push-mailbox:", IHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(UseServicesHelper::convertToHex(*agreementKey)), "push-mailbox:", UseServicesHelper::HashAlgorthm_SHA256);
         
         SecureByteBlockPtr decryptedPassphrase = stack::IHelper::splitDecrypt(*key, secret);
         
-        return IHelper::convertToString(*decryptedPassphrase);
+        return UseServicesHelper::convertToString(*decryptedPassphrase);
       }
 
       //-----------------------------------------------------------------------
@@ -6160,7 +6611,7 @@ namespace openpeer
 
         hasher.Final(hashResult);
 
-        String listID = IHelper::convertToHex(hashResult);
+        String listID = UseServicesHelper::convertToHex(hashResult);
         String listURI = String(OPENPEER_STACK_PUSH_MAILBOX_LIST_URI_PREFIX) + listID;
 
         if (mDB->hasListID(listID)) {
@@ -6226,11 +6677,11 @@ namespace openpeer
         SendingKeyInfo info;
 
         // need to generate an active sending key
-        info.mIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
-        info.mKeyID = IHelper::randomString(20);
+        info.mSendingKeyIndex = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+        info.mKeyID = UseServicesHelper::randomString(20);
         info.mURI = uri;
-        info.mRSAPassphrase = IHelper::randomString(32*8/5);
-        info.mDHPassphrase = IHelper::randomString(32*8/5);
+        info.mRSAPassphrase = UseServicesHelper::randomString(32*8/5);
+        info.mDHPassphrase = UseServicesHelper::randomString(32*8/5);
         IDHPrivateKeyPtr privateKey;
         IDHPublicKeyPtr publicKey;
         bool result = prepareNewDHKeys(
@@ -6247,8 +6698,8 @@ namespace openpeer
           return;
         }
 
-        info.mActiveUntil = zsLib::now() + Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS));
-        info.mExpires = zsLib::now() + Seconds(services::ISettings::getUInt(OPENPEER_STACK_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS));
+        info.mActiveUntil = zsLib::now() + Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS));
+        info.mExpires = zsLib::now() + Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS));
 
         outKeyID = info.mKeyID;
         outInitialPassphrase = info.mRSAPassphrase;
@@ -6276,6 +6727,62 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      ServicePushMailboxSession::UseEncryptorPtr ServicePushMailboxSession::prepareEncryptor(const String &tempEncodingScheme)
+      {
+        UseServicesHelper::SplitMap split;
+
+        UseServicesHelper::split(tempEncodingScheme, split, ':');
+
+        if (4 != split.size()) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
+          return UseEncryptorPtr();
+        }
+
+        if (split[0] + ":" != OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme) + ZS_PARAM("expecting", OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME))
+          return UseEncryptorPtr();
+        }
+
+        String salt = split[1];
+        String passphraseID = split[2];
+        String passphrase = split[3];
+
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), "push-mailbox:" + passphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
+
+        return UseEncryptor::create(*key, *iv);
+      }
+
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSession::finalizeEncodingScheme(
+                                                               const String &tempEncodingScheme,
+                                                               const String &sourceHexHash
+                                                               )
+      {
+        UseServicesHelper::SplitMap split;
+
+        UseServicesHelper::split(tempEncodingScheme, split, ':');
+
+        if (4 != split.size()) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
+          return String();
+        }
+
+        if (split[0] + ":" != OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme) + ZS_PARAM("expecting", OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME))
+          return String();
+        }
+
+        String salt = split[1];
+        String passphraseID = split[2];
+        String passphrase = split[3];
+
+        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), "proof:" + salt + ":" + sourceHexHash));
+
+        return String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + passphraseID + ":" + salt + ":" + proof;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::encryptMessage(
                                                      const String &inPassphraseID,
                                                      const String &inPassphrase,
@@ -6284,18 +6791,48 @@ namespace openpeer
                                                      SecureByteBlockPtr &outEncryptedMessage
                                                      )
       {
-        String salt = IHelper::randomString(16*8/5);
+        String salt = UseServicesHelper::randomString(16*8/5);
 
-        String proof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + salt + ":" + IHelper::convertToHex(*IHelper::hash(inOriginalData))));
+        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + salt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(inOriginalData))));
 
-        outEncodingScheme = String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) + IHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + inPassphraseID + ":" + salt + ":" + proof;
+        outEncodingScheme = String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + inPassphraseID + ":" + salt + ":" + proof;
 
-        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, IHelper::HashAlgorthm_SHA256);
-        SecureByteBlockPtr iv = IHelper::hash(salt, IHelper::HashAlgorthm_MD5);
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
 
-        outEncryptedMessage = IHelper::encrypt(*key, *iv, inOriginalData);
+        outEncryptedMessage = UseServicesHelper::encrypt(*key, *iv, inOriginalData);
 
         return (bool)outEncryptedMessage;
+      }
+
+      //-----------------------------------------------------------------------
+      ServicePushMailboxSession::UseDecryptorPtr ServicePushMailboxSession::prepareDecryptor(
+                                                                                             const String &inPassphraseID,
+                                                                                             const String &inPassphrase,
+                                                                                             const String &inSalt
+                                                                                             )
+      {
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr iv = UseServicesHelper::hash(inSalt, UseServicesHelper::HashAlgorthm_MD5);
+
+        return UseDecryptor::create(*key, *iv);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::validateDecryption(
+                                                         const String &inPassphraseID,
+                                                         const String &inPassphrase,
+                                                         const String &inSalt,
+                                                         const String &inDataHash,
+                                                         const String &inProof
+                                                         )
+      {
+        String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + inSalt + ":" + inDataHash));
+        if (calculatedProof != inProof) {
+          ZS_LOG_WARNING(Detail, log("proof failed to validate thus message failed to decrypt properly") + ZS_PARAM("proof", inProof) + ZS_PARAM("calculated proof", calculatedProof))
+          return false;
+        }
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -6308,16 +6845,16 @@ namespace openpeer
                                                      SecureByteBlockPtr &outDecryptedMessage
                                                      )
       {
-        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, IHelper::HashAlgorthm_SHA256);
-        SecureByteBlockPtr iv = IHelper::hash(inSalt, IHelper::HashAlgorthm_MD5);
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr iv = UseServicesHelper::hash(inSalt, UseServicesHelper::HashAlgorthm_MD5);
 
-        outDecryptedMessage = IHelper::decrypt(*key, *iv, inOriginalData);
+        outDecryptedMessage = UseServicesHelper::decrypt(*key, *iv, inOriginalData);
         if (!outDecryptedMessage) {
           ZS_LOG_WARNING(Detail, log("message failed to decrypt"))
           return false;
         }
 
-        String calculatedProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + inSalt + ":" + IHelper::convertToHex(*IHelper::hash(*outDecryptedMessage))));
+        String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + inSalt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(*outDecryptedMessage))));
 
         if (inProof != calculatedProof) {
           ZS_LOG_WARNING(Detail, log("proof failed to validate thus message failed to decrypt") + ZS_PARAM("proof", inProof) + ZS_PARAM("calculated proof", calculatedProof))
@@ -6328,7 +6865,31 @@ namespace openpeer
 
         return (bool)outDecryptedMessage;
       }
-      
+
+      //-----------------------------------------------------------------------
+      ServicePushMailboxSession::ChannelID ServicePushMailboxSession::pickNextChannel()
+      {
+        (++mLastChannel);
+        if (mLastChannel >= 0x3FFFFFFF) {  // safe wrap around (should not happen)
+          mLastChannel = 1;
+        }
+        return mLastChannel;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSession::ProcessedPendingDeliveryMessageInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ServicePushMailboxSession::ProcessedPendingDeliveryMessageInfo::ProcessedPendingDeliveryMessageInfo() :
+        mSent(0)
+      {
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

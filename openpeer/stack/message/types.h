@@ -477,6 +477,7 @@ namespace openpeer
         Time mExpires;
 
         size_t mLength;
+        size_t mRemaining;
 
         FolderInfoList mFolders;
 
@@ -485,7 +486,8 @@ namespace openpeer
         PushMessageInfo() :
           mDisposition(Disposition_NA),
           mChannelID(0),
-          mLength(0) {}
+          mLength(0),
+          mRemaining(0) {}
 
         bool hasData() const;
         ElementPtr toDebug() const;

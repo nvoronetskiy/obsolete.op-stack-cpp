@@ -31,7 +31,6 @@
 
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession.h>
 
-#include <openpeer/stack/IServicePushMailboxDatabaseAbstractionDelegate.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -55,26 +54,29 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServicePushMailboxSession::AsyncDatabase
+      #pragma mark ServicePushMailboxSession::AsyncNotifier
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ServicePushMailboxSession::AsyncDatabase::AsyncDatabase(
+      ServicePushMailboxSession::AsyncNotifier::AsyncNotifier(
                                                               IMessageQueuePtr queue,
-                                                              IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate
+                                                              IServicePushMailboxSessionAsyncDelegatePtr delegate,
+                                                              const char *messageID
                                                               ) :
         MessageQueueAssociator(queue),
-        mDB(databaseDelegate)
+        SharedRecursiveLock(SharedRecursiveLock::create()),
+        mDelegate(IServicePushMailboxSessionAsyncDelegateProxy::create(queue, delegate)),
+        mMessageID(messageID)
       {
       }
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::AsyncDatabase::init()
+      void ServicePushMailboxSession::AsyncNotifier::init()
       {
       }
 
       //-----------------------------------------------------------------------
-      ServicePushMailboxSession::AsyncDatabase::~AsyncDatabase()
+      ServicePushMailboxSession::AsyncNotifier::~AsyncNotifier()
       {
         mThisWeak.reset();
       }
@@ -84,16 +86,17 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServicePushMailboxSession::AsyncDatabase => friend ServicePushMailboxSession
+      #pragma mark ServicePushMailboxSession::AsyncNotifier => friend ServicePushMailboxSession
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ServicePushMailboxSession::AsyncDatabasePtr ServicePushMailboxSession::AsyncDatabase::create(
+      ServicePushMailboxSession::AsyncNotifierPtr ServicePushMailboxSession::AsyncNotifier::create(
                                                                                                    IMessageQueuePtr queue,
-                                                                                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate
+                                                                                                   IServicePushMailboxSessionAsyncDelegatePtr delegate,
+                                                                                                   const char *messageID
                                                                                                    )
       {
-        AsyncDatabasePtr pThis(new AsyncDatabase(queue, databaseDelegate));
+        AsyncNotifierPtr pThis(new AsyncNotifier(queue, delegate, messageID));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
@@ -104,31 +107,23 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark ServicePushMailboxSession::AsyncDatabase => IServicePushMailboxSessionAsyncDatabaseDelegate
+      #pragma mark ServicePushMailboxSession::AsyncNotifier => IServicePushMailboxDatabaseAbstractionNotifier
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::AsyncDatabase::asyncUploadFileDataToURL(
-                                                                              const char *url,
-                                                                              const char *fileNameContainingData,
-                                                                              size_t finalFileSizeInBytes,
-                                                                              size_t remainingBytesToBeDownloaded,
-                                                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                                                              )
+      void ServicePushMailboxSession::AsyncNotifier::notifyComplete(bool wasSuccessful)
       {
-        mDB->asyncUploadFileDataToURL(url, fileNameContainingData, finalFileSizeInBytes, remainingBytesToBeDownloaded, notifier);
-      }
+        IServicePushMailboxSessionAsyncDelegatePtr delegate;
 
-      //-----------------------------------------------------------------------
-      void ServicePushMailboxSession::AsyncDatabase::asyncDownloadDataFromURL(
-                                                                              const char *getURL,
-                                                                              const char *fileNameToAppendData,
-                                                                              size_t finalFileSizeInBytes,
-                                                                              size_t remainingBytesToBeDownloaded,
-                                                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                                                              )
-      {
-        mDB->asyncDownloadDataFromURL(getURL, fileNameToAppendData, finalFileSizeInBytes, remainingBytesToBeDownloaded, notifier);
+        {
+          AutoRecursiveLock lock(*this);
+          if (!mDelegate) return;
+
+          delegate = mDelegate;
+          mDelegate.reset();
+        }
+
+        delegate->onNotifierComplete(mMessageID, wasSuccessful);
       }
 
       //-----------------------------------------------------------------------

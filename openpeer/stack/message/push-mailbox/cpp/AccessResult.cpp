@@ -71,13 +71,14 @@ namespace openpeer
 
           ret->mPeerURI = IMessageHelper::getElementTextAndDecode(rootEl->findFirstChildElement("peer"));
 
-          ElementPtr uploadMessageEl = rootEl->findFirstChildElement("uploadMessage");
+          ElementPtr uploadMessageEl = rootEl->findFirstChildElement("transferMessage");
           if (uploadMessageEl) {
-            ret->mUploadMessageURL = IMessageHelper::getElementTextAndDecode(uploadMessageEl->findFirstChildElement("peer"));
+            ret->mUploadMessageURL = IMessageHelper::getElementTextAndDecode(uploadMessageEl->findFirstChildElement("upload"));
+            ret->mDownloadMessageURL = IMessageHelper::getElementTextAndDecode(uploadMessageEl->findFirstChildElement("download"));
             ElementPtr stringReplacementEl = uploadMessageEl->findFirstChildElement("stringReplacements");
             if (stringReplacementEl) {
-              ret->mUploadMessageStringReplacementMessageID = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("id"));
-              ret->mUploadMessageStringReplacementMessageSize = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("sizeRemaining"));
+              ret->mStringReplacementMessageID = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("id"));
+              ret->mStringReplacementMessageSize = IMessageHelper::getElementTextAndDecode(stringReplacementEl->findFirstChildElement("sizeRemaining"));
             }
           }
 
@@ -92,8 +93,9 @@ namespace openpeer
             case AttributeType_NamespaceGrantChallengeInfo:               return mNamespaceGrantChallengeInfo.hasData();
             case AttributeType_PeerURI:                                   return mPeerURI.hasData();
             case AttributeType_UploadMessageURL:                          return mUploadMessageURL.hasData();
-            case AttributeType_UploadMessageStringReplacementMessageID:   return mUploadMessageStringReplacementMessageID.hasData();
-            case AttributeType_UploadMessageStringReplacementMessageSize: return mUploadMessageStringReplacementMessageSize.hasData();
+            case AttributeType_DownloadMessageURL:                        return mDownloadMessageURL.hasData();
+            case AttributeType_StringReplacementMessageID:                return mStringReplacementMessageID.hasData();
+            case AttributeType_StringReplacementMessageSize:              return mStringReplacementMessageSize.hasData();
             default:                                                      break;
           }
           return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);

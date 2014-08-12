@@ -230,6 +230,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IServicePeerFileLookupQuery)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailbox)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxDatabaseAbstractionDelegate)
+    ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxDatabaseAbstractionNotifier)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSession)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSendQuery)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxRegisterQuery)

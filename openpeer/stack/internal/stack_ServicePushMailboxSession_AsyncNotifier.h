@@ -29,7 +29,7 @@
 
  */
 
-#ifdef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
+#ifdef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_NOTIFIER
 
 #if 0
 namespace openpeer
@@ -43,50 +43,40 @@ namespace openpeer
 
 #endif //0
 
-        class AsyncDatabase : public MessageQueueAssociator,
-                              public IServicePushMailboxSessionAsyncDatabaseDelegate
+        class AsyncNotifier : public MessageQueueAssociator,
+                              public SharedRecursiveLock,
+                              public IServicePushMailboxDatabaseAbstractionNotifier
         {
         protected:
-          AsyncDatabase(
+          AsyncNotifier(
                         IMessageQueuePtr queue,
-                        IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate
+                        IServicePushMailboxSessionAsyncDelegatePtr delegate,
+                        const char *messageID
                         );
 
           void init();
 
         public:
-          ~AsyncDatabase();
+          ~AsyncNotifier();
 
-          static AsyncDatabasePtr create(
+          static AsyncNotifierPtr create(
                                          IMessageQueuePtr queue,
-                                         IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate
+                                         IServicePushMailboxSessionAsyncDelegatePtr delegate,
+                                         const char *messageID
                                          );
 
           //-------------------------------------------------------------------
           #pragma mark
-          #pragma mark ServicePushMailboxSession::AsyncDatabase => IServicePushMailboxSessionAsyncDatabaseDelegate
+          #pragma mark ServicePushMailboxSession::AsyncNotifier => IServicePushMailboxDatabaseAbstractionNotifier
           #pragma mark
 
-          virtual void asyncUploadFileDataToURL(
-                                                const char *url,
-                                                const char *fileNameContainingData,
-                                                size_t finalFileSizeInBytes,
-                                                size_t remainingBytesToBeDownloaded,
-                                                IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                                );
-
-          virtual void asyncDownloadDataFromURL(
-                                                const char *getURL,
-                                                const char *fileNameToAppendData,
-                                                size_t finalFileSizeInBytes,
-                                                size_t remainingBytesToBeDownloaded,
-                                                IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                                );
+          virtual void notifyComplete(bool wasSuccessful);
 
         private:
-          AsyncDatabaseWeakPtr mThisWeak;
+          AsyncNotifierWeakPtr mThisWeak;
 
-          IServicePushMailboxDatabaseAbstractionDelegatePtr mDB;
+          IServicePushMailboxSessionAsyncDelegatePtr mDelegate;
+          String mMessageID;
         };
         
 
@@ -99,4 +89,4 @@ namespace openpeer
 
 #else
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession.h>
-#endif //OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
+#endif //OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_NOTIFIER
