@@ -312,14 +312,10 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void AccountFinder::getFinderRelayInformation(
-                                                    String &outFinderRelayAccessToken,
-                                                    String &outFinderRelayAccessSecret
-                                                    ) const
+      Token AccountFinder::getFinderRelayToken() const
       {
         AutoRecursiveLock lock(*this);
-        outFinderRelayAccessToken = mRelayAccessToken;
-        outFinderRelayAccessSecret = mRelayAccessSecret;
+        return mRelayToken;
       }
 
       //-----------------------------------------------------------------------
@@ -522,8 +518,7 @@ namespace openpeer
         setTimeout(result->expires());
         mServerAgent = result->serverAgent();
 
-        mRelayAccessToken = result->relayAccessToken();
-        mRelayAccessSecret = result->relayAccessSecret();
+        mRelayToken = result->relayToken();
 
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();
         return true;
@@ -734,17 +729,31 @@ namespace openpeer
         ElementPtr resultEl = Element::create("AccountFinder");
 
         IHelper::debugAppend(resultEl, "id", mID);
+
         IHelper::debugAppend(resultEl, "state", IAccount::toString(mCurrentState));
+
+        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        IHelper::debugAppend(resultEl, "outer", (bool)mOuter.lock());
+
+        IHelper::debugAppend(resultEl, "graceful shutdown reference", (bool)mGracefulShutdownReference);
+
         IHelper::debugAppend(resultEl, "finder connection id", mFinderConnection ? mFinderConnection->getID() : 0);
+
         IHelper::debugAppend(resultEl, "receive stream id", mReceiveStream ? mReceiveStream->getID() : 0);
         IHelper::debugAppend(resultEl, "send stream id", mSendStream ? mSendStream->getID() : 0);
+
+        IHelper::debugAppend(resultEl, "session create monitor id", mSessionCreateMonitor ? mSessionCreateMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "session keep alive monitor id", mSessionKeepAliveMonitor ? mSessionKeepAliveMonitor->getID() : 0);
+        IHelper::debugAppend(resultEl, "session delete monitor id", mSessionDeleteMonitor ? mSessionDeleteMonitor->getID() : 0);
+
         IHelper::debugAppend(resultEl, mFinder.toDebug());
         IHelper::debugAppend(resultEl, "finder IP", !mFinderIP.isAddressEmpty() ? mFinderIP.string() : String());
         IHelper::debugAppend(resultEl, "server agent", mServerAgent);
         IHelper::debugAppend(resultEl, "created time", mSessionCreatedTime);
-        IHelper::debugAppend(resultEl, "session create monitor", (bool)mSessionCreateMonitor);
-        IHelper::debugAppend(resultEl, "session keep alive monitor", (bool)mSessionKeepAliveMonitor);
-        IHelper::debugAppend(resultEl, "session delete monitor", (bool)mSessionDeleteMonitor);
+
+        IHelper::debugAppend(resultEl, mRelayToken.toDebug());
+
+        IHelper::debugAppend(resultEl, "keep alive timer id", mKeepAliveTimer ? mKeepAliveTimer->getID() : 0);
 
         return resultEl;
       }

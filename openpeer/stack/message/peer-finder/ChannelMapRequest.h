@@ -56,8 +56,7 @@ namespace openpeer
             AttributeType_ChannelNumber,
             AttributeType_LocalContextID,
             AttributeType_RemoteContextID,
-            AttributeType_RelayAccessToken,
-            AttributeType_RelayAccessSecretProof,
+            AttributeType_RelayToken,
           };
 
         public:
@@ -82,11 +81,8 @@ namespace openpeer
           const String &remoteContextID() const                           {return mRemoteContextID;}
           void remoteContextID(const String &val)                         {mRemoteContextID = val;}
 
-          const String &relayAccessToken() const                          {return mRelayAccessToken;}
-          void relayAccessToken(const String &val)                        {mRelayAccessToken = val;}
-
-          const String &relayAccessSecretProof() const                    {return mRelayAccessSecretProof;}
-          void relayAccessSecretProof(const String &val)                  {mRelayAccessSecretProof = val;}
+          const Token &relayToken() const                                 {return mRelayToken;}
+          void relayToken(const Token &val)                               {mRelayToken = val;}
 
         protected:
           ChannelMapRequest();
@@ -95,8 +91,7 @@ namespace openpeer
 
           String mLocalContextID;
           String mRemoteContextID;
-          String mRelayAccessToken;
-          String mRelayAccessSecretProof;
+          Token mRelayToken;
         };
       }
     }

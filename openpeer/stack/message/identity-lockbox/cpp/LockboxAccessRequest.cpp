@@ -97,17 +97,12 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
           IdentityInfo identityInfo;
 
           identityInfo.mURI = mIdentityInfo.mURI;
           identityInfo.mProvider = mIdentityInfo.mProvider;
 
-          identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":lockbox-access"));
-          }
+          identityInfo.mToken = mIdentityInfo.mToken.createProof("identity-lockbox-access", Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
           LockboxInfo lockboxInfo;
           lockboxInfo.mDomain = mLockboxInfo.mDomain;
@@ -116,22 +111,24 @@ namespace openpeer
           lockboxInfo.mKey = mLockboxInfo.mKey;
           lockboxInfo.mResetFlag = mLockboxInfo.mResetFlag;
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
             rootEl->adoptAsLastChild(identityInfo.createElement());
           }
 
           if ((lockboxInfo.mKey) &&
               (lockboxInfo.mKeyName.hasData())) {
-            // hex(hmac(`<lockbox-passphrase>`, "lockbox:" + `<lockbox-passphrase-id>`))
+            // `<lockbox-hash>` = hex(hmac(`<lockbox-passphrase>`, "lockbox:" + `<lockbox-passphrase-id>`))
             String hash = IHelper::convertToHex(*IHelper::hmac(*lockboxInfo.mKey, "lockbox:" + lockboxInfo.mKeyName));
             if (identityInfo.hasData()) {
               lockboxInfo.mKeyHash = hash;
             } else {
-              lockboxInfo.mKeyHashProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
+              Token lockboxHashToken;
 
-              // proof = hex(hmac(`<lockbox-hash>`, "identity-access-validate:" + `<client-nonce>` + ":" + `<expires>` + ":" + `<lockbox-passphrase-id>` + ":lockbox-access")), lockbox hash = hex(hmac(`<lockbox-passphrase>`, "lockbox:" + `<lockbox-passphrase-id>`))
-              lockboxInfo.mKeyHashProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(hash), "identity-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mKeyHashProofExpires) + ":" + lockboxInfo.mKeyName + ":lockbox-access"));
+              lockboxHashToken.mID = lockboxInfo.mKeyName;
+              lockboxHashToken.mSecret = hash;
+              lockboxHashToken.mExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
+
+              lockboxInfo.mToken = lockboxHashToken.createProof("identity-lockbox-access", Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS));
             }
           }
 

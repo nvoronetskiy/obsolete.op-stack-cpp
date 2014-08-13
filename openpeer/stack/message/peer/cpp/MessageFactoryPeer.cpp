@@ -111,7 +111,7 @@ namespace openpeer
           {
             case Method_Invalid:                            return "";
 
-            case Method_PeerServicesGet:                    return "peer-services-get";
+            case Method_PeerServicesGet:                    return "services-get";
             case Method_PeerFilesGet:                       return "peer-files-get";
             case Method_PeerFileSet:                        return "peer-file-set";
           }

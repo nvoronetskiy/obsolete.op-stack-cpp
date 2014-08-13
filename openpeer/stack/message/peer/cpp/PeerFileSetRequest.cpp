@@ -98,11 +98,7 @@ namespace openpeer
             LockboxInfo lockboxInfo;
 
             lockboxInfo.mAccountID = mLockboxInfo.mAccountID;
-            lockboxInfo.mAccessToken = mLockboxInfo.mAccessToken;
-            if (mLockboxInfo.mAccessSecret.hasData()) {
-              lockboxInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PEER_FILE_SET_REQUEST_EXPIRES_TIME_IN_SECONDS);
-              lockboxInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mLockboxInfo.mAccessSecret), "lockbox-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mAccessSecretProofExpires) + ":" + lockboxInfo.mAccessToken + ":peer-file-set"));
-            }
+            lockboxInfo.mToken = mLockboxInfo.mToken.createProof("peer-peer-file-set", Seconds(OPENPEER_STACK_MESSAGE_PEER_FILE_SET_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
             rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
             if (lockboxInfo.hasData()) {

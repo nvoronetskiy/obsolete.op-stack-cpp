@@ -50,11 +50,12 @@ namespace openpeer
   {
     namespace message
     {
-      using services::IHelper;
       using stack::internal::Helper;
       using zsLib::Numeric;
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -67,7 +68,7 @@ namespace openpeer
       //---------------------------------------------------------------------
       static Log::Params Server_slog(const char *message)
       {
-        return Log::Params(message, "Server");
+        return Log::Params(message, "message::Server");
       }
 
       //-----------------------------------------------------------------------
@@ -294,11 +295,11 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::AgentInfo");
 
-        IHelper::debugAppend(resultEl, "user agent", mUserAgent);
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "image url", mImageURL);
-        IHelper::debugAppend(resultEl, "agent url", mAgentURL);
-        IHelper::debugAppend(resultEl, "log level", Log::toString(mLogLevel));
+        UseServicesHelper::debugAppend(resultEl, "user agent", mUserAgent);
+        UseServicesHelper::debugAppend(resultEl, "name", mName);
+        UseServicesHelper::debugAppend(resultEl, "image url", mImageURL);
+        UseServicesHelper::debugAppend(resultEl, "agent url", mAgentURL);
+        UseServicesHelper::debugAppend(resultEl, "log level", Log::toString(mLogLevel));
 
         return resultEl;
       }
@@ -381,10 +382,10 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Certificate");
 
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "service", mService);
-        IHelper::debugAppend(resultEl, "expires", mExpires);
-        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "service", mService);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+        UseServicesHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
 
         return resultEl;
       }
@@ -411,10 +412,10 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::IdentityInfo::Avatar");
 
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "url", mURL);
-        IHelper::debugAppend(resultEl, "width", mWidth);
-        IHelper::debugAppend(resultEl, "height", mHeight);
+        UseServicesHelper::debugAppend(resultEl, "name", mName);
+        UseServicesHelper::debugAppend(resultEl, "url", mURL);
+        UseServicesHelper::debugAppend(resultEl, "width", mWidth);
+        UseServicesHelper::debugAppend(resultEl, "height", mHeight);
 
         return resultEl;
       }
@@ -454,11 +455,7 @@ namespace openpeer
       {
         return ((Disposition_NA != mDisposition) ||
 
-                (mAccessToken.hasData()) ||
-                (mAccessSecret.hasData()) ||
-                (Time() != mAccessSecretExpires) ||
-                (mAccessSecretProof.hasData()) ||
-                (Time() != mAccessSecretProofExpires) ||
+                (mToken.hasData()) ||
 
                 (mReloginKey.hasData()) ||
                 (mReloginKeyEncrypted.hasData()) ||
@@ -492,30 +489,26 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::IdentityInfo");
 
-        IHelper::debugAppend(resultEl, "identity disposition", IdentityInfo::Disposition_NA != mDisposition ? String(toString(mDisposition)) : String());
-        IHelper::debugAppend(resultEl, "identity access token", mAccessToken);
-        IHelper::debugAppend(resultEl, "identity access secret", mAccessSecret);
-        IHelper::debugAppend(resultEl, "identity access secret expires", mAccessSecretExpires);
-        IHelper::debugAppend(resultEl, "identity access secret proof", mAccessSecretProof);
-        IHelper::debugAppend(resultEl, "identity access secret expires", mAccessSecretProofExpires);
-        IHelper::debugAppend(resultEl, "identity relogin key", mReloginKey);
-        IHelper::debugAppend(resultEl, "identity relogin key encrypted", mReloginKeyEncrypted);
-        IHelper::debugAppend(resultEl, "identity base", mBase);
-        IHelper::debugAppend(resultEl, "identity", mURI);
-        IHelper::debugAppend(resultEl, "identity provider", mProvider);
-        IHelper::debugAppend(resultEl, "identity stable ID", mStableID);
-        IHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(mPeerFilePublic));
-        IHelper::debugAppend(resultEl, "priority", mPriority);
-        IHelper::debugAppend(resultEl, "weight", mWeight);
-        IHelper::debugAppend(resultEl, "created", mCreated);
-        IHelper::debugAppend(resultEl, "updated", mUpdated);
-        IHelper::debugAppend(resultEl, "expires", mExpires);
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "profile", mProfile);
-        IHelper::debugAppend(resultEl, "vprofile", mVProfile);
-        IHelper::debugAppend(resultEl, "avatars", mAvatars.size());
-        IHelper::debugAppend(resultEl, "identity contact proof", (bool)mContactProofBundle);
-        IHelper::debugAppend(resultEl, "identity proof", (bool)mIdentityProofBundle);
+        UseServicesHelper::debugAppend(resultEl, "identity disposition", IdentityInfo::Disposition_NA != mDisposition ? String(toString(mDisposition)) : String());
+        UseServicesHelper::debugAppend(resultEl, mToken.toDebug());
+        UseServicesHelper::debugAppend(resultEl, "identity relogin key", mReloginKey);
+        UseServicesHelper::debugAppend(resultEl, "identity relogin key encrypted", mReloginKeyEncrypted);
+        UseServicesHelper::debugAppend(resultEl, "identity base", mBase);
+        UseServicesHelper::debugAppend(resultEl, "identity", mURI);
+        UseServicesHelper::debugAppend(resultEl, "identity provider", mProvider);
+        UseServicesHelper::debugAppend(resultEl, "identity stable ID", mStableID);
+        UseServicesHelper::debugAppend(resultEl, IPeerFilePublic::toDebug(mPeerFilePublic));
+        UseServicesHelper::debugAppend(resultEl, "priority", mPriority);
+        UseServicesHelper::debugAppend(resultEl, "weight", mWeight);
+        UseServicesHelper::debugAppend(resultEl, "created", mCreated);
+        UseServicesHelper::debugAppend(resultEl, "updated", mUpdated);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+        UseServicesHelper::debugAppend(resultEl, "name", mName);
+        UseServicesHelper::debugAppend(resultEl, "profile", mProfile);
+        UseServicesHelper::debugAppend(resultEl, "vprofile", mVProfile);
+        UseServicesHelper::debugAppend(resultEl, "avatars", mAvatars.size());
+        UseServicesHelper::debugAppend(resultEl, "identity contact proof", (bool)mContactProofBundle);
+        UseServicesHelper::debugAppend(resultEl, "identity proof", (bool)mIdentityProofBundle);
 
         return resultEl;
       }
@@ -528,11 +521,7 @@ namespace openpeer
       {
         merge(mDisposition, source.mDisposition, overwriteExisting);
 
-        merge(mAccessToken, source.mAccessToken, overwriteExisting);
-        merge(mAccessSecret, source.mAccessSecret, overwriteExisting);
-        merge(mAccessSecretExpires, source.mAccessSecretExpires, overwriteExisting);
-        merge(mAccessSecretProof, source.mAccessSecretProof, overwriteExisting);
-        merge(mAccessSecretProofExpires, source.mAccessSecretProofExpires, overwriteExisting);
+        mToken.mergeFrom(source.mToken, overwriteExisting);
 
         merge(mReloginKey, source.mReloginKey, overwriteExisting);
         merge(mReloginKeyEncrypted, source.mReloginKeyEncrypted, overwriteExisting);
@@ -569,11 +558,7 @@ namespace openpeer
 
         info.mDisposition = IdentityInfo::toDisposition(elem->getAttributeValue("disposition"));
 
-        info.mAccessToken = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessToken"));
-        info.mAccessSecret = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecret"));
-        info.mAccessSecretExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretExpires")));
-        info.mAccessSecretProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProof"));
-        info.mAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProofExpires")));
+        info.mToken = Token::create(elem->findFirstChildElement("token"));
 
         info.mReloginKey = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reloginKey"));
         info.mReloginKeyEncrypted = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reloginKeyEncrypted"));
@@ -597,9 +582,9 @@ namespace openpeer
         } catch(Numeric<WORD>::ValueOutOfRange &) {
         }
 
-        info.mUpdated = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
-        info.mUpdated = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updated")));
-        info.mExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
+        info.mUpdated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
+        info.mUpdated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updated")));
+        info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
 
         info.mName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("name"));
         info.mProfile = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("profile"));
@@ -648,20 +633,8 @@ namespace openpeer
           identityEl->setAttribute("disposition", IdentityInfo::toString(mDisposition));
         }
 
-        if (!mAccessToken.isEmpty()) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessToken", mAccessToken));
-        }
-        if (!mAccessSecret.isEmpty()) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecret", mAccessSecret));
-        }
-        if (Time() != mAccessSecretExpires) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(mAccessSecretExpires)));
-        }
-        if (!mAccessSecretProof.isEmpty()) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecretProof", mAccessSecretProof));
-        }
-        if (Time() != mAccessSecretProofExpires) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(mAccessSecretProofExpires)));
+        if (mToken.hasData()) {
+          identityEl->adoptAsLastChild(mToken.createElement());
         }
 
         if (!mReloginKey.isEmpty()) {
@@ -696,13 +669,13 @@ namespace openpeer
         }
 
         if (Time() != mCreated) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", IHelper::timeToString(mCreated)));
+          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", UseServicesHelper::timeToString(mCreated)));
         }
         if (Time() != mUpdated) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updated", IHelper::timeToString(mUpdated)));
+          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updated", UseServicesHelper::timeToString(mUpdated)));
         }
         if (Time() != mExpires) {
-          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(mExpires)));
+          identityEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
         }
 
         if (!mName.isEmpty()) {
@@ -768,19 +741,13 @@ namespace openpeer
         return ((mDomain.hasData()) ||
                 (mAccountID.hasData()) ||
 
-                (mAccessToken.hasData()) ||
-                (mAccessSecret.hasData()) ||
-                (Time() != mAccessSecretExpires) ||
-                (mAccessSecretProof.hasData()) ||
-                (Time() != mAccessSecretProofExpires) ||
-
                 (mKeyName.hasData()) ||
                 (mKeyEncrypted.hasData()) ||
+                (mKeyHash.hasData()) ||
 
                 (mKey) ||
-                (mKeyHash.hasData()) ||
-                (mKeyHashProof.hasData()) ||
-                (Time() != mKeyHashProofExpires) ||
+
+                (mToken.hasData()) ||
 
                 (mResetFlag));
       }
@@ -790,22 +757,17 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::LockboxInfo");
 
-        IHelper::debugAppend(resultEl, "domain", mDomain);
-        IHelper::debugAppend(resultEl, "account ID", mAccountID);
-        IHelper::debugAppend(resultEl, "access token", mAccessToken);
-        IHelper::debugAppend(resultEl, "access secret", mAccessSecret);
-        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretExpires);
-        IHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
-        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretProofExpires);
+        UseServicesHelper::debugAppend(resultEl, "domain", mDomain);
+        UseServicesHelper::debugAppend(resultEl, "account ID", mAccountID);
 
-        IHelper::debugAppend(resultEl, "key name", mKeyName);
-        IHelper::debugAppend(resultEl, "key encrypted", mKeyEncrypted);
-        IHelper::debugAppend(resultEl, "key", mKey ? IHelper::convertToBase64(*mKey) : String());
-        IHelper::debugAppend(resultEl, "key hash", mKeyHash);
-        IHelper::debugAppend(resultEl, "key hash proof", mKeyHashProof);
-        IHelper::debugAppend(resultEl, "key hash proof expires", mKeyHashProofExpires);
+        UseServicesHelper::debugAppend(resultEl, "key name", mKeyName);
+        UseServicesHelper::debugAppend(resultEl, "key encrypted", mKeyEncrypted);
+        UseServicesHelper::debugAppend(resultEl, "key hash", mKeyHash);
+        UseServicesHelper::debugAppend(resultEl, "key", mKey ? UseServicesHelper::convertToBase64(*mKey) : String());
 
-        IHelper::debugAppend(resultEl, "reset", mResetFlag);
+        UseServicesHelper::debugAppend(resultEl, mToken.toDebug());
+
+        UseServicesHelper::debugAppend(resultEl, "reset", mResetFlag);
 
         return resultEl;
       }
@@ -819,15 +781,12 @@ namespace openpeer
         merge(mDomain, source.mDomain, overwriteExisting);
         merge(mAccountID, source.mAccountID, overwriteExisting);
 
-        merge(mAccessToken, source.mAccessToken, overwriteExisting);
-        merge(mAccessSecret, source.mAccessSecret, overwriteExisting);
-        merge(mAccessSecretExpires, source.mAccessSecretExpires, overwriteExisting);
-        merge(mAccessSecretProof, source.mAccessSecretProof, overwriteExisting);
-        merge(mAccessSecretProofExpires, source.mAccessSecretProofExpires, overwriteExisting);
-
         merge(mKeyName, source.mKeyName, overwriteExisting);
         merge(mKeyEncrypted, source.mKeyEncrypted, overwriteExisting);
+        merge(mKeyHash, source.mKeyHash, overwriteExisting);
         merge(mKey, source.mKey, overwriteExisting);
+
+        mToken.mergeFrom(source.mToken);
 
         merge(mResetFlag, source.mResetFlag, overwriteExisting);
       }
@@ -843,21 +802,6 @@ namespace openpeer
         if (mAccountID.hasData()) {
           lockboxEl->setAttribute("id", mAccountID);
         }
-        if (mAccessToken.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessToken", mAccessToken));
-        }
-        if (mAccessSecret.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecret", mAccessSecret));
-        }
-        if (Time() != mAccessSecretExpires) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(mAccessSecretExpires)));
-        }
-        if (mAccessSecretProof.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProof", mAccessSecretProof));
-        }
-        if (Time() != mAccessSecretProofExpires) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(mAccessSecretProofExpires)));
-        }
 
         if (mKeyName.hasData()) {
           lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyName", mKeyName));
@@ -868,11 +812,8 @@ namespace openpeer
         if (mKeyHash.hasData()) {
           lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHash", mKeyHash));
         }
-        if (mKeyHashProof.hasData()) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHashProof", mKeyHashProof));
-        }
-        if (Time() != mKeyHashProofExpires) {
-          lockboxEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("keyHashProofExpires", IHelper::timeToString(mKeyHashProofExpires)));
+        if (mToken.hasData()) {
+          lockboxEl->adoptAsLastChild(mToken.createElement());
         }
 
         if (mResetFlag) {
@@ -891,17 +832,11 @@ namespace openpeer
 
         info.mDomain = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("domain"));
         info.mAccountID = IMessageHelper::getAttributeID(elem);
-        info.mAccessToken = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessToken"));
-        info.mAccessSecret = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecret"));
-        info.mAccessSecretExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretExpires")));
-        info.mAccessSecretProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProof"));
-        info.mAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProofExpires")));
 
         info.mKeyName = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyName"));
         info.mKeyEncrypted = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyEncrypted"));
         info.mKeyHash = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyHash"));
-        info.mKeyHashProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyHashProof"));
-        info.mKeyHashProofExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("keyHashProofExpires")));
+        info.mToken = Token::create(elem->findFirstChildElement("token"));
 
         try {
           info.mResetFlag = Numeric<bool>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reset")));
@@ -985,35 +920,35 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::PushMessageInfo");
 
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
 
-        IHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
 
-        IHelper::debugAppend(resultEl, "channel ID", mChannelID);
+        UseServicesHelper::debugAppend(resultEl, "channel ID", mChannelID);
 
-        IHelper::debugAppend(resultEl, "to", mTo);
-        IHelper::debugAppend(resultEl, "cc", mCC);
-        IHelper::debugAppend(resultEl, "bcc", mBCC);
+        UseServicesHelper::debugAppend(resultEl, "to", mTo);
+        UseServicesHelper::debugAppend(resultEl, "cc", mCC);
+        UseServicesHelper::debugAppend(resultEl, "bcc", mBCC);
 
-        IHelper::debugAppend(resultEl, "from", mFrom);
+        UseServicesHelper::debugAppend(resultEl, "from", mFrom);
 
-        IHelper::debugAppend(resultEl, "type", mType);
-        IHelper::debugAppend(resultEl, "mimeType", mMimeType);
-        IHelper::debugAppend(resultEl, "encoding", mEncoding);
+        UseServicesHelper::debugAppend(resultEl, "type", mType);
+        UseServicesHelper::debugAppend(resultEl, "mimeType", mMimeType);
+        UseServicesHelper::debugAppend(resultEl, "encoding", mEncoding);
 
-        IHelper::debugAppend(resultEl, "push type", mPushType);
-        IHelper::debugAppend(resultEl, "push infos", mPushInfos.size());
+        UseServicesHelper::debugAppend(resultEl, "push type", mPushType);
+        UseServicesHelper::debugAppend(resultEl, "push infos", mPushInfos.size());
 
-        IHelper::debugAppend(resultEl, "sent", mSent);
-        IHelper::debugAppend(resultEl, "expires", mExpires);
+        UseServicesHelper::debugAppend(resultEl, "sent", mSent);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
 
-        IHelper::debugAppend(resultEl, "length", mLength);
-        IHelper::debugAppend(resultEl, "length", mRemaining);
+        UseServicesHelper::debugAppend(resultEl, "length", mLength);
+        UseServicesHelper::debugAppend(resultEl, "length", mRemaining);
 
-        IHelper::debugAppend(resultEl, "folders", mFolders.size());
+        UseServicesHelper::debugAppend(resultEl, "folders", mFolders.size());
 
-        IHelper::debugAppend(resultEl, "flags", mFlags.size());
+        UseServicesHelper::debugAppend(resultEl, "flags", mFlags.size());
 
         return resultEl;
       }
@@ -1154,11 +1089,11 @@ namespace openpeer
         }
 
         if (Time() != mSent) {
-          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("sent", IHelper::timeToString(mSent)));
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("sent", UseServicesHelper::timeToString(mSent)));
         }
 
         if (Time() != mExpires) {
-          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(mExpires)));
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
         }
 
         if (0 != mLength) {
@@ -1319,8 +1254,8 @@ namespace openpeer
           }
         }
 
-        info.mSent = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sent")));
-        info.mExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
+        info.mSent = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sent")));
+        info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
 
         try {
           info.mLength = Numeric<decltype(info.mLength)>(IMessageHelper::getElementText(elem->findFirstChildElement("length")));
@@ -1593,9 +1528,9 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::PushMessageInfo::PushInfo");
 
-        IHelper::debugAppend(resultEl, "type", mServiceType);
-        IHelper::debugAppend(resultEl, "mValues", (bool)mValues);
-        IHelper::debugAppend(resultEl, "custom", (bool)mCustom);
+        UseServicesHelper::debugAppend(resultEl, "type", mServiceType);
+        UseServicesHelper::debugAppend(resultEl, "mValues", (bool)mValues);
+        UseServicesHelper::debugAppend(resultEl, "custom", (bool)mCustom);
 
         return resultEl;
       }
@@ -1660,13 +1595,13 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::PushMessageFolderInfo");
 
-        IHelper::debugAppend(resultEl, "disposition", mDisposition != Disposition_NA ? String(toString(mDisposition)) : String());
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "rename", mRenamed);
-        IHelper::debugAppend(resultEl, "version", mVersion);
-        IHelper::debugAppend(resultEl, "unread", mUnread);
-        IHelper::debugAppend(resultEl, "total", mTotal);
-        IHelper::debugAppend(resultEl, "update next", mUpdateNext);
+        UseServicesHelper::debugAppend(resultEl, "disposition", mDisposition != Disposition_NA ? String(toString(mDisposition)) : String());
+        UseServicesHelper::debugAppend(resultEl, "name", mName);
+        UseServicesHelper::debugAppend(resultEl, "rename", mRenamed);
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "unread", mUnread);
+        UseServicesHelper::debugAppend(resultEl, "total", mTotal);
+        UseServicesHelper::debugAppend(resultEl, "update next", mUpdateNext);
 
         return resultEl;
       }
@@ -1710,7 +1645,7 @@ namespace openpeer
         } catch (Numeric<decltype(info.mTotal)>::ValueOutOfRange &) {
         }
 
-        info.mUpdateNext = services::IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("updateNext")));
+        info.mUpdateNext = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("updateNext")));
 
         return info;
       }
@@ -1742,7 +1677,7 @@ namespace openpeer
           folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("total", string(mTotal)));
         }
         if (Time() != mUpdateNext) {
-          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", services::IHelper::timeToString(mUpdateNext)));
+          folderEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", UseServicesHelper::timeToString(mUpdateNext)));
         }
 
         return folderEl;
@@ -1783,25 +1718,25 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::PushSubscriptionInfo");
 
-        IHelper::debugAppend(resultEl, "folder", mFolder);
+        UseServicesHelper::debugAppend(resultEl, "folder", mFolder);
 
-        IHelper::debugAppend(resultEl, "expires", mExpires);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
 
-        IHelper::debugAppend(resultEl, "type", mType);
+        UseServicesHelper::debugAppend(resultEl, "type", mType);
 
-        IHelper::debugAppend(resultEl, "mapped", mMapped);
+        UseServicesHelper::debugAppend(resultEl, "mapped", mMapped);
 
-        IHelper::debugAppend(resultEl, "unread badge", mUnreadBadge);
+        UseServicesHelper::debugAppend(resultEl, "unread badge", mUnreadBadge);
 
-        IHelper::debugAppend(resultEl, "sound", mSound);
+        UseServicesHelper::debugAppend(resultEl, "sound", mSound);
 
-        IHelper::debugAppend(resultEl, "action", mAction);
+        UseServicesHelper::debugAppend(resultEl, "action", mAction);
 
-        IHelper::debugAppend(resultEl, "launch image", mLaunchImage);
+        UseServicesHelper::debugAppend(resultEl, "launch image", mLaunchImage);
 
-        IHelper::debugAppend(resultEl, "priority", mPriority);
+        UseServicesHelper::debugAppend(resultEl, "priority", mPriority);
 
-        IHelper::debugAppend(resultEl, "value names", mValueNames.size());
+        UseServicesHelper::debugAppend(resultEl, "value names", mValueNames.size());
 
         return resultEl;
       }
@@ -1843,7 +1778,7 @@ namespace openpeer
         }
 
         if (Time() != mExpires) {
-          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(mExpires)));
+          subscriptionEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
         }
 
         if (mType.hasData()) {
@@ -1900,7 +1835,7 @@ namespace openpeer
 
         info.mFolder = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("folder"));
 
-        info.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
+        info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
 
         info.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
 
@@ -1957,8 +1892,8 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::NamespaceInfo");
 
-        IHelper::debugAppend(resultEl, "namespace url", mURL);
-        IHelper::debugAppend(resultEl, "last updated", mLastUpdated);
+        UseServicesHelper::debugAppend(resultEl, "namespace url", mURL);
+        UseServicesHelper::debugAppend(resultEl, "last updated", mLastUpdated);
 
         return resultEl;
       }
@@ -1981,7 +1916,7 @@ namespace openpeer
         if (!elem) return info;
 
         info.mURL = IMessageHelper::getAttributeID(elem);
-        info.mLastUpdated = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updated")));
+        info.mLastUpdated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updated")));
 
         return info;
       }
@@ -1995,7 +1930,7 @@ namespace openpeer
           namespaceEl->setAttribute("id", mURL);
         }
         if (Time() != mLastUpdated) {
-          namespaceEl->setAttribute("updated", IHelper::timeToString(mLastUpdated));
+          namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(mLastUpdated));
         }
 
         return namespaceEl;
@@ -2025,12 +1960,12 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::NamespaceGrantChallengeInfo");
 
-        IHelper::debugAppend(resultEl, "grant challenge ID", mID);
-        IHelper::debugAppend(resultEl, "service name", mName);
-        IHelper::debugAppend(resultEl, "image url", mImageURL);
-        IHelper::debugAppend(resultEl, "service url", mServiceURL);
-        IHelper::debugAppend(resultEl, "domains", mDomains);
-        IHelper::debugAppend(resultEl, "namespaces", mNamespaces.size());
+        UseServicesHelper::debugAppend(resultEl, "grant challenge ID", mID);
+        UseServicesHelper::debugAppend(resultEl, "service name", mName);
+        UseServicesHelper::debugAppend(resultEl, "image url", mImageURL);
+        UseServicesHelper::debugAppend(resultEl, "service url", mServiceURL);
+        UseServicesHelper::debugAppend(resultEl, "domains", mDomains);
+        UseServicesHelper::debugAppend(resultEl, "namespaces", mNamespaces.size());
 
         return resultEl;
       }
@@ -2069,7 +2004,7 @@ namespace openpeer
 
             NamespaceInfo namespaceInfo;
             namespaceInfo.mURL = IMessageHelper::getAttributeID(namespaceEl);
-            namespaceInfo.mLastUpdated = services::IHelper::stringToTime(IMessageHelper::getAttribute(namespaceEl, "updated"));
+            namespaceInfo.mLastUpdated = UseServicesHelper::stringToTime(IMessageHelper::getAttribute(namespaceEl, "updated"));
 
             if (namespaceInfo.hasData()) {
               info.mNamespaces[namespaceInfo.mURL] = namespaceInfo;
@@ -2116,7 +2051,7 @@ namespace openpeer
             }
             ElementPtr namespaceEl = IMessageHelper::createElementWithID("namespace", url);
             if (namespaceInfo.mLastUpdated != Time()) {
-              namespaceEl->setAttribute("updated", services::IHelper::timeToString(namespaceInfo.mLastUpdated));
+              namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(namespaceInfo.mLastUpdated));
             }
 
             namespacesEl->adoptAsLastChild(namespaceEl);
@@ -2157,15 +2092,15 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Server");
 
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "type", mType);
-        IHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "message::Server::ProtocolList"));
-        IHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
-        IHelper::debugAppend(resultEl, "priority", mPriority);
-        IHelper::debugAppend(resultEl, "weight", mWeight);
-        IHelper::debugAppend(resultEl, "region", mRegion);
-        IHelper::debugAppend(resultEl, "created", mCreated);
-        IHelper::debugAppend(resultEl, "expires", mExpires);
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "type", mType);
+        UseServicesHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "message::Server::ProtocolList"));
+        UseServicesHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
+        UseServicesHelper::debugAppend(resultEl, "priority", mPriority);
+        UseServicesHelper::debugAppend(resultEl, "weight", mWeight);
+        UseServicesHelper::debugAppend(resultEl, "region", mRegion);
+        UseServicesHelper::debugAppend(resultEl, "created", mCreated);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
 
         return resultEl;
       }
@@ -2183,12 +2118,12 @@ namespace openpeer
         ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
         ret.mProtocols = Candidate::createProtocolList(protocolsEl);
         ret.mRegion = IMessageHelper::getElementText(elem->findFirstChildElement("region"));
-        ret.mCreated = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
-        ret.mExpires = IHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
+        ret.mCreated = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
+        ret.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
 
         try
         {
-          ret.mPublicKey = IRSAPublicKey::load(*IHelper::convertFromBase64(IMessageHelper::getElementText(elem->findFirstChildElementChecked("key")->findFirstChildElementChecked("x509Data"))));
+          ret.mPublicKey = IRSAPublicKey::load(*UseServicesHelper::convertFromBase64(IMessageHelper::getElementText(elem->findFirstChildElementChecked("key")->findFirstChildElementChecked("x509Data"))));
           try {
             ret.mPriority = Numeric<decltype(ret.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("priority")));
           } catch(Numeric<decltype(ret.mPriority)>::ValueOutOfRange &) {
@@ -2227,10 +2162,10 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Service");
 
-        IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "type", mType);
-        IHelper::debugAppend(resultEl, "version", mVersion);
-        IHelper::debugAppend(resultEl, "methods", mMethods.size());
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "type", mType);
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "methods", mMethods.size());
 
         return resultEl;
       }
@@ -2249,10 +2184,10 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::Service::Method");
 
-        IHelper::debugAppend(resultEl, "name", mName);
-        IHelper::debugAppend(resultEl, "uri", mURI);
-        IHelper::debugAppend(resultEl, "username", mUsername);
-        IHelper::debugAppend(resultEl, "password", mPassword);
+        UseServicesHelper::debugAppend(resultEl, "name", mName);
+        UseServicesHelper::debugAppend(resultEl, "uri", mURI);
+        UseServicesHelper::debugAppend(resultEl, "username", mUsername);
+        UseServicesHelper::debugAppend(resultEl, "password", mPassword);
 
         return resultEl;
       }
@@ -2305,11 +2240,7 @@ namespace openpeer
       {
         return ((mServerToken.hasData()) ||
 
-                (mAccessToken.hasData()) ||
-                (mAccessSecret.hasData()) ||
-                (Time() != mAccessSecretExpires) ||
-                (mAccessSecretProof.hasData()) ||
-                (Time() != mAccessSecretProofExpires) ||
+                (mToken.hasData()) ||
 
                 (mVersion.hasData()) ||
                 (Time() != mUpdateNext) ||
@@ -2322,15 +2253,11 @@ namespace openpeer
       {
         ElementPtr resultEl = Element::create("message::RolodexInfo");
 
-        IHelper::debugAppend(resultEl, "server token", mServerToken);
-        IHelper::debugAppend(resultEl, "access token", mAccessToken);
-        IHelper::debugAppend(resultEl, "access secret", mAccessSecret);
-        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretExpires);
-        IHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
-        IHelper::debugAppend(resultEl, "access secret expires", mAccessSecretProofExpires);
-        IHelper::debugAppend(resultEl, "version", mVersion);
-        IHelper::debugAppend(resultEl, "update next", mUpdateNext);
-        IHelper::debugAppend(resultEl, "refresh", mRefreshFlag);
+        UseServicesHelper::debugAppend(resultEl, "server token", mServerToken);
+        UseServicesHelper::debugAppend(resultEl, mToken.toDebug());
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "update next", mUpdateNext);
+        UseServicesHelper::debugAppend(resultEl, "refresh", mRefreshFlag);
 
         return resultEl;
       }
@@ -2343,11 +2270,7 @@ namespace openpeer
       {
         merge(mServerToken, source.mServerToken, overwriteExisting);
 
-        merge(mAccessToken, source.mAccessToken, overwriteExisting);
-        merge(mAccessSecret, source.mAccessSecret, overwriteExisting);
-        merge(mAccessSecretExpires, source.mAccessSecretExpires, overwriteExisting);
-        merge(mAccessSecretProof, source.mAccessSecretProof, overwriteExisting);
-        merge(mAccessSecretProofExpires, source.mAccessSecretProofExpires, overwriteExisting);
+        mToken.mergeFrom(source.mToken, overwriteExisting);
 
         merge(mVersion, source.mVersion, overwriteExisting);
         merge(mUpdateNext, source.mUpdateNext, overwriteExisting);
@@ -2364,14 +2287,10 @@ namespace openpeer
 
         info.mServerToken = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("serverToken"));
 
-        info.mAccessToken = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessToken"));
-        info.mAccessSecret = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecret"));
-        info.mAccessSecretExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretExpires")));
-        info.mAccessSecretProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProof"));
-        info.mAccessSecretProofExpires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("accessSecretProofExpires")));
+        info.mToken = Token::create(elem->findFirstChildElement("token"));
 
         info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
-        info.mUpdateNext = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updateNext")));
+        info.mUpdateNext = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updateNext")));
 
         try {
           info.mRefreshFlag = Numeric<bool>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("refresh")));
@@ -2390,27 +2309,15 @@ namespace openpeer
           rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("serverToken", mServerToken));
         }
 
-        if (!mAccessToken.isEmpty()) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessToken", mAccessToken));
-        }
-        if (!mAccessSecret.isEmpty()) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecret", mAccessSecret));
-        }
-        if (Time() != mAccessSecretExpires) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretExpires", IHelper::timeToString(mAccessSecretExpires)));
-        }
-        if (!mAccessSecretProof.isEmpty()) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("accessSecretProof", mAccessSecretProof));
-        }
-        if (Time() != mAccessSecretExpires) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(mAccessSecretProofExpires)));
+        if (mToken.hasData()) {
+          rolodexEl->adoptAsLastChild(mToken.createElement());
         }
 
         if (!mVersion.isEmpty()) {
           rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithText("version", mVersion));
         }
         if (Time() != mUpdateNext) {
-          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", IHelper::timeToString(mUpdateNext)));
+          rolodexEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updateNext", UseServicesHelper::timeToString(mUpdateNext)));
         }
 
         if (mRefreshFlag) {

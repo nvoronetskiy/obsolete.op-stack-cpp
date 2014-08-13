@@ -69,8 +69,7 @@ namespace openpeer
                                                         const char *localContextID,
                                                         const char *remoteContextID,
                                                         const char *relayDomain,
-                                                        const char *relayAccessToken,
-                                                        const char *relayAccessSecretProof,
+                                                        const Token &relayToken,
                                                         ITransportStreamPtr receiveStream,
                                                         ITransportStreamPtr sendStream
                                                         );

@@ -79,7 +79,6 @@ namespace openpeer
 
       ZS_DECLARE_TYPEDEF_PTR(std::list<IdentityInfo>, IdentityInfoList)
 
-
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -170,11 +169,7 @@ namespace openpeer
 
         Dispositions mDisposition;
 
-        String mAccessToken;
-        String mAccessSecret;
-        Time mAccessSecretExpires;
-        String mAccessSecretProof;
-        Time mAccessSecretProofExpires;
+        Token mToken;
 
         String mReloginKey;
         String mReloginKeyEncrypted;
@@ -228,19 +223,13 @@ namespace openpeer
         String mDomain;
         String mAccountID;
 
-        String mAccessToken;
-        String mAccessSecret;
-        Time mAccessSecretExpires;
-        String mAccessSecretProof;
-        Time mAccessSecretProofExpires;
-
         String mKeyName;
         String mKeyEncrypted;
         String mKeyHash;
-        String mKeyHashProof;
-        Time mKeyHashProofExpires;
 
         SecureByteBlockPtr mKey;
+
+        Token mToken;
 
         bool mResetFlag;
 
@@ -699,11 +688,7 @@ namespace openpeer
       {
         String mServerToken;
 
-        String mAccessToken;
-        String mAccessSecret;
-        Time mAccessSecretExpires;
-        String mAccessSecretProof;
-        Time mAccessSecretProofExpires;
+        Token mToken;
 
         String mVersion;
         Time mUpdateNext;
@@ -722,7 +707,7 @@ namespace openpeer
         static RolodexInfo create(ElementPtr elem);
         ElementPtr createElement() const;
       };
-      
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

@@ -134,8 +134,7 @@ namespace openpeer
                                                         const char *localContextID,
                                                         const char *remoteContextID,
                                                         const char *relayDomain,
-                                                        const char *relayAccessToken,
-                                                        const char *relayAccessSecretProof,
+                                                        const Token &relayToken,
                                                         ITransportStreamPtr receiveStream,
                                                         ITransportStreamPtr sendStream
                                                         );
@@ -282,8 +281,7 @@ namespace openpeer
                                                  const char *localContextID,
                                                  const char *remoteContextID,
                                                  const char *relayDomain,
-                                                 const char *relayAccessToken,
-                                                 const char *relayAccessSecretProof,
+                                                 const Token &relayToken,
                                                  ITransportStreamPtr receiveStream,
                                                  ITransportStreamPtr sendStream
                                                  );
@@ -323,8 +321,7 @@ namespace openpeer
             String mLocalContextID;
             String mRemoteContextID;
             String mRelayDomain;
-            String mRelayAccessToken;
-            String mRelayAccessSecretProof;
+            Token mRelayToken;
           };
 
           void init();
@@ -348,8 +345,7 @@ namespace openpeer
                                     const char *localContextID,
                                     const char *remoteContextID,
                                     const char *relayDomain,
-                                    const char *relayAccessToken,
-                                    const char *relayAccessSecretProof,
+                                    const Token &relayToken,
                                     ITransportStreamPtr receiveStream,
                                     ITransportStreamPtr sendStream,
                                     ULONG channelNumber
@@ -535,8 +531,7 @@ namespace openpeer
                                                          const char *localContextID,
                                                          const char *remoteContextID,
                                                          const char *relayDomain,
-                                                         const char *relayAccessToken,
-                                                         const char *relayAccessSecretProof,
+                                                         const Token &relayToken,
                                                          ITransportStreamPtr receiveStream,
                                                          ITransportStreamPtr sendStream
                                                          );

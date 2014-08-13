@@ -110,27 +110,18 @@ namespace openpeer
             peerFilePublic = mPeerFiles->getPeerFilePublic();
           }
 
-          String clientNonce = IHelper::randomString(32);
-
           LockboxInfo lockboxInfo;
 
           lockboxInfo.mDomain = mLockboxInfo.mDomain;
-          lockboxInfo.mAccessToken = mLockboxInfo.mAccessToken;
-          if (mLockboxInfo.mAccessSecret.hasData()) {
-            lockboxInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS);
-            lockboxInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mLockboxInfo.mAccessSecret), "lockbox-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mAccessSecretProofExpires) + ":" + lockboxInfo.mAccessToken + ":identity-lookup-update"));
-          }
+
+          lockboxInfo.mToken = mLockboxInfo.mToken.createProof("identity-lookup-update", Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS));
 
           IdentityInfo identityInfo;
 
           identityInfo.mURI = mIdentityInfo.mURI;
           identityInfo.mProvider = mIdentityInfo.mProvider;
 
-          identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":identity-lookup-update"));
-          }
+          identityInfo.mToken = mIdentityInfo.mToken.createProof("identity-lookup-update", Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_LOCKBOX_UPDATE_EXPIRES_TIME_IN_SECONDS));
 
           identityInfo.mStableID = mIdentityInfo.mStableID;
           identityInfo.mPeerFilePublic = mIdentityInfo.mPeerFilePublic;
@@ -163,9 +154,6 @@ namespace openpeer
 
             peerFilePrivate->signElement(contactProofEl);
           }
-
-
-          root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
 
           if (lockboxInfo.hasData()) {
             root->adoptAsLastChild(lockboxInfo.createElement());

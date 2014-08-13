@@ -110,9 +110,9 @@ namespace openpeer
           {
             case Method_Invalid:                                return "";
 
-            case Method_RolodexAccess:                          return "rolodex-access";
-            case Method_RolodexNamespaceGrantChallengeValidate: return "rolodex-namespace-grant-challenge-validate";
-            case Method_RolodexContactsGet:                     return "rolodex-contacts-get";
+            case Method_RolodexAccess:                          return "access";
+            case Method_RolodexNamespaceGrantChallengeValidate: return "namespace-grant-challenge-validate";
+            case Method_RolodexContactsGet:                     return "contacts-get";
           }
           return "";
         }

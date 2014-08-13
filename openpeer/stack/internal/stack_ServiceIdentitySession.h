@@ -209,9 +209,7 @@ namespace openpeer
                                                                         IServiceNamespaceGrantSessionPtr grantSession,
                                                                         IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
                                                                         const char *identityURI,
-                                                                        const char *identityAccessToken,
-                                                                        const char *identityAccessSecret,
-                                                                        Time identityAccessSecretExpires
+                                                                        const Token &identityToken
                                                                         );
         virtual PUID getID() const {return mID;}
 
@@ -229,9 +227,7 @@ namespace openpeer
                                     );
         virtual void attachDelegateAndPreauthorizeLogin(
                                                         IServiceIdentitySessionDelegatePtr delegate,
-                                                        const char *identityAccessToken,
-                                                        const char *identityAccessSecret,
-                                                        Time identityAccessSecretExpires
+                                                        const Token &identityToken
                                                         );
 
         virtual String getIdentityURI() const;
@@ -605,9 +601,7 @@ namespace openpeer
                                                                          IServiceNamespaceGrantSessionPtr grantSession,
                                                                          IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
                                                                          const char *identityURI,
-                                                                         const char *identityAccessToken,
-                                                                         const char *identityAccessSecret,
-                                                                         Time identityAccessSecretExpires
+                                                                         const Token &identityToken
                                                                          );
 
         virtual ServiceIdentitySessionPtr reload(

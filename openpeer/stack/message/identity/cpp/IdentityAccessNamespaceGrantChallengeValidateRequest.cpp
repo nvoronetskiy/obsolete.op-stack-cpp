@@ -98,17 +98,10 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
-
           IdentityInfo identityInfo;
 
-          identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_NAMESPACE_GRANT_CHALLENGE_VALIDATE_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":identity-access-namespace-grant-challenge-validate"));
-          }
+          identityInfo.mToken = mIdentityInfo.mToken.createProof("identity-access-namespace-grant-challenge-validate", Seconds(OPENPEER_STACK_MESSAGE_IDENTITY_ACCESS_NAMESPACE_GRANT_CHALLENGE_VALIDATE_EXPIRES_TIME_IN_SECONDS));
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
             rootEl->adoptAsLastChild(identityInfo.createElement());
           }

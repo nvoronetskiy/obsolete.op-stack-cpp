@@ -92,15 +92,9 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr root = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
-
           LockboxInfo lockboxInfo;
 
-          lockboxInfo.mAccessToken = mLockboxInfo.mAccessToken;
-          if (mLockboxInfo.mAccessSecret.hasData()) {
-            lockboxInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_IDENTITIES_UPDATE_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            lockboxInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mLockboxInfo.mAccessSecret), "lockbox-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mAccessSecretProofExpires) + ":" + lockboxInfo.mAccessToken + ":lockbox-identities-update"));
-          }
+          lockboxInfo.mToken = mLockboxInfo.mToken.createProof("identity-lockbox-identities-update", Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_IDENTITIES_UPDATE_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
           IdentityInfoList identities;
 
@@ -112,14 +106,12 @@ namespace openpeer
             identityInfo.mURI = listIdentity.mURI;
             identityInfo.mProvider = listIdentity.mProvider;
 
-            identityInfo.mAccessToken = listIdentity.mAccessToken;
-            if (listIdentity.mAccessSecret.hasData()) {
-              identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_IDENTITIES_UPDATE_REQUEST_EXPIRES_TIME_IN_SECONDS);
-              identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(listIdentity.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":lockbox-access-update"));
+            if (IdentityInfo::Disposition_Remove != identityInfo.mDisposition) {
+              identityInfo.mDisposition = IdentityInfo::Disposition_Update;
+              identityInfo.mToken = listIdentity.mToken.createProof("identity-lockbox-identities-update", Seconds(OPENPEER_STACK_MESSAGE_LOCKBOX_IDENTITIES_UPDATE_REQUEST_EXPIRES_TIME_IN_SECONDS));
             }
 
             if (identityInfo.hasData()) {
-              identityInfo.mDisposition = IdentityInfo::Disposition_Update;
               identities.push_back(identityInfo);
             }
           }
@@ -138,7 +130,6 @@ namespace openpeer
             }
           }
 
-          root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
             root->adoptAsLastChild(lockboxInfo.createElement());
           }

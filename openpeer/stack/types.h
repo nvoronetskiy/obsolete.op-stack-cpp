@@ -96,10 +96,60 @@ namespace openpeer
 
     ZS_DECLARE_STRUCT_PTR(Candidate)
     ZS_DECLARE_STRUCT_PTR(LocationInfo)
+    ZS_DECLARE_STRUCT_PTR(Token)
 
     ZS_DECLARE_TYPEDEF_PTR(std::list<Candidate>, CandidateList)
     ZS_DECLARE_TYPEDEF_PTR(std::list<LocationInfoPtr>, LocationInfoList)
     ZS_DECLARE_TYPEDEF_PTR(std::list<ElementPtr>, IdentityBundleElementList)
+
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark Token
+    #pragma mark
+
+    struct Token
+    {
+      String mID;
+      String mSecret;
+      String mSecretEncrypted;
+      Time mExpires;
+
+      String mProof;
+      String mNonce;
+      String mResource;
+
+      Token() {}
+      bool hasData() const;
+      ElementPtr toDebug() const;
+
+      void mergeFrom(
+                     const Token &source,
+                     bool overwriteExisting = true
+                     );
+
+      static Token create(
+                          const String &masterSecret,
+                          const String &associatedID,
+                          Duration validDuration
+                          );
+
+
+      static Token create(ElementPtr elem);
+      Token createProof(
+                        const char *resource,
+                        Duration validDuration
+                        );
+
+      ElementPtr createElement() const;
+      bool validate(const Token &proofToken) const;
+      bool validate(
+                    const String &inMasterSecret,
+                    String &outAssociatedID
+                    ) const;
+    };
 
     //-----------------------------------------------------------------------
     //-----------------------------------------------------------------------
@@ -128,8 +178,7 @@ namespace openpeer
       String mTransport;
       ProtocolList mProtocols;
 
-      String mAccessToken;
-      String mAccessSecretProof;
+      Token mToken;
 
       Candidate();
       Candidate(const Candidate &candidate);

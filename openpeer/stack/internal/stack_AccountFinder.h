@@ -106,10 +106,7 @@ namespace openpeer
                                         IPAddress *outIPAddress = NULL
                                         ) const = 0;
 
-        virtual void getFinderRelayInformation(
-                                               String &outFinderRelayAccessToken,
-                                               String &outFinderRelayAccessSecret
-                                               ) const = 0;
+        virtual Token getFinderRelayToken() const = 0;
 
         virtual void notifyFinderDNSComplete() = 0;
       };
@@ -198,10 +195,7 @@ namespace openpeer
                                         IPAddress *outIPAddress = NULL
                                         ) const;
 
-        virtual void getFinderRelayInformation(
-                                               String &outFinderRelayAccessToken,
-                                               String &outFinderRelayAccessSecret
-                                               ) const;
+        virtual Token getFinderRelayToken() const;
 
         virtual void notifyFinderDNSComplete();
 
@@ -326,11 +320,12 @@ namespace openpeer
         #pragma mark AccountFinder => (data)
         #pragma mark
 
+        AccountFinderWeakPtr mThisWeak;
+
         AutoPUID mID;
 
         AccountStates mCurrentState;
 
-        AccountFinderWeakPtr mThisWeak;
         IAccountFinderDelegatePtr mDelegate;
         UseAccountWeakPtr mOuter;
 
@@ -350,8 +345,7 @@ namespace openpeer
         String mServerAgent;
         Time mSessionCreatedTime;
 
-        String mRelayAccessToken;
-        String mRelayAccessSecret;
+        Token mRelayToken;
 
         TimerPtr mKeepAliveTimer;
       };

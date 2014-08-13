@@ -275,7 +275,7 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServicePushMailbox, ForPushMailbox)
 
-        virtual ~IAccountForServicePushMailbox() {} // make polymorphic
+        virtual PUID getID() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -542,6 +542,8 @@ namespace openpeer
         #pragma mark
         #pragma mark Account => IAccountForServicePushMailbox
         #pragma mark
+
+        // (duplicate) virtual PUID getID() const = 0;
 
         //---------------------------------------------------------------------
         #pragma mark

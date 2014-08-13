@@ -109,8 +109,8 @@ namespace openpeer
           {
             case Method_Invalid:                return "";
 
-            case Method_IdentityLookupCheck:    return "identity-lookup-check";
-            case Method_IdentityLookup:         return "identity-lookup";
+            case Method_IdentityLookupCheck:    return "check";
+            case Method_IdentityLookup:         return "lookup";
           }
           return "";
         }

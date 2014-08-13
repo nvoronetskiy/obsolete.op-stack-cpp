@@ -2618,18 +2618,20 @@ namespace openpeer
         ElementPtr resultEl = Element::create("ServicePushMailboxSession");
 
         UseServicesHelper::debugAppend(resultEl, "id", mID);
-
         UseServicesHelper::debugAppend(resultEl, "graceful shutdown reference", (bool)mGracefulShutdownReference);
 
         UseServicesHelper::debugAppend(resultEl, "subscriptions", mSubscriptions.size());
         UseServicesHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
 
         UseServicesHelper::debugAppend(resultEl, "db", (bool)mDB);
+        UseServicesHelper::debugAppend(resultEl, "async db", (bool)mAsyncDB);
 
         UseServicesHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
         UseServicesHelper::debugAppend(resultEl, "error code", mLastError);
         UseServicesHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+
+        UseServicesHelper::debugAppend(resultEl, "account id", mAccount ? mAccount->getID() : 0);
 
         UseServicesHelper::debugAppend(resultEl, UseBootstrappedNetwork::toDebug(mBootstrappedNetwork));
 
@@ -2698,23 +2700,29 @@ namespace openpeer
 
         UseServicesHelper::debugAppend(resultEl, "next folder update timer", mNextFoldersUpdateTimer ? mNextFoldersUpdateTimer->getID() : 0);
 
+
         UseServicesHelper::debugAppend(resultEl, "refresh folders needing update", mRefreshFoldersNeedingUpdate);
         UseServicesHelper::debugAppend(resultEl, "folders needing update", mFoldersNeedingUpdate.size());
         UseServicesHelper::debugAppend(resultEl, "folder get monitors", mFolderGetMonitors.size());
 
+
         UseServicesHelper::debugAppend(resultEl, "refresh monitored folder creation", mRefreshMonitorFolderCreation);
         UseServicesHelper::debugAppend(resultEl, "folder creation monitor", mFolderCreationUpdateMonitor ? mFolderCreationUpdateMonitor->getID() : 0);
+
 
         UseServicesHelper::debugAppend(resultEl, "refresh messages needing update", mRefreshMessagesNeedingUpdate);
         UseServicesHelper::debugAppend(resultEl, "messages needing update", mMessagesNeedingUpdate.size());
         UseServicesHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageMetaDataGetMonitor ? mMessageMetaDataGetMonitor->getID() : 0);
 
+
         UseServicesHelper::debugAppend(resultEl, "refresh messages needing data", mRefreshMessagesNeedingData);
         UseServicesHelper::debugAppend(resultEl, "messages needing data", mMessagesNeedingData.size());
         UseServicesHelper::debugAppend(resultEl, "messages needing data channels", mMessagesNeedingDataChannels.size());
         UseServicesHelper::debugAppend(resultEl, "messages metadata get monitor", mMessageDataGetMonitor ? mMessageDataGetMonitor->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "max message download to memory size", mMaxMessageDownloadToMemorySize);
 
         UseServicesHelper::debugAppend(resultEl, "pending channel data", mPendingChannelData.size());
+
 
         UseServicesHelper::debugAppend(resultEl, "refresh lists needing download", mRefreshListsNeedingDownload);
         UseServicesHelper::debugAppend(resultEl, "lists to download", mListsNeedingDownload.size());
@@ -2725,6 +2733,7 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "refresh messages needing decryption", mRefreshMessagesNeedingDecryption);
         UseServicesHelper::debugAppend(resultEl, "messages needing decryption", mMessagesNeedingDecryption.size());
 
+
         UseServicesHelper::debugAppend(resultEl, "refresh pending delivery", mRefreshPendingDelivery);
         UseServicesHelper::debugAppend(resultEl, "max delivery chunk size", mDeliveryMaxChunkSize);
         UseServicesHelper::debugAppend(resultEl, "last channel", mLastChannel);
@@ -2732,6 +2741,7 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "pending delivery", mPendingDelivery.size());
 
         UseServicesHelper::debugAppend(resultEl, "refresh versioned folders", mRefreshVersionedFolders);
+
 
         UseServicesHelper::debugAppend(resultEl, "messages to mark read", mMessagesToMarkRead.size());
         UseServicesHelper::debugAppend(resultEl, "messages to remove", mMessagesToRemove.size());
@@ -3032,14 +3042,14 @@ namespace openpeer
           mLockboxSubscription = mLockbox->subscribe(mThisWeak.lock());
         }
 
-        if (!mLockboxInfo.mAccessSecret.hasData()) {
+        if (!mLockboxInfo.mToken.hasData()) {
           mLockboxInfo = mLockbox->getLockboxInfo();
-          if (mLockboxInfo.mAccessSecret.hasData()) {
-            ZS_LOG_DEBUG(log("obtained lockbox access secret"))
+          if (mLockboxInfo.mToken.hasData()) {
+            ZS_LOG_DEBUG(log("obtained lockbox token"))
           }
         }
 
-        if (mLockboxInfo.mAccessSecret.hasData()) {
+        if (mLockboxInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("now have lockbox acess secret"))
           return true;
         }

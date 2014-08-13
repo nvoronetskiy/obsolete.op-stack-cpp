@@ -143,8 +143,7 @@ namespace openpeer
                                                                            mConnectInfo.mLocalContextID,
                                                                            mConnectInfo.mRemoteContextID,
                                                                            mConnectInfo.mRelayDomain,
-                                                                           mConnectInfo.mRelayAccessToken,
-                                                                           mConnectInfo.mRelayAccessSecretProof,
+                                                                           mConnectInfo.mRelayToken,
                                                                            mWireReceiveStream,
                                                                            mWireSendStream
                                                                            );
@@ -214,8 +213,7 @@ namespace openpeer
                                                         const char *localContextID,
                                                         const char *remoteContextID,
                                                         const char *relayDomain,
-                                                        const char *relayAccessToken,
-                                                        const char *relayAccessSecretProof,
+                                                        const Token &relayToken,
                                                         IDHPrivateKeyPtr localPrivateKey,
                                                         IDHPublicKeyPtr localPublicKey,
                                                         IDHPublicKeyPtr remotePublicKey
@@ -227,8 +225,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!localContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!remoteContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!relayDomain)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessToken)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessSecretProof)
+        ZS_THROW_INVALID_ARGUMENT_IF(!relayToken.hasData())
         ZS_THROW_INVALID_ARGUMENT_IF(!localPrivateKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!localPublicKey)
         ZS_THROW_INVALID_ARGUMENT_IF(!remotePublicKey)
@@ -240,8 +237,7 @@ namespace openpeer
         pThis->mConnectInfo.mLocalContextID = String(localContextID);
         pThis->mConnectInfo.mRemoteContextID = String(remoteContextID);
         pThis->mConnectInfo.mRelayDomain = String(relayDomain);
-        pThis->mConnectInfo.mRelayAccessToken = String(relayAccessToken);
-        pThis->mConnectInfo.mRelayAccessSecretProof = String(relayAccessSecretProof);
+        pThis->mConnectInfo.mRelayToken = relayToken;
         pThis->mConnectInfo.mDHLocalPrivateKey = localPrivateKey;
         pThis->mConnectInfo.mDHLocalPublicKey = localPublicKey;
         pThis->mConnectInfo.mDHRemotePublicKey = remotePublicKey;
@@ -556,8 +552,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "connect info local context id", mConnectInfo.mLocalContextID);
         IHelper::debugAppend(resultEl, "connect info remote context id", mConnectInfo.mRemoteContextID);
         IHelper::debugAppend(resultEl, "connect info relay domain", mConnectInfo.mRelayDomain);
-        IHelper::debugAppend(resultEl, "connect info relay access token", mConnectInfo.mRelayAccessToken);
-        IHelper::debugAppend(resultEl, "connect info relay access secret proof", mConnectInfo.mRelayAccessSecretProof);
+        IHelper::debugAppend(resultEl, "connect info relay token", mConnectInfo.mRelayToken.toDebug());
         IHelper::debugAppend(resultEl, "connect info DH local private key", mConnectInfo.mDHLocalPrivateKey ? mConnectInfo.mDHLocalPrivateKey->getID() : 0);
         IHelper::debugAppend(resultEl, "connect info DH local public key", mConnectInfo.mDHLocalPublicKey ? mConnectInfo.mDHLocalPublicKey->getID() : 0);
         IHelper::debugAppend(resultEl, "connect info DH remote public key", mConnectInfo.mDHRemotePublicKey ? mConnectInfo.mDHRemotePublicKey->getID() : 0);
@@ -848,8 +843,7 @@ namespace openpeer
                                                           const char *localContextID,
                                                           const char *remoteContextID,
                                                           const char *relayDomain,
-                                                          const char *relayAccessToken,
-                                                          const char *relayAccessSecretProof,
+                                                          const Token &relayToken,
                                                           IDHPrivateKeyPtr localPrivateKey,
                                                           IDHPublicKeyPtr localPublicKey,
                                                           IDHPublicKeyPtr remotePublicKey
@@ -864,8 +858,7 @@ namespace openpeer
                                                                          localContextID,
                                                                          remoteContextID,
                                                                          relayDomain,
-                                                                         relayAccessToken,
-                                                                         relayAccessSecretProof,
+                                                                         relayToken,
                                                                          localPrivateKey,
                                                                          localPublicKey,
                                                                          remotePublicKey
@@ -896,15 +889,14 @@ namespace openpeer
                                                                 const char *localContextID,
                                                                 const char *remoteContextID,
                                                                 const char *relayDomain,
-                                                                const char *relayAccessToken,
-                                                                const char *relayAccessSecretProof,
+                                                                const Token &relayToken,
                                                                 IDHPrivateKeyPtr localPrivateKey,
                                                                 IDHPublicKeyPtr localPublicKey,
                                                                 IDHPublicKeyPtr remotePublicKey
                                                                 )
       {
         if (this) {}
-        return FinderRelayChannel::connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, localPrivateKey, localPublicKey, remotePublicKey);
+        return FinderRelayChannel::connect(delegate, account, receiveStream, sendStream, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayToken, localPrivateKey, localPublicKey, remotePublicKey);
       }
 
       //-----------------------------------------------------------------------

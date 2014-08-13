@@ -48,12 +48,9 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_ChannelNumber,
-            AttributeType_Nonce,
             AttributeType_LocalContext,
             AttributeType_RemoteContext,
-            AttributeType_AccessToken,
-            AttributeType_AccessSecretProof,
-            AttributeType_AccessSecretProofExpires,
+            AttributeType_RelayToken,
           };
 
           typedef DWORD ChannelNumber;
@@ -74,35 +71,23 @@ namespace openpeer
           const ChannelNumber &channelNumber() const                    {return mChannelNumber;}
           void channelNumber(const ChannelNumber &value)                {mChannelNumber = value;}
 
-          const String &nonce() const                                   {return mNonce;}
-          void nonce(const String &value)                               {mNonce = value;}
-
           const String &localContext() const                            {return mLocalContext;}
           void localContext(const String &value)                        {mLocalContext = value;}
 
           const String &remoteContext() const                           {return mRemoteContext;}
           void remoteContext(const String &value)                       {mRemoteContext = value;}
 
-          const String &relayAccessToken() const                        {return mRelayAccessToken;}
-          void relayAccessToken(const String &value)                    {mRelayAccessToken = value;}
-
-          const String &relayAccessSecretProof() const                  {return mRelayAccessSecretProof;}
-          void relayAccessSecretProof(const String &value)              {mRelayAccessSecretProof = value;}
-
-          const Time &relayAccessSecretProofExpires() const             {return mRelayAccessSecretProofExpires;}
-          void relayAccessSecretProofExpires(const Time &value)         {mRelayAccessSecretProofExpires = value;}
+          const Token &relayToken() const                               {return mRelayToken;}
+          void relayToken(const Token &value)                           {mRelayToken = value;}
 
         protected:
           ChannelMapNotify();
 
           ChannelNumber mChannelNumber;
 
-          String mNonce;
           String mLocalContext;
           String mRemoteContext;
-          String mRelayAccessToken;
-          String mRelayAccessSecretProof;
-          Time mRelayAccessSecretProofExpires;
+          Token  mRelayToken;
         };
       }
     }

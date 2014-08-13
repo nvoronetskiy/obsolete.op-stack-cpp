@@ -1096,8 +1096,9 @@ namespace openpeer
         #pragma mark ServicePushMailboxSession => (data)
         #pragma mark
 
-        AutoPUID mID;
         ServicePushMailboxSessionWeakPtr mThisWeak;
+
+        AutoPUID mID;
         ServicePushMailboxSessionPtr mGracefulShutdownReference;
 
         IServicePushMailboxSessionDelegateSubscriptions mSubscriptions;

@@ -79,6 +79,8 @@
 
 #define OPENPEER_STACK_ACCOUNT_PEER_LOCATION_MIN_CONNECTION_TIME_NEEDED_TO_REFIND_IN_SECONDS (60)
 
+#define OPENPEER_STACK_ACCOUNT_PEER_LOCATION_CHANNEL_MAP_NOTIFY_RESOURCE "peer-finder-channel-map"
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 
@@ -577,8 +579,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool AccountPeerLocation::handleIncomingChannelMapNotify(
                                                                ChannelMapNotifyPtr channelMapNotify,
-                                                               const String &relayAccessToken,
-                                                               const String &relayAccessSecret
+                                                               const Token &relayToken
                                                                )
       {
         AutoRecursiveLock lock(*this);
@@ -599,38 +600,29 @@ namespace openpeer
           return false;
         }
 
-        String nonce = channelMapNotify->nonce();
-
         // check to see if nonce was seen before
         {
-          String hashNonce = IHelper::convertToHex(*IHelper::hash(nonce));
+          String hashNonce = IHelper::convertToHex(*IHelper::hash(relayToken.mNonce));
           String nonceNamespace = OPENPEER_STACK_ACCOUNT_PEER_LOCATION_CHANNEL_MAP_COOKIE_NONCE_CACHE_NAMESPACE + hashNonce;
 
           String result = ICache::fetch(nonceNamespace);
           if (result.hasData()) {
-            ZS_LOG_ERROR(Detail, log("nonce was seen previously") + ZS_PARAM("nonce", nonce) + ZS_PARAM("nonce namespace", nonceNamespace))
+            ZS_LOG_ERROR(Detail, log("nonce was seen previously") + ZS_PARAM("nonce", relayToken.mNonce) + ZS_PARAM("nonce namespace", nonceNamespace))
             return false;
           }
         }
 
         ChannelMapNotify::ChannelNumber channel = channelMapNotify->channelNumber();
-        Time expires = channelMapNotify->relayAccessSecretProofExpires();
-        String hash = channelMapNotify->relayAccessSecretProof();
 
-        //  hex(hash("proof:" + <client-nonce> + ":" + <remote-context> + ":" + <channel-number> + ":" + <expires> + ":" + hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map"))))
+        Token relayProofToken = channelMapNotify->relayToken();
 
-        // hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map")
-        String innerDataToHash = "finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";
+        if (!relayToken.validate(relayProofToken)) {
+          ZS_LOG_WARNING(Detail, log("channel map notify proof token failed") + relayToken.toDebug() + relayProofToken.toDebug())
+          return false;
+        }
 
-        String innerHash = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(relayAccessSecret), innerDataToHash));
-
-        //  hex(hash("proof:" + <client-nonce> + ":" + <remote-context> + ":" + <channel-number> + ":" + <expires> + ":" + <innerHash>))
-        String finalHash = "proof:" + nonce + ":" + remoteContext + ":" + string(channel) + ":" + IHelper::timeToString(expires) + ":" + innerHash;
-
-        String calculatedProof = IHelper::convertToHex(*IHelper::hash(finalHash));
-
-        if (calculatedProof != channelMapNotify->relayAccessSecretProof()) {
-          ZS_LOG_WARNING(Detail, log("channel map notify proof failed") + ZS_PARAM("calculated proof", calculatedProof) + ZS_PARAM("received", channelMapNotify->relayAccessSecretProof()) + ZS_PARAM("relay access secret", relayAccessSecret) + ZS_PARAM("inner hash str", innerDataToHash) + ZS_PARAM("inner hash result", innerHash) + ZS_PARAM("final hash str", finalHash))
+        if (OPENPEER_STACK_ACCOUNT_PEER_LOCATION_CHANNEL_MAP_NOTIFY_RESOURCE != relayProofToken.mResource) {
+          ZS_LOG_WARNING(Detail, log("channel map notify proof validates but resource is not correct") + ZS_PARAM("expecting", OPENPEER_STACK_ACCOUNT_PEER_LOCATION_CHANNEL_MAP_NOTIFY_RESOURCE) + relayToken.toDebug() + relayProofToken.toDebug())
           return false;
         }
 
@@ -1717,8 +1709,7 @@ namespace openpeer
           return false;
         }
 
-        String relayAccessToken = relayCandidate.mAccessToken;
-        String relayAccessSecretProof = relayCandidate.mAccessSecretProof;
+        Token relayToken = relayCandidate.mToken;
         String domain = outer->getDomain();
 
         mOutgoingRelayChannel = IFinderRelayChannel::connect(
@@ -1730,8 +1721,7 @@ namespace openpeer
                                                              mLocalContext,
                                                              mRemoteContext,
                                                              domain,
-                                                             relayAccessToken,
-                                                             relayAccessSecretProof,
+                                                             relayToken,
                                                              mDHLocalPrivateKey,
                                                              mDHLocalPublicKey,
                                                              mFindRequest->dhPublicKey()

@@ -95,19 +95,13 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
           IdentityInfo identityInfo;
 
           identityInfo.mURI = mIdentityInfo.mURI;
           identityInfo.mProvider = mIdentityInfo.mProvider;
 
-          identityInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          if (mIdentityInfo.mAccessSecret.hasData()) {
-            identityInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_ROLODEX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            identityInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mIdentityInfo.mAccessSecret), "identity-access-validate:" + identityInfo.mURI + ":" + clientNonce + ":" + IHelper::timeToString(identityInfo.mAccessSecretProofExpires) + ":" + identityInfo.mAccessToken + ":lockbox-access"));
-          }
+          identityInfo.mToken = mIdentityInfo.mToken.createProof("rolodex-access", Seconds(OPENPEER_STACK_MESSAGE_ROLODEX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (identityInfo.hasData()) {
             rootEl->adoptAsLastChild(identityInfo.createElement());
           }

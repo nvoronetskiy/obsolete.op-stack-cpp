@@ -112,12 +112,12 @@ namespace openpeer
           {
             case Method_Invalid:                                        return "";
 
-            case Method_IdentityAccessWindow:                           return "identity-access-window";
-            case Method_IdentityAccessStart:                            return "identity-access-start";
-            case Method_IdentityAccessComplete:                         return "identity-access-complete";
-            case Method_IdentityAccessNamespaceGrantChallengeValidate:  return "identity-access-namespace-grant-challenge-validate";
-            case Method_IdentityAccessRolodexCredentialsGetUpdate:      return "identity-access-rolodex-credentials-get";
-            case Method_IdentityLookupUpdate:                           return "identity-lookup-update";
+            case Method_IdentityAccessWindow:                           return "access-window";
+            case Method_IdentityAccessStart:                            return "access-start";
+            case Method_IdentityAccessComplete:                         return "access-complete";
+            case Method_IdentityAccessNamespaceGrantChallengeValidate:  return "access-namespace-grant-challenge-validate";
+            case Method_IdentityAccessRolodexCredentialsGetUpdate:      return "access-rolodex-credentials-get";
+            case Method_IdentityLookupUpdate:                           return "lookup-update";
           }
           return "";
         }

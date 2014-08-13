@@ -262,8 +262,7 @@ namespace openpeer
                                                                  const char *localContextID,
                                                                  const char *remoteContextID,
                                                                  const char *relayDomain,
-                                                                 const char *relayAccessToken,
-                                                                 const char *relayAccessSecretProof,
+                                                                 const Token &relayToken,
                                                                  ITransportStreamPtr receiveStream,
                                                                  ITransportStreamPtr sendStream
                                                                  )
@@ -274,8 +273,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!localContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!remoteContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!relayDomain)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessToken)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessSecretProof)
+        ZS_THROW_INVALID_ARGUMENT_IF(!relayToken.hasData())
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
@@ -287,7 +285,7 @@ namespace openpeer
 
         if (existing) {
           ZS_LOG_DEBUG(existing->log("reusing existing connection"))
-          return existing->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
+          return existing->connect(delegate, localContextID, remoteContextID, relayDomain, relayToken, receiveStream, sendStream);
         }
 
         FinderConnectionPtr pThis(new FinderConnection(manager, UseStack::queueStack(), remoteFinderIP));
@@ -298,7 +296,7 @@ namespace openpeer
           manager->add(remoteFinderIP, pThis);
         }
 
-        return pThis->connect(delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
+        return pThis->connect(delegate, localContextID, remoteContextID, relayDomain, relayToken, receiveStream, sendStream);
       }
 
       //-----------------------------------------------------------------------
@@ -1142,8 +1140,7 @@ namespace openpeer
         request->channelNumber(static_cast<ChannelMapRequest::ChannelNumber>(channelNumber));
         request->localContextID(info.mLocalContextID);
         request->remoteContextID(info.mRemoteContextID);
-        request->relayAccessToken(info.mRelayAccessToken);
-        request->relayAccessSecretProof(info.mRelayAccessSecretProof);
+        request->relayToken(info.mRelayToken);
 
         mMapRequestChannelMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ChannelMapResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CHANNEL_MAP_REQUEST_TIMEOUT_SECONDS));
         get(mMapRequestChannelNumber) = channelNumber;
@@ -1311,8 +1308,7 @@ namespace openpeer
                                                                  const char *localContextID,
                                                                  const char *remoteContextID,
                                                                  const char *relayDomain,
-                                                                 const char *relayAccessToken,
-                                                                 const char *relayAccessSecretProof,
+                                                                 const Token &relayToken,
                                                                  ITransportStreamPtr receiveStream,
                                                                  ITransportStreamPtr sendStream
                                                                  )
@@ -1326,7 +1322,7 @@ namespace openpeer
 
         ChannelNumber channelNumber = static_cast<ChannelNumber>(zsLib::createPUID());
 
-        ChannelPtr channel = Channel::connect(mThisWeak.lock(), delegate, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream, channelNumber);
+        ChannelPtr channel = Channel::connect(mThisWeak.lock(), delegate, localContextID, remoteContextID, relayDomain, relayToken, receiveStream, sendStream, channelNumber);
 
         mChannels[channelNumber] = channel;
         mPendingMapRequest[channelNumber] = channel;
@@ -1414,8 +1410,7 @@ namespace openpeer
                                                                       const char *localContextID,
                                                                       const char *remoteContextID,
                                                                       const char *relayDomain,
-                                                                      const char *relayAccessToken,
-                                                                      const char *relayAccessSecretProof,
+                                                                      const Token &relayToken,
                                                                       ITransportStreamPtr receiveStream,
                                                                       ITransportStreamPtr sendStream,
                                                                       ULONG channelNumber
@@ -1425,8 +1420,7 @@ namespace openpeer
         ZS_THROW_INVALID_ARGUMENT_IF(!localContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!remoteContextID)
         ZS_THROW_INVALID_ARGUMENT_IF(!relayDomain)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessToken)
-        ZS_THROW_INVALID_ARGUMENT_IF(!relayAccessSecretProof)
+        ZS_THROW_INVALID_ARGUMENT_IF(!relayToken.hasData())
         ZS_THROW_INVALID_ARGUMENT_IF(!receiveStream)
         ZS_THROW_INVALID_ARGUMENT_IF(!sendStream)
 
@@ -1435,8 +1429,7 @@ namespace openpeer
         pThis->mConnectionInfo.mLocalContextID = String(localContextID);
         pThis->mConnectionInfo.mRemoteContextID = String(remoteContextID);
         pThis->mConnectionInfo.mRelayDomain = String(relayDomain);
-        pThis->mConnectionInfo.mRelayAccessToken = String(relayAccessToken);
-        pThis->mConnectionInfo.mRelayAccessSecretProof = String(relayAccessSecretProof);
+        pThis->mConnectionInfo.mRelayToken = relayToken;
         pThis->init();
         return pThis;
       }
@@ -1665,9 +1658,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "outer stream notified ready", mOuterStreamNotifiedReady);
         IHelper::debugAppend(resultEl, "local context", mConnectionInfo.mLocalContextID);
         IHelper::debugAppend(resultEl, "remote context", mConnectionInfo.mRemoteContextID);
-        IHelper::debugAppend(resultEl, "relay domain", mConnectionInfo.mRelayAccessToken);
-        IHelper::debugAppend(resultEl, "relay access token", mConnectionInfo.mRelayAccessToken);
-        IHelper::debugAppend(resultEl, "relay access proof", mConnectionInfo.mRelayAccessSecretProof);
+        IHelper::debugAppend(resultEl, "relay domain", mConnectionInfo.mRelayDomain);
+        IHelper::debugAppend(resultEl, mConnectionInfo.mRelayToken.toDebug());
 
         return resultEl;
       }
@@ -1821,13 +1813,12 @@ namespace openpeer
                                                                               const char *localContextID,
                                                                               const char *remoteContextID,
                                                                               const char *relayDomain,
-                                                                              const char *relayAccessToken,
-                                                                              const char *relayAccessSecretProof,
+                                                                              const Token &relayToken,
                                                                               ITransportStreamPtr receiveStream,
                                                                               ITransportStreamPtr sendStream
                                                                               )
       {
-        return internal::IFinderConnectionRelayChannelFactory::singleton().connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
+        return internal::IFinderConnectionRelayChannelFactory::singleton().connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayToken, receiveStream, sendStream);
       }
 
       //-----------------------------------------------------------------------
@@ -1863,14 +1854,13 @@ namespace openpeer
                                                                                      const char *localContextID,
                                                                                      const char *remoteContextID,
                                                                                      const char *relayDomain,
-                                                                                     const char *relayAccessToken,
-                                                                                     const char *relayAccessSecretProof,
+                                                                                     const Token &relayToken,
                                                                                      ITransportStreamPtr receiveStream,
                                                                                      ITransportStreamPtr sendStream
                                                                                      )
       {
         if (this) {}
-        return FinderConnection::connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayAccessToken, relayAccessSecretProof, receiveStream, sendStream);
+        return FinderConnection::connect(delegate, remoteFinderIP, localContextID, remoteContextID, relayDomain, relayToken, receiveStream, sendStream);
       }
 
     }

@@ -81,8 +81,7 @@ namespace openpeer
             case AttributeType_ChannelNumber:           return (0 != mChannelNumber);
             case AttributeType_LocalContextID:          return mLocalContextID.hasData();
             case AttributeType_RemoteContextID:         return mLocalContextID.hasData();
-            case AttributeType_RelayAccessToken:        return mRelayAccessToken.hasData();
-            case AttributeType_RelayAccessSecretProof:  return mRelayAccessSecretProof.hasData();
+            case AttributeType_RelayToken:              return mRelayToken.hasData();
             default:                                    break;
           }
           return false;
@@ -91,10 +90,6 @@ namespace openpeer
         //---------------------------------------------------------------------
         DocumentPtr ChannelMapRequest::encode()
         {
-          String clientNonce = IHelper::convertToHex(*IHelper::random(32));
-
-          Time expires = zsLib::now() + Duration(Seconds(OPENPEER_STACK_MESSAGE_CHANNEL_MAP_REQUEST_PROOF_EXPIRES_IN_SECONDS));
-
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
@@ -104,28 +99,17 @@ namespace openpeer
             rootEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("channel", string(mChannelNumber)));
           }
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
-
+          if (hasAttribute(AttributeType_RelayToken)) {
+            Token relayToken = mRelayToken.createProof("peer-finder-channel-map", Seconds(OPENPEER_STACK_MESSAGE_CHANNEL_MAP_REQUEST_PROOF_EXPIRES_IN_SECONDS));
+            if (relayToken.hasData()) {
+              relayEl->adoptAsLastChild(relayToken.createElement());
+            }
+          }
           if (hasAttribute(AttributeType_LocalContextID)) {
             relayEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("localContext", mLocalContextID));
           }
           if (hasAttribute(AttributeType_RemoteContextID)) {
             relayEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("remoteContext", mRemoteContextID));
-          }
-          if (hasAttribute(AttributeType_RelayAccessToken)) {
-            relayEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessToken", mRelayAccessToken));
-          }
-          if ((hasAttribute(AttributeType_RelayAccessSecretProof)) &&
-              (hasAttribute(AttributeType_LocalContextID)) &&
-              (hasAttribute(AttributeType_ChannelNumber))) {
-
-            String hashInput = String("proof:") + clientNonce + ":" + mLocalContextID + ":" + string(mChannelNumber) + ":" + IHelper::timeToString(expires) + ":" + mRelayAccessSecretProof;
-            String proof = IHelper::convertToHex(*IHelper::hash(hashInput));
-
-            ZS_LOG_TRACE(slog("relay access secret hash") + ZS_PARAM("id", mID) + ZS_PARAM("input", hashInput) + ZS_PARAM("result", proof))
-
-            relayEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProof", proof));
-            relayEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("accessSecretProofExpires", IHelper::timeToString(expires)));
           }
 
           if (relayEl->hasChildren()) {

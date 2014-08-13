@@ -431,17 +431,14 @@ namespace openpeer
                                                                                        IServiceNamespaceGrantSessionPtr grantSession,
                                                                                        IServiceLockboxSessionPtr existingLockbox,
                                                                                        const char *identityURI,
-                                                                                       const char *identityAccessToken,
-                                                                                       const char *identityAccessSecret,
-                                                                                       Time identityAccessSecretExpires
+                                                                                       const Token &identityToken
                                                                                        )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
         ZS_THROW_INVALID_ARGUMENT_IF(!grantSession)
         ZS_THROW_INVALID_ARGUMENT_IF(!existingLockbox)
         ZS_THROW_INVALID_ARGUMENT_IF(!identityURI)
-        ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessToken)
-        ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessSecret)
+        ZS_THROW_INVALID_ARGUMENT_IF(!identityToken.hasData())
 
         if (!provider) {
           if (IServiceIdentity::isLegacy(identityURI)) {
@@ -469,9 +466,7 @@ namespace openpeer
         ServiceIdentitySessionPtr pThis(new ServiceIdentitySession(UseStack::queueStack(), delegate, providerNetwork, identityNetwork, ServiceNamespaceGrantSession::convert(grantSession), ServiceLockboxSession::convert(existingLockbox), NULL));
         pThis->mThisWeak = pThis;
         pThis->mIdentityInfo.mURI = identityURI;
-        pThis->mIdentityInfo.mAccessToken = String(identityAccessToken);
-        pThis->mIdentityInfo.mAccessSecret = String(identityAccessSecret);
-        pThis->mIdentityInfo.mAccessSecretExpires = identityAccessSecretExpires;
+        pThis->mIdentityInfo.mToken = identityToken;
         pThis->init();
         return pThis;
       }
@@ -539,24 +534,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceIdentitySession::attachDelegateAndPreauthorizeLogin(
                                                                       IServiceIdentitySessionDelegatePtr delegate,
-                                                                      const char *identityAccessToken,
-                                                                      const char *identityAccessSecret,
-                                                                      Time identityAccessSecretExpires
+                                                                      const Token &identityToken
                                                                       )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
-        ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessToken)
-        ZS_THROW_INVALID_ARGUMENT_IF(!identityAccessSecret)
+        ZS_THROW_INVALID_ARGUMENT_IF(!identityToken.hasData())
 
-        ZS_LOG_DEBUG(log("attach delegate and preautothorize login called") + ZS_PARAM("access token", identityAccessToken) + ZS_PARAM("access secret", identityAccessSecret))
+        ZS_LOG_DEBUG(log("attach delegate and preautothorize login called") + identityToken.toDebug())
 
         AutoRecursiveLock lock(*this);
 
         mDelegate = IServiceIdentitySessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate);
 
-        mIdentityInfo.mAccessToken = String(identityAccessToken);
-        mIdentityInfo.mAccessSecret = String(identityAccessSecret);
-        mIdentityInfo.mAccessSecretExpires = identityAccessSecretExpires;
+        mIdentityInfo.mToken = identityToken;
 
         try {
           if (mCurrentState != mLastReportedState) {
@@ -757,8 +747,7 @@ namespace openpeer
           mIdentityInfo.mergeFrom(identityInfo, true);
           mLockboxInfo.mergeFrom(lockboxInfo, true);
 
-          if ((mIdentityInfo.mAccessToken.isEmpty()) ||
-              (mIdentityInfo.mAccessSecret.isEmpty()) ||
+          if ((!mIdentityInfo.mToken.hasData()) ||
               (mIdentityInfo.mURI.isEmpty())) {
             ZS_LOG_ERROR(Detail, log("failed to obtain access token/secret"))
             setError(IHTTP::HTTPStatusCode_Forbidden, "Login via identity provider failed");
@@ -1045,7 +1034,7 @@ namespace openpeer
           ZS_LOG_TRACE(log("login not complete as keying not ready"))
           return false;
         }
-        if (!mIdentityInfo.mAccessToken.hasData()) {
+        if (!mIdentityInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("login not complete as access token not ready"))
           return false;
         }
@@ -1477,9 +1466,7 @@ namespace openpeer
 
         mRolodexInfo.mergeFrom(result->rolodexInfo(), true);
 
-        if ((mRolodexInfo.mAccessToken.isEmpty()) ||
-            (mRolodexInfo.mAccessSecret.isEmpty()))
-        {
+        if (!mRolodexInfo.mToken.hasData()) {
           setError(IHTTP::HTTPStatusCode_MethodFailure, "rolodex access did not return a proper access token/secret");
           cancel();
           return true;
@@ -1919,7 +1906,7 @@ namespace openpeer
           return false;
         }
 
-        if (mIdentityInfo.mAccessToken.hasData()) {
+        if (mIdentityInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("already have access token, no need to load browser"))
           return true;
         }
@@ -1953,7 +1940,7 @@ namespace openpeer
           return false;
         }
 
-        if (mIdentityInfo.mAccessToken.hasData()) {
+        if (mIdentityInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("already have access token, no need to load browser"))
           return true;
         }
@@ -2028,7 +2015,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool ServiceIdentitySession::stepIdentityAccessCompleteNotification()
       {
-        if (mIdentityInfo.mAccessToken.hasData()) {
+        if (mIdentityInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("idenity access complete notification received"))
           return true;
         }
@@ -2090,7 +2077,7 @@ namespace openpeer
           return true;
         }
 
-        if (mRolodexInfo.mAccessToken.hasData()) {
+        if (mRolodexInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("rolodex access token obtained"))
           return true;
         }
@@ -2195,7 +2182,7 @@ namespace openpeer
         }
 
         // before continuing, make sure rolodex access is completed
-        if (mRolodexInfo.mAccessToken.isEmpty()) {
+        if (!mRolodexInfo.mToken.hasData()) {
           ZS_LOG_TRACE(log("rolodex access is still pending"))
           return false;
         }
@@ -2485,7 +2472,7 @@ namespace openpeer
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
 
             LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
-            if (lockboxInfo.mAccessToken.hasData()) {
+            if (lockboxInfo.mToken.hasData()) {
               ZS_LOG_TRACE(log("lockbox is still pending but safe to proceed because lockbox has been granted access"))
               return true;
             }
@@ -2573,8 +2560,7 @@ namespace openpeer
 
           IdentityInfo killInfo;
 
-          killInfo.mAccessToken = mIdentityInfo.mAccessToken;
-          killInfo.mAccessSecret = mIdentityInfo.mAccessSecret;
+          killInfo.mToken = mIdentityInfo.mToken;
           killInfo.mURI = mIdentityInfo.mURI;
           killInfo.mProvider = mIdentityInfo.mProvider;
 
@@ -3058,13 +3044,11 @@ namespace openpeer
                                                                                                IServiceNamespaceGrantSessionPtr grantSession,
                                                                                                IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
                                                                                                const char *identityURI,
-                                                                                               const char *identityAccessToken,
-                                                                                               const char *identityAccessSecret,
-                                                                                               Time identityAccessSecretExpires
+                                                                                               const Token &identityToken
                                                                                                )
       {
         if (this) {}
-        return ServiceIdentitySession::loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityAccessToken, identityAccessSecret, identityAccessSecretExpires);
+        return ServiceIdentitySession::loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityToken);
       }
 
       //-----------------------------------------------------------------------
@@ -3410,12 +3394,10 @@ namespace openpeer
                                                                                        IServiceNamespaceGrantSessionPtr grantSession,
                                                                                        IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
                                                                                        const char *identityURI,
-                                                                                       const char *identityAccessToken,
-                                                                                       const char *identityAccessSecret,
-                                                                                       Time identityAccessSecretExpires
+                                                                                       const Token &identityToken
                                                                                        )
     {
-      return internal::IServiceIdentitySessionFactory::singleton().loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityAccessToken, identityAccessSecret, identityAccessSecretExpires);
+      return internal::IServiceIdentitySessionFactory::singleton().loginWithIdentityPreauthorized(delegate, provider, grantSession, existingLockbox, identityURI, identityToken);
     }
   }
 }

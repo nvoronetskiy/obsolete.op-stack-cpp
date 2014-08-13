@@ -1084,9 +1084,7 @@ namespace openpeer
         ChannelMapNotifyPtr channelMapNotify = ChannelMapNotify::convert(message);
         if (channelMapNotify) {
 
-          String relayAccessToken;
-          String relayAccessSecret;
-          mFinder->getFinderRelayInformation(relayAccessToken, relayAccessSecret);
+          Token relayToken = mFinder->getFinderRelayToken();
 
           for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter)
           {
@@ -1100,7 +1098,7 @@ namespace openpeer
             }
 
             UseAccountPeerLocationPtr peerLocation = (*foundLocation).second;
-            if (!peerLocation->handleIncomingChannelMapNotify(channelMapNotify, relayAccessToken, relayAccessSecret)) {
+            if (!peerLocation->handleIncomingChannelMapNotify(channelMapNotify, relayToken)) {
               ZS_LOG_WARNING(Detail, log("this location did not handle this channel map notification") + ZS_PARAM("location", channelMapNotify->remoteContext()))
             }
 
@@ -2574,28 +2572,17 @@ namespace openpeer
       {
         if (!mFinder) return CandidatePtr();
 
-        String relayAccessToken;
-        String relayAccessSecret;
-
         Server server = mFinder->getCurrentFinder();
-        mFinder->getFinderRelayInformation(relayAccessToken, relayAccessSecret);
+        Token token = mFinder->getFinderRelayToken();
 
-        if ((relayAccessToken.isEmpty()) ||
-            (relayAccessSecret.isEmpty())) return CandidatePtr();
+        if (!token.hasData()) return CandidatePtr();
 
         CandidatePtr candidate(new Candidate);
 
         candidate->mNamespace = OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY;
         candidate->mProtocols = server.mProtocols;
-        candidate->mAccessToken = relayAccessToken;
+        candidate->mToken = token;
 
-        // hex(hmac(<relay-access-secret>, "finder-relay-access-validate:" + <relay-access-token> + ":" + <local-context> + ":channel-map")
-        String hashString = "finder-relay-access-validate:" + relayAccessToken + ":" + localContext + ":channel-map";
-        String proofHash = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(relayAccessSecret), hashString));
-
-        ZS_LOG_TRACE(log("get relay candidate hash calculation") + ZS_PARAM("relay acceess secret", relayAccessSecret) + ZS_PARAM("hmac input", hashString) + ZS_PARAM("relay access secret proof", proofHash))
-
-        candidate->mAccessSecretProof = proofHash;
         return candidate;
       }
 

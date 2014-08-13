@@ -71,10 +71,36 @@ namespace openpeer
     #pragma mark (helpers)
     #pragma mark
 
+    //-----------------------------------------------------------------------
+    static void merge(String &result, const String &source, bool overwrite)
+    {
+      if (source.isEmpty()) return;
+      if (result.hasData()) {
+        if (!overwrite) return;
+      }
+      result = source;
+    }
+
+    //-----------------------------------------------------------------------
+    static void merge(Time &result, const Time &source, bool overwrite)
+    {
+      if (Time() == source) return;
+      if (Time() != result) {
+        if (!overwrite) return;
+      }
+      result = source;
+    }
+
     //---------------------------------------------------------------------
     static Log::Params LocationInfo_slog(const char *message)
     {
       return Log::Params(message, "LocationInfo");
+    }
+
+    //---------------------------------------------------------------------
+    static Log::Params Token_slog(const char *message)
+    {
+      return Log::Params(message, "message::Token");
     }
 
     //-------------------------------------------------------------------------
@@ -98,8 +124,7 @@ namespace openpeer
       mNamespace = candidate.mNamespace;
       mTransport = candidate.mTransport;
 
-      mAccessToken = candidate.mAccessToken;
-      mAccessSecretProof = candidate.mAccessSecretProof;
+      mToken = candidate.mToken;
     }
 
     //-------------------------------------------------------------------------
@@ -116,8 +141,8 @@ namespace openpeer
 
       return ((mNamespace.hasData()) ||
               (mTransport.hasData()) ||
-              (mAccessToken.hasData()) ||
-              (mAccessSecretProof.hasData()));
+              (mProtocols.size() > 0) ||
+              (mToken.hasData()));
     }
 
     //-------------------------------------------------------------------------
@@ -130,8 +155,7 @@ namespace openpeer
 
       UseServicesHelper::debugAppend(resultEl, "transport", mTransport);
       UseServicesHelper::debugAppend(resultEl, toDebug(mProtocols));
-      UseServicesHelper::debugAppend(resultEl, "access token", mAccessToken);
-      UseServicesHelper::debugAppend(resultEl, "access secret proof", mAccessSecretProof);
+      UseServicesHelper::debugAppend(resultEl, mToken.toDebug());
 
       return resultEl;
     }
@@ -155,8 +179,7 @@ namespace openpeer
       ElementPtr ipEl = elem->findFirstChildElement("ip");
       ElementPtr portEl = elem->findFirstChildElement("port");
       ElementPtr priorityEl = elem->findFirstChildElement("priority");
-      ElementPtr accessTokenEl = elem->findFirstChildElement("accessToken");
-      ElementPtr accessSecretProofEncryptedEl = elem->findFirstChildElement("accessSecretProofEncrypted");
+      ElementPtr tokenEl = elem->findFirstChildElement("token");
       ElementPtr relatedEl = elem->findFirstChildElement("related");
       ElementPtr relatedIPEl;
       ElementPtr relatedPortEl;
@@ -230,15 +253,15 @@ namespace openpeer
         ret.mRelatedIP.setPort(port);
       }
 
-      ret.mAccessToken = IMessageHelper::getElementTextAndDecode(accessTokenEl);
+      ret.mToken = Token::create(tokenEl);
 
-      String accessSecretProofEncrypted = IMessageHelper::getElementTextAndDecode(accessSecretProofEncryptedEl);
-      if ((accessSecretProofEncrypted.hasData()) &&
+      if ((ret.mToken.mSecretEncrypted.hasData()) &&
           (encryptionPassphrase)) {
 
-        SecureByteBlockPtr accessSeretProof = stack::IHelper::splitDecrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), accessSecretProofEncrypted);
+        SecureByteBlockPtr accessSeretProof = stack::IHelper::splitDecrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), ret.mToken.mSecretEncrypted);
         if (accessSeretProof) {
-          ret.mAccessSecretProof = UseServicesHelper::convertToString(*accessSeretProof);
+          ret.mToken.mSecret = UseServicesHelper::convertToString(*accessSeretProof);
+          ret.mToken.mSecretEncrypted.clear();
         }
       }
 
@@ -286,7 +309,7 @@ namespace openpeer
       }
 
       if (!mIPAddress.isEmpty()) {
-        if (mAccessToken.hasData()) {
+        if (mToken.hasData()) {
           candidateEl->adoptAsLastChild(IMessageHelper::createElementWithText("host", mIPAddress.string(false)));
         } else {
           candidateEl->adoptAsLastChild(IMessageHelper::createElementWithText("ip", mIPAddress.string(false)));
@@ -305,14 +328,13 @@ namespace openpeer
         relatedEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("port", string(mRelatedIP.getPort())));
       }
 
-      if (mAccessToken.hasData()) {
-        candidateEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessToken", mAccessToken));
-      }
-
-      if ((mAccessSecretProof.hasData()) &&
-          (encryptionPassphrase)) {
-        String accessSecretProofEncrypted = stack::IHelper::splitEncrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), *UseServicesHelper::convertToBuffer(mAccessSecretProof));
-        candidateEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("accessSecretProofEncrypted", accessSecretProofEncrypted));
+      if (mToken.hasData()) {
+        Token tempToken(mToken);
+        if (encryptionPassphrase) {
+          tempToken.mSecretEncrypted = stack::IHelper::splitEncrypt(*UseServicesHelper::hash(encryptionPassphrase, UseServicesHelper::HashAlgorthm_SHA256), *UseServicesHelper::convertToBuffer(mToken.mSecret));
+          tempToken.mSecret.clear();
+        }
+        candidateEl->adoptAsLastChild(tempToken.createElement());
       }
 
       return candidateEl;
@@ -606,5 +628,223 @@ namespace openpeer
       return locationEl;
     }
 
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark message::Token
+    #pragma mark
+
+    //-----------------------------------------------------------------------
+    bool Token::hasData() const
+    {
+      return ((mID.hasData()) ||
+              (mSecret.hasData()) ||
+              (mSecretEncrypted.hasData()) ||
+              (Time() != mExpires) ||
+
+              (mProof.hasData()) ||
+              (mNonce.hasData()) ||
+              (mResource.hasData()));
+    }
+
+    //-----------------------------------------------------------------------
+    ElementPtr Token::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("message::Token");
+
+      UseServicesHelper::debugAppend(resultEl, "id", mID);
+      UseServicesHelper::debugAppend(resultEl, "secret", mSecret);
+      UseServicesHelper::debugAppend(resultEl, "secret encrypted", mSecretEncrypted);
+      UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+
+      UseServicesHelper::debugAppend(resultEl, "proof", mProof);
+      UseServicesHelper::debugAppend(resultEl, "nonce", mNonce);
+      UseServicesHelper::debugAppend(resultEl, "resource", mResource);
+
+      return resultEl;
+    }
+
+    //-----------------------------------------------------------------------
+    void Token::mergeFrom(
+                          const Token &source,
+                          bool overwriteExisting
+                          )
+    {
+      merge(mID, source.mID, overwriteExisting);
+      merge(mSecret, source.mSecret, overwriteExisting);
+      merge(mExpires, source.mExpires, overwriteExisting);
+
+      merge(mProof, source.mProof, overwriteExisting);
+      merge(mNonce, source.mNonce, overwriteExisting);
+      merge(mResource, source.mResource, overwriteExisting);
+    }
+
+    //-----------------------------------------------------------------------
+    Token Token::create(ElementPtr elem)
+    {
+      Token info;
+
+      if (!elem) return info;
+
+      info.mID = IMessageHelper::getAttributeID(elem);
+      info.mSecret = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("secret"));
+      info.mSecretEncrypted = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("secretEncrypted"));
+      info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
+
+      info.mProof = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("proof"));
+      info.mNonce = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("nonce"));
+      info.mResource = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("resource"));
+
+      return info;
+    }
+
+    //-----------------------------------------------------------------------
+    Token Token::create(
+                        const String &masterSecret,
+                        const String &associatedID,
+                        Duration validDuration
+                        )
+    {
+      Token info;
+      info.mExpires = zsLib::now() + validDuration;
+
+      String id = UseServicesHelper::randomString(32*8/5);
+      String expires = UseServicesHelper::timeToString(info.mExpires);
+      String verification = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(masterSecret), "validation:" + id + ":" + expires + ":" + associatedID));
+      String secret = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(masterSecret), "secret:" + id + ":" + expires + ":" + associatedID));
+
+      info.mID = id + "-" + associatedID + "-" + expires + "-" + verification;
+      info.mSecret = secret;
+
+      ZS_LOG_TRACE(Token_slog("created token from master secret") + ZS_PARAM("master", masterSecret) + ZS_PARAM("verification", verification) + ZS_PARAM("secret", secret) + info.toDebug())
+
+      return info;
+    }
+
+    //-----------------------------------------------------------------------
+    Token Token::createProof(
+                             const char *resource,
+                             Duration validDuration
+                             )
+    {
+      Token info;
+
+      if (!hasData()) return info;
+
+      info.mID = mID;
+      info.mResource = String(resource);
+      info.mNonce = UseServicesHelper::randomString(16*8/5);
+      info.mExpires = zsLib::now() + validDuration;
+
+      // `<proof>` = hex(hmac(`<token-secret>`, "proof:" + `<token-id>` + ":" + `<token-nonce>` + ":" + `<token-expires>` + ":" + `<token-resource>`))
+      info.mProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mSecret), "proof:" + info.mID + ":" + info.mNonce + ":" + UseServicesHelper::timeToString(info.mExpires) + ":" + info.mResource));
+
+      return info;
+    }
+
+    //-----------------------------------------------------------------------
+    ElementPtr Token::createElement() const
+    {
+      ElementPtr tokenEl = IMessageHelper::createElementWithID("token", mID);
+
+      if (mSecret.hasData()) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("secret", mSecret));
+      }
+
+      if (mSecretEncrypted.hasData()) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("secretEncrypted", mSecret));
+      }
+
+      if (mProof.hasData()) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("proof", mProof));
+      }
+
+      if (mNonce.hasData()) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("nonce", mProof));
+      }
+
+      if (mResource.hasData()) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("resource", mResource));
+      }
+
+      if (Time() != mExpires) {
+        tokenEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
+      }
+
+      return tokenEl;
+    }
+
+    //-----------------------------------------------------------------------
+    bool Token::validate(const Token &proofToken) const
+    {
+      Time now = zsLib::now();
+
+      if ((Time() != mExpires) &&
+          (now > mExpires)) {
+        ZS_LOG_WARNING(Trace, Token_slog("token has expired") + ZS_PARAM("expires", mExpires) + ZS_PARAM("now", now) + toDebug() + proofToken.toDebug())
+        return false;
+      }
+
+      if ((Time() != proofToken.mExpires) &&
+          (now > proofToken.mExpires)) {
+        ZS_LOG_WARNING(Trace, Token_slog("token id has expired") + ZS_PARAM("expires", proofToken.mExpires) + ZS_PARAM("now", now) + toDebug() + proofToken.toDebug())
+        return false;
+      }
+
+      // `<proof>` = hex(hmac(`<token-secret>`, "proof:" + `<token-id>` + ":" + `<token-nonce>` + ":" + `<token-expires>` + ":" + `<token-resource>`))
+      String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mSecret), "proof:" + mID + ":" + mNonce + ":" + UseServicesHelper::timeToString(mExpires) + ":" + mResource));
+
+      if (proof != proofToken.mProof) {
+        ZS_LOG_WARNING(Trace, Token_slog("token proof did not validate") + ZS_PARAM("calculated proof", proof) + toDebug() + proofToken.toDebug())
+        return false;
+      }
+
+      return true;
+    }
+
+    //-----------------------------------------------------------------------
+    bool Token::validate(
+                         const String &masterSecret,
+                         String &outAssociatedID
+                         ) const
+    {
+      outAssociatedID.clear();
+
+      UseServicesHelper::SplitMap split;
+
+      UseServicesHelper::split(mID, split, '-');
+      if (split.size() != 4) {
+        ZS_LOG_WARNING(Trace, Token_slog("token did not split") + toDebug())
+        return false;
+      }
+
+      String id = split[0];
+      String associatedID = split[1];
+      String expires = split[2];
+      String verification = split[3];
+
+      Time actualExpires = UseServicesHelper::stringToTime(expires);
+
+      String calculatedVerification = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(masterSecret), "validation:" + id + ":" + expires + ":" + associatedID));
+      String calculatedSecret = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(masterSecret), "secret:" + id + ":" + expires + ":" + associatedID));
+
+      if (verification != calculatedVerification) {
+        ZS_LOG_WARNING(Trace, Token_slog("token id did not validate") + ZS_PARAM("master", masterSecret) + ZS_PARAM("calculated verification", calculatedVerification) + ZS_PARAM("calculated secret", calculatedSecret) + toDebug())
+        return false;
+      }
+
+      Token master;
+      master.mID = mID;
+      master.mSecret = calculatedSecret;
+      master.mExpires = actualExpires;
+
+      bool validated = master.validate(*this);
+      if (!validated) return false;
+
+      outAssociatedID = associatedID;
+      return true;
+    }
   }
 }

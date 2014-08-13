@@ -1319,8 +1319,8 @@ namespace openpeer
           return false;
         }
 
-        if (mLockboxInfo.mAccessToken.hasData()) {
-          ZS_LOG_TRACE(log("already have a lockbox access key"))
+        if (mLockboxInfo.mToken.hasData()) {
+          ZS_LOG_TRACE(log("already have a lockbox token"))
           return true;
         }
 

@@ -147,9 +147,7 @@ namespace openpeer
                                                                        IServiceNamespaceGrantSessionPtr grantSession,
                                                                        IServiceLockboxSessionPtr existingLockbox,  // pass NULL IServiceLockboxSessionPtr() if none exists
                                                                        const char *identityURI,
-                                                                       const char *identityAccessToken,
-                                                                       const char *identityAccessSecret,
-                                                                       Time identityAccessSecretExpires
+                                                                       const Token &identityToken
                                                                        );
 
       virtual PUID getID() const = 0;
@@ -168,9 +166,7 @@ namespace openpeer
                                   ) = 0;
       virtual void attachDelegateAndPreauthorizeLogin(
                                                       IServiceIdentitySessionDelegatePtr delegate,
-                                                      const char *identityAccessToken,
-                                                      const char *identityAccessSecret,
-                                                      Time identityAccessSecretExpires
+                                                      const Token &identitToken
                                                       ) = 0;
 
       virtual String getIdentityURI() const = 0;

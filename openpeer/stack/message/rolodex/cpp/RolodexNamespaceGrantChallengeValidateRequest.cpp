@@ -92,20 +92,13 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
-
           RolodexInfo rolodexInfo;
           rolodexInfo.mServerToken = mRolodexInfo.mServerToken;
           rolodexInfo.mVersion = mRolodexInfo.mVersion;
           rolodexInfo.mRefreshFlag = mRolodexInfo.mRefreshFlag;
 
-          rolodexInfo.mAccessToken = mRolodexInfo.mAccessToken;
-          if (mRolodexInfo.mAccessSecret.hasData()) {
-            rolodexInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_ROLODEX_NAMESPACE_GRANT_CHALLENGE_VALIDATE_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            rolodexInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hash(mRolodexInfo.mAccessSecret), "rolodex-access-validate:" + clientNonce + ":" + IHelper::timeToString(rolodexInfo.mAccessSecretProofExpires) + ":" + rolodexInfo.mAccessToken + ":rolodex-namespace-grant-challenge-validate"));
-          }
+          rolodexInfo.mToken = mRolodexInfo.mToken.createProof("rolodex-namespace-grant-challenge-validate", Seconds(OPENPEER_STACK_MESSAGE_ROLODEX_NAMESPACE_GRANT_CHALLENGE_VALIDATE_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
-          rootEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (rolodexInfo.hasData()) {
             rootEl->adoptAsLastChild(rolodexInfo.createElement());
           }

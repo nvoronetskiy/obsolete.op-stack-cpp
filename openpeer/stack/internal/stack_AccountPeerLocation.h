@@ -149,8 +149,7 @@ namespace openpeer
 
         virtual bool handleIncomingChannelMapNotify(
                                                     ChannelMapNotifyPtr notify,
-                                                    const String &relayAccessToken,
-                                                    const String &relayAccessSecret
+                                                    const Token &relayToken
                                                     ) = 0;
 
         virtual ChannelNumber getIncomingRelayChannelNumber() const = 0;
@@ -293,8 +292,7 @@ namespace openpeer
 
         virtual bool handleIncomingChannelMapNotify(
                                                     ChannelMapNotifyPtr notify,
-                                                    const String &relayAccessToken,
-                                                    const String &relayAccessSecret
+                                                    const Token &relayToken
                                                     );
 
         virtual ChannelNumber getIncomingRelayChannelNumber() const;

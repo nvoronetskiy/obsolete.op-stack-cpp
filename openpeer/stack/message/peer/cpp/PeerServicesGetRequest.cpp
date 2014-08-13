@@ -92,17 +92,10 @@ namespace openpeer
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr root = ret->getFirstChildElement();
 
-          String clientNonce = IHelper::randomString(32);
-
           LockboxInfo lockboxInfo;
 
-          lockboxInfo.mAccessToken = mLockboxInfo.mAccessToken;
-          if (mLockboxInfo.mAccessSecret.hasData()) {
-            lockboxInfo.mAccessSecretProofExpires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PEER_SERVICES_GET_REQUEST_EXPIRES_TIME_IN_SECONDS);
-            lockboxInfo.mAccessSecretProof = IHelper::convertToHex(*IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mLockboxInfo.mAccessSecret), "lockbox-access-validate:" + clientNonce + ":" + IHelper::timeToString(lockboxInfo.mAccessSecretProofExpires) + ":" + lockboxInfo.mAccessToken + ":peer-services-get"));
-          }
+          lockboxInfo.mToken = mLockboxInfo.mToken.createProof("peer-services-get", Seconds(OPENPEER_STACK_MESSAGE_PEER_SERVICES_GET_REQUEST_EXPIRES_TIME_IN_SECONDS));
 
-          root->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", clientNonce));
           if (lockboxInfo.hasData()) {
             root->adoptAsLastChild(lockboxInfo.createElement());
           }

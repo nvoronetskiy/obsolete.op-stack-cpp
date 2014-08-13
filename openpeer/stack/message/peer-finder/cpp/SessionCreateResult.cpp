@@ -135,12 +135,10 @@ namespace openpeer
 #define WARNING_NEED_TO_VERIFY_SERVER_SIGNATURE 2
 
           if (relayEl) {
-            ret->mRelayAccessToken = IMessageHelper::getElementTextAndDecode(relayEl->findFirstChildElement("accessToken"));
-            String accessSecretEncrypted = IMessageHelper::getElementTextAndDecode(relayEl->findFirstChildElement("accessSecretEncrypted"));
-            if (accessSecretEncrypted.hasData()) {
-              ret->mRelayAccessSecret = IHelper::convertToString(*peerFilePrivate->decrypt(*IHelper::convertFromBase64(accessSecretEncrypted)));
-            } else {
-              ret->mRelayAccessSecret = IMessageHelper::getElementTextAndDecode(relayEl->findFirstChildElement("accessSecret"));
+            ret->mRelayToken = Token::create(relayEl->findFirstChildElement("token"));
+            if (ret->mRelayToken.mSecretEncrypted.hasData()) {
+              ret->mRelayToken.mSecret = IHelper::convertToString(*peerFilePrivate->decrypt(*IHelper::convertFromBase64(ret->mRelayToken.mSecretEncrypted)));
+              ret->mRelayToken.mSecretEncrypted.clear();
             }
           }
 
@@ -155,8 +153,7 @@ namespace openpeer
         {
           switch (type)
           {
-            case AttributeType_RelayAccessToken:    return mRelayAccessToken.hasData();
-            case AttributeType_RelayAccessSecret:   return mRelayAccessSecret.hasData();
+            case AttributeType_RelayToken:          return mRelayToken.hasData();
             case AttributeType_ServerAgent:         return mServerAgent.hasData();
             case AttributeType_Expires:             return (Time() != mExpires);
             default:                                break;
