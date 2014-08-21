@@ -40,9 +40,8 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_AccountPeerLocation.cpp \
 		   $(SOURCE_PATH)/stack_BootstrappedNetwork.cpp \
 		   $(SOURCE_PATH)/stack_BootstrappedNetworkManager.cpp \
-		  $(SOURCE_PATH)/stack_Cache.cpp \
+		   $(SOURCE_PATH)/stack_Cache.cpp \
 		   $(SOURCE_PATH)/stack_Diff.cpp \
-		   $(SOURCE_PATH)/stack_Factory.cpp \
 		   $(SOURCE_PATH)/stack_FinderConnection.cpp \
 		   $(SOURCE_PATH)/stack_FinderRelayChannel.cpp \
 		   $(SOURCE_PATH)/stack_Helper.cpp \
@@ -72,6 +71,9 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_ServicePeerFileLookup.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncDatabase.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncDecrypt.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncEncrypt.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncNotifier.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_RegisterQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_SendQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServiceNamespaceGrantSession.cpp \
