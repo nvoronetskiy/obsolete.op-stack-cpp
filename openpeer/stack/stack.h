@@ -58,5 +58,6 @@
 #include <openpeer/stack/IServicePushMailbox.h>
 #include <openpeer/stack/IServicePushMailboxDatabaseAbstractionDelegate.h>
 #include <openpeer/stack/IServiceSalt.h>
+#include <openpeer/stack/IServerMessaging.h>
 #include <openpeer/stack/ISettings.h>
 #include <openpeer/stack/IStack.h>

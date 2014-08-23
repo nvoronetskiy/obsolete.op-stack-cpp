@@ -1856,6 +1856,8 @@ namespace openpeer
               break;
             }
             case IMessageLayerSecurityChannel::SessionState_WaitingForNeededInformation: {
+              ZS_LOG_TRACE(log("MLS waiting for needed information"))
+
               IPeerFilesPtr peerFiles = outer->getPeerFiles();
               IPeerFilePrivatePtr peerFilePrivate;
               IPeerFilePublicPtr peerFilePublic;
@@ -1869,44 +1871,79 @@ namespace openpeer
                 remotePeerFilePublic = mPeer->getPeerFilePublic();
               }
 
-              if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
-                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPublicKey)
-                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPrivateKey)
+              IMessageLayerSecurityChannel::KeyingTypes keyingType = IMessageLayerSecurityChannel::KeyingType_Unknown;
+              if (mMLSChannel->needsSendKeying(&keyingType)) {
+                switch (keyingType) {
+                  case IMessageLayerSecurityChannel::KeyingType_Passphrase:   {
+                    ZS_LOG_ERROR(Detail, log("set send keying decoding by passphrase is not recommended (as it doesn't support PFS)"))
+                    break;
+                  }
+                  case IMessageLayerSecurityChannel::KeyingType_PublicKey:    {
+                    if (remotePeerFilePublic) {
+                      ZS_LOG_DEBUG(log("set send keying remote public key"))
+                      mMLSChannel->setSendKeying(remotePeerFilePublic->getPublicKey());
+                    }
+                    break;
+                  }
+                  case IMessageLayerSecurityChannel::KeyingType_Unknown:
+                  case IMessageLayerSecurityChannel::KeyingType_KeyAgreement: {
+                    ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPublicKey)
+                    ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPrivateKey)
 
-                ZS_LOG_DEBUG(log("set receive keying decoding by public / private key") + ZS_PARAM("local private key", mDHLocalPrivateKey->getID()) + ZS_PARAM("local public key", mDHLocalPublicKey->getID()))
-                mMLSChannel->setReceiveKeyingDecoding(mDHLocalPrivateKey, mDHLocalPublicKey);
+                    if (mDHRemotePublicKey) {
+                      mMLSChannel->setRemoteKeyAgreement(mDHRemotePublicKey);
+                    }
+
+                    ZS_LOG_DEBUG(log("set receive keying decoding by public / private key") + ZS_PARAM("local private key", mDHLocalPrivateKey->getID()) + ZS_PARAM("local public key", mDHLocalPublicKey->getID()))
+                    mMLSChannel->setLocalKeyAgreement(mDHLocalPrivateKey, mDHLocalPublicKey, isCreatedFromOutgoingFind());
+                  }
+                }
               }
 
-              if (mMLSChannel->needsReceiveKeyingDecodingPassphrase()) {
-                ZS_LOG_ERROR(Detail, log("set receive keying decoding by passphrase is not recommended (as it doesn't support PFS)"))
+              keyingType = IMessageLayerSecurityChannel::KeyingType_Unknown;
+              if (mMLSChannel->needsReceiveKeying(&keyingType)) {
+                switch (keyingType) {
+                  case IMessageLayerSecurityChannel::KeyingType_Passphrase:   {
+                    ZS_LOG_ERROR(Detail, log("set send keying decoding by passphrase is not recommended (as it doesn't support PFS)"))
+                    break;
+                  }
+                  case IMessageLayerSecurityChannel::KeyingType_PublicKey:    {
+                    if (peerFilePublic) {
+                      ZS_LOG_DEBUG(log("set receive keying public key"))
+                      mMLSChannel->setSendKeying(peerFilePublic->getPublicKey());
+                    }
+                    break;
+                  }
+                  case IMessageLayerSecurityChannel::KeyingType_Unknown:
+                  case IMessageLayerSecurityChannel::KeyingType_KeyAgreement: {
+                    ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPublicKey)
+                    ZS_THROW_INVALID_ASSUMPTION_IF(!mDHLocalPrivateKey)
+
+                    ZS_LOG_DEBUG(log("set receive keying decoding by public / private key") + ZS_PARAM("local private key", mDHLocalPrivateKey->getID()) + ZS_PARAM("local public key", mDHLocalPublicKey->getID()))
+                    mMLSChannel->setLocalKeyAgreement(mDHLocalPrivateKey, mDHLocalPublicKey, false);
+                  }
+                }
               }
 
-              if ((mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) &&
+              if ((mMLSChannel->needsReceiveKeyingSigningPublicKey()) &&
                   (remotePeerFilePublic)) {
                 ZS_LOG_DEBUG(log("set receive keying signing public key"))
-                mMLSChannel->setReceiveKeyingMaterialSigningPublicKey(remotePeerFilePublic->getPublicKey());
+                mMLSChannel->setReceiveKeyingSigningPublicKey(remotePeerFilePublic->getPublicKey());
               }
 
-              if (mMLSChannel->needsSendKeyingEncodingMaterial()) {
-                ZS_THROW_INVALID_ASSUMPTION_IF(!mDHRemotePublicKey)
-
-                ZS_LOG_DEBUG(log("setting DH send keying encoding"))
-                mMLSChannel->setSendKeyingEncoding(mDHLocalPrivateKey, mDHRemotePublicKey);
-              }
-
-              if ((mMLSChannel->needsSendKeyingMaterialToeBeSigned()) &&
-                  (peerFilePrivate)) {
+              if ((mMLSChannel->needsSendKeyingToeBeSigned()) &&
+                  (peerFilePrivate) &&
+                  (peerFilePublic)) {
                 DocumentPtr doc;
                 ElementPtr signEl;
-                mMLSChannel->getSendKeyingMaterialNeedingToBeSigned(doc, signEl);
+                mMLSChannel->getSendKeyingNeedingToBeSigned(doc, signEl);
 
                 if (signEl) {
                   ZS_LOG_DEBUG(log("notified send keying material signed"))
                   peerFilePrivate->signElement(signEl);
-                  mMLSChannel->notifySendKeyingMaterialSigned();
+                  mMLSChannel->notifySendKeyingSigned(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
                 }
               }
-              ZS_LOG_TRACE(log("MLS waiting for needed information"))
               return true;
             }
             case IMessageLayerSecurityChannel::SessionState_Connected: {

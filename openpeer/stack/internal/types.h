@@ -39,6 +39,7 @@
 #define OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY   "https://meta.openpeer.org/candidate/finder-relay"
 
 #define OPENPEER_STACK_TRANSPORT_JSON_MLS_RUDP "json-mls/rudp"
+#define OPENPEER_STACK_TRANSPORT_JSON_MLS_TCP "json-mls/tcp"
 #define OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_MLS_TCP "multiplexed-json-mls/tcp"
 
 #define OPENPEER_STACK_TRANSPORT_MULTIPLEXED_JSON_TCP "multiplexed-json/tcp"
@@ -147,6 +148,7 @@ namespace openpeer
       ZS_DECLARE_CLASS_PTR(PeerFilePublic)
       ZS_DECLARE_CLASS_PTR(PeerFilePrivate)
       ZS_DECLARE_CLASS_PTR(PeerSubscription)
+      ZS_DECLARE_CLASS_PTR(ServerMessaging)
       ZS_DECLARE_CLASS_PTR(ServiceIdentitySession)
       ZS_DECLARE_CLASS_PTR(ServiceLockboxSession)
       ZS_DECLARE_CLASS_PTR(ServiceNamespaceGrantSession)

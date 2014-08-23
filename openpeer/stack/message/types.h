@@ -597,42 +597,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Server
-      #pragma mark
-
-      struct Server
-      {
-        typedef Candidate::Protocol Protocol;
-        typedef Candidate::ProtocolList ProtocolList;
-
-        String mID;
-        String mType;
-        ProtocolList mProtocols;
-        IRSAPublicKeyPtr mPublicKey;
-        WORD  mPriority;
-        WORD  mWeight;
-        String mRegion;
-        Time mCreated;
-        Time mExpires;
-
-        Server() :
-          mPriority(0),
-          mWeight(0)
-          {}
-
-        bool hasData() const;
-        ElementPtr toDebug() const;
-
-        static Server create(ElementPtr elem);
-      };
-
-      ZS_DECLARE_TYPEDEF_PTR(std::list<Server>, ServerList)
-      
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark Service
       #pragma mark
 

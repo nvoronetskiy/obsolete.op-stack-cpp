@@ -156,11 +156,12 @@ namespace openpeer
           // NOTE: At this point we know the remote party's public key but they
           //       do not know the local public key so we must include those
           //       details in the keying material sent out.
-          mMLSChannel->setSendKeyingEncoding(
-                                             mConnectInfo.mDHLocalPrivateKey,
-                                             mConnectInfo.mDHRemotePublicKey,
-                                             mConnectInfo.mDHLocalPublicKey
-                                             );
+          mMLSChannel->setRemoteKeyAgreement(mConnectInfo.mDHRemotePublicKey);
+          mMLSChannel->setLocalKeyAgreement(
+                                            mConnectInfo.mDHLocalPrivateKey,
+                                            mConnectInfo.mDHLocalPublicKey,
+                                            false
+                                            );
         }
 
         step();
@@ -348,8 +349,8 @@ namespace openpeer
 
         mMLSChannel->setLocalContextID(localContextID);
 
-        // NOTE: we don't know the remote public key yet in this case
-        mMLSChannel->setReceiveKeyingDecoding(localPrivateKey, localPublicKey);
+        // NOTE: we don't know the remote public key yet in this case (but remote side knows our public key)
+        mMLSChannel->setLocalKeyAgreement(localPrivateKey, localPublicKey, true);
 
         mIncomingInfo.mLocalContextID = String(localContextID);
         mIncomingInfo.mDHLocalPrivateKey = localPrivateKey;
@@ -404,7 +405,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (!mMLSChannel) return IDHKeyDomainPtr();
-        return mMLSChannel->getDHRemoteKeyDomain();
+        return mMLSChannel->getKeyAgreementDomain();
       }
 
       //-----------------------------------------------------------------------
@@ -412,7 +413,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(getLock());
         if (!mMLSChannel) return IDHPublicKeyPtr();
-        return mMLSChannel->getDHRemotePublicKey();
+        return mMLSChannel->getOriginalRemoteKeyAgreement();
       }
 
       //-----------------------------------------------------------------------
@@ -675,7 +676,7 @@ namespace openpeer
           if (!mNotifiedNeedsContext) {
             ZS_LOG_DEBUG(log("have not notified needs context"))
             if ((mMLSChannel->getRemoteContextID().hasData()) ||
-                (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey())) {
+                (mMLSChannel->needsReceiveKeyingSigningPublicKey())) {
 
               // have remote context ID, but have we set local context ID?
               ZS_LOG_DEBUG(log("have remote context or receive keying material needs to be signed") + ZS_PARAM("remote context", mMLSChannel->getRemoteContextID()))
@@ -689,32 +690,87 @@ namespace openpeer
             }
           }
 
-          if (mMLSChannel->needsReceiveKeyingDecodingPrivateKey()) {
-            ZS_LOG_TRACE(log("needs receive keying decoding private key") + IPeerFiles::toDebug(peerFiles))
 
-            if (mConnectInfo.mDHLocalPrivateKey) {
-              mMLSChannel->setReceiveKeyingDecoding(mConnectInfo.mDHLocalPrivateKey, mConnectInfo.mDHLocalPublicKey);
-            }
-            if (mIncomingInfo.mDHLocalPrivateKey) {
-              mMLSChannel->setReceiveKeyingDecoding(mIncomingInfo.mDHLocalPrivateKey, mIncomingInfo.mDHLocalPublicKey);
+          if (mIncomingInfo.mRemotePeer) {
+            mRemotePeer = mIncomingInfo.mRemotePeer;
+          }
+
+          if (mRemotePeer) {
+            IPeerFilePublicPtr peerFilePublic = mRemotePeer->getPeerFilePublic();
+            if (peerFilePublic) {
+              mRemotePublicKey = peerFilePublic->getPublicKey();
             }
           }
 
-          if ((mIncoming) &&
-              (mIncomingInfo.mDHLocalPrivateKey)) {
-            if (mMLSChannel->needsSendKeyingEncodingMaterial()) {
-              IDHPublicKeyPtr remotePublicKey = mMLSChannel->getDHRemotePublicKey();
-              if (remotePublicKey) {
-                ZS_LOG_DEBUG(log("setting sending keying encoding"))
-                mMLSChannel->setSendKeyingEncoding(mIncomingInfo.mDHLocalPrivateKey, remotePublicKey);
+          IMessageLayerSecurityChannel::KeyingTypes keyingType = IMessageLayerSecurityChannel::KeyingType_Unknown;
+          if (mMLSChannel->needsSendKeying(&keyingType)) {
+            switch (keyingType) {
+              case IMessageLayerSecurityChannel::KeyingType_Passphrase: {
+                ZS_LOG_ERROR(Detail, log("not recommended to allow passphrase based encryption"))
+                setError(IHTTP::HTTPStatusCode_Forbidden, "not recommended to allow passphrase based encryption");
+                cancel();
+                return false;
+              }
+              case IMessageLayerSecurityChannel::KeyingType_PublicKey: {
+                if (mRemotePublicKey) {
+                  mMLSChannel->setSendKeying(mRemotePublicKey);
+                }
+                break;
+              }
+              case IMessageLayerSecurityChannel::KeyingType_Unknown:
+              case IMessageLayerSecurityChannel::KeyingType_KeyAgreement: {
+                if (mConnectInfo.mDHLocalPrivateKey) {
+                  if (mConnectInfo.mDHRemotePublicKey) {
+                    mMLSChannel->setRemoteKeyAgreement(mConnectInfo.mDHRemotePublicKey);
+                  }
+                  mMLSChannel->setLocalKeyAgreement(mConnectInfo.mDHLocalPrivateKey, mConnectInfo.mDHLocalPublicKey, false);
+                  break;
+                }
+                if (mIncomingInfo.mDHLocalPrivateKey) {
+                  mMLSChannel->setLocalKeyAgreement(mIncomingInfo.mDHLocalPrivateKey, mIncomingInfo.mDHLocalPublicKey, true);
+                  break;
+                }
               }
             }
           }
 
-          if (mMLSChannel->needsReceiveKeyingMaterialSigningPublicKey()) {
+          keyingType = IMessageLayerSecurityChannel::KeyingType_Unknown;
+          if (mMLSChannel->needsReceiveKeying(&keyingType)) {
+            switch (keyingType) {
+              case IMessageLayerSecurityChannel::KeyingType_Passphrase: {
+                ZS_LOG_ERROR(Detail, log("not recommended to allow passphrase based encryption"))
+                setError(IHTTP::HTTPStatusCode_Forbidden, "not recommended to allow passphrase based encryption");
+                cancel();
+                return false;
+              }
+              case IMessageLayerSecurityChannel::KeyingType_PublicKey: {
+                if ((peerFilePrivate) &&
+                    (peerFilePublic)) {
+                  mMLSChannel->setReceiveKeying(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
+                }
+                break;
+              }
+              case IMessageLayerSecurityChannel::KeyingType_Unknown:
+              case IMessageLayerSecurityChannel::KeyingType_KeyAgreement: {
+                if (mConnectInfo.mDHLocalPrivateKey) {
+                  if (mConnectInfo.mDHRemotePublicKey) {
+                    mMLSChannel->setRemoteKeyAgreement(mConnectInfo.mDHRemotePublicKey);
+                  }
+                  mMLSChannel->setLocalKeyAgreement(mConnectInfo.mDHLocalPrivateKey, mConnectInfo.mDHLocalPublicKey, false);
+                  break;
+                }
+                if (mIncomingInfo.mDHLocalPrivateKey) {
+                  mMLSChannel->setLocalKeyAgreement(mIncomingInfo.mDHLocalPrivateKey, mIncomingInfo.mDHLocalPublicKey, true);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (mMLSChannel->needsReceiveKeyingSigningPublicKey()) {
             ZS_LOG_DEBUG(log("needs receive keying signing public key") + IPeerFiles::toDebug(peerFiles))
 
-            ElementPtr receiveSignedEl = mMLSChannel->getSignedReceivingKeyingMaterial();
+            ElementPtr receiveSignedEl = mMLSChannel->getSignedReceiveKeying();
             String peerURI;
             String fullPublicKey;
             stack::IHelper::getSignatureInfo(receiveSignedEl, NULL, &peerURI, NULL, NULL, NULL, &fullPublicKey);
@@ -751,20 +807,22 @@ namespace openpeer
             }
 
             if (mRemotePublicKey) {
-              mMLSChannel->setReceiveKeyingMaterialSigningPublicKey(mRemotePublicKey);
+              mMLSChannel->setReceiveKeyingSigningPublicKey(mRemotePublicKey);
             }
           }
 
-          if (mMLSChannel->needsSendKeyingMaterialToeBeSigned()) {
+          if (mMLSChannel->needsSendKeyingToeBeSigned()) {
             ZS_LOG_DEBUG(log("need send keying material to be signed"))
 
             DocumentPtr doc;
             ElementPtr signEl;
-            mMLSChannel->getSendKeyingMaterialNeedingToBeSigned(doc, signEl);
+            mMLSChannel->getSendKeyingNeedingToBeSigned(doc, signEl);
 
-            if (signEl) {
+            if ((signEl) &&
+                (peerFilePrivate) &&
+                (peerFilePublic)) {
               peerFilePrivate->signElement(signEl, mIncoming ? IPeerFilePrivate::SignatureType_FullPublicKey : IPeerFilePrivate::SignatureType_PeerURI);
-              mMLSChannel->notifySendKeyingMaterialSigned();
+              mMLSChannel->notifySendKeyingSigned(peerFilePrivate->getPrivateKey(), peerFilePublic->getPublicKey());
             }
           }
           return false;

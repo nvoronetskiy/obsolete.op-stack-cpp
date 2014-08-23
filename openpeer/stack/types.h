@@ -64,6 +64,7 @@ namespace openpeer
     using zsLib::ULONG;
     using zsLib::Time;
     using zsLib::Duration;
+    using zsLib::Seconds;
     using zsLib::String;
     using zsLib::AutoBool;
     using zsLib::IPAddress;
@@ -242,6 +243,42 @@ namespace openpeer
       LocationInfo(const LocationInfo &info) {} // not legal
     };
 
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark Server
+    #pragma mark
+
+    struct Server
+    {
+      typedef Candidate::Protocol Protocol;
+      typedef Candidate::ProtocolList ProtocolList;
+
+      String mID;
+      String mType;
+      ProtocolList mProtocols;
+      IRSAPublicKeyPtr mPublicKey;
+      WORD  mPriority;
+      WORD  mWeight;
+      String mRegion;
+      Time mCreated;
+      Time mExpires;
+
+      Server() :
+        mPriority(0),
+        mWeight(0)
+        {}
+
+      bool hasData() const;
+      ElementPtr toDebug() const;
+
+      static Server create(ElementPtr elem);
+    };
+
+    ZS_DECLARE_TYPEDEF_PTR(std::list<Server>, ServerList)
+
     ZS_DECLARE_INTERACTION_PTR(IAccount)
     ZS_DECLARE_INTERACTION_PTR(IBootstrappedNetwork)
     ZS_DECLARE_INTERACTION_PTR(ICache)
@@ -251,6 +288,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IKeyGenerator)
     ZS_DECLARE_INTERACTION_PTR(IMessageIncoming)
     ZS_DECLARE_INTERACTION_PTR(IMessageMonitor)
+    ZS_DECLARE_INTERACTION_PTR(IMessageSource)
     ZS_DECLARE_INTERACTION_PTR(ILocation)
     ZS_DECLARE_INTERACTION_PTR(IPeerFiles)
     ZS_DECLARE_INTERACTION_PTR(IPeerFilePublic)
@@ -266,6 +304,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IPublicationRepository)
     ZS_DECLARE_INTERACTION_PTR(IPublicationRepositoryPeerCache)
     ZS_DECLARE_INTERACTION_PTR(IPublicationSubscription)
+    ZS_DECLARE_INTERACTION_PTR(IServerMessaging)
     ZS_DECLARE_INTERACTION_PTR(IServiceCertificates)
     ZS_DECLARE_INTERACTION_PTR(IServiceCertificatesValidateQuery)
     ZS_DECLARE_INTERACTION_PTR(IServiceSalt)
@@ -296,6 +335,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IPublicationFetcherDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IPublicationRemoverDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IPublicationSubscriptionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServerMessagingDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServiceCertificatesValidateQueryDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServiceSaltFetchSignedSaltQueryDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServiceIdentitySessionDelegate)
@@ -308,6 +348,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxRegisterQueryDelegate)
 
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IKeyGeneratorSubscription, IKeyGeneratorDelegate)
+    ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServerMessagingSubscription, IServerMessagingDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServicePushMailboxSessionSubscription, IServicePushMailboxSessionDelegate)
 
     ZS_DECLARE_TYPEDEF_PTR(std::list<ILocationPtr>, LocationList)

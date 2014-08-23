@@ -56,6 +56,7 @@
 #include <openpeer/stack/internal/stack_Publication.h>
 #include <openpeer/stack/internal/stack_PublicationMetaData.h>
 #include <openpeer/stack/internal/stack_PublicationRepository.h>
+#include <openpeer/stack/internal/stack_ServerMessaging.h>
 #include <openpeer/stack/internal/stack_ServiceCertificatesValidateQuery.h>
 #include <openpeer/stack/internal/stack_ServiceIdentitySession.h>
 #include <openpeer/stack/internal/stack_IServiceLockboxSessionForInternal.h>

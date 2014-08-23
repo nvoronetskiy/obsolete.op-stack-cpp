@@ -65,12 +65,6 @@ namespace openpeer
       #pragma mark (helpers)
       #pragma mark
 
-      //---------------------------------------------------------------------
-      static Log::Params Server_slog(const char *message)
-      {
-        return Log::Params(message, "message::Server");
-      }
-
       //-----------------------------------------------------------------------
       static void merge(String &result, const String &source, bool overwrite)
       {
@@ -2063,81 +2057,6 @@ namespace openpeer
         }
 
         return namespaceGrantChallengeEl;
-      }
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark message::Server
-      #pragma mark
-
-      //-----------------------------------------------------------------------
-      bool Server::hasData() const
-      {
-        return (mID.hasData()) ||
-               (mType.hasData()) ||
-               (mProtocols.size() > 0) ||
-               ((bool)mPublicKey) ||
-               (mPriority != 0) ||
-               (mWeight != 0) ||
-               (mRegion.hasData()) ||
-               (Time() != mCreated) ||
-               (Time() != mExpires);
-      }
-
-      //-----------------------------------------------------------------------
-      ElementPtr Server::toDebug() const
-      {
-        ElementPtr resultEl = Element::create("message::Server");
-
-        UseServicesHelper::debugAppend(resultEl, "id", mID);
-        UseServicesHelper::debugAppend(resultEl, "type", mType);
-        UseServicesHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "message::Server::ProtocolList"));
-        UseServicesHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
-        UseServicesHelper::debugAppend(resultEl, "priority", mPriority);
-        UseServicesHelper::debugAppend(resultEl, "weight", mWeight);
-        UseServicesHelper::debugAppend(resultEl, "region", mRegion);
-        UseServicesHelper::debugAppend(resultEl, "created", mCreated);
-        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
-
-        return resultEl;
-      }
-
-      //-----------------------------------------------------------------------
-      Server Server::create(ElementPtr elem)
-      {
-        Server ret;
-
-        if (!elem) return ret;
-
-        ret.mID = IMessageHelper::getAttributeID(elem);
-        ret.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
-
-        ElementPtr protocolsEl = elem->findFirstChildElement("protocols");
-        ret.mProtocols = Candidate::createProtocolList(protocolsEl);
-        ret.mRegion = IMessageHelper::getElementText(elem->findFirstChildElement("region"));
-        ret.mCreated = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("created")));
-        ret.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("expires")));
-
-        try
-        {
-          ret.mPublicKey = IRSAPublicKey::load(*UseServicesHelper::convertFromBase64(IMessageHelper::getElementText(elem->findFirstChildElementChecked("key")->findFirstChildElementChecked("x509Data"))));
-          try {
-            ret.mPriority = Numeric<decltype(ret.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("priority")));
-          } catch(Numeric<decltype(ret.mPriority)>::ValueOutOfRange &) {
-          }
-          try {
-            ret.mWeight = Numeric<decltype(ret.mWeight)>(IMessageHelper::getElementText(elem->findFirstChildElementChecked("weight")));
-          } catch(Numeric<decltype(ret.mWeight)>::ValueOutOfRange &) {
-          }
-        }
-        catch(CheckFailed &) {
-          ZS_LOG_BASIC(Server_slog("check failure"))
-        }
-
-        return ret;
       }
 
       //-----------------------------------------------------------------------

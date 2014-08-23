@@ -85,8 +85,6 @@
 
 #define OPENPEER_STACK_ACCOUNT_RUDP_TRANSPORT_PROTOCOL_TYPE "rudp/udp"
 
-#define OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY (IDHKeyDomain::KeyDomainPrecompiledType_2048)
-
 #define OPENPEER_STACK_ACCOUNT_COOKIE_DH_KEY_DOMAIN_CACHE_LIFETIME_HOURS (365*(24))
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
@@ -103,6 +101,8 @@ namespace openpeer
       using services::IBackgrounding;
 
       using services::IWakeDelegateProxy;
+
+      ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
 
       using message::peer_finder::PeerLocationFindRequest;
       using message::peer_finder::PeerLocationFindRequestPtr;
@@ -184,7 +184,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), services::ISettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
+        mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), UseSettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
         mLockboxSession->attach(mThisWeak.lock());
 
@@ -533,10 +533,10 @@ namespace openpeer
 
           gethostname(&(buffer[0]), (sizeof(buffer)*sizeof(char))-sizeof(char));
 
-          info->mDeviceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_DEVICE_ID);
-          info->mUserAgent = services::ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT);
-          info->mOS = services::ISettings::getString(OPENPEER_COMMON_SETTING_OS);
-          info->mSystem = services::ISettings::getString(OPENPEER_COMMON_SETTING_SYSTEM);
+          info->mDeviceID = UseSettings::getString(OPENPEER_COMMON_SETTING_DEVICE_ID);
+          info->mUserAgent = UseSettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT);
+          info->mOS = UseSettings::getString(OPENPEER_COMMON_SETTING_OS);
+          info->mSystem = UseSettings::getString(OPENPEER_COMMON_SETTING_SYSTEM);
           info->mHost = &(buffer[0]);
 
           ZS_LOG_TRACE(log("self location info") + info->toDebug())
@@ -2035,12 +2035,14 @@ namespace openpeer
           return true;
         }
 
-        DHKeyPair keyPair = getDHKeyPairTemplate(OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY);
+        String domain = UseSettings::getString(OPENPEER_STACK_SETTING_ACCOUNT_DEFAULT_KEY_DOMAIN);
+
+        DHKeyPair keyPair = getDHKeyPairTemplate(IDHKeyDomain::fromNamespace(domain));
 
         if ((!keyPair.first) ||
             (!keyPair.second)) {
-          ZS_LOG_ERROR(Detail, debug("could not load or generate default DH key pair template") + ZS_PARAM("namespace", IDHKeyDomain::toNamespace(OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY)))
-          setError(IHTTP::HTTPStatusCode_PreconditionFailed, (String("could not load or generate default DH key pair template for namespace") + IDHKeyDomain::toNamespace(OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY)).c_str());
+          ZS_LOG_ERROR(Detail, debug("could not load or generate default DH key pair template") + ZS_PARAM("namespace", domain))
+          setError(IHTTP::HTTPStatusCode_PreconditionFailed, (String("could not load or generate default DH key pair template for namespace") + domain).c_str());
           cancel();
           return false;
         }
@@ -2136,7 +2138,7 @@ namespace openpeer
             ZS_LOG_ERROR(Debug, log("notified ICE socket is shutdown unexpected"))
             mSocket.reset();
 
-            if (services::ISettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_SHUTDOWN_ON_ICE_SOCKET_FAILURE)) {
+            if (UseSettings::getBool(OPENPEER_STACK_SETTING_ACCOUNT_SHUTDOWN_ON_ICE_SOCKET_FAILURE)) {
               setError(IHTTP::HTTPStatusCode_Networkconnecttimeouterror, "ICE socket shutdown unexpectedly");
               cancel();
             }
@@ -2386,7 +2388,7 @@ namespace openpeer
           ServersGetRequestPtr request = ServersGetRequest::create();
           request->domain(getDomain());
           request->type(OPENPEER_STACK_SERVER_TYPE_FINDER);
-          request->totalFinders(services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_TOTAL_SERVERS_TO_GET));
+          request->totalFinders(UseSettings::getUInt(OPENPEER_STACK_SETTING_FINDER_TOTAL_SERVERS_TO_GET));
 
           mFindersGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<ServersGetResult>::convert(mThisWeak.lock()), network, "bootstrapped-servers", "servers-get", request, Seconds(OPENPEER_STACK_FINDERS_GET_TIMEOUT_IN_SECONDS));
 
@@ -2931,7 +2933,7 @@ namespace openpeer
         request->final(locationInfo->mCandidatesFinal);
         request->excludeLocations(exclude);
 
-        DHKeyPair keyPair = getDHKeyPairTemplate(OPENPEER_STACK_ACCOUNT_DEFAULT_PRECOMPILED_DH_DOMAIN_KEY);
+        DHKeyPair keyPair = getDHKeyPairTemplate(IDHKeyDomain::fromNamespace(UseSettings::getString(OPENPEER_STACK_SETTING_ACCOUNT_DEFAULT_KEY_DOMAIN)));
         ZS_THROW_INVALID_ASSUMPTION_IF((!keyPair.first) || (!keyPair.second))
 
         IDHPublicKeyPtr publicKey;

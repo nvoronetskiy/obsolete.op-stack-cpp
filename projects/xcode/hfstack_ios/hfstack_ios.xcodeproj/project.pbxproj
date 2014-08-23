@@ -128,6 +128,7 @@
 		0077F47017AD4CAB009399FD /* PeerLocationFindNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0077F46F17AD4CAB009399FD /* PeerLocationFindNotify.cpp */; };
 		008400101850169E009F6934 /* stack_KeyGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */; };
 		00994441197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */; };
+		00A03FB719A7B7D600268C98 /* stack_ServerMessaging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A03FB619A7B7D600268C98 /* stack_ServerMessaging.cpp */; };
 		00A7BAC6193D5E4D003EDD1A /* ListFetchRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAC5193D5E4D003EDD1A /* ListFetchRequest.cpp */; };
 		00A7BAC9193D5FE3003EDD1A /* ListFetchResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */; };
 		00A7BACC193D7065003EDD1A /* RegisterPushRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00A7BACB193D7065003EDD1A /* RegisterPushRequest.cpp */; };
@@ -208,6 +209,7 @@
 		000CBEAE17A2F7440075E86C /* stack_FinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderRelayChannel.h; sourceTree = "<group>"; };
 		000CBEAF17A2F75A0075E86C /* stack_FinderRelayChannel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderRelayChannel.cpp; sourceTree = "<group>"; };
 		001BB9BF183B8FF400F14A64 /* stack_javascript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_javascript.cpp; sourceTree = "<group>"; };
+		001F5E2419A64C9E0024D0BA /* IServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServerMessaging.h; sourceTree = "<group>"; };
 		0020FC41193654540065C965 /* stack_ServicePushMailboxSession.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession.cpp; sourceTree = "<group>"; };
 		0020FC43193654630065C965 /* stack_ServicePushMailboxSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession.h; sourceTree = "<group>"; };
 		002F75A81938BA5300AA1CB2 /* NamespaceGrantChallengeValidateRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NamespaceGrantChallengeValidateRequest.cpp; sourceTree = "<group>"; };
@@ -467,6 +469,8 @@
 		0084FFB2184F9891009F6934 /* IKeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKeyGenerator.h; sourceTree = "<group>"; };
 		0099443F197DAFA300063E17 /* stack_ServicePushMailboxSession_SendQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_SendQuery.h; sourceTree = "<group>"; };
 		00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_SendQuery.cpp; sourceTree = "<group>"; };
+		00A03FB519A7B7AE00268C98 /* stack_ServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServerMessaging.h; sourceTree = "<group>"; };
+		00A03FB619A7B7D600268C98 /* stack_ServerMessaging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServerMessaging.cpp; sourceTree = "<group>"; };
 		00A7BAC5193D5E4D003EDD1A /* ListFetchRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListFetchRequest.cpp; sourceTree = "<group>"; };
 		00A7BAC7193D5E61003EDD1A /* ListFetchRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ListFetchRequest.h; sourceTree = "<group>"; };
 		00A7BAC8193D5FE3003EDD1A /* ListFetchResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListFetchResult.cpp; sourceTree = "<group>"; };
@@ -703,6 +707,7 @@
 				0063BA5416CA92CF00E6DB4D /* IPublication.h */,
 				0063BA5516CA92CF00E6DB4D /* IPublicationMetaData.h */,
 				0063BA5616CA92CF00E6DB4D /* IPublicationRepository.h */,
+				001F5E2419A64C9E0024D0BA /* IServerMessaging.h */,
 				0063BA5916CA92CF00E6DB4D /* IServiceCertificates.h */,
 				0063BA5A16CA92CF00E6DB4D /* IServiceIdentity.h */,
 				00AF4DF1171E3DC700DCA0A8 /* IServiceLockbox.h */,
@@ -752,6 +757,7 @@
 				00F28E0718D48867007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.cpp */,
 				00F28E0318D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.cpp */,
 				00F28E0418D48867007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.cpp */,
+				00A03FB619A7B7D600268C98 /* stack_ServerMessaging.cpp */,
 				0063BA2416CA92CF00E6DB4D /* stack_ServiceCertificatesValidateQuery.cpp */,
 				0063BA2516CA92CF00E6DB4D /* stack_ServiceIdentitySession.cpp */,
 				00AF4DF2171E3DE300DCA0A8 /* stack_ServiceLockboxSession.cpp */,
@@ -809,6 +815,7 @@
 				00F28E0018D47CCA007E9FE4 /* stack_PublicationRepository_SubscriptionLocal.h */,
 				00F28DFC18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionIncoming.h */,
 				00F28DFD18D47CCA007E9FE4 /* stack_PublicationRepository_PeerSubscriptionOutgoing.h */,
+				00A03FB519A7B7AE00268C98 /* stack_ServerMessaging.h */,
 				0063BA4916CA92CF00E6DB4D /* stack_ServiceCertificatesValidateQuery.h */,
 				0063BA4A16CA92CF00E6DB4D /* stack_ServiceIdentitySession.h */,
 				000493F5193EA0F200500EA6 /* stack_IServiceLockboxSessionForInternal.h */,
@@ -1310,6 +1317,7 @@
 				0063BB6D16CA92D000E6DB4D /* stack_AccountPeerLocation.cpp in Sources */,
 				0063BB6E16CA92D000E6DB4D /* stack_BootstrappedNetwork.cpp in Sources */,
 				0063BB6F16CA92D000E6DB4D /* stack_BootstrappedNetworkManager.cpp in Sources */,
+				00A03FB719A7B7D600268C98 /* stack_ServerMessaging.cpp in Sources */,
 				0063BB7016CA92D000E6DB4D /* stack_Diff.cpp in Sources */,
 				0063BB7216CA92D000E6DB4D /* stack_Helper.cpp in Sources */,
 				004B8D5E189C036800D4F6A8 /* stack_Settings.cpp in Sources */,
