@@ -54,8 +54,6 @@ namespace openpeer
       using zsLib::Singleton;
       using zsLib::SingletonLazySharedPtr;
 
-      using boost::dynamic_pointer_cast;
-
       using services::IICESocket;
       using services::IRSAPrivateKey;
       using services::IRSAPrivateKeyPtr;

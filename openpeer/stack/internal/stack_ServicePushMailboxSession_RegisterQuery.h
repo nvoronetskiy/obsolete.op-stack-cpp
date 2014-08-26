@@ -142,8 +142,8 @@ namespace openpeer
 
           IServicePushMailboxRegisterQueryDelegatePtr mDelegate;
 
-          AutoBool mComplete;
-          AutoWORD mLastError;
+          bool mComplete {};
+          WORD mLastError {};
           String mLastErrorReason;
 
           PushSubscriptionInfo mSubscriptionInfo;

@@ -814,7 +814,7 @@ namespace openpeer
           Time mNextScheduledFind;                                 // if peer was not found, schedule finds to try again
           Duration mLastScheduleFindDuration;                      // how long was the duration between finds (used because it will double each time a search is completed)
 
-          AutoBool mFindAgainAfterBackgrounded;
+          bool mFindAgainAfterBackgrounded {};
         };
 
       protected:
@@ -836,7 +836,7 @@ namespace openpeer
 
         IAccountDelegatePtr mDelegate;
 
-        AutoBool mBackgroundingEnabled;
+        bool mBackgroundingEnabled {};
         IBackgroundingSubscriptionPtr mBackgroundingSubscription;
         IBackgroundingNotifierPtr mBackgroundingNotifier;
 
@@ -854,7 +854,7 @@ namespace openpeer
 
         DHKeyPairTemplates mDHKeyPairTemplates;
 
-        AutoBool mBlockRSAKeyGeneration;
+        bool mBlockRSAKeyGeneration {};
         IKeyGeneratorPtr mRSAKeyGenerator;
 
         UseAccountFinderPtr mFinder;

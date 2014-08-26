@@ -230,7 +230,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SubscriptionLocalPtr PublicationRepository::SubscriptionLocal::convert(IPublicationSubscriptionPtr subscription)
       {
-        return dynamic_pointer_cast<SubscriptionLocal>(subscription);
+        return ZS_DYNAMIC_PTR_CAST(SubscriptionLocal, subscription);
       }
 
       //-----------------------------------------------------------------------

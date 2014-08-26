@@ -49,7 +49,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessagesDataGetResultPtr MessagesDataGetResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<MessagesDataGetResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(MessagesDataGetResult, message);
         }
 
         //---------------------------------------------------------------------

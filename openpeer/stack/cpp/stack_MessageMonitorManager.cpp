@@ -199,7 +199,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorManagerPtr MessageMonitorManager::convert(ForMessageMonitorPtr object)
       {
-        return dynamic_pointer_cast<MessageMonitorManager>(object);
+        return ZS_DYNAMIC_PTR_CAST(MessageMonitorManager, object);
       }
 
       //-----------------------------------------------------------------------

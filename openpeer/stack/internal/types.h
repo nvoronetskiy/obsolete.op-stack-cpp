@@ -64,9 +64,6 @@ namespace openpeer
       using zsLib::ITimerDelegatePtr;
       using zsLib::Log;
       using zsLib::MessageQueueAssociator;
-      using zsLib::AutoBool;
-      using zsLib::AutoWORD;
-      using zsLib::AutoULONG;
       using zsLib::AutoPUID;
       using zsLib::PrivateGlobalLock;
       using zsLib::Singleton;
@@ -78,8 +75,6 @@ namespace openpeer
       ZS_DECLARE_USING_PTR(zsLib::XML, Text)
       ZS_DECLARE_USING_PTR(zsLib::XML, Attribute)
       ZS_DECLARE_USING_PTR(zsLib::XML, Generator)
-
-      using boost::dynamic_pointer_cast;
 
       ZS_DECLARE_USING_PTR(services, IBackgroundingNotifier)
       ZS_DECLARE_USING_PTR(services, IBackgroundingSubscription)
@@ -130,7 +125,6 @@ namespace openpeer
       ZS_DECLARE_CLASS_PTR(ServiceCertificatesValidateQuery)
       ZS_DECLARE_CLASS_PTR(Cache)
       ZS_DECLARE_CLASS_PTR(Diff)
-      ZS_DECLARE_CLASS_PTR(Factory)
       ZS_DECLARE_CLASS_PTR(FinderRelayChannel)
       ZS_DECLARE_CLASS_PTR(FinderConnection)
       ZS_DECLARE_CLASS_PTR(FinderConnectionManager)

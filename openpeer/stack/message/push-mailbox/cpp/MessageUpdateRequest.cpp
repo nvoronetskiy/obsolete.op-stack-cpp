@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessageUpdateRequestPtr MessageUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<MessageUpdateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(MessageUpdateRequest, message);
         }
 
         //---------------------------------------------------------------------

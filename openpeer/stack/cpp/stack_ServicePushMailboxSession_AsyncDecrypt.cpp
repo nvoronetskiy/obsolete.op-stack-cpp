@@ -240,14 +240,14 @@ namespace openpeer
         if (read != mBlockSize) {
           feof(mSourceFile);
 
-          get(mSuccessful) = true;
+          mSuccessful = true;
 
           bool success = false;
 
           write(mDecryptor->finalize(&success));  // note: final write might fail
 
           if (!success) {
-            get(mSuccessful) = false;
+            mSuccessful = false;
           }
 
           SecureByteBlock originalDataHash(DecryptorData::get(mAsyncData).mHasher.DigestSize());
@@ -332,7 +332,7 @@ namespace openpeer
         mOutputSize += written;
 
         if (written != buffer->SizeInBytes()) {
-          get(mSuccessful) = false;
+          mSuccessful = false;
           close(ferror(mDestFile));
           return;
         }

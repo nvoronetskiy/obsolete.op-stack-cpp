@@ -231,19 +231,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationMetaDataPtr PublicationMetaData::convert(IPublicationMetaDataPtr publication)
       {
-        return dynamic_pointer_cast<PublicationMetaData>(publication);
+        return ZS_DYNAMIC_PTR_CAST(PublicationMetaData, publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationMetaDataPtr PublicationMetaData::convert(ForPublicationRepositoryPtr publication)
       {
-        return dynamic_pointer_cast<PublicationMetaData>(publication);
+        return ZS_DYNAMIC_PTR_CAST(PublicationMetaData, publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationMetaDataPtr PublicationMetaData::convert(ForMessagesPtr publication)
       {
-        return dynamic_pointer_cast<PublicationMetaData>(publication);
+        return ZS_DYNAMIC_PTR_CAST(PublicationMetaData, publication);
       }
 
       //-----------------------------------------------------------------------

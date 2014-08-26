@@ -59,7 +59,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         RolodexNamespaceGrantChallengeValidateRequestPtr RolodexNamespaceGrantChallengeValidateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<RolodexNamespaceGrantChallengeValidateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(RolodexNamespaceGrantChallengeValidateRequest, message);
         }
 
         //---------------------------------------------------------------------

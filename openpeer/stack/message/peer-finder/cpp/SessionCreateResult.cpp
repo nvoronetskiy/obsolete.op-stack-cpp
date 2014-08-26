@@ -72,7 +72,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SessionCreateResultPtr SessionCreateResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<SessionCreateResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(SessionCreateResult, message);
         }
 
         //---------------------------------------------------------------------

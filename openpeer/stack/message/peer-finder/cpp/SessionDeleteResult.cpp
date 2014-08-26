@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SessionDeleteResultPtr SessionDeleteResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<SessionDeleteResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(SessionDeleteResult, message);
         }
 
         //---------------------------------------------------------------------

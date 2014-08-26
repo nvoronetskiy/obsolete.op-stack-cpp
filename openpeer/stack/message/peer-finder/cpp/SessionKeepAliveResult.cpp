@@ -52,7 +52,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SessionKeepAliveResultPtr SessionKeepAliveResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<SessionKeepAliveResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(SessionKeepAliveResult, message);
         }
 
         //---------------------------------------------------------------------

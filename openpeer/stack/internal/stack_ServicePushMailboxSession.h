@@ -1109,7 +1109,7 @@ namespace openpeer
 
         SessionStates mCurrentState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
 
         UseAccountPtr mAccount;
@@ -1118,7 +1118,7 @@ namespace openpeer
 
         IBackgroundingSubscriptionPtr mBackgroundingSubscription;
         IBackgroundingNotifierPtr mBackgroundingNotifier;
-        AutoBool mBackgroundingEnabled;
+        bool mBackgroundingEnabled {};
 
         IReachabilitySubscriptionPtr mReachabilitySubscription;
 
@@ -1140,7 +1140,7 @@ namespace openpeer
         IServiceNamespaceGrantSessionQueryPtr mGrantQuery;
         IServiceNamespaceGrantSessionWaitPtr mGrantWait;
 
-        AutoBool mObtainedLock;
+        bool mObtainedLock {};
 
         bool mRequiresConnection;
         Duration mInactivityTimeout;

@@ -60,7 +60,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessRolodexCredentialsGetRequestPtr IdentityAccessRolodexCredentialsGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessRolodexCredentialsGetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(IdentityAccessRolodexCredentialsGetRequest, message);
         }
 
         //---------------------------------------------------------------------

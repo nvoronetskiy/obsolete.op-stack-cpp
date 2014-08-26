@@ -447,7 +447,7 @@ namespace openpeer
 
           SessionStates mCurrentState;
 
-          AutoWORD mLastError;
+          WORD mLastError {};
           String mLastErrorReason;
 
           ChannelNumber mChannelNumber;
@@ -457,8 +457,8 @@ namespace openpeer
           ITransportStreamReaderPtr mOuterSendStream;
           ITransportStreamReaderSubscriptionPtr mOuterSendStreamSubscription;
 
-          AutoBool mWireStreamNotifiedReady;
-          AutoBool mOuterStreamNotifiedReady;
+          bool mWireStreamNotifiedReady {};
+          bool mOuterStreamNotifiedReady {};
 
           ConnectionInfo mConnectionInfo;
 
@@ -481,7 +481,7 @@ namespace openpeer
 
         SessionStates mCurrentState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
 
         IPAddress mRemoteIP;
@@ -490,7 +490,7 @@ namespace openpeer
         ITransportStreamReaderPtr mWireReceiveStream;
         ITransportStreamWriterPtr mWireSendStream;
 
-        AutoBool mSendStreamNotifiedReady;
+        bool mSendStreamNotifiedReady {};
 
         Duration mSendKeepAliveAfter;
         Time mLastSentData;

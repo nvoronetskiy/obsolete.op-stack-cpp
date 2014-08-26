@@ -55,7 +55,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         FolderUpdateRequestPtr FolderUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<FolderUpdateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(FolderUpdateRequest, message);
         }
 
         //---------------------------------------------------------------------

@@ -246,7 +246,7 @@ namespace openpeer
 
           mFinalHex = UseServicesHelper::convertToHex(originalDataHash);
 
-          get(mSuccessful) = true;
+          mSuccessful = true;
 
           write(mEncryptor->finalize());  // note: final write might fail
 
@@ -325,7 +325,7 @@ namespace openpeer
         mOutputSize += written;
 
         if (written != buffer->SizeInBytes()) {
-          get(mSuccessful) = false;
+          mSuccessful = false;
           close(ferror(mDestFile));
           return;
         }

@@ -76,7 +76,7 @@ namespace openpeer
           void context(const String &secret)                            {mContext = secret;}
 
           bool validated() const                                        {return mValidated;}
-          void validated(bool val)                                      {get(mValidated) = val;}
+          void validated(bool val)                                      {mValidated = val;}
 
           const String &iceUsernameFrag() const                         {return mICEUsernameFrag;}
           void iceUsernameFrag(const String &val)                       {mICEUsernameFrag = val;}
@@ -85,7 +85,7 @@ namespace openpeer
           void icePassword(const String &val)                           {mICEPassword = val;}
 
           bool final() const                                            {return mFinal;}
-          void final(bool val)                                          {get(mFinal) = val;}
+          void final(bool val)                                          {mFinal = val;}
 
           const String &requestFindProofBundleDigestValue() const       {return mRequestFindProofBundleDigestValue;}
           void requestFindProofBundleDigestValue(const String &secret)  {mRequestFindProofBundleDigestValue = secret;}
@@ -101,12 +101,12 @@ namespace openpeer
 
           String mContext;
 
-          AutoBool mValidated;
+          bool mValidated {};
 
           String mICEUsernameFrag;
           String mICEPassword;
 
-          AutoBool mFinal;
+          bool mFinal {};
 
           String mRequestFindProofBundleDigestValue;
           LocationInfoPtr mLocationInfo;

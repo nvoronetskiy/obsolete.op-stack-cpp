@@ -84,7 +84,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerLocationFindRequestPtr PeerLocationFindRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerLocationFindRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerLocationFindRequest, message);
         }
 
         //---------------------------------------------------------------------
@@ -283,7 +283,7 @@ namespace openpeer
                 ZS_LOG_WARNING(Detail, slog("signature on request did not verify"))
                 return PeerLocationFindRequestPtr();
               }
-              get(ret->mDidVerifySignature) = true;
+              ret->mDidVerifySignature = true;
             }
 
             ElementPtr excludeEl = root->findFirstChildElement("exclude");

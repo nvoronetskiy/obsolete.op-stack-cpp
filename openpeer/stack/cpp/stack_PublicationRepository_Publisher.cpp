@@ -139,7 +139,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublisherPtr PublicationRepository::Publisher::convert(IPublicationPublisherPtr publisher)
       {
-        return dynamic_pointer_cast<Publisher>(publisher);
+        return ZS_DYNAMIC_PTR_CAST(Publisher, publisher);
       }
 
       //-----------------------------------------------------------------------

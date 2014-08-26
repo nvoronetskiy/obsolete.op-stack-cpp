@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         MessagesMetaDataGetRequestPtr MessagesMetaDataGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<MessagesMetaDataGetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(MessagesMetaDataGetRequest, message);
         }
 
         //---------------------------------------------------------------------

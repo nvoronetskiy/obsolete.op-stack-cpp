@@ -46,7 +46,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerLocationFindResultPtr PeerLocationFindResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerLocationFindResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerLocationFindResult, message);
         }
 
         //---------------------------------------------------------------------

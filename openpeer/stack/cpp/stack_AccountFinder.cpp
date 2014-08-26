@@ -174,7 +174,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       AccountFinderPtr AccountFinder::convert(ForAccountPtr object)
       {
-        return dynamic_pointer_cast<AccountFinder>(object);
+        return ZS_DYNAMIC_PTR_CAST(AccountFinder, object);
       }
 
       //-----------------------------------------------------------------------

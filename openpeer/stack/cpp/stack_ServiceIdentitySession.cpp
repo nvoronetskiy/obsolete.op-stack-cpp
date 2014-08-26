@@ -343,13 +343,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceIdentitySessionPtr ServiceIdentitySession::convert(IServiceIdentitySessionPtr object)
       {
-        return dynamic_pointer_cast<ServiceIdentitySession>(object);
+        return ZS_DYNAMIC_PTR_CAST(ServiceIdentitySession, object);
       }
 
       //-----------------------------------------------------------------------
       ServiceIdentitySessionPtr ServiceIdentitySession::convert(ForLockboxPtr object)
       {
-        return dynamic_pointer_cast<ServiceIdentitySession>(object);
+        return ZS_DYNAMIC_PTR_CAST(ServiceIdentitySession, object);
       }
 
       //-----------------------------------------------------------------------
@@ -614,7 +614,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("browser window visible"))
-        get(mBrowserWindowVisible) = true;
+        mBrowserWindowVisible = true;
         step();
       }
 
@@ -632,7 +632,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
         ZS_LOG_DEBUG(log("browser window close called"))
-        get(mBrowserWindowClosed) = true;
+        mBrowserWindowClosed = true;
         step();
       }
 
@@ -713,12 +713,12 @@ namespace openpeer
 
           if (windowRequest->ready()) {
             ZS_LOG_DEBUG(log("notified browser window ready"))
-            get(mBrowserWindowReady) = true;
+            mBrowserWindowReady = true;
           }
 
           if (windowRequest->visible()) {
             ZS_LOG_DEBUG(log("notified browser window needs to be made visible"))
-            get(mNeedsBrowserWindowVisible) = true;
+            mNeedsBrowserWindowVisible = true;
           }
           if (windowRequest->redirectURL().hasData()) {
             ZS_LOG_DEBUG(log("notified browser window needs to be redirected") + ZS_PARAM("url", windowRequest->redirectURL()))
@@ -998,7 +998,7 @@ namespace openpeer
         mGraciousShutdownReference = mThisWeak.lock();
 
         mAssociatedLockbox.reset();
-        get(mKillAssociation) = true;
+        mKillAssociation = true;
         if (mAssociatedLockboxSubscription) {
           mAssociatedLockboxSubscription->cancel();
           mAssociatedLockboxSubscription.reset();
@@ -1014,7 +1014,7 @@ namespace openpeer
           mIdentityLookupMonitor.reset();
         }
 
-        get(mIdentityLookupUpdated) = false;
+        mIdentityLookupUpdated = false;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -1249,7 +1249,7 @@ namespace openpeer
         mIdentityLookupUpdateMonitor->cancel();
         mIdentityLookupUpdateMonitor.reset();
 
-        get(mIdentityLookupUpdated) = true;
+        mIdentityLookupUpdated = true;
 
         step();
         return true;
@@ -1326,7 +1326,7 @@ namespace openpeer
 
         if (OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_NOT_SUPPORTED_FOR_IDENTITY == result->errorCode()) {
           ZS_LOG_WARNING(Detail, log("identity does not support rolodex even if identity provider supports"))
-          get(mRolodexNotSupportedForIdentity) = true;
+          mRolodexNotSupportedForIdentity = true;
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
@@ -1576,7 +1576,7 @@ namespace openpeer
 
         // reset the failure case
         mNextRetryAfterFailureTime = Seconds(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_ERROR_RETRY_TIME_IN_SECONDS);
-        get(mFailuresInARow) = 0;
+        mFailuresInARow = 0;
 
         const IdentityInfoList &identities = result->identities();
 
@@ -1963,7 +1963,7 @@ namespace openpeer
 
         sendInnerWindowMessage(request);
 
-        get(mIdentityAccessStartNotificationSent) = true;
+        mIdentityAccessStartNotificationSent = true;
         return true;
       }
       
@@ -2053,7 +2053,7 @@ namespace openpeer
 
         if (!mActiveBootstrappedNetwork->supportsRolodex()) {
           ZS_LOG_WARNING(Detail, log("rolodex service not supported on this domain") + ZS_PARAM("domain", mActiveBootstrappedNetwork->getDomain()))
-          get(mRolodexNotSupportedForIdentity) = true;
+          mRolodexNotSupportedForIdentity = true;
           return true;
         }
 
@@ -2352,7 +2352,7 @@ namespace openpeer
 
         if (mLockboxInfo.mKeyName.isEmpty()) {
           ZS_LOG_TRACE(log("keying material is not available for identity"))
-          get(mKeyingPrepared) = true;
+          mKeyingPrepared = true;
           return true;
         }
 
@@ -2363,7 +2363,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("preparing keying information for lockbox") + ZS_PARAM("encryption key upon grant proof", mEncryptionKeyUponGrantProof) + ZS_PARAM("identity uri", mIdentityInfo.mURI) + ZS_PARAM("key encrypted", mLockboxInfo.mKeyEncrypted) + ZS_PARAM("encrypted user specific passphrase", mEncryptedUserSpecificPassphrase))
 
-        get(mKeyingPrepared) = true;
+        mKeyingPrepared = true;
 
         notifyLockboxStateChanged();
 
@@ -2617,7 +2617,7 @@ namespace openpeer
             (identityInfo.mWeight == mPreviousLookupInfo.mWeight) &&
             (mPreviousLookupInfo.mIdentityProofBundle)) {
           ZS_LOG_DEBUG(log("identity information already up-to-date"))
-          get(mIdentityLookupUpdated) = true;
+          mIdentityLookupUpdated = true;
           return true;
         }
 
@@ -2757,7 +2757,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))

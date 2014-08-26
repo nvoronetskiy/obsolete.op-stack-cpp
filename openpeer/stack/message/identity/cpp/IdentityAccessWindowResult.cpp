@@ -49,7 +49,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessWindowResultPtr IdentityAccessWindowResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessWindowResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(IdentityAccessWindowResult, message);
         }
 
         //---------------------------------------------------------------------

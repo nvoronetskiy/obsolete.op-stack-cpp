@@ -295,7 +295,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       AccountPeerLocationPtr AccountPeerLocation::convert(ForAccountPtr object)
       {
-        return dynamic_pointer_cast<AccountPeerLocation>(object);
+        return ZS_DYNAMIC_PTR_CAST(AccountPeerLocation, object);
       }
 
       //-----------------------------------------------------------------------
@@ -1948,7 +1948,7 @@ namespace openpeer
             }
             case IMessageLayerSecurityChannel::SessionState_Connected: {
               ZS_LOG_TRACE(log("MLS is connected"))
-              get(mMLSDidConnect) = true;
+              mMLSDidConnect = true;
               return true;
             }
             case IMessageLayerSecurityChannel::SessionState_Shutdown: {
@@ -2127,7 +2127,7 @@ namespace openpeer
             }
             case IICESocketSession::ICESocketSessionState_Shutdown:
               if (IICESocketSession::ICESocketSessionShutdownReason_BackgroundingTimeout == error) {
-                get(mShouldRefindNow) = true;
+                mShouldRefindNow = true;
               }
               ZS_LOG_WARNING(Trace, log("ice socket session is shutdown (thus unuseable)") + ZS_PARAM("should refind now", mShouldRefindNow) + ZS_PARAM("error", error) + ZS_PARAM("reason", reason))
               peerFailed = true;
@@ -2196,7 +2196,7 @@ namespace openpeer
             case IMessageLayerSecurityChannel::SessionState_Connected:  {
               ZS_LOG_TRACE(log("MLS channel is ready thus communication channel is available"))
               foundPeer = ready = true;
-              get(mHadPeerConnection) = true;
+              mHadPeerConnection = true;
               break;
             }
             case IMessageLayerSecurityChannel::SessionState_Shutdown: {
@@ -2217,7 +2217,7 @@ namespace openpeer
 
         if (ready) {
           ZS_LOG_TRACE(log("at least one mechanism is ready to send"))
-          get(mHadConnection) = true;
+          mHadConnection = true;
           return true;
         }
 
@@ -2536,7 +2536,7 @@ namespace openpeer
           return;
         }
 
-        get(mCandidatesFinal) = candidatesFinal;
+        mCandidatesFinal = candidatesFinal;
 
         if (!mDHRemotePublicKey) {
           ZS_LOG_ERROR(Detail, log("remote DH public key was never obtained from remote party (thus shutting down)"))

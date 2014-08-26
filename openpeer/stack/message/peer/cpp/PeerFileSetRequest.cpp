@@ -59,7 +59,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerFileSetRequestPtr PeerFileSetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerFileSetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerFileSetRequest, message);
         }
 
         //---------------------------------------------------------------------

@@ -76,7 +76,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerIdentifyRequestPtr PeerIdentifyRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerIdentifyRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerIdentifyRequest, message);
         }
 
         //---------------------------------------------------------------------

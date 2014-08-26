@@ -70,7 +70,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessStartNotifyPtr IdentityAccessStartNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessStartNotify>(message);
+          return ZS_DYNAMIC_PTR_CAST(IdentityAccessStartNotify, message);
         }
 
         //---------------------------------------------------------------------

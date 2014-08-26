@@ -153,7 +153,7 @@ namespace openpeer
         IKeyGeneratorSubscriptionPtr mDependencySubscription;
         IKeyGeneratorPtr mDependencyKeyGenerator;
 
-        AutoBool mCompleted;
+        bool mCompleted {};
 
         ElementPtr mSignedSaltEl;
         String mPassword;

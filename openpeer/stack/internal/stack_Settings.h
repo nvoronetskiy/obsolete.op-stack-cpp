@@ -160,7 +160,7 @@ namespace openpeer
 
         ISettingsDelegatePtr mDelegate;
 
-        AutoBool mAppliedDefaults;
+        bool mAppliedDefaults {};
       };
     }
   }

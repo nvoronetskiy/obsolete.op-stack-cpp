@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ChannelMapResultPtr ChannelMapResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<ChannelMapResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(ChannelMapResult, message);
         }
 
         //---------------------------------------------------------------------

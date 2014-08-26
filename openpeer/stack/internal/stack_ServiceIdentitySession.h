@@ -502,14 +502,14 @@ namespace openpeer
         SessionStates mCurrentState;
         SessionStates mLastReportedState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
         
         IServiceIdentitySessionDelegatePtr mDelegate;
 
         UseServiceLockboxSessionWeakPtr mAssociatedLockbox;
         IServiceLockboxSessionForInternalSubscriptionPtr mAssociatedLockboxSubscription;
-        AutoBool mKillAssociation;
+        bool mKillAssociation {};
 
         IdentityInfo mIdentityInfo;
 
@@ -533,22 +533,22 @@ namespace openpeer
 
         LockboxInfo mLockboxInfo;
 
-        AutoBool mBrowserWindowReady;
-        AutoBool mBrowserWindowVisible;
+        bool mBrowserWindowReady {};
+        bool mBrowserWindowVisible {};
         String mBrowserWindowRedirectURL;
-        AutoBool mBrowserWindowClosed;
+        bool mBrowserWindowClosed {};
 
-        AutoBool mNeedsBrowserWindowVisible;
+        bool mNeedsBrowserWindowVisible {};
         String mNeedsBrowserWindowRedirectURL;
 
-        AutoBool mIdentityAccessStartNotificationSent;
+        bool mIdentityAccessStartNotificationSent {};
         NamespaceGrantChallengeInfo mAccessChallengeInfo;
-        AutoBool mKeyingPrepared;
+        bool mKeyingPrepared {};
         String mEncryptedUserSpecificPassphrase;
         String mUserSpecificPassphrase;
         String mEncryptionKeyUponGrantProof;
         String mEncryptionKeyUponGrantProofHash;
-        AutoBool mIdentityLookupUpdated;
+        bool mIdentityLookupUpdated {};
         IdentityInfo mPreviousLookupInfo;
 
         String mOuterFrameURLUponReload;
@@ -556,7 +556,7 @@ namespace openpeer
         DocumentList mPendingMessagesToDeliver;
 
         // rolodex related
-        AutoBool mRolodexNotSupportedForIdentity;
+        bool mRolodexNotSupportedForIdentity {};
         RolodexInfo mRolodexInfo;
         NamespaceGrantChallengeInfo mRolodexChallengeInfo;
 
@@ -570,7 +570,7 @@ namespace openpeer
         Time mFreshDownload;
         IdentityInfoList mIdentities;
 
-        AutoULONG mFailuresInARow;
+        ULONG mFailuresInARow {};
         Duration mNextRetryAfterFailureTime;
       };
 

@@ -77,7 +77,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilesPtr PeerFiles::convert(IPeerFilesPtr object)
       {
-        return dynamic_pointer_cast<PeerFiles>(object);
+        return ZS_DYNAMIC_PTR_CAST(PeerFiles, object);
       }
 
       //-----------------------------------------------------------------------

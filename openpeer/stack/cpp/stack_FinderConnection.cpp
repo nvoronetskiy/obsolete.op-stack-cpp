@@ -244,7 +244,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderConnectionPtr FinderConnection::convert(IFinderConnectionPtr connection)
       {
-        return dynamic_pointer_cast<FinderConnection>(connection);
+        return ZS_DYNAMIC_PTR_CAST(FinderConnection, connection);
       }
 
       //-----------------------------------------------------------------------
@@ -601,7 +601,7 @@ namespace openpeer
         }
 
         if (writer == mWireSendStream) {
-          get(mSendStreamNotifiedReady) = true;
+          mSendStreamNotifiedReady = true;
 
           for (ChannelMap::iterator iter = mChannels.begin(); iter != mChannels.end(); ++iter)
           {
@@ -916,7 +916,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
@@ -1383,7 +1383,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderConnection::ChannelPtr FinderConnection::Channel::convert(IFinderConnectionRelayChannelPtr channel)
       {
-        return dynamic_pointer_cast<Channel>(channel);
+        return ZS_DYNAMIC_PTR_CAST(Channel, channel);
       }
 
       //-----------------------------------------------------------------------
@@ -1487,7 +1487,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("notified write ready"))
         if (writer == mOuterReceiveStream) {
           if (!mOuterStreamNotifiedReady) {
-            get(mOuterStreamNotifiedReady) = true;
+            mOuterStreamNotifiedReady = true;
 
             FinderConnectionPtr outer = mOuter.lock();
             if (outer) {
@@ -1588,7 +1588,7 @@ namespace openpeer
       void FinderConnection::Channel::notifyReceivedWireWriteReady()
       {
         ZS_LOG_TRACE(log("notified received wire write ready"))
-        get(mWireStreamNotifiedReady) = true;
+        mWireStreamNotifiedReady = true;
         if (mOuterSendStream) {
           mOuterSendStream->notifyReaderReadyToRead();
         }
@@ -1697,7 +1697,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))

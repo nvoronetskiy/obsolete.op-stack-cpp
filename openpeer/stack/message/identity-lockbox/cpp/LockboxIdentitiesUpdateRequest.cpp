@@ -60,7 +60,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         LockboxIdentitiesUpdateRequestPtr LockboxIdentitiesUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<LockboxIdentitiesUpdateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(LockboxIdentitiesUpdateRequest, message);
         }
 
         //---------------------------------------------------------------------

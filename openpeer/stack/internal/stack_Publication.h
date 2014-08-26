@@ -540,7 +540,7 @@ namespace openpeer
           mutable DocumentPtr mDocument;
           mutable size_t mOutputSize;
 
-          mutable AutoBool mPreviouslyStored;
+          mutable bool mPreviouslyStored {};
           mutable TimerPtr mMoveToCacheTimer;
         };
 

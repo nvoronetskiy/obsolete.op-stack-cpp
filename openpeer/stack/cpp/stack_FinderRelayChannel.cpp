@@ -178,13 +178,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FinderRelayChannelPtr FinderRelayChannel::convert(IFinderRelayChannelPtr channel)
       {
-        return dynamic_pointer_cast<FinderRelayChannel>(channel);
+        return ZS_DYNAMIC_PTR_CAST(FinderRelayChannel, channel);
       }
 
       //-----------------------------------------------------------------------
       FinderRelayChannelPtr FinderRelayChannel::convert(ForFinderConnectionPtr channel)
       {
-        return dynamic_pointer_cast<FinderRelayChannel>(channel);
+        return ZS_DYNAMIC_PTR_CAST(FinderRelayChannel, channel);
       }
 
       //-----------------------------------------------------------------------
@@ -284,7 +284,7 @@ namespace openpeer
                                                                      ) const
       {
         AutoRecursiveLock lock(getLock());
-        if (outLastErrorCode) *outLastErrorCode = get(mLastError);
+        if (outLastErrorCode) *outLastErrorCode = mLastError;
         if (outLastErrorReason) *outLastErrorReason = mLastErrorReason;
         return mCurrentState;
       }
@@ -444,7 +444,7 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->mWireReceiveStream = wireReceiveStream;
         pThis->mWireSendStream = wireSendStream;
-        get(pThis->mIncoming) = true;
+        pThis->mIncoming = true;
         pThis->init();
 
         return pThis;
@@ -543,7 +543,7 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
-        IHelper::debugAppend(resultEl, "last error", get(mLastError));
+        IHelper::debugAppend(resultEl, "last error", mLastError);
         IHelper::debugAppend(resultEl, "last reason", mLastErrorReason);
 
         IHelper::debugAppend(resultEl, "account", (bool)mAccount.lock());
@@ -606,7 +606,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
@@ -685,7 +685,7 @@ namespace openpeer
                 ZS_LOG_DEBUG(log("missing local context"))
 
                 mSubscriptions.delegate()->onFinderRelayChannelNeedsContext(mThisWeak.lock());
-                get(mNotifiedNeedsContext) = true;
+                mNotifiedNeedsContext = true;
               }
             }
           }

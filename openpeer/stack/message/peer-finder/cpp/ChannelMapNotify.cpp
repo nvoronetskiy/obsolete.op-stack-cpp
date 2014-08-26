@@ -64,7 +64,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ChannelMapNotifyPtr ChannelMapNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<ChannelMapNotify>(message);
+          return ZS_DYNAMIC_PTR_CAST(ChannelMapNotify, message);
         }
 
         //---------------------------------------------------------------------

@@ -186,19 +186,19 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(IPeerFilePublicPtr peerFilePublic)
       {
-        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return ZS_DYNAMIC_PTR_CAST(PeerFilePublic, peerFilePublic);
       }
 
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilesPtr peerFilePublic)
       {
-        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return ZS_DYNAMIC_PTR_CAST(PeerFilePublic, peerFilePublic);
       }
 
       //-----------------------------------------------------------------------
       PeerFilePublicPtr PeerFilePublic::convert(ForPeerFilePrivatePtr peerFilePublic)
       {
-        return dynamic_pointer_cast<PeerFilePublic>(peerFilePublic);
+        return ZS_DYNAMIC_PTR_CAST(PeerFilePublic, peerFilePublic);
       }
 
       //-----------------------------------------------------------------------

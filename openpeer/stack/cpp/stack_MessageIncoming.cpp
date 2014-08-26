@@ -129,13 +129,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageIncomingPtr MessageIncoming::convert(IMessageIncomingPtr messageIncoming)
       {
-        return dynamic_pointer_cast<MessageIncoming>(messageIncoming);
+        return ZS_DYNAMIC_PTR_CAST(MessageIncoming, messageIncoming);
       }
 
       //-----------------------------------------------------------------------
       MessageIncomingPtr MessageIncoming::convert(ForAccountPtr messageIncoming)
       {
-        return dynamic_pointer_cast<MessageIncoming>(messageIncoming);
+        return ZS_DYNAMIC_PTR_CAST(MessageIncoming, messageIncoming);
       }
 
       //-----------------------------------------------------------------------

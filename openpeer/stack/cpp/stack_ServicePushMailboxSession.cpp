@@ -361,7 +361,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServicePushMailboxSessionPtr ServicePushMailboxSession::convert(IServicePushMailboxSessionPtr session)
       {
-        return dynamic_pointer_cast<ServicePushMailboxSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServicePushMailboxSession, session);
       }
 
       //-----------------------------------------------------------------------
@@ -1297,7 +1297,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        get(mBackgroundingEnabled) = true;
+        mBackgroundingEnabled = true;
 
         mBackgroundingNotifier = notifier;
 
@@ -1321,7 +1321,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        get(mBackgroundingEnabled) = false;
+        mBackgroundingEnabled = false;
         mBackgroundingNotifier.reset();
 
         step();
@@ -2873,7 +2873,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("obtained grant lock"))
 
-        get(mObtainedLock) = true;
+        mObtainedLock = true;
         return true;
       }
 
@@ -5179,7 +5179,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, log("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))
@@ -5343,7 +5343,7 @@ namespace openpeer
           mGrantWait->cancel();
           mGrantWait.reset();
 
-          get(mObtainedLock) = false;
+          mObtainedLock = false;
         }
 
         if (mGrantMonitor) {

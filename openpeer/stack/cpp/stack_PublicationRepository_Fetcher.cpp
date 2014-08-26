@@ -144,7 +144,7 @@ namespace openpeer
 
       FetcherPtr PublicationRepository::Fetcher::convert(IPublicationFetcherPtr fetcher)
       {
-        return dynamic_pointer_cast<Fetcher>(fetcher);
+        return ZS_DYNAMIC_PTR_CAST(Fetcher, fetcher);
       }
 
       //-----------------------------------------------------------------------

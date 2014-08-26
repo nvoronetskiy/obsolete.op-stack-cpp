@@ -264,19 +264,19 @@ namespace openpeer
 
         SessionStates mCurrentState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
 
         UseAccountWeakPtr mAccount;
 
-        AutoBool mIncoming;
+        bool mIncoming {};
         ConnectInfo mConnectInfo;
         IncomingContext mIncomingInfo;
         IFinderConnectionRelayChannelPtr mConnectionRelayChannel;
 
         IMessageLayerSecurityChannelPtr mMLSChannel;
 
-        AutoBool mNotifiedNeedsContext;
+        bool mNotifiedNeedsContext {};
         IPeerPtr mRemotePeer;
         IRSAPublicKeyPtr mRemotePublicKey;
 

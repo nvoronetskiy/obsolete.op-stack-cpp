@@ -46,7 +46,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerGetResultPtr PeerGetResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerGetResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerGetResult, message);
         }
 
         //---------------------------------------------------------------------

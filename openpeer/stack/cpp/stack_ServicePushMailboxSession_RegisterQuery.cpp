@@ -285,7 +285,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::RegisterQuery::cancel()
       {
-        get(mComplete) = true;
+        mComplete = true;
 
         RegisterQueryPtr pThis = mThisWeak.lock();
         if ((pThis) &&
@@ -323,7 +323,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, log("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))

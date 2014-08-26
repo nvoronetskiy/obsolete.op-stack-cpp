@@ -66,7 +66,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerValidateRequestPtr PeerValidateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerValidateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerValidateRequest, message);
         }
 
         //---------------------------------------------------------------------

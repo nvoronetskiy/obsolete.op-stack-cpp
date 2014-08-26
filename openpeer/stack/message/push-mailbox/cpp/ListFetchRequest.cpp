@@ -45,7 +45,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ListFetchRequestPtr ListFetchRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<ListFetchRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(ListFetchRequest, message);
         }
 
         //---------------------------------------------------------------------

@@ -167,7 +167,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServerMessagingPtr ServerMessaging::convert(IServerMessagingPtr query)
       {
-        return dynamic_pointer_cast<ServerMessaging>(query);
+        return ZS_DYNAMIC_PTR_CAST(ServerMessaging, query);
       }
 
       //-----------------------------------------------------------------------
@@ -904,7 +904,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, debug("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))

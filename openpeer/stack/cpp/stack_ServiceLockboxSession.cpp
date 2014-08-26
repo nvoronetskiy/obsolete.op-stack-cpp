@@ -167,25 +167,25 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(IServiceLockboxSessionPtr session)
       {
-        return dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
       }
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForAccountPtr session)
       {
-        return dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
       }
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForServiceIdentityPtr session)
       {
-        return dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
       }
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForServicePushMailboxPtr session)
       {
-        return dynamic_pointer_cast<ServiceLockboxSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
       }
 
       //-----------------------------------------------------------------------
@@ -220,7 +220,7 @@ namespace openpeer
         ServiceLockboxSessionPtr pThis(new ServiceLockboxSession(UseStack::queueStack(), BootstrappedNetwork::convert(serviceLockbox), delegate, ServiceNamespaceGrantSession::convert(grantSession)));
         pThis->mThisWeak = pThis;
         pThis->mLoginIdentity = ServiceIdentitySession::convert(identitySession);
-        get(pThis->mForceNewAccount) = forceNewAccount;
+        pThis->mForceNewAccount = forceNewAccount;
         if (forceNewAccount) {
           ZS_LOG_WARNING(Detail, pThis->log("forcing creation of a new lockbox account (user must have indicated their account is compromised or corrupted)"))
         }
@@ -997,7 +997,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("peer file set completed"))
 
-        get(mPeerFileSet) = true;
+        mPeerFileSet = true;
 
         step();
         return true;
@@ -1265,7 +1265,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("obtained grant lock"))
 
-        get(mObtainedLock) = true;
+        mObtainedLock = true;
         return true;
       }
       
@@ -1354,7 +1354,7 @@ namespace openpeer
 
           if (mForceNewAccount) {
             ZS_LOG_DEBUG(log("forcing a new lockbox account to be created for the identity"))
-            get(mForceNewAccount) = false;
+            mForceNewAccount = false;
             mLockboxInfo.mKey.reset();
           }
 
@@ -1553,7 +1553,7 @@ namespace openpeer
           mPeerFileKeyGenerator->cancel();
           mPeerFileKeyGenerator.reset();
 
-          get(mPeerFilesGenerated) = true;
+          mPeerFilesGenerated = true;
 
           mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
           return true;
@@ -1748,7 +1748,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("login identity will become associated identity") + UseServiceIdentitySession::toDebug(mLoginIdentity))
 
-        get(mLoginIdentitySetToBecomeAssociated) = true;
+        mLoginIdentitySetToBecomeAssociated = true;
 
         for (ServiceIdentitySessionMap::iterator associatedIter = mAssociatedIdentities.begin(); associatedIter != mAssociatedIdentities.end(); ++associatedIter)
         {
@@ -2152,7 +2152,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, log("error set") + ZS_PARAM("code", mLastError) + ZS_PARAM("reason", mLastErrorReason))

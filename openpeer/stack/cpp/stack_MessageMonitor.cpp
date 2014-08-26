@@ -136,7 +136,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessageMonitorPtr MessageMonitor::convert(IMessageMonitorPtr monitor)
       {
-        return dynamic_pointer_cast<MessageMonitor>(monitor);
+        return ZS_DYNAMIC_PTR_CAST(MessageMonitor, monitor);
       }
 
       //-----------------------------------------------------------------------

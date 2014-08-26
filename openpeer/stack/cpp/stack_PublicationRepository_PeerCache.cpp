@@ -96,7 +96,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerCachePtr PublicationRepository::PeerCache::convert(IPublicationRepositoryPeerCachePtr cache)
       {
-        return dynamic_pointer_cast<PeerCache>(cache);
+        return ZS_DYNAMIC_PTR_CAST(PeerCache, cache);
       }
 
       //-----------------------------------------------------------------------

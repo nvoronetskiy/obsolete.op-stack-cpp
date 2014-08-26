@@ -138,7 +138,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       RemoverPtr PublicationRepository::Remover::convert(IPublicationRemoverPtr remover)
       {
-        return dynamic_pointer_cast<Remover>(remover);
+        return ZS_DYNAMIC_PTR_CAST(Remover, remover);
       }
 
       //-----------------------------------------------------------------------

@@ -68,7 +68,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityLookupUpdateRequestPtr IdentityLookupUpdateRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityLookupUpdateRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(IdentityLookupUpdateRequest, message);
         }
 
         //---------------------------------------------------------------------

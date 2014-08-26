@@ -47,7 +47,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         SignedSaltGetRequestPtr SignedSaltGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<SignedSaltGetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(SignedSaltGetRequest, message);
         }
 
         //---------------------------------------------------------------------

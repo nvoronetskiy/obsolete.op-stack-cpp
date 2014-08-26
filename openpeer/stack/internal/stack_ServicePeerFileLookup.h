@@ -264,7 +264,7 @@ namespace openpeer
           PeerFileLookupMap mFiles;
           PeerFileResultMap mResults;
 
-          AutoWORD mLastError;
+          WORD mLastError {};
           String mLastErrorReason;
         };
 
@@ -294,7 +294,7 @@ namespace openpeer
         mutable RecursiveLock mLock;
         ServicePeerFileLookupWeakPtr mThisWeak;
 
-        AutoBool mShutdown;
+        bool mShutdown {};
 
         BootstrapperMap mPendingBootstrappers;
 

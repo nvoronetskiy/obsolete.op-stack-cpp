@@ -174,7 +174,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerSubscriptionOutgoingPtr PublicationRepository::PeerSubscriptionOutgoing::convert(IPublicationSubscriptionPtr subscription)
       {
-        return dynamic_pointer_cast<PeerSubscriptionOutgoing>(subscription);
+        return ZS_DYNAMIC_PTR_CAST(PeerSubscriptionOutgoing, subscription);
       }
 
       //-----------------------------------------------------------------------

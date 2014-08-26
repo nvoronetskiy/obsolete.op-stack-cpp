@@ -179,7 +179,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       StackPtr Stack::convert(IStackPtr stack)
       {
-        return dynamic_pointer_cast<Stack>(stack);
+        return ZS_DYNAMIC_PTR_CAST(Stack, stack);
       }
 
       //-----------------------------------------------------------------------

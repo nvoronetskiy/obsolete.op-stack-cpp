@@ -112,7 +112,7 @@ namespace openpeer
 
           UseDecryptorPtr mDecryptor;
 
-          AutoBool mSuccessful;
+          bool mSuccessful {};
 
           FILE *mSourceFile;
           FILE *mDestFile;

@@ -207,31 +207,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(IPeerPtr peer)
       {
-        return dynamic_pointer_cast<Peer>(peer);
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForAccountPtr peer)
       {
-        return dynamic_pointer_cast<Peer>(peer);
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForMessagesPtr peer)
       {
-        return dynamic_pointer_cast<Peer>(peer);
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForLocationPtr peer)
       {
-        return dynamic_pointer_cast<Peer>(peer);
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForPeerSubscriptionPtr peer)
       {
-        return dynamic_pointer_cast<Peer>(peer);
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }
 
       //-----------------------------------------------------------------------

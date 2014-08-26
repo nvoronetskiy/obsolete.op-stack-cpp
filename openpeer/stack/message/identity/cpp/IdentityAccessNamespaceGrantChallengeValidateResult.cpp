@@ -49,7 +49,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         IdentityAccessNamespaceGrantChallengeValidateResultPtr IdentityAccessNamespaceGrantChallengeValidateResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<IdentityAccessNamespaceGrantChallengeValidateResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(IdentityAccessNamespaceGrantChallengeValidateResult, message);
         }
 
         //---------------------------------------------------------------------

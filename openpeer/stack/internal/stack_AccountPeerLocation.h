@@ -509,7 +509,7 @@ namespace openpeer
         IDHPublicKeyPtr mDHRemotePublicKey;
 
         AccountStates mCurrentState;
-        AutoBool mShouldRefindNow;
+        bool mShouldRefindNow {};
 
         mutable Time mLastActivity;
 
@@ -525,13 +525,13 @@ namespace openpeer
         IRUDPMessagingPtr mMessaging;
         ITransportStreamReaderPtr mMessagingReceiveStream;
         ITransportStreamWriterPtr mMessagingSendStream;
-        AutoBool mCandidatesFinal;
+        bool mCandidatesFinal {};
         String mLastCandidateVersionSent;
 
         IMessageLayerSecurityChannelPtr mMLSChannel;
         ITransportStreamReaderPtr mMLSReceiveStream;
         ITransportStreamWriterPtr mMLSSendStream;
-        AutoBool mMLSDidConnect;
+        bool mMLSDidConnect {};
 
         CreatedFromReasons mCreatedReason;
 
@@ -556,8 +556,8 @@ namespace openpeer
         ITransportStreamReaderSubscriptionPtr mIncomingRelayReceiveStreamSubscription;
         ITransportStreamWriterSubscriptionPtr mIncomingRelaySendStreamSubscription;
 
-        AutoBool mHadConnection;
-        AutoBool mHadPeerConnection;
+        bool mHadConnection {};
+        bool mHadPeerConnection {};
 
         Time mIdentifyTime;
 

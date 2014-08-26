@@ -66,11 +66,8 @@ namespace openpeer
     using zsLib::Duration;
     using zsLib::Seconds;
     using zsLib::String;
-    using zsLib::AutoBool;
     using zsLib::IPAddress;
     using zsLib::Log;
-
-    using boost::dynamic_pointer_cast;
 
     ZS_DECLARE_TYPEDEF_PTR(zsLib::RecursiveLock, RecursiveLock)
     ZS_DECLARE_TYPEDEF_PTR(zsLib::AutoRecursiveLock, AutoRecursiveLock)
@@ -221,7 +218,7 @@ namespace openpeer
       String    mSystem;
       String    mHost;
 
-      AutoBool  mCandidatesFinal;
+      bool      mCandidatesFinal {};
       String    mCandidatesVersion;
       CandidateList mCandidates;
 

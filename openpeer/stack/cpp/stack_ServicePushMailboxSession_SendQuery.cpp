@@ -151,7 +151,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        get(mUploaded) = true;
+        mUploaded = true;
 
         if (!mDelegate) {
           ZS_LOG_WARNING(Detail, log("delegate already gone"))
@@ -325,7 +325,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::SendQuery::cancel()
       {
-        get(mComplete) = true;
+        mComplete = true;
 
         //SendQueryPtr pThis = mThisWeak.lock();
         //if ((pThis) &&

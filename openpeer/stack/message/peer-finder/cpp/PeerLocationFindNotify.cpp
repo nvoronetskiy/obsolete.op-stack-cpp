@@ -71,7 +71,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerLocationFindNotifyPtr PeerLocationFindNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerLocationFindNotify>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerLocationFindNotify, message);
         }
 
         //---------------------------------------------------------------------
@@ -97,7 +97,7 @@ namespace openpeer
             ret->mContext = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("context"));
 
             try {
-              get(ret->mValidated) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("validated")));
+              ret->mValidated = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("validated")));
             } catch (Numeric<bool>::ValueOutOfRange &) {
               ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
@@ -106,7 +106,7 @@ namespace openpeer
             ret->mICEPassword = IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("icePassword"));
 
             try {
-              get(ret->mFinal) = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceFinal")));
+              ret->mFinal = Numeric<bool>(IMessageHelper::getElementTextAndDecode(findProofEl->findFirstChildElementChecked("iceFinal")));
             } catch (Numeric<bool>::ValueOutOfRange &) {
               ZS_LOG_WARNING(Detail, slog("final value missing"))
             }
@@ -154,7 +154,7 @@ namespace openpeer
           ret->mDomain = request->domain();
           ret->mID = request->messageID();
 
-          get(ret->mValidated) = request->didVerifySignature();
+          ret->mValidated = request->didVerifySignature();
 
           if (request->hasAttribute(PeerLocationFindRequest::AttributeType_RequestfindProofBundleDigestValue)) {
             ret->mRequestFindProofBundleDigestValue = request->mRequestFindProofBundleDigestValue;

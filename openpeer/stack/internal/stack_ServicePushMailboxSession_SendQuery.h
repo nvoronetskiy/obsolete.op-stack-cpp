@@ -121,8 +121,8 @@ namespace openpeer
 
           IServicePushMailboxSendQueryDelegatePtr mDelegate;
 
-          AutoBool mComplete;
-          AutoBool mUploaded;
+          bool mComplete {};
+          bool mUploaded {};
 
           String mMessageID;
           String mDeliveryHash;

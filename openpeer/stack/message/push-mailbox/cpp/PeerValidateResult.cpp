@@ -49,7 +49,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerValidateResultPtr PeerValidateResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerValidateResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerValidateResult, message);
         }
 
         //---------------------------------------------------------------------

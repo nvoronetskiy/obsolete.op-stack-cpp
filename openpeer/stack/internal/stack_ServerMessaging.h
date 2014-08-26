@@ -253,7 +253,7 @@ namespace openpeer
 
         SessionStates mCurrentState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
 
         IPeerFilesPtr mPeerFiles;

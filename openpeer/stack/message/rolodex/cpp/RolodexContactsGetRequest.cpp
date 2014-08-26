@@ -57,7 +57,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         RolodexContactsGetRequestPtr RolodexContactsGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<RolodexContactsGetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(RolodexContactsGetRequest, message);
         }
 
         //---------------------------------------------------------------------

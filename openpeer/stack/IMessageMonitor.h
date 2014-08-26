@@ -117,14 +117,10 @@ namespace openpeer
     template <typename typeMessage>
     interaction IMessageMonitorResultDelegate : public IMessageMonitorDelegate
     {
-      typedef boost::shared_ptr<IMessageMonitorResultDelegate> Ptr;
-      typedef boost::weak_ptr<IMessageMonitorResultDelegate> WeakPtr;
+      ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorResultDelegate, ResultDelegate)
+      ZS_DECLARE_TYPEDEF_PTR(typeMessage, MessageResultType)
 
-      typedef typeMessage MessageResultType;
-      typedef boost::shared_ptr<MessageResultType> MessageResultTypePtr;
-      typedef boost::weak_ptr<MessageResultType> MessageResultTypeWeakPtr;
-
-      static Ptr convert(Ptr convertFrom) {return convertFrom;}
+      static ResultDelegatePtr convert(ResultDelegatePtr convertFrom) {return convertFrom;}
 
       IMessageMonitorResultDelegate() {}
 
@@ -161,11 +157,11 @@ namespace openpeer
                                                        message::MessagePtr message
                                                        )
       {
-        MessageResultTypePtr response = dynamic_pointer_cast<MessageResultType>(message);
+        MessageResultTypePtr response = ZS_DYNAMIC_PTR_CAST(MessageResultType, message);
         if (response) {
           return handleMessageMonitorResultReceived(monitor, response);
         }
-        message::MessageResultPtr result = dynamic_pointer_cast<message::MessageResult>(message);
+        message::MessageResultPtr result = ZS_DYNAMIC_PTR_CAST(message::MessageResult, message);
         if (result) {
           if (result->hasError()) {
             return handleMessageMonitorErrorResultReceived(monitor, MessageResultTypePtr(), result);

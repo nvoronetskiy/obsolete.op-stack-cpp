@@ -283,31 +283,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ILocationPtr location)
       {
-        return dynamic_pointer_cast<Location>(location);
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForAccountPtr location)
       {
-        return dynamic_pointer_cast<Location>(location);
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForMessagesPtr location)
       {
-        return dynamic_pointer_cast<Location>(location);
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForPeerSubscriptionPtr location)
       {
-        return dynamic_pointer_cast<Location>(location);
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
       }
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForPublicationRepositoryPtr location)
       {
-        return dynamic_pointer_cast<Location>(location);
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
       }
 
       //-----------------------------------------------------------------------
@@ -404,7 +404,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(IMessageSourcePtr messageSource)
       {
-        return dynamic_pointer_cast<Location>(messageSource);
+        return ZS_DYNAMIC_PTR_CAST(Location, messageSource);
       }
 
       //-----------------------------------------------------------------------

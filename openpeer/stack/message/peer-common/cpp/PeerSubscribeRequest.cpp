@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerSubscribeRequestPtr PeerSubscribeRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerSubscribeRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerSubscribeRequest, message);
         }
 
         //---------------------------------------------------------------------

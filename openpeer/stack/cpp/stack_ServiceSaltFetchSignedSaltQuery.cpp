@@ -105,7 +105,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceSaltFetchSignedSaltQueryPtr ServiceSaltFetchSignedSaltQuery::convert(IServiceSaltFetchSignedSaltQueryPtr query)
       {
-        return dynamic_pointer_cast<ServiceSaltFetchSignedSaltQuery>(query);
+        return ZS_DYNAMIC_PTR_CAST(ServiceSaltFetchSignedSaltQuery, query);
       }
 
       //-----------------------------------------------------------------------

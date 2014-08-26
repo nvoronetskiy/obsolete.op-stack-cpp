@@ -171,13 +171,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr PublicationRepository::convert(IPublicationRepositoryPtr repository)
       {
-        return dynamic_pointer_cast<PublicationRepository>(repository);
+        return ZS_DYNAMIC_PTR_CAST(PublicationRepository, repository);
       }
 
       //-----------------------------------------------------------------------
       PublicationRepositoryPtr PublicationRepository::convert(ForAccountPtr repository)
       {
-        return dynamic_pointer_cast<PublicationRepository>(repository);
+        return ZS_DYNAMIC_PTR_CAST(PublicationRepository, repository);
       }
 
       //-----------------------------------------------------------------------

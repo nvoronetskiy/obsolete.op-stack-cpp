@@ -127,13 +127,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSessionPtr ServiceNamespaceGrantSession::convert(IServiceNamespaceGrantSessionPtr session)
       {
-        return dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceNamespaceGrantSession, session);
       }
 
       //-----------------------------------------------------------------------
       ServiceNamespaceGrantSessionPtr ServiceNamespaceGrantSession::convert(ForServicesPtr session)
       {
-        return dynamic_pointer_cast<ServiceNamespaceGrantSession>(session);
+        return ZS_DYNAMIC_PTR_CAST(ServiceNamespaceGrantSession, session);
       }
 
       //-----------------------------------------------------------------------

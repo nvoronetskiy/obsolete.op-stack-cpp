@@ -47,7 +47,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerPublishNotifyPtr PeerPublishNotify::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerPublishNotify>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerPublishNotify, message);
         }
 
         //---------------------------------------------------------------------

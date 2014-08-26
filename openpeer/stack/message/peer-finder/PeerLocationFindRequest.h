@@ -158,7 +158,7 @@ namespace openpeer
 
           IPeerFilesPtr mPeerFiles;
 
-          AutoBool mDidVerifySignature;
+          bool mDidVerifySignature {};
         };
       }
     }

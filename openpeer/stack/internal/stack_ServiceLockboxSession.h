@@ -595,7 +595,7 @@ namespace openpeer
 
         SessionStates mCurrentState;
 
-        AutoWORD mLastError;
+        WORD mLastError {};
         String mLastErrorReason;
 
         UseBootstrappedNetworkPtr mBootstrappedNetwork;
@@ -617,16 +617,16 @@ namespace openpeer
 
         IPeerFilesPtr mPeerFiles;
 
-        AutoBool mObtainedLock;
+        bool mObtainedLock {};
 
-        AutoBool mLoginIdentitySetToBecomeAssociated;
+        bool mLoginIdentitySetToBecomeAssociated {};
 
-        AutoBool mForceNewAccount;
+        bool mForceNewAccount {};
 
         IServiceSaltFetchSignedSaltQueryPtr mSaltQuery;
         IKeyGeneratorPtr mPeerFileKeyGenerator;
-        AutoBool mPeerFilesGenerated;
-        AutoBool mPeerFileSet;
+        bool mPeerFilesGenerated {};
+        bool mPeerFileSet {};
 
         ServiceTypeMap mServicesByType;
 

@@ -98,7 +98,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       KeyGeneratorPtr KeyGenerator::convert(IKeyGeneratorPtr monitor)
       {
-        return dynamic_pointer_cast<KeyGenerator>(monitor);
+        return ZS_DYNAMIC_PTR_CAST(KeyGenerator, monitor);
       }
 
       //-----------------------------------------------------------------------
@@ -204,7 +204,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(mLock);
 
-        get(mCompleted) = true;
+        mCompleted = true;
 
         mSubscriptions.clear();
 
@@ -341,7 +341,7 @@ namespace openpeer
         // scope: finalize result
         {
           AutoRecursiveLock lock(mLock);
-          get(mCompleted) = true;
+          mCompleted = true;
 
           // NOTE: during the LONG time it takes to generate these keys the
           // caller may have decided to cancel thus we must re-assert that

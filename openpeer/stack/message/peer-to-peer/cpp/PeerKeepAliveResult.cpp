@@ -53,7 +53,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         PeerKeepAliveResultPtr PeerKeepAliveResult::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<PeerKeepAliveResult>(message);
+          return ZS_DYNAMIC_PTR_CAST(PeerKeepAliveResult, message);
         }
 
         //---------------------------------------------------------------------

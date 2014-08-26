@@ -248,25 +248,25 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(IPublicationPtr publication)
       {
-        return dynamic_pointer_cast<Publication>(publication);
+        return ZS_DYNAMIC_PTR_CAST(Publication, publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForPublicationMetaDataPtr publication)
       {
-        return dynamic_pointer_cast<Publication>(publication);
+        return ZS_DYNAMIC_PTR_CAST(Publication, publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForPublicationRepositoryPtr publication)
       {
-        return dynamic_pointer_cast<Publication>(publication);
+        return ZS_DYNAMIC_PTR_CAST(Publication, publication);
       }
 
       //-----------------------------------------------------------------------
       PublicationPtr Publication::convert(ForMessagesPtr publication)
       {
-        return dynamic_pointer_cast<Publication>(publication);
+        return ZS_DYNAMIC_PTR_CAST(Publication, publication);
       }
 
       //-----------------------------------------------------------------------
@@ -1234,7 +1234,7 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("moving document to cache"))
           ICache::store(getCookieName(), Time(), output.get());
-          get(mPreviouslyStored) = true;
+          mPreviouslyStored = true;
         } else {
           ZS_LOG_TRACE(log("document is already in cache (thus forgetting about document)"))
         }

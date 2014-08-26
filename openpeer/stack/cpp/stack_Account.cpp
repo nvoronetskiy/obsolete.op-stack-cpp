@@ -204,54 +204,54 @@ namespace openpeer
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(IAccountPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForAccountFinderPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForRelayChannelPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForAccountPeerLocationPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForLocationPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForMessagesPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForPeerPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForPublicationRepositoryPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForPushMailboxPtr account)
       {
-        return dynamic_pointer_cast<Account>(account);
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
 
 
@@ -510,7 +510,7 @@ namespace openpeer
 
         if (location == getLocationForLocal()) {
           if (mSocket) {
-            get(info->mCandidatesFinal) = IICESocket::ICESocketState_Ready == mSocket->getState();
+            info->mCandidatesFinal = IICESocket::ICESocketState_Ready == mSocket->getState();
 
             IICESocket::CandidateList candidates;
             mSocket->getLocalCandidates(candidates, &(info->mCandidatesVersion));
@@ -1308,7 +1308,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("lockbox is taking over RSA key generation") + IKeyGenerator::toDebug(result))
 
-        get(mBlockRSAKeyGeneration) = true; // prevent key generation from occuring from without account since it's now the responsibility of the lockbox
+        mBlockRSAKeyGeneration = true; // prevent key generation from occuring from without account since it's now the responsibility of the lockbox
 
         return result;
       }
@@ -1474,7 +1474,7 @@ namespace openpeer
                                                                                                             );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
-          get(peerInfo->mFindAgainAfterBackgrounded) = false; // no need to continue finding now that a location has been found
+          peerInfo->mFindAgainAfterBackgrounded = false; // no need to continue finding now that a location has been found
 
           // the act of finding a peer does not cause notification to the subscribers as only the establishment of a peer connection notifies the subscribers
         }
@@ -1626,7 +1626,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        get(mBackgroundingEnabled) = true;
+        mBackgroundingEnabled = true;
 
         mBackgroundingNotifier = notifier;
 
@@ -1650,7 +1650,7 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
-        get(mBackgroundingEnabled) = false;
+        mBackgroundingEnabled = false;
         mBackgroundingNotifier.reset();
 
         step();
@@ -2345,7 +2345,7 @@ namespace openpeer
                                                                                     );
 
           peerInfo->mLocations[fromLocation->getLocationID()] = peerLocation;
-          get(peerInfo->mFindAgainAfterBackgrounded) = false;
+          peerInfo->mFindAgainAfterBackgrounded = false;
 
           ZS_LOG_DEBUG(log("received incoming peer find request from peer location") + PeerInfo::toDebug(peerInfo) + ZS_PARAM("peer location id", peerLocation->getID()))
 
@@ -2758,7 +2758,7 @@ namespace openpeer
                                                            PeerInfoPtr &peerInfo
                                                            )
       {
-        get(peerInfo->mFindAgainAfterBackgrounded) = true;
+        peerInfo->mFindAgainAfterBackgrounded = true;
 
         if (peerInfo->mPeerFindMonitor) {
 

@@ -505,7 +505,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("cancel called"))
 
-        get(mShutdown) = true;
+        mShutdown = true;
 
         mPendingBootstrappers.clear();
         mPendingPeerURIs.clear();
@@ -567,7 +567,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ServicePeerFileLookup::LookupPtr ServicePeerFileLookup::Lookup::convert(IServicePeerFileLookupQueryPtr query)
       {
-        return boost::dynamic_pointer_cast<Lookup>(query);
+        return ZS_DYNAMIC_PTR_CAST(Lookup, query);
       }
 
       //-----------------------------------------------------------------------
@@ -720,7 +720,7 @@ namespace openpeer
           return;
         }
 
-        get(mLastError) = errorCode;
+        mLastError = errorCode;
         mLastErrorReason = reason;
 
         ZS_LOG_WARNING(Detail, log("error set") + ZS_PARAM("error", mLastError) + ZS_PARAM("reason", mLastErrorReason))

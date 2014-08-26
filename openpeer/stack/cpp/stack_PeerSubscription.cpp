@@ -119,13 +119,13 @@ namespace openpeer
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::convert(IPeerSubscriptionPtr subscription)
       {
-        return dynamic_pointer_cast<PeerSubscription>(subscription);
+        return ZS_DYNAMIC_PTR_CAST(PeerSubscription, subscription);
       }
 
       //-----------------------------------------------------------------------
       PeerSubscriptionPtr PeerSubscription::convert(ForAccountPtr subscription)
       {
-        return dynamic_pointer_cast<PeerSubscription>(subscription);
+        return ZS_DYNAMIC_PTR_CAST(PeerSubscription, subscription);
       }
 
       //-----------------------------------------------------------------------

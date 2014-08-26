@@ -43,7 +43,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         ServicesGetRequestPtr ServicesGetRequest::convert(MessagePtr message)
         {
-          return dynamic_pointer_cast<ServicesGetRequest>(message);
+          return ZS_DYNAMIC_PTR_CAST(ServicesGetRequest, message);
         }
 
         //---------------------------------------------------------------------

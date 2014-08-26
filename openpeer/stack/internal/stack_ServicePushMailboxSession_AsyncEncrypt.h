@@ -114,7 +114,7 @@ namespace openpeer
 
           UseEncryptorPtr mEncryptor;
 
-          AutoBool mSuccessful;
+          bool mSuccessful {};
 
           FILE *mSourceFile;
           FILE *mDestFile;
