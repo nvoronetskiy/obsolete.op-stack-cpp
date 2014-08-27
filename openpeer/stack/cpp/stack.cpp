@@ -105,13 +105,13 @@ namespace openpeer
     //---------------------------------------------------------------------
     static Log::Params Server_slog(const char *message)
     {
-      return Log::Params(message, "message::Server");
+      return Log::Params(message, "Server");
     }
 
     //---------------------------------------------------------------------
     static Log::Params Token_slog(const char *message)
     {
-      return Log::Params(message, "message::Token");
+      return Log::Params(message, "Token");
     }
 
     //-------------------------------------------------------------------------
