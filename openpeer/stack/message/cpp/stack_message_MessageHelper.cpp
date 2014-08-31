@@ -1452,6 +1452,7 @@ namespace openpeer
               outPublicationMetaData = PublicationMetaData::convert(metaData);
             }
           } catch (CheckFailed &) {
+            ZS_LOG_ERROR(Detail, slog("expected element is missing"))
           }
         }
 

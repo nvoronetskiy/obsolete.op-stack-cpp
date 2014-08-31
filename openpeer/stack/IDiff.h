@@ -59,7 +59,7 @@ namespace openpeer
         DiffAction_Replace,
         DiffAction_AdoptAsPreviousSibling,
         DiffAction_AdoptAsNextSibling,
-        DiffAction_AdoptAsFistChild,
+        DiffAction_AdoptAsFirstChild,
         DiffAction_AdoptAsLastChild,
         DiffAction_Remove,
 

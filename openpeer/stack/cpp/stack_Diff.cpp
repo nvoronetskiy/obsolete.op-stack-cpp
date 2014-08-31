@@ -76,7 +76,7 @@ namespace openpeer
           case IDiff::DiffAction_Replace:                return ".";
           case IDiff::DiffAction_AdoptAsPreviousSibling: return "^";
           case IDiff::DiffAction_AdoptAsNextSibling:     return "v";
-          case IDiff::DiffAction_AdoptAsFistChild:       return "fc";
+          case IDiff::DiffAction_AdoptAsFirstChild:      return "fc";
           case IDiff::DiffAction_AdoptAsLastChild:       return "lc";
           case IDiff::DiffAction_Remove:                 return "-";
         }
@@ -452,7 +452,7 @@ namespace openpeer
                 }
                 break;
               }
-              case IDiff::DiffAction_AdoptAsFistChild: { // first child
+              case IDiff::DiffAction_AdoptAsFirstChild: { // first child
                 // keep adopting as first child in reverse order of the children
                 NodePtr current = itemEl->getLastChild();
                 while (current) {
@@ -551,9 +551,9 @@ namespace openpeer
           case DiffAction_None:                     break;
           case DiffAction_Replace:                  {
             if (modifyElementNow) {
-              NodePtr child = holder->getLastChild();
+              NodePtr child = holder->getFirstChild();
               while (child) {
-                NodePtr next = child->getPreviousSibling();
+                NodePtr next = child->getNextSibling();
                 child->orphan();
                 modifyAtElementPath->adoptAsPreviousSibling(child);
                 child = next;
@@ -564,9 +564,9 @@ namespace openpeer
           }
           case DiffAction_AdoptAsPreviousSibling:   {
             if (modifyElementNow) {
-              NodePtr child = holder->getLastChild();
+              NodePtr child = holder->getFirstChild();
               while (child) {
-                NodePtr next = child->getPreviousSibling();
+                NodePtr next = child->getNextSibling();
                 child->orphan();
                 modifyAtElementPath->adoptAsPreviousSibling(child);
                 child = next;
@@ -578,22 +578,22 @@ namespace openpeer
             if (modifyElementNow) {
               NodePtr child = holder->getLastChild();
               while (child) {
-                NodePtr next = child->getPreviousSibling();
+                NodePtr prev = child->getPreviousSibling();
                 child->orphan();
                 modifyAtElementPath->adoptAsNextSibling(child);
-                child = next;
+                child = prev;
               }
             }
             break;
           }
-          case DiffAction_AdoptAsFistChild:         {
+          case DiffAction_AdoptAsFirstChild:        {
             if (modifyElementNow) {
-              NodePtr child = holder->getFirstChild();
+              NodePtr child = holder->getLastChild();
               while (child) {
-                NodePtr next = child->getNextSibling();
+                NodePtr prev = child->getPreviousSibling();
                 child->orphan();
-                modifyAtElementPath->adoptAsLastChild(child);
-                child = next;
+                modifyAtElementPath->adoptAsFirstChild(child);
+                child = prev;
               }
             }
             break;
@@ -604,7 +604,7 @@ namespace openpeer
               while (child) {
                 NodePtr next = child->getNextSibling();
                 child->orphan();
-                modifyAtElementPath->adoptAsFirstChild(child);
+                modifyAtElementPath->adoptAsLastChild(child);
                 child = next;
               }
             }
@@ -727,7 +727,7 @@ namespace openpeer
         case DiffAction_Replace:                return "Replace";
         case DiffAction_AdoptAsPreviousSibling: return "Adopt as previous sibling";
         case DiffAction_AdoptAsNextSibling:     return "Adopt as next sibling";
-        case DiffAction_AdoptAsFistChild:       return "Adopt as first child";
+        case DiffAction_AdoptAsFirstChild:      return "Adopt as first child";
         case DiffAction_AdoptAsLastChild:       return "Adopt as last child";
         case DiffAction_Remove:                 return "Remove";
       }
