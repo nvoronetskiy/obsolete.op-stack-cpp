@@ -34,6 +34,8 @@
 
 #include <zsLib/XML.h>
 
+namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
+
 namespace openpeer
 {
   namespace stack
@@ -43,6 +45,12 @@ namespace openpeer
       namespace peer_common
       {
         typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
+
+        //---------------------------------------------------------------------
+        static Log::Params slog(const char *message)
+        {
+          return Log::Params(message, "PeerPublishNotify");
+        }
 
         //---------------------------------------------------------------------
         PeerPublishNotifyPtr PeerPublishNotify::convert(MessagePtr message)
@@ -94,6 +102,7 @@ namespace openpeer
               ret->mPublicationList.push_back(publicationMetaData);
             } while (true);
           } catch (CheckFailed &) {
+            ZS_LOG_ERROR(Detail, slog("expected element is missing"))
           }
 
           return ret;
@@ -131,6 +140,7 @@ namespace openpeer
 
               documentsEl->adoptAsLastChild(documentEl);
             } catch (CheckFailed &) {
+              ZS_LOG_ERROR(Detail, slog("expected element is missing"))
               return DocumentPtr();
             }
           }

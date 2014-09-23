@@ -226,6 +226,7 @@ namespace openpeer
         try {
           return IHelper::convertFromBase64(sectionAEl->findFirstChildElementChecked("salt")->getTextDecoded());
         } catch(CheckFailed &) {
+          ZS_LOG_ERROR(Detail, log("expected element is missing"))
         }
         ZS_LOG_ERROR(Detail, log("could not find salt in private peer file") + IPeerFilePrivate::toDebug(mThisWeak.lock()))
         return SecureByteBlockPtr();

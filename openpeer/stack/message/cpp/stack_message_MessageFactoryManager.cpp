@@ -240,6 +240,7 @@ namespace openpeer
               foundHandler = true;
             }
           } catch (CheckFailed &) {
+            ZS_LOG_ERROR(Detail, log("expected element is missing"))
           }
 
           if (!message) {

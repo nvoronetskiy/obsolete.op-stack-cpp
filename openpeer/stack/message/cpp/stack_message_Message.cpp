@@ -61,6 +61,12 @@ namespace openpeer
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
       //-----------------------------------------------------------------------
+      static Log::Params slog(const char *message)
+      {
+        return Log::Params(message, "stack::message::Message");
+      }
+
+      //-----------------------------------------------------------------------
       const char *Message::toString(MessageTypes type)
       {
         switch (type)
@@ -155,6 +161,7 @@ namespace openpeer
           ElementPtr root = document->getFirstChildElementChecked();
           return Message::create(root, messageSource);
         } catch(CheckFailed &) {
+          ZS_LOG_ERROR(Detail, slog("expected element is missing"))
         }
 
         return result;
