@@ -532,8 +532,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
-				CLANG_CXX_LIBRARY = "libstdc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
@@ -559,10 +559,10 @@
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
 					"../../../../ortc-lib/libs/boost/ios/framework/boost.framework/Headers",
-					"../../../../ortc-lib/libs/curl/include",
+					"../../../../ortc-lib/libs/curl-build-scripts/curl",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
-				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl/staging";
+				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl-build-scripts/curl/lib";
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 			};
@@ -572,8 +572,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
-				CLANG_CXX_LIBRARY = "libstdc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
@@ -597,10 +597,10 @@
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
 					"../../../../ortc-lib/libs/boost/ios/framework/boost.framework/Headers",
-					"../../../../ortc-lib/libs/curl/include",
+					"../../../../ortc-lib/libs/curl-build-scripts/curl",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
-				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl/staging";
+				LIBRARY_SEARCH_PATHS = "../../../../ortc-lib/libs/curl-build-scripts/curl/lib";
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -628,6 +628,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
 			};
 			name = Debug;
 		};
@@ -653,6 +654,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphoneos;
 			};
 			name = Release;
 		};

@@ -109,15 +109,7 @@ void doTestStack()
                 threadDelegate,
                 threadStack,
                 threadServices,
-                threadKeyGeneration,
-                "com.xyz123.app1",
-                "servicesTestApp",
-                "http://test.com/image.png",
-                "http://test.com/app/",
-                "hookflash/1.0.1001a (iOS/iPad)",
-                "123456",
-                "iOS 5.0.3",
-                "iPad 2"
+                threadKeyGeneration
                 );
 
   TestStackCallbackPtr testObject = TestStackCallback::create(thread);

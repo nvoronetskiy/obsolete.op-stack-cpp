@@ -93,15 +93,7 @@ static ProvisioningManager *sProvisioningManager = nil;
   IStack::setup(
                 threadDelegate,
                 threadStack,
-                threadServices,
-                "com.xyz123.app1",
-                "Bojan's Test App",
-                "https://testapp.com/image.png",
-                "https://testapp.com/app/",
-                "hookflash/1.0.1001a (iOS/iPad)",
-                "123456",
-                "iOS 5.0.3",
-                "iPad 2"
+                threadServices
                 );
   
   //initialize bootstrapped network
