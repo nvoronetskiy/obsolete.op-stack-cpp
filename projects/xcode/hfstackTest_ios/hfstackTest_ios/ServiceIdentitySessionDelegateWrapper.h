@@ -35,11 +35,11 @@
 
 using namespace openpeer::stack;
 
+ZS_DECLARE_CLASS_PTR(ServiceIdentitySessionDelegateWrapper)
+
 class ServiceIdentitySessionDelegateWrapper : public IServiceIdentitySessionDelegate
 {
 public:
-  typedef boost::shared_ptr<ServiceIdentitySessionDelegateWrapper> ServiceIdentitySessionDelegateWrapperPtr;
-  
   static ServiceIdentitySessionDelegateWrapperPtr create();
   
   virtual void onServiceIdentitySessionStateChanged(
@@ -49,7 +49,3 @@ public:
   
   virtual void onServiceIdentitySessionPendingMessageForInnerBrowserWindowFrame(IServiceIdentitySessionPtr session);
 };
-
-typedef boost::shared_ptr<ServiceIdentitySessionDelegateWrapper> ServiceIdentitySessionDelegateWrapperPtr;
-
-

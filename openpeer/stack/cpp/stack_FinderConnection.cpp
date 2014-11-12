@@ -1149,7 +1149,7 @@ namespace openpeer
 
         size_t outputLength = 0;
         GeneratorPtr generator = Generator::createJSONGenerator();
-        boost::shared_array<char> output = generator->write(doc, &outputLength);
+        std::unique_ptr<char[]> output = generator->write(doc, &outputLength);
 
         ChannelHeaderPtr header(new ChannelHeader);
         header->mChannelID = 0;

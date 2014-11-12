@@ -286,7 +286,7 @@ namespace openpeer
         GeneratorPtr generator = Generator::createJSONGenerator();
 
         ElementPtr canonicalJSONEl = IHelper::cloneAsCanonicalJSON(elementToSign);
-        boost::shared_array<char> elementAsJSON = generator->write(canonicalJSONEl);
+        std::unique_ptr<char[]> elementAsJSON = generator->write(canonicalJSONEl);
 
         SecureByteBlockPtr elementHash = IHelper::hash(elementAsJSON.get(), IHelper::HashAlgorthm_SHA1);
 
@@ -595,7 +595,7 @@ namespace openpeer
 
             size_t length = 0;
             ElementPtr canoncialSectionBundleEl = IHelper::cloneAsCanonicalJSON(sectionBundleEl);
-            boost::shared_array<char> sectionAsJSON = generator->write(canoncialSectionBundleEl, &length);
+            std::unique_ptr<char[]> sectionAsJSON = generator->write(canoncialSectionBundleEl, &length);
 
             SHA256 sha256;
             SecureByteBlock bundleHash(sha256.DigestSize());
@@ -687,12 +687,12 @@ namespace openpeer
             String encryptedPrivateKey = encrypt("privatekey", saltAsString, *privateKey);
 
             GeneratorPtr generator = Generator::createJSONGenerator();
-            boost::shared_array<char> publicPeerAsString = generator->write(outPublicPeerDocument);
+            std::unique_ptr<char[]> publicPeerAsString = generator->write(outPublicPeerDocument);
 
             String encryptedPublicPeer = encrypt("peer", saltAsString, (const char *)(publicPeerAsString.get()));
 
             DocumentPtr docPrivateData = Document::create();
-            boost::shared_array<char> dataAsString = generator->write(docPrivateData);
+            std::unique_ptr<char[]> dataAsString = generator->write(docPrivateData);
 
             mPrivateDataDoc = docPrivateData->clone()->toDocument();
 

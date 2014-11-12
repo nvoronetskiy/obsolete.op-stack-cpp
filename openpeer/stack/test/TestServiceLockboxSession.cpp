@@ -85,7 +85,7 @@ namespace hookflash
 //        if (!element) return String();
 //        
 //        GeneratorPtr generator = Generator::createJSONGenerator();
-//        boost::shared_array<char> output = generator->write(element);
+//        std::unique_ptr<char[]> output = generator->write(element);
 //        
 //        return output.get();
 //      }
@@ -216,7 +216,7 @@ namespace hookflash
       {
         DocumentPtr doc = message->encode();
         size_t postDataLengthInBytes = 0;
-        boost::shared_array<char> postData = doc->writeAsJSON(&postDataLengthInBytes);
+        std::unique_ptr<char[]> postData = doc->writeAsJSON(&postDataLengthInBytes);
         
         
         Duration timeout = Duration(Seconds(OPENPEER_STACK_TEST_SERVICE_PEER_CONTACT_TIMEOUT_IN_SECONDS));

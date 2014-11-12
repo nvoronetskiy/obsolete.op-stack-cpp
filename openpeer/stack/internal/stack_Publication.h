@@ -38,8 +38,6 @@
 #include <zsLib/Exception.h>
 #include <zsLib/Timer.h>
 
-#include <boost/shared_array.hpp>
-
 #define OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME "openpeer/stack/move-publication-to-cache-time-in-seconds"
 
 namespace openpeer

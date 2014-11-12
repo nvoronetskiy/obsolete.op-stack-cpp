@@ -62,7 +62,7 @@ namespace openpeer
         if (!element) return String();
         
         XML::GeneratorPtr generator = XML::Generator::createJSONGenerator();
-        boost::shared_array<char> output = generator->write(element);
+        std::unique_ptr<char[]> output = generator->write(element);
         
         return output.get();
       }

@@ -556,7 +556,7 @@ namespace openpeer
           String signatureDigestAsString = signatureEl->findFirstChildElementChecked("digestValue")->getTextDecoded();
 
           GeneratorPtr generator = Generator::createJSONGenerator();
-          boost::shared_array<char> signedElAsJSON = generator->write(signedElement);
+          std::unique_ptr<char[]> signedElAsJSON = generator->write(signedElement);
 
           SecureByteBlockPtr actualDigest = IHelper::hash((const char *)(signedElAsJSON.get()), IHelper::HashAlgorthm_SHA1);
 

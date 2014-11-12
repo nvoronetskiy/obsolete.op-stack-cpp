@@ -52,29 +52,13 @@ namespace openpeer
   {
     namespace test
     {
-      class TestServiceLockboxSession;
-      typedef boost::shared_ptr<TestServiceLockboxSession> TestServiceLockboxSessionPtr;
-      typedef boost::weak_ptr<TestServiceLockboxSession> TestServiceLockboxSessionWeakPtr;
-      
-      class TestBootstrappedNetworkForPeerContact;
-      typedef boost::shared_ptr<TestBootstrappedNetworkForPeerContact> TestBootstrappedNetworkForPeerContactPtr;
-      typedef boost::weak_ptr<TestBootstrappedNetworkForPeerContact> TestBootstrappedNetworkForPeerContactWeakPtr;
-      
-      class TestServiceIdentitySessionForPeerContact;
-      typedef boost::shared_ptr<TestServiceIdentitySessionForPeerContact> TestServiceIdentitySessionForPeerContactPtr;
-      typedef boost::weak_ptr<TestServiceIdentitySessionForPeerContact> TestServiceIdentitySessionForPeerContactWeakPtr;
-      
-      class TestFactoryForPeerContact;
-      typedef boost::shared_ptr<TestFactoryForPeerContact> TestFactoryForPeerContactPtr;
-      typedef boost::weak_ptr<TestFactoryForPeerContact> TestFactoryForPeerContactWeakPtr;
-      
-      class TestCallbackForPeerContact;
-      typedef boost::shared_ptr<TestCallbackForPeerContact> TestCallbackForPeerContactPtr;
-      typedef boost::weak_ptr<TestCallbackForPeerContact> TestCallbackForPeerContactWeakPtr;
-      
-      class TestHTTPQueryForPeerContact;
-      typedef boost::shared_ptr<TestHTTPQueryForPeerContact> TestHTTPQueryForPeerContactPtr;
-      typedef boost::weak_ptr<TestHTTPQueryForPeerContact> TestHTTPQueryForPeerContactWeakPtr;
+      ZS_DECLARE_CLASS_PTR(TestServiceLockboxSession)
+      ZS_DECLARE_CLASS_PTR(TestBootstrappedNetworkForPeerContact)
+      ZS_DECLARE_CLASS_PTR(TestServiceIdentitySessionForPeerContact)
+      ZS_DECLARE_CLASS_PTR(TestFactoryForPeerContact)
+      ZS_DECLARE_CLASS_PTR(TestCallbackForPeerContact)
+      ZS_DECLARE_CLASS_PTR(TestHTTPQueryForPeerContact)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

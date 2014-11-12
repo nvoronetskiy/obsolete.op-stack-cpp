@@ -115,7 +115,7 @@ namespace openpeer
         if (!el) return;
 
         GeneratorPtr generator = Generator::createJSONGenerator();
-        boost::shared_array<char> output = generator->write(el);
+        std::unique_ptr<char[]> output = generator->write(el);
 
         String result = (const char *)output.get();
 

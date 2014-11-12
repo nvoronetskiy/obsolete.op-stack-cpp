@@ -1543,7 +1543,7 @@ namespace openpeer
           ZS_THROW_BAD_STATE_IF(!peerFileEl)
 
           GeneratorPtr generator = Generator::createJSONGenerator();
-          boost::shared_array<char> output = generator->write(peerFileEl);
+          std::unique_ptr<char[]> output = generator->write(peerFileEl);
 
           String privatePeerFileStr = output.get();
 

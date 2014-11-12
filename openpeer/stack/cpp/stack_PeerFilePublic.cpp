@@ -613,7 +613,7 @@ namespace openpeer
             size_t length = 0;
             ElementPtr bundleAEl = sectionAEl->getParentElementChecked();
             ElementPtr canonicalBundleAEl = services::IHelper::cloneAsCanonicalJSON(bundleAEl);
-            boost::shared_array<char> sectionAsString = generator->write(canonicalBundleAEl, &length);
+            std::unique_ptr<char[]> sectionAsString = generator->write(canonicalBundleAEl, &length);
 
             SHA256 sha256;
             SecureByteBlock bundleHash(sha256.DigestSize());
@@ -665,7 +665,7 @@ namespace openpeer
           {
             size_t length = 0;
             ElementPtr canonicalSectionAEl = services::IHelper::cloneAsCanonicalJSON(sectionAEl);
-            boost::shared_array<char> sectionAAsString = generator->write(canonicalSectionAEl, &length);
+            std::unique_ptr<char[]> sectionAAsString = generator->write(canonicalSectionAEl, &length);
 
             SecureByteBlockPtr sectionHash = services::IHelper::hash((const char *)(sectionAAsString.get()), services::IHelper::HashAlgorthm_SHA1);
             String algorithm = signatureEl->findFirstChildElementChecked("algorithm")->getTextDecoded();

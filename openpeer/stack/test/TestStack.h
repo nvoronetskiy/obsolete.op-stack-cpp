@@ -49,9 +49,7 @@ namespace openpeer
       using stack::IBootstrappedNetworkPtr;
       using stack::IBootstrappedNetworkDelegate;
 
-      class TestStackCallback;
-      typedef boost::shared_ptr<TestStackCallback> TestStackCallbackPtr;
-      typedef boost::weak_ptr<TestStackCallback> TestStackCallbackWeakPtr;
+      ZS_DECLARE_CLASS_PTR(TestStackCallback)
 
       class TestStackCallback : public MessageQueueAssociator,
                                 public IBootstrappedNetworkDelegate

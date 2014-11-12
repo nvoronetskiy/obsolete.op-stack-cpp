@@ -34,8 +34,6 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/IPublicationMetaData.h>
 
-#include <boost/shared_array.hpp>
-
 namespace openpeer
 {
   namespace stack

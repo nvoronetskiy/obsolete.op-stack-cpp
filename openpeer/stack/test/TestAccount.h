@@ -57,46 +57,17 @@ namespace openpeer
   {
     namespace test
     {
-      
-      class TestServiceLockboxSessionForAccount;
-      typedef boost::shared_ptr<TestServiceLockboxSessionForAccount> TestServiceLockboxSessionForAccountPtr;
-      typedef boost::weak_ptr<TestServiceLockboxSessionForAccount> TestServiceLockboxSessionForAccountWeakPtr;
-      
-      class TestBootstrappedNetworkForAccount;
-      typedef boost::shared_ptr<TestBootstrappedNetworkForAccount> TestBootstrappedNetworkForAccountPtr;
-      typedef boost::weak_ptr<TestBootstrappedNetworkForAccount> TestBootstrappedNetworkForAccountWeakPtr;
-      
-      class TestServiceIdentitySessionForAccount;
-      typedef boost::shared_ptr<TestServiceIdentitySessionForAccount> TestServiceIdentitySessionForAccountPtr;
-      typedef boost::weak_ptr<TestServiceIdentitySessionForAccount> TestServiceIdentitySessionForAccountWeakPtr;
-      
-      class TestAccount;
-      typedef boost::shared_ptr<TestAccount> TestAccountPtr;
-      typedef boost::weak_ptr<TestAccount> TestAccountWeakPtr;
-      
-      class TestAccountFinderForAccount;
-      typedef boost::shared_ptr<TestAccountFinderForAccount> TestAccountFinderForAccountPtr;
-      typedef boost::weak_ptr<TestAccountFinderForAccount> TestAccountFinderForAccountWeakPtr;
-      
-      class TestRUDPICESocketForAccount;
-      typedef boost::shared_ptr<TestRUDPICESocketForAccount> TestRUDPICESocketForAccountPtr;
-      typedef boost::weak_ptr<TestRUDPICESocketForAccount> TestRUDPICESocketForAccountWeakPtr;
-      
-      class TestFactoryForAccount;
-      typedef boost::shared_ptr<TestFactoryForAccount> TestFactoryForAccountPtr;
-      typedef boost::weak_ptr<TestFactoryForAccount> TestFactoryForAccountWeakPtr;
-      
-      class TestServicesFactoryForAccount;
-      typedef boost::shared_ptr<TestServicesFactoryForAccount> TestServicesFactoryForAccountPtr;
-      typedef boost::weak_ptr<TestServicesFactoryForAccount> TestServicesFactoryForAccountWeakPtr;
-      
-      class TestCallbackForAccount;
-      typedef boost::shared_ptr<TestCallbackForAccount> TestCallbackForAccountPtr;
-      typedef boost::weak_ptr<TestCallbackForAccount> TestCallbackForAccountWeakPtr;
-      
-      class TestHTTPQueryForAccount;
-      typedef boost::shared_ptr<TestHTTPQueryForAccount> TestHTTPQueryForAccountPtr;
-      typedef boost::weak_ptr<TestHTTPQueryForAccount> TestHTTPQueryForAccountWeakPtr;
+      ZS_DECLARE_CLASS_PTR(TestServiceLockboxSessionForAccount)
+      ZS_DECLARE_CLASS_PTR(TestBootstrappedNetworkForAccount)
+      ZS_DECLARE_CLASS_PTR(TestServiceIdentitySessionForAccount)
+      ZS_DECLARE_CLASS_PTR(TestAccount)
+      ZS_DECLARE_CLASS_PTR(TestAccountFinderForAccount)
+      ZS_DECLARE_CLASS_PTR(TestRUDPICESocketForAccount)
+      ZS_DECLARE_CLASS_PTR(TestFactoryForAccount)
+      ZS_DECLARE_CLASS_PTR(TestServicesFactoryForAccount)
+      ZS_DECLARE_CLASS_PTR(TestCallbackForAccount)
+      ZS_DECLARE_CLASS_PTR(TestHTTPQueryForAccount)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

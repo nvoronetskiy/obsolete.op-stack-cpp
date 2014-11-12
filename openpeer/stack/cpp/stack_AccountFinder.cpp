@@ -58,8 +58,6 @@
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
 
-#include <boost/shared_array.hpp>
-
 #include <cryptopp/osrng.h>
 #include <cryptopp/sha.h>
 

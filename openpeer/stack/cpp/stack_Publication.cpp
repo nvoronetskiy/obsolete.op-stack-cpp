@@ -104,7 +104,7 @@ namespace openpeer
 
         GeneratorPtr generator = Generator::createJSONGenerator();
 
-        boost::shared_array<char> output;
+        std::unique_ptr<char[]> output;
         size_t length = 0;
         output = generator->write(node, &length);
 
@@ -1226,7 +1226,7 @@ namespace openpeer
           // time to move to cache
           GeneratorPtr generator = Generator::createJSONGenerator();
 
-          boost::shared_array<char> output;
+          std::unique_ptr<char[]> output;
           size_t length = 0;
           output = generator->write(mDocument, &length);
 

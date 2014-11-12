@@ -258,7 +258,7 @@ namespace openpeer
 
         if (ZS_IS_LOGGING(Detail)) {
           GeneratorPtr generator = Generator::createJSONGenerator();
-          boost::shared_array<char> jsonText = generator->write(result);
+          std::unique_ptr<char[]> jsonText = generator->write(result);
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MESSAGE TO INNER FRAME (START) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
@@ -291,7 +291,7 @@ namespace openpeer
 
         if (ZS_IS_LOGGING(Detail)) {
           GeneratorPtr generator = Generator::createJSONGenerator();
-          boost::shared_array<char> jsonText = generator->write(unparsedMessage);
+          std::unique_ptr<char[]> jsonText = generator->write(unparsedMessage);
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<<<<<<<<<<<<<<<<<<<<<<<<<<<< MESSAGE FROM INNER FRAME (START) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))

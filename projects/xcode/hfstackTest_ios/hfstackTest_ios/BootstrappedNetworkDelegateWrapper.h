@@ -35,15 +35,14 @@
 
 using namespace openpeer::stack;
 
+ZS_DECLARE_CLASS_PTR(BootstrappedNetworkDelegateWrapper)
+
 class BootstrappedNetworkDelegateWrapper : public IBootstrappedNetworkDelegate
 {
 public:
-  typedef boost::shared_ptr<BootstrappedNetworkDelegateWrapper> BootstrappedNetworkDelegateWrapperPtr;
-  
+
   static BootstrappedNetworkDelegateWrapperPtr create();
   
   virtual void onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork);
 };
-
-typedef boost::shared_ptr<BootstrappedNetworkDelegateWrapper> BootstrappedNetworkDelegateWrapperPtr;
 
