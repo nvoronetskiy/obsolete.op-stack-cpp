@@ -60,7 +60,7 @@
 
 #include <zsLib/Stringize.h>
 
-#include <zsLib/RegEx.h>
+#include <regex>
 
 #define OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS (60*2)
 #define OPENPEER_STACK_SERVICE_IDENTITY_MAX_PERCENTAGE_TIME_REMAINING_BEFORE_RESIGN_IDENTITY_REQUIRED (20) // at 20% of the remaining on the certificate before expiry, resign
@@ -90,7 +90,8 @@ namespace openpeer
 
       typedef IServiceIdentitySessionForServiceLockbox::ForLockboxPtr ForLockboxPtr;
 
-      using services::IHelper;
+      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+      ZS_DECLARE_TYPEDEF_PTR(stack::IHelper, UseStackHelper)
 
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
 
@@ -191,8 +192,8 @@ namespace openpeer
           ElementPtr createdEl = contactProofEl->findFirstChildElementChecked("created");
           ElementPtr expiresEl = contactProofEl->findFirstChildElementChecked("expires");
 
-          Time created = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(createdEl));
-          Time expires = IHelper::stringToTime(IMessageHelper::getElementTextAndDecode(expiresEl));
+          Time created = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(createdEl));
+          Time expires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(expiresEl));
 
           if ((outStableID) &&
               (stableIDEl)) {
@@ -300,7 +301,7 @@ namespace openpeer
         mCurrentState(SessionState_Pending),
         mLastReportedState(SessionState_Pending),
         mOuterFrameURLUponReload(outerFrameURLUponReload),
-        mFrozenVersion(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_DOWNLOAD_FROZEN_VALUE + IHelper::randomString(32)),
+        mFrozenVersion(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_DOWNLOAD_FROZEN_VALUE + UseServicesHelper::randomString(32)),
         mNextRetryAfterFailureTime(Seconds(OPENPEER_STACK_SERVICE_IDENTITY_ROLODEX_ERROR_RETRY_TIME_IN_SECONDS))
       {
         ZS_LOG_BASIC(log("created"))
@@ -1187,7 +1188,7 @@ namespace openpeer
 
         mEncryptionKeyUponGrantProof = result->encryptionKeyUponGrantProof();
 
-        String calculatedProof = IHelper::convertToHex(*IHelper::hash(mEncryptionKeyUponGrantProof));
+        String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hash(mEncryptionKeyUponGrantProof));
 
         if (mEncryptionKeyUponGrantProofHash != calculatedProof) {
           ZS_LOG_ERROR(Detail, log("encryption key upon grant proof does not match expected value after grant proof issued") + ZS_PARAM("expecting", mEncryptionKeyUponGrantProofHash) + ZS_PARAM("calculated", calculatedProof) + ZS_PARAM("encryption key upon grant proof", mEncryptionKeyUponGrantProof))
@@ -1654,7 +1655,7 @@ namespace openpeer
       Log::Params ServiceIdentitySession::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("ServiceIdentitySession");
-        IHelper::debugAppend(objectEl, "id", mID);
+        UseServicesHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
 
@@ -1671,77 +1672,77 @@ namespace openpeer
 
         ElementPtr resultEl = Element::create("ServiceIdentitySession");
 
-        IHelper::debugAppend(resultEl, "id", mID);
+        UseServicesHelper::debugAppend(resultEl, "id", mID);
 
-        IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
-        IHelper::debugAppend(resultEl, "reported", toString(mLastReportedState));
+        UseServicesHelper::debugAppend(resultEl, "state", toString(mCurrentState));
+        UseServicesHelper::debugAppend(resultEl, "reported", toString(mLastReportedState));
 
-        IHelper::debugAppend(resultEl, "error code", mLastError);
-        IHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
+        UseServicesHelper::debugAppend(resultEl, "error code", mLastError);
+        UseServicesHelper::debugAppend(resultEl, "error reason", mLastErrorReason);
 
-        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
+        UseServicesHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
 
-        IHelper::debugAppend(resultEl, "associated lockbox", (bool)mAssociatedLockbox.lock());
-        IHelper::debugAppend(resultEl, "associated lockbox subscription", (bool)mAssociatedLockboxSubscription);
-        IHelper::debugAppend(resultEl, "kill association", mKillAssociation);
+        UseServicesHelper::debugAppend(resultEl, "associated lockbox", (bool)mAssociatedLockbox.lock());
+        UseServicesHelper::debugAppend(resultEl, "associated lockbox subscription", (bool)mAssociatedLockboxSubscription);
+        UseServicesHelper::debugAppend(resultEl, "kill association", mKillAssociation);
 
-        IHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, mIdentityInfo.hasData() ? mIdentityInfo.toDebug() : ElementPtr());
 
-        IHelper::debugAppend(resultEl, "provider", UseBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
-        IHelper::debugAppend(resultEl, "identity", UseBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
-        IHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
+        UseServicesHelper::debugAppend(resultEl, "provider", UseBootstrappedNetwork::toDebug(mProviderBootstrappedNetwork));
+        UseServicesHelper::debugAppend(resultEl, "identity", UseBootstrappedNetwork::toDebug(mIdentityBootstrappedNetwork));
+        UseServicesHelper::debugAppend(resultEl, "active boostrapper", mActiveBootstrappedNetwork ? (mIdentityBootstrappedNetwork == mActiveBootstrappedNetwork ? String("identity") : String("provider")) : String());
 
-        IHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant query access id", mGrantQueryAccess ? mGrantQueryAccess->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant query rolodex id", mGrantQueryRolodex ? mGrantQueryRolodex->getID() : 0);
-        IHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant session id", mGrantSession ? mGrantSession->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant query access id", mGrantQueryAccess ? mGrantQueryAccess->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant query rolodex id", mGrantQueryRolodex ? mGrantQueryRolodex->getID() : 0);
+        UseServicesHelper::debugAppend(resultEl, "grant wait id", mGrantWait ? mGrantWait->getID() : 0);
 
-        IHelper::debugAppend(resultEl, "identity access namespace grant challenge validate monitor", (bool)mIdentityAccessNamespaceGrantChallengeValidateMonitor);
-        IHelper::debugAppend(resultEl, "identity lookup update monitor", (bool)mIdentityLookupUpdateMonitor);
-        IHelper::debugAppend(resultEl, "identity access rolodex credentials get monitor", (bool)mIdentityAccessRolodexCredentialsGetMonitor);
-        IHelper::debugAppend(resultEl, "rolodex access monitor", (bool)mRolodexAccessMonitor);
-        IHelper::debugAppend(resultEl, "rolodex grant monitor", (bool)mRolodexNamespaceGrantChallengeValidateMonitor);
-        IHelper::debugAppend(resultEl, "rolodex contacts get monitor", (bool)mRolodexContactsGetMonitor);
+        UseServicesHelper::debugAppend(resultEl, "identity access namespace grant challenge validate monitor", (bool)mIdentityAccessNamespaceGrantChallengeValidateMonitor);
+        UseServicesHelper::debugAppend(resultEl, "identity lookup update monitor", (bool)mIdentityLookupUpdateMonitor);
+        UseServicesHelper::debugAppend(resultEl, "identity access rolodex credentials get monitor", (bool)mIdentityAccessRolodexCredentialsGetMonitor);
+        UseServicesHelper::debugAppend(resultEl, "rolodex access monitor", (bool)mRolodexAccessMonitor);
+        UseServicesHelper::debugAppend(resultEl, "rolodex grant monitor", (bool)mRolodexNamespaceGrantChallengeValidateMonitor);
+        UseServicesHelper::debugAppend(resultEl, "rolodex contacts get monitor", (bool)mRolodexContactsGetMonitor);
 
-        IHelper::debugAppend(resultEl, mLockboxInfo.hasData() ? mLockboxInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, mLockboxInfo.hasData() ? mLockboxInfo.toDebug() : ElementPtr());
 
-        IHelper::debugAppend(resultEl, "browser window ready", mBrowserWindowReady);
-        IHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
-        IHelper::debugAppend(resultEl, "browser closed", mBrowserWindowClosed);
+        UseServicesHelper::debugAppend(resultEl, "browser window ready", mBrowserWindowReady);
+        UseServicesHelper::debugAppend(resultEl, "browser window visible", mBrowserWindowVisible);
+        UseServicesHelper::debugAppend(resultEl, "browser closed", mBrowserWindowClosed);
 
-        IHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
-        IHelper::debugAppend(resultEl, "need browser window redirect", mNeedsBrowserWindowRedirectURL);
+        UseServicesHelper::debugAppend(resultEl, "need browser window visible", mNeedsBrowserWindowVisible);
+        UseServicesHelper::debugAppend(resultEl, "need browser window redirect", mNeedsBrowserWindowRedirectURL);
 
-        IHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
-        IHelper::debugAppend(resultEl, mAccessChallengeInfo.hasData() ? mAccessChallengeInfo.toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "keying prepared", mKeyingPrepared);
-        IHelper::debugAppend(resultEl, "encrypted user specific passphrase", mEncryptedUserSpecificPassphrase);
-        IHelper::debugAppend(resultEl, "user specific passphrase", mUserSpecificPassphrase);
-        IHelper::debugAppend(resultEl, "encryption key upon grant proof", mEncryptionKeyUponGrantProof);
-        IHelper::debugAppend(resultEl, "encryption key upon grant proof hash", mEncryptionKeyUponGrantProofHash);
-        IHelper::debugAppend(resultEl, "identity lookup updated", mIdentityLookupUpdated);
-        IHelper::debugAppend(resultEl, mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, "identity access start notification sent", mIdentityAccessStartNotificationSent);
+        UseServicesHelper::debugAppend(resultEl, mAccessChallengeInfo.hasData() ? mAccessChallengeInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, "keying prepared", mKeyingPrepared);
+        UseServicesHelper::debugAppend(resultEl, "encrypted user specific passphrase", mEncryptedUserSpecificPassphrase);
+        UseServicesHelper::debugAppend(resultEl, "user specific passphrase", mUserSpecificPassphrase);
+        UseServicesHelper::debugAppend(resultEl, "encryption key upon grant proof", mEncryptionKeyUponGrantProof);
+        UseServicesHelper::debugAppend(resultEl, "encryption key upon grant proof hash", mEncryptionKeyUponGrantProofHash);
+        UseServicesHelper::debugAppend(resultEl, "identity lookup updated", mIdentityLookupUpdated);
+        UseServicesHelper::debugAppend(resultEl, mPreviousLookupInfo.hasData() ? mPreviousLookupInfo.toDebug() : ElementPtr());
 
-        IHelper::debugAppend(resultEl, "outer frame url", mOuterFrameURLUponReload);
+        UseServicesHelper::debugAppend(resultEl, "outer frame url", mOuterFrameURLUponReload);
 
-        IHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
+        UseServicesHelper::debugAppend(resultEl, "pending messages", mPendingMessagesToDeliver.size());
 
-        IHelper::debugAppend(resultEl, "rolodex not supported", mRolodexNotSupportedForIdentity);
-        IHelper::debugAppend(resultEl, mRolodexInfo.hasData() ? mRolodexInfo.toDebug() : ElementPtr());
-        IHelper::debugAppend(resultEl, "rolodex grant challenge id", mRolodexChallengeInfo.hasData() ? mRolodexChallengeInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, "rolodex not supported", mRolodexNotSupportedForIdentity);
+        UseServicesHelper::debugAppend(resultEl, mRolodexInfo.hasData() ? mRolodexInfo.toDebug() : ElementPtr());
+        UseServicesHelper::debugAppend(resultEl, "rolodex grant challenge id", mRolodexChallengeInfo.hasData() ? mRolodexChallengeInfo.toDebug() : ElementPtr());
 
-        IHelper::debugAppend(resultEl, "download timer", (bool)mTimer);
+        UseServicesHelper::debugAppend(resultEl, "download timer", (bool)mTimer);
 
-        IHelper::debugAppend(resultEl, "frozen version", mFrozenVersion);
+        UseServicesHelper::debugAppend(resultEl, "frozen version", mFrozenVersion);
 
-        IHelper::debugAppend(resultEl, "last version download", mLastVersionDownloaded);
-        IHelper::debugAppend(resultEl, "force refresh", mForceRefresh);
+        UseServicesHelper::debugAppend(resultEl, "last version download", mLastVersionDownloaded);
+        UseServicesHelper::debugAppend(resultEl, "force refresh", mForceRefresh);
 
-        IHelper::debugAppend(resultEl, "fresh download", mFreshDownload);
-        IHelper::debugAppend(resultEl, "pending identities", mIdentities.size());
+        UseServicesHelper::debugAppend(resultEl, "fresh download", mFreshDownload);
+        UseServicesHelper::debugAppend(resultEl, "pending identities", mIdentities.size());
 
-        IHelper::debugAppend(resultEl, "failures in a row", mFailuresInARow);
-        IHelper::debugAppend(resultEl, "next retry (seconds)", mNextRetryAfterFailureTime);
+        UseServicesHelper::debugAppend(resultEl, "failures in a row", mFailuresInARow);
+        UseServicesHelper::debugAppend(resultEl, "next retry (seconds)", mNextRetryAfterFailureTime);
 
         return resultEl;
       }
@@ -2368,9 +2369,9 @@ namespace openpeer
         notifyLockboxStateChanged();
 
         if (mIdentityInfo.mReloginKeyEncrypted) {
-          SecureByteBlockPtr reloginKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":identity-relogin-key", IHelper::HashAlgorthm_SHA256);
+          SecureByteBlockPtr reloginKey = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":identity-relogin-key", UseServicesHelper::HashAlgorthm_SHA256);
 
-          mIdentityInfo.mReloginKey = IHelper::convertToString(*stack::IHelper::splitDecrypt(*reloginKey, mIdentityInfo.mReloginKeyEncrypted));
+          mIdentityInfo.mReloginKey = UseServicesHelper::convertToString(*UseStackHelper::splitDecrypt(*reloginKey, mIdentityInfo.mReloginKeyEncrypted));
 
           if (mIdentityInfo.mReloginKey.isEmpty()) {
             ZS_LOG_WARNING(Detail, log("decrypted relogin key failed") + ZS_PARAM("encrypted relogin key", mIdentityInfo.mReloginKeyEncrypted) + ZS_PARAM("relogin key", mIdentityInfo.mReloginKey))
@@ -2385,9 +2386,9 @@ namespace openpeer
           return true;
         }
 
-        SecureByteBlockPtr outerKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr outerKey = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":lockbox-key", UseServicesHelper::HashAlgorthm_SHA256);
 
-        String encryptedLockboxPassphrase = IHelper::convertToString(*stack::IHelper::splitDecrypt(*outerKey, mLockboxInfo.mKeyEncrypted));
+        String encryptedLockboxPassphrase = UseServicesHelper::convertToString(*stack::IHelper::splitDecrypt(*outerKey, mLockboxInfo.mKeyEncrypted));
         if (encryptedLockboxPassphrase.isEmpty()) {
           ZS_LOG_WARNING(Detail, log("failed to decrypt encryption key thus clearing keying information from lockbox"))
           mLockboxInfo.mKeyName.clear();
@@ -2399,8 +2400,8 @@ namespace openpeer
 
         // <key> = hmac(<encryption-passphrase-upon-grant-proof>, "identity:" + <identity-uri> + ":user-specific-key")
 
-        SecureByteBlockPtr userKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":user-specific-key", IHelper::HashAlgorthm_SHA256);
-        mUserSpecificPassphrase = IHelper::convertToString(*stack::IHelper::splitDecrypt(*userKey, mEncryptedUserSpecificPassphrase));
+        SecureByteBlockPtr userKey = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mEncryptionKeyUponGrantProof), "identity:" + mIdentityInfo.mURI + ":user-specific-key", UseServicesHelper::HashAlgorthm_SHA256);
+        mUserSpecificPassphrase = UseServicesHelper::convertToString(*stack::IHelper::splitDecrypt(*userKey, mEncryptedUserSpecificPassphrase));
         if (mUserSpecificPassphrase.isEmpty()) {
           ZS_LOG_WARNING(Detail, log("failed to decrypt user specific passphrase thus cannot login to this identity"))
           setError(IHTTP::HTTPStatusCode_PreconditionFailed, "failed to decrypt user specific passphrase thus cannot login to this identity");
@@ -2410,8 +2411,8 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("calculated user specific passphrase and will now decrypt lockbox passphrase") + ZS_PARAM("user specific passphrase", mUserSpecificPassphrase)  + ZS_PARAM("encrypted lockbox passphrase", encryptedLockboxPassphrase))
 
-        SecureByteBlockPtr innerKey = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
-        mLockboxInfo.mKey = stack::IHelper::splitDecrypt(*innerKey, encryptedLockboxPassphrase);
+        SecureByteBlockPtr innerKey = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", UseServicesHelper::HashAlgorthm_SHA256);
+        mLockboxInfo.mKey = UseStackHelper::splitDecrypt(*innerKey, encryptedLockboxPassphrase);
 
         if (mLockboxInfo.mKey) {
           if (mLockboxInfo.mKey->SizeInBytes() < 1) {
@@ -2427,7 +2428,7 @@ namespace openpeer
 
         mLockboxInfo.mKeyEncrypted.clear();
 
-        ZS_LOG_DEBUG(log("successfully decrypted lockbox keying material") + ZS_PARAM("key", IHelper::convertToString(*mLockboxInfo.mKey)))
+        ZS_LOG_DEBUG(log("successfully decrypted lockbox keying material") + ZS_PARAM("key", UseServicesHelper::convertToString(*mLockboxInfo.mKey)))
         return true;
       }
       
@@ -2601,7 +2602,7 @@ namespace openpeer
         }
 
         if (mLockboxInfo.mKey) {
-          if (0 != IHelper::compare(*mLockboxInfo.mKey, *lockboxInfo.mKey)) {
+          if (0 != UseServicesHelper::compare(*mLockboxInfo.mKey, *lockboxInfo.mKey)) {
             keyChanged = true;
           }
         }
@@ -2634,9 +2635,9 @@ namespace openpeer
         ZS_THROW_INVALID_ASSUMPTION_IF(mUserSpecificPassphrase.isEmpty())
 
         // <key> = hmac(<user-specific-passphrase>, "identity:" + <identity-uri> + ":lockbox-key")
-        SecureByteBlockPtr key = IHelper::hmac(*IHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", IHelper::HashAlgorthm_SHA256);
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(mUserSpecificPassphrase), "identity:" + mIdentityInfo.mURI + ":lockbox-key", UseServicesHelper::HashAlgorthm_SHA256);
 
-        mLockboxInfo.mKeyEncrypted = stack::IHelper::splitEncrypt(*key, *mLockboxInfo.mKey);
+        mLockboxInfo.mKeyEncrypted = UseStackHelper::splitEncrypt(*key, *mLockboxInfo.mKey);
 
         IdentityLookupUpdateRequestPtr request = IdentityLookupUpdateRequest::create();
         request->domain(mActiveBootstrappedNetwork->getDomain());
@@ -2951,7 +2952,7 @@ namespace openpeer
         Log::Params log(const char *message) const
         {
           ElementPtr objectEl = Element::create("IdentityProofBundleQuery");
-          IHelper::debugAppend(objectEl, "id", mID);
+          UseServicesHelper::debugAppend(objectEl, "id", mID);
           return Log::Params(message, objectEl);
         }
 
@@ -3091,15 +3092,10 @@ namespace openpeer
         return false;
       }
 
-      zsLib::RegEx e("^identity:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/.+$");
-      if (!e.hasMatch(identityURI)) {
-        zsLib::RegEx e2("^identity:[a-zA-Z0-9\\-_]{0,61}:.+$");
-        if (!e2.hasMatch(identityURI)) {
-          ZS_LOG_WARNING(Detail, slog("identity URI is not valid") + ZS_PARAM("uri", identityURI))
-          return false;
-        }
-      }
-      return true;
+      String domainOrType;
+      String identifier;
+
+      return splitURI(identityURI, domainOrType, identifier);
     }
 
     //-------------------------------------------------------------------------
@@ -3110,14 +3106,20 @@ namespace openpeer
         return false;
       }
 
-      zsLib::RegEx e("^identity:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/$");
-      if (!e.hasMatch(identityBase)) {
-        zsLib::RegEx e2("^identity:[a-zA-Z0-9\\-_]{0,61}:$");
-        if (!e2.hasMatch(identityBase)) {
-          ZS_LOG_WARNING(Detail, slog("identity base URI is not valid") + ZS_PARAM("uri", identityBase))
-          return false;
-        }
+      String domainOrType;
+      String identifier;
+
+      bool result = splitURI(identityBase, domainOrType, identifier);
+      if (!result) {
+        ZS_LOG_WARNING(Detail, slog("identity base URI is not valid") + ZS_PARAM("uri", identityBase))
+        return false;
       }
+
+      if (identifier.hasData()) {
+        ZS_LOG_WARNING(Detail, slog("identity base URI is not valid") + ZS_PARAM("uri", identityBase) + ZS_PARAM("identifier", identifier))
+        return false;
+      }
+
       return true;
     }
 
@@ -3129,8 +3131,8 @@ namespace openpeer
         return false;
       }
 
-      zsLib::RegEx e("^identity:[a-zA-Z0-9\\-_]{0,61}:.*$");
-      if (!e.hasMatch(identityURI)) {
+      std::regex e("^identity:[a-zA-Z0-9\\-_]{0,61}:.*$");
+      if (!std::regex_match(identityURI, e)) {
         return false;
       }
       return true;
@@ -3151,8 +3153,8 @@ namespace openpeer
 
       // scope: check legacy identity
       {
-        zsLib::RegEx e("^identity:[a-zA-Z0-9\\-_]{0,61}:.*$");
-        if (e.hasMatch(identityURI)) {
+        std::regex e("^identity:[a-zA-Z0-9\\-_]{0,61}:.*$");
+        if (std::regex_match(identityURI, e)) {
 
           // find second colon
           size_t startPos = strlen("identity:");
@@ -3161,6 +3163,7 @@ namespace openpeer
           ZS_THROW_BAD_STATE_IF(colonPos == String::npos)
 
           outDomainOrLegacyType = identityURI.substr(startPos, colonPos - startPos);
+          outDomainOrLegacyType.toLower();
           outIdentifier = identityURI.substr(colonPos + 1);
 
           if (outIsLegacy) *outIsLegacy = true;
@@ -3168,8 +3171,8 @@ namespace openpeer
         }
       }
 
-      zsLib::RegEx e("^identity:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/.*$");
-      if (!e.hasMatch(identityURI)) {
+      std::regex e("^identity:\\/\\/..*\\/.*$");
+      if (!std::regex_match(identityURI, e)) {
         ZS_LOG_WARNING(Detail, slog("identity URI is not valid") + ZS_PARAM("uri", identityURI))
         return false;
       }
@@ -3180,7 +3183,17 @@ namespace openpeer
       ZS_THROW_BAD_STATE_IF(slashPos == String::npos)
 
       outDomainOrLegacyType = identityURI.substr(startPos, slashPos - startPos);
+      outDomainOrLegacyType.toLower();
       outIdentifier = identityURI.substr(slashPos + 1);
+
+      if (!internal::UseServicesHelper::isValidDomain(outDomainOrLegacyType)) {
+        ZS_LOG_WARNING(Detail, slog("identity URI domain is not valid") + ZS_PARAM("uri", identityURI) + ZS_PARAM("domain", outDomainOrLegacyType))
+
+        outDomainOrLegacyType.clear();
+        outIdentifier.clear();
+
+        return false;
+      }
 
       outDomainOrLegacyType.toLower();
       return true;

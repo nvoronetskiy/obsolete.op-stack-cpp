@@ -41,9 +41,9 @@
 
 #include <openpeer/services/IHelper.h>
 
-#include <zsLib/RegEx.h>
 #include <zsLib/XML.h>
 
+#include <regex>
 
 #define OPENPEER_STACK_PUBLICATIONREPOSITORY_REQUEST_TIMEOUT_IN_SECONDS (60)
 
@@ -144,11 +144,11 @@ namespace openpeer
         }
 
         String name = metaData->getName();
-        String regex = mSubscriptionInfo->getName();
+        String regexStr = mSubscriptionInfo->getName();
 
-        zsLib::RegEx e(regex);
-        if (!e.hasMatch(name)) {
-          ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
+        std::regex e(regexStr);
+        if (!std::regex_match(name, e)) {
+          ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regexStr))
           return;
         }
 

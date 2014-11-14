@@ -42,7 +42,7 @@
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
 
-#include <zsLib/RegEx.h>
+#include <regex>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -250,11 +250,16 @@ namespace openpeer
           return false;
         }
 
-        zsLib::RegEx e("^peer:\\/\\/([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}\\/([a-f0-9][a-f0-9])+$");
-        if (!e.hasMatch(peerURI)) {
+        String domain;
+        String contactID;
+
+        bool result = splitURI(peerURI, domain, contactID);
+
+        if (!result) {
           ZS_LOG_WARNING(Detail, slog("peer URI is not valid") + ZS_PARAM("peer uri", peerURI));
           return false;
         }
+
         return true;
       }
 
@@ -265,13 +270,13 @@ namespace openpeer
                           String &outContactID
                           )
       {
-        String peerURI(inPeerURI ? String(inPeerURI) : String());
+        String peerURI(inPeerURI);
 
-        peerURI.trim();
         peerURI.toLower();
 
-        if (!isValid(peerURI)) {
-          ZS_LOG_WARNING(Detail, slog("peer URI was not valid to be able to split") + ZS_PARAM("peer URI", peerURI))
+        std::regex e1("^peer:\\/\\/..*\\/([a-f0-9][a-f0-9])+$");
+        if (!std::regex_match(peerURI, e1)) {
+          ZS_LOG_WARNING(Detail, slog("peer URI is not valid") + ZS_PARAM("uri", peerURI))
           return false;
         }
 
@@ -282,6 +287,16 @@ namespace openpeer
 
         outDomain = peerURI.substr(startPos, slashPos - startPos);
         outContactID = peerURI.substr(slashPos + 1);
+
+        if (!IHelper::isValidDomain(outDomain)) {
+          ZS_LOG_WARNING(Detail, slog("peer URI domain is not valid") + ZS_PARAM("uri", peerURI) + ZS_PARAM("domain", outDomain))
+
+          outDomain.clear();
+          outContactID.clear();
+
+          return false;
+        }
+
         return true;
       }
 

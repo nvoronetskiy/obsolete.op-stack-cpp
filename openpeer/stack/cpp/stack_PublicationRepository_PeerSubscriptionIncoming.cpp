@@ -38,7 +38,8 @@
 #include <openpeer/stack/message/peer-common/PeerPublishNotify.h>
 #include <openpeer/services/IHelper.h>
 
-#include <zsLib/RegEx.h>
+#include <regex>
+
 #include <zsLib/XML.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
@@ -162,11 +163,11 @@ namespace openpeer
           ZS_LOG_TRACE(log("notified of updated publication") + publication->toDebug())
 
           String name = publication->getName();
-          String regex = mSubscriptionInfo->getName();
+          String regexStr = mSubscriptionInfo->getName();
 
-          zsLib::RegEx e(regex);
-          if (!e.hasMatch(name)) {
-            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
+          std::regex e(regexStr);
+          if (!std::regex_match(name, e)) {
+            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regexStr))
             continue;
           }
 
@@ -229,11 +230,11 @@ namespace openpeer
           const UsePublicationPtr &publication = (*iter).second;
 
           String name = publication->getName();
-          String regex = mSubscriptionInfo->getName();
+          String regexStr = mSubscriptionInfo->getName();
 
-          zsLib::RegEx e(regex);
-          if (!e.hasMatch(name)) {
-            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regex))
+          std::regex e(regexStr);
+          if (!std::regex_match(name, e)) {
+            ZS_LOG_TRACE(log("name does not match subscription regex") + ZS_PARAM("name", name) + ZS_PARAM("regex", regexStr))
             continue;
           }
 
