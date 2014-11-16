@@ -49,7 +49,6 @@ namespace openpeer
         public:
           typedef Message::Methods Methods;
           typedef DWORD ChannelNumber;
-          typedef boost::value_initialized<ChannelNumber> AutoChannelNumber;
 
           enum AttributeTypes
           {
@@ -73,7 +72,7 @@ namespace openpeer
           bool hasAttribute(AttributeTypes type) const;
 
           ChannelNumber channelNumber() const                             {return mChannelNumber;}
-          void channelNumber(const ChannelNumber &val)                    {get(mChannelNumber) = val;}
+          void channelNumber(const ChannelNumber &val)                    {mChannelNumber = val;}
 
           const String &localContextID() const                            {return mLocalContextID;}
           void localContextID(const String &val)                          {mLocalContextID = val;}
@@ -87,7 +86,7 @@ namespace openpeer
         protected:
           ChannelMapRequest();
 
-          AutoChannelNumber mChannelNumber;
+          ChannelNumber mChannelNumber {};
 
           String mLocalContextID;
           String mRemoteContextID;

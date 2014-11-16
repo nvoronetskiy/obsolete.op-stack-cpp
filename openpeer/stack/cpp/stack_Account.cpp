@@ -71,6 +71,7 @@
 #include <zsLib/XML.h>
 
 #include <algorithm>
+#include <unistd.h>
 
 #define OPENPEER_STACK_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS (60*2)
 #define OPENPEER_STACK_PEER_LOCATION_FIND_RETRY_IN_SECONDS (30)
@@ -3136,7 +3137,7 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "find state", IPeer::toString(mCurrentFindState));
         IHelper::debugAppend(resultEl, "subscribers", mTotalSubscribers);
         IHelper::debugAppend(resultEl, "next find", mNextScheduledFind);
-        IHelper::debugAppend(resultEl, "last duration (ms)", mLastScheduleFindDuration.total_milliseconds());
+        IHelper::debugAppend(resultEl, "last duration (ms)", mLastScheduleFindDuration);
         IHelper::debugAppend(resultEl, "find again", mFindAgainAfterBackgrounded);
 
         return resultEl;

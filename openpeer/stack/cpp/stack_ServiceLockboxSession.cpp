@@ -1600,7 +1600,7 @@ namespace openpeer
           Duration totalLifetime(expires - created);
           Duration lifeConsumed(now - created);
 
-          if (((lifeConsumed.total_seconds() * 100) / totalLifetime.total_seconds()) > OPENPEER_STACK_SERVICE_LOCKBOX_EXPIRES_TIME_PERCENTAGE_CONSUMED_CAUSES_REGENERATION) {
+          if (((lifeConsumed.count() * 100) / totalLifetime.count()) > OPENPEER_STACK_SERVICE_LOCKBOX_EXPIRES_TIME_PERCENTAGE_CONSUMED_CAUSES_REGENERATION) {
             ZS_LOG_WARNING(Detail, log("peer file are past acceptable expiry window") + ZS_PARAM("lifetime consumed (s)", lifeConsumed) + ZS_PARAM("total lifetime (s)", totalLifetime) + IPeerFilePublic::toDebug(peerFilePublic) + ZS_PARAM("now", now))
             mPeerFiles.reset();
           }

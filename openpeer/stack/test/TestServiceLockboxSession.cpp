@@ -33,7 +33,7 @@
 
 #include "TestServiceLockboxSession.h"
 #include "config.h"
-#include "boost_replacement.h"
+#include "testing.h"
 #include "helpers.h"
 #include <openpeer/stack/IStack.h>
 #include <openpeer/stack/internal/stack_Stack.h>
@@ -699,7 +699,7 @@ void doTestPeerContactSession()
 {
   if (!OPENPEER_STACK_TEST_DO_PEER_CONTACT_SESSION_TEST) return;
   
-  BOOST_INSTALL_LOGGER();
+  TESTING_INSTALL_LOGGER();
   
   //initialize stack
   zsLib::MessageQueueThreadPtr thread(zsLib::MessageQueueThread::createBasic());
@@ -744,16 +744,16 @@ void doTestPeerContactSession()
       
       if (totalProcessed < expectingProcessed) {
         ++totalWait;
-        boost::this_thread::sleep(zsLib::Seconds(1));
+        std::this_thread::sleep_for(zsLib::Seconds(1));
       }
       else
         break;
     } while (totalWait < (60)); // max three minutes
-    BOOST_CHECK(totalWait < (60));
+    TESTING_CHECK(totalWait < (60));
   }
   
   std::cout << "\n\nWAITING:      All tests have finished. Waiting for 'bogus' events to process (10 second wait).\n";
-  boost::this_thread::sleep(zsLib::Seconds(10));
+  std::this_thread::sleep_for(zsLib::Seconds(10));
 
   //Dispose created object
   testObject.reset();
@@ -769,14 +769,14 @@ void doTestPeerContactSession()
       count += threadStack->getTotalUnprocessedMessages();
       count += threadServices->getTotalUnprocessedMessages();
       if (0 != count)
-        boost::this_thread::yield();
+        std::this_thread::yield();
     } while (count > 0);
     
     thread->waitForShutdown();
   }
-  BOOST_UNINSTALL_LOGGER()
+  TESTING_UNINSTALL_LOGGER()
   zsLib::proxyDump();
-  BOOST_EQUAL(zsLib::proxyGetTotalConstructed(), 0);
+  TESTING_EQUAL(zsLib::proxyGetTotalConstructed(), 0);
 }
 
 #endif //0

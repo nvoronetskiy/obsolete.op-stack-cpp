@@ -1397,7 +1397,7 @@ namespace openpeer
               consumed = total; // for calculation safety
             }
 
-            Duration::sec_type percentageUsed = ((consumed.total_seconds() * 100) / total.total_seconds());
+            Duration::rep percentageUsed = (consumed.count() * 100) / total.count();
             if (percentageUsed > OPENPEER_STACK_SERVICE_IDENTITY_MAX_CONSUMED_TIME_PERCENTAGE_BEFORE_IDENTITY_PROOF_REFRESH) {
               ZS_LOG_WARNING(Detail, log("identity bundle proof too close to expiry, will recreate identity proof") + ZS_PARAM("percentage used", percentageUsed) + ZS_PARAM("consumed (s)", consumed) + ZS_PARAM("total (s)", total))
               validProof = false;

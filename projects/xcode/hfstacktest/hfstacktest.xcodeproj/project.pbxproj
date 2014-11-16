@@ -7,14 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0063CA3416CAB85000E6DB4D /* boost_replacement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97716CAB85000E6DB4D /* boost_replacement.cpp */; };
+		0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97716CAB85000E6DB4D /* testing.cpp */; };
 		0063CA3516CAB85000E6DB4D /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97A16CAB85000E6DB4D /* main.cpp */; };
 		0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97B16CAB85000E6DB4D /* TestStack.cpp */; };
 		0063CA6A16CABA3400E6DB4D /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA6916CABA3400E6DB4D /* CoreFoundation.framework */; };
 		0063CA7216CABA6100E6DB4D /* libcurl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA7116CABA6100E6DB4D /* libcurl.dylib */; };
 		0063D33516CB255600E6DB4D /* libhfservices.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D32116CB247E00E6DB4D /* libhfservices.a */; };
 		0063D33616CB255C00E6DB4D /* libhfstack.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D32716CB248A00E6DB4D /* libhfstack.a */; };
-		007844AE1839A47500E9622C /* boost.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007844AD1839A47400E9622C /* boost.framework */; };
 		00CB25AD177C84D600A12B5A /* libcryptopp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A6177C846700A12B5A /* libcryptopp.a */; };
 		00CB25AE177C84DD00A12B5A /* libudns.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A1177C846700A12B5A /* libudns.a */; };
 		00CB25AF177C84E400A12B5A /* libzsLib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB259C177C846700A12B5A /* libzsLib.a */; };
@@ -156,8 +155,8 @@
 /* Begin PBXFileReference section */
 		0024391D178F468200B79368 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		0063C7B016CAB81A00E6DB4D /* hfstackTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hfstackTest; sourceTree = BUILT_PRODUCTS_DIR; };
-		0063C97716CAB85000E6DB4D /* boost_replacement.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = boost_replacement.cpp; sourceTree = "<group>"; };
-		0063C97816CAB85000E6DB4D /* boost_replacement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boost_replacement.h; sourceTree = "<group>"; };
+		0063C97716CAB85000E6DB4D /* testing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = testing.cpp; sourceTree = "<group>"; };
+		0063C97816CAB85000E6DB4D /* testing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = testing.h; sourceTree = "<group>"; };
 		0063C97916CAB85000E6DB4D /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		0063C97A16CAB85000E6DB4D /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		0063C97B16CAB85000E6DB4D /* TestStack.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestStack.cpp; sourceTree = "<group>"; };
@@ -169,7 +168,6 @@
 		0063D31616CB244F00E6DB4D /* cryptopp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp.xcodeproj; path = "../../../../ortc-lib/libs/cryptopp/projects/xcode/cryptopp/cryptopp.xcodeproj"; sourceTree = "<group>"; };
 		0063D31C16CB247E00E6DB4D /* hfservices.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfservices.xcodeproj; path = "../../../../ortc-lib/libs/op-services-cpp/projects/xcode/hfservices/hfservices.xcodeproj"; sourceTree = "<group>"; };
 		0063D32216CB248A00E6DB4D /* hfstack.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack.xcodeproj; path = ../hfstack/hfstack.xcodeproj; sourceTree = "<group>"; };
-		007844AD1839A47400E9622C /* boost.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = boost.framework; path = "../../../../ortc-lib/libs/boost/osx/framework/boost.framework"; sourceTree = "<group>"; };
 		00CF4B9A1A15BDBB00573A34 /* idnkit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit.xcodeproj; path = "../../../../ortc-lib/libs/idnkit/projects/xcode/idnkit.xcodeproj"; sourceTree = "<group>"; };
 		00CF4C191A15C60D00573A34 /* ortclib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib.xcodeproj; path = "../../../../ortc-lib/projects/xcode/ortclib/ortclib.xcodeproj"; sourceTree = "<group>"; };
 		00CF4CAB1A15C85300573A34 /* easysqlite.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite.xcodeproj; path = ../../../../easysqlite/projects/xcode/easysqlite.xcodeproj; sourceTree = "<group>"; };
@@ -195,7 +193,6 @@
 				00CB25AE177C84DD00A12B5A /* libudns.a in Frameworks */,
 				00CB25AF177C84E400A12B5A /* libzsLib.a in Frameworks */,
 				0063CA7216CABA6100E6DB4D /* libcurl.dylib in Frameworks */,
-				007844AE1839A47500E9622C /* boost.framework in Frameworks */,
 				0063CA6A16CABA3400E6DB4D /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -243,17 +240,17 @@
 			isa = PBXGroup;
 			children = (
 				0063C97916CAB85000E6DB4D /* config.h */,
-				0063C97716CAB85000E6DB4D /* boost_replacement.cpp */,
-				0063C97816CAB85000E6DB4D /* boost_replacement.h */,
 				0063C97A16CAB85000E6DB4D /* main.cpp */,
+				0063C97716CAB85000E6DB4D /* testing.cpp */,
+				0063C97816CAB85000E6DB4D /* testing.h */,
+				581C0E1A16EF4C2D001AA7D3 /* helpers.cpp */,
+				581C0E1C16EF4D82001AA7D3 /* helpers.h */,
 				0063C97B16CAB85000E6DB4D /* TestStack.cpp */,
 				0063C97C16CAB85000E6DB4D /* TestStack.h */,
 				58E68C8116D640CA0098B4E3 /* TestServiceLockboxSession.h */,
 				58E68C8216D7877F0098B4E3 /* TestServiceLockboxSession.cpp */,
 				581C0E1716E8A71B001AA7D3 /* TestAccount.cpp */,
 				581C0E1816E8A71B001AA7D3 /* TestAccount.h */,
-				581C0E1A16EF4C2D001AA7D3 /* helpers.cpp */,
-				581C0E1C16EF4D82001AA7D3 /* helpers.h */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -269,7 +266,6 @@
 			isa = PBXGroup;
 			children = (
 				0063CA7116CABA6100E6DB4D /* libcurl.dylib */,
-				007844AD1839A47400E9622C /* boost.framework */,
 				0063CA6916CABA3400E6DB4D /* CoreFoundation.framework */,
 				0024391D178F468200B79368 /* Security.framework */,
 			);
@@ -507,7 +503,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0063CA3416CAB85000E6DB4D /* boost_replacement.cpp in Sources */,
+				0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */,
 				0063CA3516CAB85000E6DB4D /* main.cpp in Sources */,
 				0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */,
 				58E68C8316D7877F0098B4E3 /* TestServiceLockboxSession.cpp in Sources */,
@@ -576,7 +572,7 @@
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				FRAMEWORK_SEARCH_PATHS = "../../../../ortc-lib/libs/boost/osx/framework";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -585,7 +581,6 @@
 					"$(inherited)",
 					CRYPTOPP_DISABLE_ASM,
 				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
@@ -595,9 +590,9 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
-					"../../../../ortc-lib/lib/boost/osx/framework/boost.framework/Headers",
+					"$(inherited)",
 				);
-				LIBRARY_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -619,7 +614,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				FRAMEWORK_SEARCH_PATHS = "../../../../ortc-lib/libs/boost/osx/framework";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -635,9 +630,9 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
-					"../../../../ortc-lib/lib/boost/osx/framework/boost.framework/Headers",
+					"$(inherited)",
 				);
-				LIBRARY_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				SDKROOT = macosx;
 			};
@@ -646,17 +641,12 @@
 		0063C7BA16CAB81A00E6DB4D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/ios/framework",
-					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/osx/framework",
-				);
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"DEBUG=1",
 				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -664,17 +654,11 @@
 		0063C7BB16CAB81A00E6DB4D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/ios/framework",
-					"/Volumes/Hookflash/Repos/ios/t/opios/libs/op/libs/ortc-lib/libs/boost/osx/framework",
-				);
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"NDEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = "$(inherited)";
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

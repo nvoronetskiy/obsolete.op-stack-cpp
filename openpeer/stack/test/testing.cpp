@@ -29,7 +29,7 @@
  
  */
 
-#include "boost_replacement.h"
+#include "testing.h"
 #include "config.h"
 
 #include <zsLib/types.h>
@@ -45,7 +45,7 @@ void doTestLockboxSession();
 void doTestAccount();
 
 
-namespace BoostReplacement
+namespace Testing
 {
   zsLib::ULONG &getGlobalPassedVar()
   {
@@ -111,9 +111,9 @@ namespace BoostReplacement
   
   void output()
   {
-    std::cout << "PASSED:       [" << BoostReplacement::getGlobalPassedVar() << "]\n";
-    if (0 != BoostReplacement::getGlobalFailedVar()) {
-      std::cout << "***FAILED***: [" << BoostReplacement::getGlobalFailedVar() << "]\n";
+    std::cout << "PASSED:       [" << Testing::getGlobalPassedVar() << "]\n";
+    if (0 != Testing::getGlobalFailedVar()) {
+      std::cout << "***FAILED***: [" << Testing::getGlobalFailedVar() << "]\n";
     }
   }
   

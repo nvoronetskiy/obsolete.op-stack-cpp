@@ -211,7 +211,7 @@ namespace openpeer
       {
         ZS_LOG_DETAIL(log("created"))
 
-        if (mSendKeepAliveAfter.total_seconds() < 1) {
+        if (mSendKeepAliveAfter < Seconds(1)) {
           mSendKeepAliveAfter = Duration();
         }
       }
@@ -695,7 +695,7 @@ namespace openpeer
           }
         }
 
-        get(mMapRequestChannelNumber) = 0;
+        mMapRequestChannelNumber = 0;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
@@ -740,7 +740,7 @@ namespace openpeer
           }
         }
 
-        get(mMapRequestChannelNumber) = 0;
+        mMapRequestChannelNumber = 0;
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
@@ -1143,7 +1143,7 @@ namespace openpeer
         request->relayToken(info.mRelayToken);
 
         mMapRequestChannelMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ChannelMapResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CHANNEL_MAP_REQUEST_TIMEOUT_SECONDS));
-        get(mMapRequestChannelNumber) = channelNumber;
+        mMapRequestChannelNumber = channelNumber;
 
         DocumentPtr doc = request->encode();
 

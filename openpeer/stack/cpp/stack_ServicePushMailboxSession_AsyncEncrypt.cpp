@@ -39,6 +39,8 @@
 
 #include <cryptopp/sha.h>
 
+#include <unistd.h>
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 namespace openpeer

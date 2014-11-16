@@ -100,8 +100,6 @@ namespace openpeer
         typedef IFinderConnection::ChannelNumber ChannelNumber;
         typedef std::map<ChannelNumber, ChannelPtr> ChannelMap;
 
-        typedef boost::value_initialized<ChannelNumber> AutoChannelNumber;
-
       protected:
         FinderConnection(
                          FinderConnectionManagerPtr outer,
@@ -503,7 +501,7 @@ namespace openpeer
         ChannelMap mRemoveChannels;
 
         IMessageMonitorPtr mMapRequestChannelMonitor;
-        AutoChannelNumber mMapRequestChannelNumber;
+        ChannelNumber mMapRequestChannelNumber {};
       };
 
       //-----------------------------------------------------------------------

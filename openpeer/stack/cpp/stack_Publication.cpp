@@ -140,7 +140,7 @@ namespace openpeer
 
           Duration duration = zsLib::timeSinceEpoch(zsLib::now());
 
-          ULONG proposed = (ULONG)(duration.total_seconds());
+          ULONG proposed = static_cast<ULONG>(std::chrono::duration_cast<Seconds>(duration).count());
           if (proposed <= mUnique) {
             proposed = mUnique + 1;
           }

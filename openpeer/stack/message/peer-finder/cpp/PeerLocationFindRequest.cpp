@@ -63,6 +63,7 @@ namespace openpeer
     {
       using zsLib::Numeric;
       using services::IHelper;
+      using zsLib::Seconds;
       typedef services::IHelper::SplitMap SplitMap;
 
       namespace peer_finder
@@ -89,7 +90,7 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         PeerLocationFindRequest::PeerLocationFindRequest() :
-          mCreated(zsLib::timeSinceEpoch(Seconds(zsLib::timeSinceEpoch(zsLib::now()).total_seconds()))),
+          mCreated(std::chrono::duration_cast<Seconds>(zsLib::timeSinceEpoch((zsLib::now())))),
           mFinal(-1)
         {
         }
