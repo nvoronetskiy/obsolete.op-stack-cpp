@@ -571,7 +571,7 @@ namespace openpeer
         IdentityInfoList mIdentities;
 
         ULONG mFailuresInARow {};
-        Duration mNextRetryAfterFailureTime;
+        Seconds mNextRetryAfterFailureTime;
       };
 
       //-----------------------------------------------------------------------

@@ -369,7 +369,7 @@ namespace openpeer
           mSubscriptions.clear();
         }
 
-        Duration calculationDuration = zsLib::now() - startTime;
+        Seconds calculationDuration = zsLib::toSeconds(zsLib::now() - startTime);
 
         ZS_LOG_DEBUG(debug("key generator complete") + ZS_PARAM("duration (s)", calculationDuration))
       }

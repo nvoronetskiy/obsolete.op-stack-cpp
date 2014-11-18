@@ -560,7 +560,7 @@ namespace openpeer
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("algorithm", OPENPEER_STACK_PEER_FILE_CIPHER));
 
             Time created = zsLib::now();
-            Time expires = created + Duration(Hours(OPENPEER_STACK_PEER_FILE_PRIVATE_KEY_EXPIRY_IN_HOURS));
+            Time expires = created + Hours(OPENPEER_STACK_PEER_FILE_PRIVATE_KEY_EXPIRY_IN_HOURS);
 
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithNumber("created", IHelper::timeToString(created)));
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithNumber("expires", IHelper::timeToString(expires)));

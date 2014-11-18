@@ -131,7 +131,7 @@ namespace openpeer
 
         virtual IServerMessagingSubscriptionPtr subscribe(IServerMessagingDelegatePtr delegate);
 
-        virtual void shutdown(Duration lingerTime = Seconds(OPENPEER_SERVICES_CLOSE_LINGER_TIMER_IN_SECONDS));
+        virtual void shutdown(Seconds lingerTime = Seconds(OPENPEER_SERVICES_CLOSE_LINGER_TIMER_IN_SECONDS));
 
         virtual SessionStates getState(
                                        WORD *outLastErrorCode = NULL,

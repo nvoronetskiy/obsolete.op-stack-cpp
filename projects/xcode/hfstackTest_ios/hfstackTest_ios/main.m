@@ -2,16 +2,15 @@
 //  main.m
 //  hfstackTest_ios
 //
-//  Created by openpeer on 11-11-18.
-//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//  Created by Robin Raymond on 2014-11-18.
+//  Copyright (c) 2014 Hookflash Inc. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
+#import "AppDelegate.h"
 
-int main(int argc, char *argv[])
-{
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    int retVal = UIApplicationMain(argc, argv, nil, nil);
-    [pool release];
-    return retVal;
+int main(int argc, char * argv[]) {
+  @autoreleasepool {
+      return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+  }
 }

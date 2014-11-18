@@ -111,8 +111,8 @@ namespace openpeer
       void ServicePushMailboxSession::AsyncDatabase::asyncUploadFileDataToURL(
                                                                               const char *url,
                                                                               const char *fileNameContainingData,
-                                                                              size_t finalFileSizeInBytes,
-                                                                              size_t remainingBytesToBeDownloaded,
+                                                                              std::uintmax_t finalFileSizeInBytes,
+                                                                              std::uintmax_t remainingBytesToBeDownloaded,
                                                                               IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                                                               )
       {
@@ -123,8 +123,8 @@ namespace openpeer
       void ServicePushMailboxSession::AsyncDatabase::asyncDownloadDataFromURL(
                                                                               const char *getURL,
                                                                               const char *fileNameToAppendData,
-                                                                              size_t finalFileSizeInBytes,
-                                                                              size_t remainingBytesToBeDownloaded,
+                                                                              std::uintmax_t finalFileSizeInBytes,
+                                                                              std::uintmax_t remainingBytesToBeDownloaded,
                                                                               IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                                                               )
       {

@@ -138,9 +138,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
 
-          Duration duration = zsLib::timeSinceEpoch(zsLib::now());
+          Seconds duration = zsLib::timeSinceEpoch<Seconds>(zsLib::now());
 
-          ULONG proposed = static_cast<ULONG>(std::chrono::duration_cast<Seconds>(duration).count());
+          ULONG proposed = (ULONG)(duration.count());
           if (proposed <= mUnique) {
             proposed = mUnique + 1;
           }

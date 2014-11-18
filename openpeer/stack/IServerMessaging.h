@@ -84,7 +84,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       // PURPOSE: disconnect from the server
-      virtual void shutdown(Duration lingerTime = Seconds(OPENPEER_SERVICES_CLOSE_LINGER_TIMER_IN_SECONDS)) = 0;
+      virtual void shutdown(Seconds lingerTime = Seconds(OPENPEER_SERVICES_CLOSE_LINGER_TIMER_IN_SECONDS)) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: return the current state of the connection

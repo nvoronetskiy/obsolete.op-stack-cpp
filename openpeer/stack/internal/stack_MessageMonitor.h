@@ -121,7 +121,7 @@ namespace openpeer
           SharedRecursiveLock(SharedRecursiveLock::create())
         {}
 
-        void init(Duration timeout);
+        void init(Seconds timeout);
 
       public:
         ~MessageMonitor();
@@ -139,14 +139,14 @@ namespace openpeer
         static MessageMonitorPtr monitor(
                                          IMessageMonitorDelegatePtr delegate,
                                          message::MessagePtr requestMessage,
-                                         Duration timeout
+                                         Seconds timeout
                                          );
 
         static MessageMonitorPtr monitorAndSendToLocation(
                                                           IMessageMonitorDelegatePtr delegate,
                                                           ILocationPtr peerLocation,
                                                           message::MessagePtr message,
-                                                          Duration timeout
+                                                          Seconds timeout
                                                           );
 
         static MessageMonitorPtr monitorAndSendToService(
@@ -155,7 +155,7 @@ namespace openpeer
                                                          const char *serviceType,
                                                          const char *serviceMethodName,
                                                          message::MessagePtr message,
-                                                         Duration timeout
+                                                         Seconds timeout
                                                          );
 
         static bool handleMessageReceived(message::MessagePtr message);
@@ -252,14 +252,14 @@ namespace openpeer
         virtual MessageMonitorPtr monitor(
                                           IMessageMonitorDelegatePtr delegate,
                                           message::MessagePtr requestMessage,
-                                          Duration timeout
+                                          Seconds timeout
                                           );
 
         virtual MessageMonitorPtr monitorAndSendToLocation(
                                                            IMessageMonitorDelegatePtr delegate,
                                                            ILocationPtr peerLocation,
                                                            message::MessagePtr message,
-                                                           Duration timeout
+                                                           Seconds timeout
                                                            );
 
         virtual MessageMonitorPtr monitorAndSendToService(
@@ -268,7 +268,7 @@ namespace openpeer
                                                           const char *serviceType,
                                                           const char *serviceMethodName,
                                                           message::MessagePtr message,
-                                                          Duration timeout
+                                                          Seconds timeout
                                                           );
       };
 

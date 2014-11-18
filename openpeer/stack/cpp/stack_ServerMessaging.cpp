@@ -236,7 +236,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void ServerMessaging::shutdown(Duration lingerTime)
+      void ServerMessaging::shutdown(Seconds lingerTime)
       {
         AutoRecursiveLock lock(*this);
         ZS_LOG_TRACE(log("shutdown called") + ZS_PARAM("duration", lingerTime))

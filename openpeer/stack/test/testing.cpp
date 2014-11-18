@@ -47,25 +47,25 @@ void doTestAccount();
 
 namespace Testing
 {
-  zsLib::ULONG &getGlobalPassedVar()
+  std::atomic_uint &getGlobalPassedVar()
   {
-    static zsLib::ULONG value = 0;
+    static std::atomic_uint value {};
     return value;
   }
   
-  zsLib::ULONG &getGlobalFailedVar()
+  std::atomic_uint &getGlobalFailedVar()
   {
-    static zsLib::ULONG value = 0;
+    static std::atomic_uint value {};
     return value;
   }
   
   void passed()
   {
-    zsLib::atomicIncrement(getGlobalPassedVar());
+    ++(getGlobalPassedVar());
   }
   void failed()
   {
-    zsLib::atomicIncrement(getGlobalFailedVar());
+    ++(getGlobalFailedVar());
   }
   
   void installLogger()

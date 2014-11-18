@@ -1391,13 +1391,13 @@ namespace openpeer
               tick = created; // for calculation safety
             }
 
-            Duration consumed = (tick - created);
-            Duration total = (expires - created);
+            auto consumed = tick - created;
+            auto total = (expires - created);
             if (consumed > total) {
               consumed = total; // for calculation safety
             }
 
-            Duration::rep percentageUsed = (consumed.count() * 100) / total.count();
+            auto percentageUsed = (consumed.count() * 100) / total.count();
             if (percentageUsed > OPENPEER_STACK_SERVICE_IDENTITY_MAX_CONSUMED_TIME_PERCENTAGE_BEFORE_IDENTITY_PROOF_REFRESH) {
               ZS_LOG_WARNING(Detail, log("identity bundle proof too close to expiry, will recreate identity proof") + ZS_PARAM("percentage used", percentageUsed) + ZS_PARAM("consumed (s)", consumed) + ZS_PARAM("total (s)", total))
               validProof = false;
@@ -2694,7 +2694,7 @@ namespace openpeer
         if ((Time() != mRolodexInfo.mUpdateNext) &&
             (tick < mRolodexInfo.mUpdateNext)) {
           // not ready to issue the request yet, must wait, calculate how long to wait
-          Duration waitTime = mRolodexInfo.mUpdateNext - tick;
+          auto waitTime = mRolodexInfo.mUpdateNext - tick;
           if (waitTime < Seconds(1)) {
             waitTime = Seconds(1);
           }

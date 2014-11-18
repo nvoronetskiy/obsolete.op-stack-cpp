@@ -790,7 +790,7 @@ namespace openpeer
     Token Token::create(
                         const String &masterSecret,
                         const String &associatedID,
-                        Duration validDuration
+                        Seconds validDuration
                         )
     {
       Token info;
@@ -812,7 +812,7 @@ namespace openpeer
     //-----------------------------------------------------------------------
     Token Token::createProof(
                              const char *resource,
-                             Duration validDuration
+                             Seconds validDuration
                              )
     {
       Token info;

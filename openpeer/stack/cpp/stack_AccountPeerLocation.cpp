@@ -275,7 +275,7 @@ namespace openpeer
         ZS_THROW_INVALID_ASSUMPTION_IF(!mLocationInfo)
 
         // monitor to receive all incoming notifications
-        mFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Duration());
+        mFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Seconds());
         mFindRequestTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS), false);
 
         // kick start the object
@@ -379,9 +379,9 @@ namespace openpeer
             (Time() != mIdentifyTime)) {
           Time tick = zsLib::now();
 
-          Duration timeConnected;
+          Seconds timeConnected;
           if (tick > mIdentifyTime) {
-            timeConnected = tick - mIdentifyTime;
+            timeConnected = zsLib::toSeconds(tick - mIdentifyTime);
           }
 
           if (timeConnected > Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_MIN_CONNECTION_TIME_NEEDED_TO_REFIND_IN_SECONDS)) {
@@ -525,7 +525,7 @@ namespace openpeer
       IMessageMonitorPtr AccountPeerLocation::sendRequest(
                                                           IMessageMonitorDelegatePtr delegate,
                                                           MessagePtr requestMessage,
-                                                          Duration timeout
+                                                          Seconds timeout
                                                           ) const
       {
         IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
@@ -2571,7 +2571,7 @@ namespace openpeer
             mSocketSession->setKeepAliveProperties(
                                                    Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_SEND_ICE_KEEP_ALIVE_INDICATIONS_IN_SECONDS),
                                                    Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_EXPECT_SESSION_DATA_IN_SECONDS),
-                                                   Duration(),
+                                                   Seconds(),
                                                    Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_BACKGROUNDING_TIMEOUT_IN_SECONDS)
                                                    );
             if (candidatesFinal) {

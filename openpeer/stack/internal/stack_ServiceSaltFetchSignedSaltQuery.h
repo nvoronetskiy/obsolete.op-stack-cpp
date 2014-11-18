@@ -113,7 +113,7 @@ namespace openpeer
                                    String *outErrorReason = NULL
                                    ) const;
 
-        virtual UINT getTotalSignedSaltsAvailable() const;
+        virtual size_t getTotalSignedSaltsAvailable() const;
         virtual ElementPtr getNextSignedSalt();
 
         virtual void cancel();

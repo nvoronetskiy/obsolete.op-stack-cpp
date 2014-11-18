@@ -225,7 +225,7 @@ namespace openpeer
 
           peerIdentityProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", IHelper::randomString(32)));
 
-          Time expires = zsLib::now() + Duration(Seconds(OPENPEER_STACK_MESSAGE_PEER_IDENTIFY_REQUEST_LIFETIME_IN_SECONDS));
+          Time expires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PEER_IDENTIFY_REQUEST_LIFETIME_IN_SECONDS);
           peerIdentityProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("expires", IHelper::timeToString(expires)));
 
           if (hasAttribute(AttributeType_FindSecret)) {

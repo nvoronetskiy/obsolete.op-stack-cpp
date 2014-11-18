@@ -1738,11 +1738,11 @@ namespace openpeer
         }
 
         Time updateNextTime = result->updateNext();
-        Duration updateNextDuration;
+        Seconds updateNextDuration;
         if (Time() != updateNextTime) {
           Time now = zsLib::now();
           if (now < updateNextTime) {
-            updateNextDuration = updateNextTime - now;
+            updateNextDuration = zsLib::toSeconds(updateNextTime - now);
           } else {
             updateNextDuration = Seconds(1);
           }
@@ -1752,7 +1752,7 @@ namespace openpeer
           }
         }
 
-        if (Duration() != updateNextDuration) {
+        if (Seconds() != updateNextDuration) {
           mNextFoldersUpdateTimer = Timer::create(mThisWeak.lock(), updateNextDuration, false);
         }
 
@@ -3831,7 +3831,7 @@ namespace openpeer
 
             // need to issue a request to download data via URL
 
-            size_t totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mReceivedData;
+            auto totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mReceivedData;
             processedInfo.mDeliveryURL = mDownloadMessageURL;
 
             // replace message ID
@@ -4841,7 +4841,7 @@ namespace openpeer
             processedInfo.mData.reset();
           }
 
-          size_t totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mSent;
+          auto totalRemaining = processedInfo.mInfo.mEncryptedDataLength - processedInfo.mSent;
           processedInfo.mDeliveryURL = mUploadMessageURL;
 
           // replace message ID
@@ -5285,7 +5285,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSession::connectionFailure()
       {
-        Duration retryDuration = mLastRetryDuration;
+        auto retryDuration = mLastRetryDuration;
         ZS_LOG_WARNING(Detail, log("connection failure") + ZS_PARAM("wait time (s)", retryDuration))
 
         mDoNotRetryConnectionBefore = zsLib::now() + retryDuration;
@@ -5296,7 +5296,7 @@ namespace openpeer
 
         mLastRetryDuration = retryDuration + retryDuration;
 
-        Duration maxDuration = Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS));
+        auto maxDuration = Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_RETRY_CONNECTION_IN_SECONDS));
         if (mLastRetryDuration > maxDuration) {
           mLastRetryDuration = maxDuration;
         }
@@ -5548,7 +5548,7 @@ namespace openpeer
       IMessageMonitorPtr ServicePushMailboxSession::sendRequest(
                                                                 IMessageMonitorDelegatePtr delegate,
                                                                 MessagePtr requestMessage,
-                                                                Duration timeout
+                                                                Seconds timeout
                                                                 )
       {
         IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
@@ -5819,7 +5819,7 @@ namespace openpeer
           }
 
           if (!info.mBuffer) {
-            info.mBuffer = SecureByteBlockPtr(new SecureByteBlock(info.mInfo.mEncryptedDataLength));
+            info.mBuffer = SecureByteBlockPtr(new SecureByteBlock(static_cast<SecureByteBlock::size_type>(info.mInfo.mEncryptedDataLength)));
           }
 
           ZS_LOG_DEBUG(log("receiving data from server") + ZS_PARAM("channel", data.first) + ZS_PARAM("message id", messageID) + ZS_PARAM("length", buffer->SizeInBytes()) + ZS_PARAM("total", info.mBuffer->SizeInBytes()))

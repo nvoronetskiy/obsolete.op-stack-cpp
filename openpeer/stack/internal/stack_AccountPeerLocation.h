@@ -142,7 +142,7 @@ namespace openpeer
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
-                                               Duration duration
+                                               Seconds duration
                                                ) const = 0;
 
         virtual void sendKeepAlive() = 0;
@@ -285,7 +285,7 @@ namespace openpeer
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
-                                               Duration duration
+                                               Seconds duration
                                                ) const;
 
         virtual void sendKeepAlive();

@@ -70,16 +70,16 @@ namespace openpeer
           virtual void asyncUploadFileDataToURL(
                                                 const char *url,
                                                 const char *fileNameContainingData,
-                                                size_t finalFileSizeInBytes,
-                                                size_t remainingBytesToBeDownloaded,
+                                                std::uintmax_t finalFileSizeInBytes,
+                                                std::uintmax_t remainingBytesToBeDownloaded,
                                                 IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                                 );
 
           virtual void asyncDownloadDataFromURL(
                                                 const char *getURL,
                                                 const char *fileNameToAppendData,
-                                                size_t finalFileSizeInBytes,
-                                                size_t remainingBytesToBeDownloaded,
+                                                std::uintmax_t finalFileSizeInBytes,
+                                                std::uintmax_t remainingBytesToBeDownloaded,
                                                 IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                                 );
 

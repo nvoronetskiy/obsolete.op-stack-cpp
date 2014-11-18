@@ -85,7 +85,7 @@ namespace openpeer
       {
         int mMessageIndex;
         String mMessageID;
-        size_t mEncryptedDataLength;
+        std::uintmax_t mEncryptedDataLength;
 
         String mDecryptedFileName;
         String mEncryptedFileName;
@@ -188,12 +188,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       struct PendingDeliveryMessageInfo
       {
-        int     mPendingDeliveryMessageIndex;
-        int     mMessageIndex;
-        String  mRemoteFolder;
-        bool    mCopyToSent;
-        int     mSubscribeFlags;
-        size_t  mEncryptedDataLength;
+        int             mPendingDeliveryMessageIndex;
+        int             mMessageIndex;
+        String          mRemoteFolder;
+        bool            mCopyToSent;
+        int             mSubscribeFlags;
+        std::uintmax_t  mEncryptedDataLength;
 
         PendingDeliveryMessageInfo() :
           mPendingDeliveryMessageIndex(OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN),
@@ -231,7 +231,7 @@ namespace openpeer
         int mKeyDomain;
         String mDHEphemeralPrivateKey;
         String mDHEphemeralPublicKey;
-        int mListSize;
+        size_t mListSize;
         int mTotalWithPassphrase;
         String mAckDHPassphraseSet;
         Time mActiveUntil;
@@ -561,7 +561,7 @@ namespace openpeer
       virtual void updateMessageEncodingAndEncryptedDataLength(
                                                                int index,
                                                                const char *encoding,
-                                                               size_t encryptedDataLength
+                                                               std::uintmax_t encryptedDataLength
                                                                ) = 0;
 
       //-----------------------------------------------------------------------
@@ -586,7 +586,7 @@ namespace openpeer
       virtual void updateMessageEncryptionStorage(
                                                   int index,
                                                   const char *encryptedFileName,
-                                                  size_t encryptedDataLength,
+                                                  std::uintmax_t encryptedDataLength,
                                                   SecureByteBlockPtr encryptedData  // will always be null SecureByteBlockPtr()
                                                   ) = 0;
 
@@ -1069,8 +1069,8 @@ namespace openpeer
       virtual void asyncUploadFileDataToURL(
                                             const char *postURL,
                                             const char *fileNameContainingData,
-                                            size_t totalFileSizeInBytes,                                // the total bytes that exists within the file
-                                            size_t remainingBytesToUpload,                              // the file should be seeked to the position of (total size - remaining) and upload the remaining bytes from this position in the file
+                                            std::uintmax_t totalFileSizeInBytes,            // the total bytes that exists within the file
+                                            std::uintmax_t remainingBytesToUpload,          // the file should be seeked to the position of (total size - remaining) and upload the remaining bytes from this position in the file
                                             IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                             ) = 0;
 
@@ -1083,8 +1083,8 @@ namespace openpeer
       virtual void asyncDownloadDataFromURL(
                                             const char *getURL,
                                             const char *fileNameToAppendData,               // the existing file name to open and append
-                                            size_t finalFileSizeInBytes,                    // when the download completes the file size will be this size
-                                            size_t remainingBytesToBeDownloaded,            // the downloaded data will be appended to the end of the existing file and this is the total bytes that are to be downloaded
+                                            std::uintmax_t finalFileSizeInBytes,            // when the download completes the file size will be this size
+                                            std::uintmax_t remainingBytesToBeDownloaded,    // the downloaded data will be appended to the end of the existing file and this is the total bytes that are to be downloaded
                                             IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                             ) = 0;
     };

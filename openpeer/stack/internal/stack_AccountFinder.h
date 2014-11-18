@@ -98,7 +98,7 @@ namespace openpeer
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
-                                               Duration duration
+                                               Seconds duration
                                                ) const = 0;
 
         virtual Server getCurrentFinder(
@@ -187,7 +187,7 @@ namespace openpeer
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
-                                               Duration timeout
+                                               Seconds timeout
                                                ) const;
 
         virtual Server getCurrentFinder(

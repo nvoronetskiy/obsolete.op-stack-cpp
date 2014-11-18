@@ -277,7 +277,7 @@ namespace openpeer
       IMessageMonitorPtr AccountFinder::sendRequest(
                                                     IMessageMonitorDelegatePtr delegate,
                                                     MessagePtr requestMessage,
-                                                    Duration timeout
+                                                    Seconds timeout
                                                     ) const
       {
         IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
@@ -682,7 +682,7 @@ namespace openpeer
           expires = tick;
         }
 
-        Duration difference = expires - tick;
+        Seconds difference = zsLib::toSeconds(expires - tick);
 
         ULONG maxKeepAlive = services::ISettings::getUInt(OPENPEER_STACK_SETTING_FINDER_MAX_CLIENT_SESSION_KEEP_ALIVE_IN_SECONDS);
 

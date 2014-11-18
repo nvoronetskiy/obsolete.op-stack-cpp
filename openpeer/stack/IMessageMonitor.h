@@ -56,14 +56,14 @@ namespace openpeer
       static IMessageMonitorPtr monitor(
                                         IMessageMonitorDelegatePtr delegate,
                                         message::MessagePtr requestMessage,
-                                        Duration timeout
+                                        Seconds timeout
                                         );
 
       static IMessageMonitorPtr monitorAndSendToLocation(
                                                          IMessageMonitorDelegatePtr delegate,
                                                          ILocationPtr peerLocation,
                                                          message::MessagePtr message,
-                                                         Duration timeout
+                                                         Seconds timeout
                                                          );
 
       static IMessageMonitorPtr monitorAndSendToService(
@@ -72,7 +72,7 @@ namespace openpeer
                                                         const char *serviceType,
                                                         const char *serviceMethodName,
                                                         message::MessagePtr message,
-                                                        Duration timeout
+                                                        Seconds timeout
                                                         );
 
       static bool handleMessageReceived(message::MessagePtr message);

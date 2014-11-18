@@ -63,8 +63,12 @@ namespace openpeer
     using zsLib::LONG;
     using zsLib::ULONG;
     using zsLib::Time;
-    using zsLib::Duration;
+    using zsLib::Hours;
+    using zsLib::Minutes;
     using zsLib::Seconds;
+    using zsLib::Milliseconds;
+    using zsLib::Microseconds;
+    using zsLib::Nanoseconds;
     using zsLib::String;
     using zsLib::IPAddress;
     using zsLib::Log;
@@ -131,14 +135,14 @@ namespace openpeer
       static Token create(
                           const String &masterSecret,
                           const String &associatedID,
-                          Duration validDuration
+                          Seconds validDuration
                           );
 
 
       static Token create(ElementPtr elem);
       Token createProof(
                         const char *resource,
-                        Duration validDuration
+                        Seconds validDuration
                         );
 
       ElementPtr createElement() const;

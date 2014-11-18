@@ -212,7 +212,7 @@ namespace openpeer
         ZS_LOG_DETAIL(log("created"))
 
         if (mSendKeepAliveAfter < Seconds(1)) {
-          mSendKeepAliveAfter = Duration();
+          mSendKeepAliveAfter = Seconds();
         }
       }
 
@@ -226,7 +226,7 @@ namespace openpeer
 
         mTCPMessaging = ITCPMessaging::connect(mThisWeak.lock(), mWireReceiveStream->getStream(), mWireSendStream->getStream(), true, mRemoteIP);
 
-        if (Duration() != mSendKeepAliveAfter) {
+        if (Seconds() != mSendKeepAliveAfter) {
           mPingTimer = Timer::create(mThisWeak.lock(), Seconds(5));
         }
 

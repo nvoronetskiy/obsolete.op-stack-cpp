@@ -174,7 +174,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      UINT ServiceSaltFetchSignedSaltQuery::getTotalSignedSaltsAvailable() const
+      size_t ServiceSaltFetchSignedSaltQuery::getTotalSignedSaltsAvailable() const
       {
         AutoRecursiveLock lock(getLock());
         return mSaltBundles.size();

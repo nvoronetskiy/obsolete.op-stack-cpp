@@ -36,8 +36,8 @@
 
 namespace Testing
 {
-  zsLib::ULONG &getGlobalPassedVar();
-  zsLib::ULONG &getGlobalFailedVar();
+  std::atomic_uint &getGlobalPassedVar();
+  std::atomic_uint &getGlobalFailedVar();
 
   void installLogger();
   void uninstallLogger();

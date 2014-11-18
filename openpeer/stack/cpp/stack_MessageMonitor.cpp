@@ -101,11 +101,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void MessageMonitor::init(Duration timeout)
+      void MessageMonitor::init(Seconds timeout)
       {
         AutoRecursiveLock lock(*this);
 
-        if (Duration() != timeout) {
+        if (Seconds() != timeout) {
           mExpires = zsLib::now() + timeout;
           mTimer = Timer::create(mThisWeak.lock(), timeout, false);
         }
@@ -158,7 +158,7 @@ namespace openpeer
       MessageMonitorPtr MessageMonitor::monitor(
                                                 IMessageMonitorDelegatePtr delegate,
                                                 message::MessagePtr requestMessage,
-                                                Duration timeout
+                                                Seconds timeout
                                                 )
       {
         if (!requestMessage) return MessageMonitorPtr();
@@ -183,7 +183,7 @@ namespace openpeer
                                                                  IMessageMonitorDelegatePtr delegate,
                                                                  ILocationPtr inLocation,
                                                                  message::MessagePtr message,
-                                                                 Duration timeout
+                                                                 Seconds timeout
                                                                  )
       {
         if (!message) return MessageMonitorPtr();
@@ -217,7 +217,7 @@ namespace openpeer
                                                                 const char *serviceType,
                                                                 const char *serviceMethodName,
                                                                 message::MessagePtr message,
-                                                                Duration timeout
+                                                                Seconds timeout
                                                                 )
       {
         if (!message) return MessageMonitorPtr();
@@ -495,7 +495,7 @@ namespace openpeer
       MessageMonitorPtr IMessageMonitorFactory::monitor(
                                                         IMessageMonitorDelegatePtr delegate,
                                                         message::MessagePtr requestMessage,
-                                                        Duration timeout
+                                                        Seconds timeout
                                                         )
       {
         if (this) {}
@@ -507,7 +507,7 @@ namespace openpeer
                                                                          IMessageMonitorDelegatePtr delegate,
                                                                          ILocationPtr peerLocation,
                                                                          message::MessagePtr message,
-                                                                         Duration timeout
+                                                                         Seconds timeout
                                                                          )
       {
         if (this) {}
@@ -521,7 +521,7 @@ namespace openpeer
                                                                         const char *serviceType,
                                                                         const char *serviceMethodName,
                                                                         message::MessagePtr message,
-                                                                        Duration timeout
+                                                                        Seconds timeout
                                                                         )
       {
         if (this) {}
@@ -552,7 +552,7 @@ namespace openpeer
     IMessageMonitorPtr IMessageMonitor::monitor(
                                                 IMessageMonitorDelegatePtr delegate,
                                                 message::MessagePtr requestMessage,
-                                                Duration timeout
+                                                Seconds timeout
                                                 )
     {
       return internal::IMessageMonitorFactory::singleton().monitor(delegate, requestMessage, timeout);
@@ -563,7 +563,7 @@ namespace openpeer
                                                                  IMessageMonitorDelegatePtr delegate,
                                                                  ILocationPtr peerLocation,
                                                                  message::MessagePtr message,
-                                                                 Duration timeout
+                                                                 Seconds timeout
                                                                  )
     {
       return internal::IMessageMonitorFactory::singleton().monitorAndSendToLocation(delegate, peerLocation, message, timeout);
@@ -576,7 +576,7 @@ namespace openpeer
                                                                 const char *serviceType,
                                                                 const char *serviceMethodName,
                                                                 message::MessagePtr message,
-                                                                Duration timeout
+                                                                Seconds timeout
                                                                 )
     {
       return internal::IMessageMonitorFactory::singleton().monitorAndSendToService(delegate, bootstrappedNetwork, serviceType, serviceMethodName, message, timeout);

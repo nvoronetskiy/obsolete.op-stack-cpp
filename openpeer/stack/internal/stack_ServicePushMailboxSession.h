@@ -126,16 +126,16 @@ namespace openpeer
         virtual void asyncUploadFileDataToURL(
                                               const char *url,
                                               const char *fileNameContainingData,
-                                              size_t totalFileSizeInBytes,
-                                              size_t remainingBytesToUpload,
+                                              std::uintmax_t totalFileSizeInBytes,
+                                              std::uintmax_t remainingBytesToUpload,
                                               IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                               ) = 0;
 
         virtual void asyncDownloadDataFromURL(
                                               const char *getURL,
                                               const char *fileNameToAppendData,
-                                              size_t finalFileSizeInBytes,
-                                              size_t remainingBytesToBeDownloaded,
+                                              std::uintmax_t finalFileSizeInBytes,
+                                              std::uintmax_t remainingBytesToBeDownloaded,
                                               IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
                                               ) = 0;
       };
@@ -304,7 +304,7 @@ namespace openpeer
 
           DWORD  mChannelID;
 
-          size_t mReceivedData;
+          std::uintmax_t mReceivedData;
           SecureByteBlockPtr mBuffer;
 
           String mDeliveryURL;
@@ -879,7 +879,7 @@ namespace openpeer
         IMessageMonitorPtr sendRequest(
                                        IMessageMonitorDelegatePtr delegate,
                                        MessagePtr requestMessage,
-                                       Duration timeout
+                                       Seconds timeout
                                        );
         bool sendRequest(MessagePtr requestMessage);
 
@@ -1143,11 +1143,11 @@ namespace openpeer
         bool mObtainedLock {};
 
         bool mRequiresConnection;
-        Duration mInactivityTimeout;
+        Seconds mInactivityTimeout;
         Time mLastActivity;
 
-        Duration mDefaultLastRetryDuration;
-        Duration mLastRetryDuration;
+        Seconds mDefaultLastRetryDuration;
+        Seconds mLastRetryDuration;
         Time mDoNotRetryConnectionBefore;
         TimerPtr mRetryTimer;
 
@@ -1263,8 +1263,8 @@ namespace openpeer
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDatabaseDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxDatabaseAbstractionNotifierPtr, IServicePushMailboxDatabaseAbstractionNotifierPtr)
-ZS_DECLARE_PROXY_METHOD_5(asyncUploadFileDataToURL, const char *, const char *, size_t, size_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
-ZS_DECLARE_PROXY_METHOD_5(asyncDownloadDataFromURL, const char *, const char *, size_t, size_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_5(asyncUploadFileDataToURL, const char *, const char *, std::uintmax_t, std::uintmax_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_5(asyncDownloadDataFromURL, const char *, const char *, std::uintmax_t, std::uintmax_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDelegate)

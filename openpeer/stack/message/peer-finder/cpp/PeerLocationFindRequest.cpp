@@ -90,7 +90,7 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         PeerLocationFindRequest::PeerLocationFindRequest() :
-          mCreated(std::chrono::duration_cast<Seconds>(zsLib::timeSinceEpoch((zsLib::now())))),
+          mCreated(zsLib::timeSinceEpoch<Seconds>(zsLib::now())),
           mFinal(-1)
         {
         }
@@ -364,7 +364,7 @@ namespace openpeer
 
           String clientNonce = IHelper::convertToHex(*IHelper::random(16));
 
-          Time expires = zsLib::now() + Duration(Seconds(OPENPEER_STACK_MESSAGE_PEER_LOCATION_FIND_REQUEST_LIFETIME_IN_SECONDS));
+          Time expires = zsLib::now() + Seconds(OPENPEER_STACK_MESSAGE_PEER_LOCATION_FIND_REQUEST_LIFETIME_IN_SECONDS);
 
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr root = ret->getFirstChildElement();
