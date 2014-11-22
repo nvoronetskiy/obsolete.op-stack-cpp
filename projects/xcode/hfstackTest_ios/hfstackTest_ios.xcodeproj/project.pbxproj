@@ -721,6 +721,7 @@
 				00BDC03C1A1B974800F0DA1C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
