@@ -112,7 +112,7 @@ namespace openpeer
       {
         PeerOrIdentityURI mURI;
 
-        WORD mErrorCode;
+        WORD mErrorCode {};
         String mErrorReason;
       };
 
@@ -163,8 +163,7 @@ namespace openpeer
 
       static IServicePushMailboxSessionPtr create(
                                                   IServicePushMailboxSessionDelegatePtr delegate,
-                                                  IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                                  IMessageQueuePtr databaseDelegateAsyncQueue,
+                                                  IServicePushMailboxSessionTransferDelegatePtr transferDelegate,
                                                   IServicePushMailboxPtr servicePushMailbox,
                                                   IAccountPtr account,
                                                   IServiceNamespaceGrantSessionPtr grantSession,
@@ -184,18 +183,23 @@ namespace openpeer
 
       virtual void shutdown() = 0;
 
+      struct RegisterDeviceInfo
+      {
+        String mDeviceToken;
+        String mFolder;             // what folder to monitor for push requests
+        Time mExpires;              // how long should the registrration to the device last
+        String mMappedType;         // for APNS maps to "loc-key"
+        bool mUnreadBadge {};       // true causes total unread messages to be displayed in badge
+        String mSound;              // what sound to play upon receiving a message. For APNS, maps to "sound" field
+        String mAction;             // for APNS, maps to "action-loc-key"
+        String mLaunchImage;        // for APNS, maps to "launch-image"
+        UINT mPriority {};          // for APNS, maps to push priority
+        ValueNameList mValueNames;  // list of values requested from each push from the push server (in order they should be delivered); empty = all values
+      };
+
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                  IServicePushMailboxRegisterQueryDelegatePtr delegate,
-                                                                 const char *deviceToken,
-                                                                 const char *folder,              // what folder to monitor for push requests
-                                                                 Time expires,                    // how long should the registrration to the device last
-                                                                 const char *mappedType,          // for APNS maps to "loc-key"
-                                                                 bool unreadBadge,                // true causes total unread messages to be displayed in badge
-                                                                 const char *sound,               // what sound to play upon receiving a message. For APNS, maps to "sound" field
-                                                                 const char *action,              // for APNS, maps to "action-loc-key"
-                                                                 const char *launchImage,         // for APNS, maps to "launch-image"
-                                                                 unsigned int priority,           // for APNS, maps to push priority
-                                                                 const ValueNameList &valueNames  // list of values requested from each push from the push server (in order they should be delivered); empty = all values
+                                                                 const RegisterDeviceInfo &registerDeviceInfo
                                                                  ) = 0;
 
       virtual void monitorFolder(const char *folderName) = 0;
@@ -215,8 +219,8 @@ namespace openpeer
       //          cannot be fetched.
       virtual bool getFolderMessageUpdates(
                                            const char *inFolder,
-                                           const String &inLastVersionDownloaded,    // pass in String() if no previous version known
-                                           String &outUpdatedToVersion,       // updated to this version (if same as passed in then no change available)
+                                           const String &inLastVersionDownloaded,   // pass in String() if no previous version known
+                                           String &outUpdatedToVersion,             // updated to this version (if same as passed in then no change available)
                                            PushMessageListPtr &outMessagesAdded,
                                            MessageIDListPtr &outMessagesRemoved
                                            ) = 0;
@@ -274,6 +278,60 @@ namespace openpeer
       virtual void cancel() = 0;
 
       virtual void background() = 0;
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSessionTransferDelegate
+    #pragma mark
+
+    interaction IServicePushMailboxSessionTransferDelegate
+    {
+      //-----------------------------------------------------------------------
+      // PURPOSE: upload a file to a url
+      // NOTES:   - this upload should occur even while the application goes
+      //            to the background
+      //          - this method is called asynchronously on the application's
+      //            thread
+      virtual void onServicePushMailboxSessionTransferUploadFileDataToURL(
+                                                                          IServicePushMailboxSessionPtr session,
+                                                                          const char *postURL,
+                                                                          const char *fileNameContainingData,
+                                                                          ULONGEST totalFileSizeInBytes,            // the total bytes that exists within the file
+                                                                          ULONGEST remainingBytesToUpload,          // the file should be seeked to the position of (total size - remaining) and upload the remaining bytes from this position in the file
+                                                                          IServicePushMailboxSessionTransferNotifierPtr notifier
+                                                                          ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: download a file from a URL
+      // NOTES:   - this download should occur even while the application goes
+      //            to the background
+      //          - this method is called asynchronously on the application's
+      //            thread
+      virtual void onServicePushMailboxSessionTransferDownloadDataFromURL(
+                                                                          IServicePushMailboxSessionPtr session,
+                                                                          const char *getURL,
+                                                                          const char *fileNameToAppendData,          // the existing file name to open and append
+                                                                          ULONGEST finalFileSizeInBytes,             // when the download completes the file size will be this size
+                                                                          ULONGEST remainingBytesToBeDownloaded,     // the downloaded data will be appended to the end of the existing file and this is the total bytes that are to be downloaded
+                                                                          IServicePushMailboxSessionTransferNotifierPtr notifier
+                                                                          ) = 0;
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSessionTransferNotifier
+    #pragma mark
+
+    interaction IServicePushMailboxSessionTransferNotifier
+    {
+      virtual void notifyComplete(bool wasSuccessful) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -357,6 +415,13 @@ ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServicePushMailboxSessi
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onServicePushMailboxSessionStateChanged, IServicePushMailboxSessionPtr, SessionStates)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onServicePushMailboxSessionFolderChanged, IServicePushMailboxSessionPtr, const char *)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
+
+ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSessionTransferDelegate)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServicePushMailboxSessionPtr, IServicePushMailboxSessionPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServicePushMailboxSessionTransferNotifierPtr, IServicePushMailboxSessionTransferNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_6(onServicePushMailboxSessionTransferUploadFileDataToURL, IServicePushMailboxSessionPtr, const char *, const char *, ULONGEST, ULONGEST, IServicePushMailboxSessionTransferNotifierPtr)
+ZS_DECLARE_PROXY_METHOD_6(onServicePushMailboxSessionTransferDownloadDataFromURL, IServicePushMailboxSessionPtr, const char *, const char *, ULONGEST, ULONGEST, IServicePushMailboxSessionTransferNotifierPtr)
+ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::IServicePushMailboxSendQueryDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxSendQueryPtr, IServicePushMailboxSendQueryPtr)

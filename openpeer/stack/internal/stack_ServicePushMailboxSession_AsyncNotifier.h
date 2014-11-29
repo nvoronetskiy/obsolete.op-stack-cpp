@@ -45,7 +45,7 @@ namespace openpeer
 
         class AsyncNotifier : public MessageQueueAssociator,
                               public SharedRecursiveLock,
-                              public IServicePushMailboxDatabaseAbstractionNotifier
+                              public IServicePushMailboxSessionTransferNotifier
         {
         protected:
           AsyncNotifier(

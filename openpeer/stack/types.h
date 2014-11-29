@@ -62,6 +62,8 @@ namespace openpeer
     using zsLib::UINT;
     using zsLib::LONG;
     using zsLib::ULONG;
+    using zsLib::LONGEST;
+    using zsLib::ULONGEST;
     using zsLib::Time;
     using zsLib::Hours;
     using zsLib::Minutes;
@@ -318,9 +320,8 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSession)
     ZS_DECLARE_INTERACTION_PTR(IServicePeerFileLookupQuery)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailbox)
-    ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxDatabaseAbstractionDelegate)
-    ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxDatabaseAbstractionNotifier)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSession)
+    ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionTransferNotifier)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSendQuery)
     ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxRegisterQuery)
     ZS_DECLARE_INTERACTION_PTR(ISettings)
@@ -345,6 +346,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServicePeerFileLookupQueryDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionDelegate)
+    ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionTransferDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSendQueryDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxRegisterQueryDelegate)
 

@@ -147,6 +147,7 @@ namespace openpeer
       ZS_DECLARE_CLASS_PTR(ServiceLockboxSession)
       ZS_DECLARE_CLASS_PTR(ServiceNamespaceGrantSession)
       ZS_DECLARE_CLASS_PTR(ServicePushMailboxSession)
+      ZS_DECLARE_CLASS_PTR(ServicePushMailboxSessionDatabaseAbstraction)
       ZS_DECLARE_CLASS_PTR(ServiceSaltFetchSignedSaltQuery)
       ZS_DECLARE_CLASS_PTR(ServicePeerFileLookup)
       ZS_DECLARE_CLASS_PTR(Settings)
@@ -157,6 +158,8 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PTR(IFinderConnectionRelayChannel)
       ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSessionQuery)
       ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSessionWait)
+      ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionDatabaseAbstractionTypes)
+      ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionDatabaseAbstraction)
 
       ZS_DECLARE_INTERACTION_PROXY(IAccountFinderDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IAccountPeerLocationDelegate)

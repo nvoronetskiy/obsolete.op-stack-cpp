@@ -63,6 +63,8 @@
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 #include <openpeer/stack/internal/stack_ServicePeerFileLookup.h>
+#include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstraction.h>
+#include <openpeer/stack/internal/stack_ServicePushMailboxSessionDatabaseAbstraction.h>
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceSaltFetchSignedSaltQuery.h>
 #include <openpeer/stack/internal/stack_Settings.h>

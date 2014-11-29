@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0009C5971A265ECC002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0009C5961A265ECC002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.cpp */; };
 		000CC03F17A4825A0075E86C /* stack_FinderRelayChannel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 000CC03D17A4825A0075E86C /* stack_FinderRelayChannel.cpp */; };
 		001BBA01183B996600F14A64 /* stack_javascript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 001BBA00183B996600F14A64 /* stack_javascript.cpp */; };
 		002FCF5819A9162800F360CE /* stack_ServerMessaging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002FCF5319A9162800F360CE /* stack_ServerMessaging.cpp */; };
-		002FCF5919A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002FCF5419A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */; };
 		002FCF5A19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002FCF5519A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp */; };
 		002FCF5B19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002FCF5619A9162800F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.cpp */; };
 		002FCF5C19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002FCF5719A9162800F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.cpp */; };
@@ -178,20 +178,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0009C5951A20D703002564DB /* stack_IServicePushMailboxSessionDatabaseAbstraction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IServicePushMailboxSessionDatabaseAbstraction.h; sourceTree = "<group>"; };
+		0009C5961A265ECC002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSessionDatabaseAbstraction.cpp; sourceTree = "<group>"; };
+		0009C5981A265EF9002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSessionDatabaseAbstraction.h; sourceTree = "<group>"; };
 		000CC03917A482390075E86C /* stack_FinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderRelayChannel.h; sourceTree = "<group>"; };
 		000CC03A17A482390075E86C /* stack_IFinderRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderRelayChannel.h; sourceTree = "<group>"; };
 		000CC03B17A482390075E86C /* stack_IFinderConnectionRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnectionRelayChannel.h; sourceTree = "<group>"; };
 		000CC03D17A4825A0075E86C /* stack_FinderRelayChannel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderRelayChannel.cpp; sourceTree = "<group>"; };
 		001BBA00183B996600F14A64 /* stack_javascript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_javascript.cpp; sourceTree = "<group>"; };
 		002FCF4C19A915DD00F360CE /* IServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServerMessaging.h; sourceTree = "<group>"; };
-		002FCF4D19A915DD00F360CE /* IServicePushMailboxDatabaseAbstractionDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServicePushMailboxDatabaseAbstractionDelegate.h; sourceTree = "<group>"; };
 		002FCF4E19A915F600F360CE /* stack_ServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServerMessaging.h; sourceTree = "<group>"; };
-		002FCF4F19A915F600F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncDatabase.h; sourceTree = "<group>"; };
 		002FCF5019A915F600F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncDecrypt.h; sourceTree = "<group>"; };
 		002FCF5119A915F600F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncEncrypt.h; sourceTree = "<group>"; };
 		002FCF5219A915F600F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncNotifier.h; sourceTree = "<group>"; };
 		002FCF5319A9162800F360CE /* stack_ServerMessaging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServerMessaging.cpp; sourceTree = "<group>"; };
-		002FCF5419A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_AsyncDatabase.cpp; sourceTree = "<group>"; };
 		002FCF5519A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_AsyncDecrypt.cpp; sourceTree = "<group>"; };
 		002FCF5619A9162800F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_AsyncEncrypt.cpp; sourceTree = "<group>"; };
 		002FCF5719A9162800F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_AsyncNotifier.cpp; sourceTree = "<group>"; };
@@ -665,7 +665,6 @@
 				00384BF4175961C400113845 /* IServiceNamespaceGrant.h */,
 				00D560CA1948A76200CA65A6 /* IServicePeerFileLookupQuery.h */,
 				00D560CB1948A76200CA65A6 /* IServicePushMailbox.h */,
-				002FCF4D19A915DD00F360CE /* IServicePushMailboxDatabaseAbstractionDelegate.h */,
 				0063B6EE16CA8E8A00E6DB4D /* IServiceSalt.h */,
 				0063B6EF16CA8E8A00E6DB4D /* IStack.h */,
 				004B8DA7189C2C9E00D4F6A8 /* ISettings.h */,
@@ -715,12 +714,12 @@
 				00384C3F175A8B3C00113845 /* stack_ServiceNamespaceGrantSession.cpp */,
 				00D560D01948A7BD00CA65A6 /* stack_ServicePeerFileLookup.cpp */,
 				00D560D21948A7BD00CA65A6 /* stack_ServicePushMailboxSession.cpp */,
-				002FCF5419A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.cpp */,
 				002FCF5519A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp */,
 				002FCF5619A9162800F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.cpp */,
 				002FCF5719A9162800F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.cpp */,
 				00D560D11948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp */,
 				00C3EAEE19831A1300D7AE29 /* stack_ServicePushMailboxSession_SendQuery.cpp */,
+				0009C5961A265ECC002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.cpp */,
 				0063B6B916CA8E8A00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp */,
 				0063B6BA16CA8E8A00E6DB4D /* stack_Stack.cpp */,
 				004B8DA9189C2D3200D4F6A8 /* stack_Settings.cpp */,
@@ -774,12 +773,13 @@
 				00384C41175A8B4E00113845 /* stack_ServiceNamespaceGrantSession.h */,
 				00D560CD1948A78A00CA65A6 /* stack_ServicePeerFileLookup.h */,
 				00D560CF1948A78A00CA65A6 /* stack_ServicePushMailboxSession.h */,
-				002FCF4F19A915F600F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.h */,
 				002FCF5019A915F600F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.h */,
 				002FCF5119A915F600F360CE /* stack_ServicePushMailboxSession_AsyncEncrypt.h */,
 				002FCF5219A915F600F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.h */,
 				00D560CE1948A78A00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.h */,
 				00C3EAED198319F600D7AE29 /* stack_ServicePushMailboxSession_SendQuery.h */,
+				0009C5951A20D703002564DB /* stack_IServicePushMailboxSessionDatabaseAbstraction.h */,
+				0009C5981A265EF9002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.h */,
 				0063B6DE16CA8E8A00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.h */,
 				0063B6DF16CA8E8A00E6DB4D /* stack_Stack.h */,
 				004B8DA8189C2D2400D4F6A8 /* stack_Settings.h */,
@@ -1344,7 +1344,6 @@
 				0063B86316CA8E8B00E6DB4D /* stack_ServiceLockboxSession.cpp in Sources */,
 				00D5611A1948A7F200CA65A6 /* MessagesMetaDataGetResult.cpp in Sources */,
 				00D561111948A7F200CA65A6 /* FoldersGetResult.cpp in Sources */,
-				002FCF5919A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDatabase.cpp in Sources */,
 				0063B86416CA8E8B00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.cpp in Sources */,
 				0063B86516CA8E8B00E6DB4D /* stack_Stack.cpp in Sources */,
 				00D560D41948A7BD00CA65A6 /* stack_ServicePushMailboxSession_RegisterQuery.cpp in Sources */,
@@ -1440,6 +1439,7 @@
 				00AF4DE5171E2EE500DCA0A8 /* LockboxContentSetResult.cpp in Sources */,
 				0051C45B1745B9970095FD98 /* IdentityAccessWindowResult.cpp in Sources */,
 				005F60AE17557D5100BC3DD6 /* stack_Cache.cpp in Sources */,
+				0009C5971A265ECC002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.cpp in Sources */,
 				00D5611F1948A7F200CA65A6 /* PeerValidateRequest.cpp in Sources */,
 				00384C0D17596D8800113845 /* MessageFactoryNamespaceGrant.cpp in Sources */,
 				00384C1217596D8800113845 /* NamespaceGrantCompleteNotify.cpp in Sources */,

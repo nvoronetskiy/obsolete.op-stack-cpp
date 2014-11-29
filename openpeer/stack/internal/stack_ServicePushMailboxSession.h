@@ -35,13 +35,13 @@
 
 #include <openpeer/stack/IBootstrappedNetwork.h>
 #include <openpeer/stack/IServicePushMailbox.h>
-#include <openpeer/stack/IServicePushMailboxDatabaseAbstractionDelegate.h>
 #include <openpeer/stack/IServiceNamespaceGrant.h>
 
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_MessageMonitorManager.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
+#include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstraction.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 
 #include <openpeer/stack/message/bootstrapped-servers/ServersGetResult.h>
@@ -118,33 +118,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IServicePushMailboxSessionAsyncDatabaseDelegate
-      #pragma mark
-
-      interaction IServicePushMailboxSessionAsyncDatabaseDelegate
-      {
-        virtual void asyncUploadFileDataToURL(
-                                              const char *url,
-                                              const char *fileNameContainingData,
-                                              std::uintmax_t totalFileSizeInBytes,
-                                              std::uintmax_t remainingBytesToUpload,
-                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                              ) = 0;
-
-        virtual void asyncDownloadDataFromURL(
-                                              const char *getURL,
-                                              const char *fileNameToAppendData,
-                                              std::uintmax_t finalFileSizeInBytes,
-                                              std::uintmax_t remainingBytesToBeDownloaded,
-                                              IServicePushMailboxDatabaseAbstractionNotifierPtr notifier
-                                              ) = 0;
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark IServicePushMailboxSessionAsyncDelegate
       #pragma mark
 
@@ -206,7 +179,6 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(SendQuery)
         typedef std::map<MessageID, SendQueryWeakPtr> SendQueryMap;
 
-        ZS_DECLARE_CLASS_PTR(AsyncDatabase)
         ZS_DECLARE_CLASS_PTR(AsyncEncrypt)
         ZS_DECLARE_CLASS_PTR(AsyncDecrypt)
         ZS_DECLARE_CLASS_PTR(AsyncNotifier)
@@ -246,8 +218,14 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::push_mailbox::RegisterPushResult, RegisterPushResult)
         ZS_DECLARE_TYPEDEF_PTR(message::bootstrapped_servers::ServersGetResult, ServersGetResult)
 
+        ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::FolderRecord, FolderRecord)
+        ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::FolderRecordList, FolderRecordList)
+        ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::MessageRecord, MessageRecord)
+        ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::ListRecord, ListRecord)
+        ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::PendingDeliveryMessageRecord, PendingDeliveryMessageRecord)
+
         typedef String FolderName;
-        typedef int FolderIndex;
+        typedef IServicePushMailboxSessionDatabaseAbstraction::index FolderIndex;
         typedef std::map<FolderName, FolderIndex> FolderNameMap;
 
         typedef std::list<IMessageMonitorPtr> MonitorList;
@@ -267,9 +245,7 @@ namespace openpeer
 
         struct ProcessedFolderNeedingUpdateInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::FolderNeedingUpdateInfo FolderNeedingUpdateInfo;
-
-          FolderNeedingUpdateInfo mInfo;
+          FolderRecord mInfo;
           bool mSentRequest;
         };
 
@@ -282,7 +258,7 @@ namespace openpeer
 
         struct ProcessedMessageNeedingUpdateInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingUpdateInfo MessageNeedingUpdateInfo;
+          ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::IMessageTable::MessageNeedingUpdateInfo, MessageNeedingUpdateInfo)
 
           MessageNeedingUpdateInfo mInfo;
           bool mSentRequest;
@@ -297,9 +273,7 @@ namespace openpeer
 
         struct ProcessedMessageNeedingDataInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessageNeedingDataInfo MessageNeedingDataInfo;
-
-          MessageNeedingDataInfo mInfo;
+          MessageRecord mInfo;
           bool mSentRequest;
 
           DWORD  mChannelID;
@@ -319,9 +293,7 @@ namespace openpeer
 
         struct ProcessedMessagesNeedingDecryptingInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::MessagesNeedingDecryptingInfo MessagesNeedingDecryptingInfo;
-
-          MessagesNeedingDecryptingInfo mInfo;
+          MessageRecord mInfo;
 
           AsyncDecryptPtr mDecryptor;
           String mDecryptedFileName;
@@ -341,9 +313,7 @@ namespace openpeer
 
         struct ProcessedListsNeedingDownloadInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::ListsNeedingDownloadInfo ListsNeedingDownloadInfo;
-
-          ListsNeedingDownloadInfo mInfo;
+          ListRecord mInfo;
           bool mSentRequest;
         };
         typedef String ListID;
@@ -356,9 +326,7 @@ namespace openpeer
 
         struct ProcessedPendingDeliveryMessageInfo
         {
-          typedef IServicePushMailboxDatabaseAbstractionDelegate::PendingDeliveryMessageInfo PendingDeliveryMessageInfo;
-
-          PendingDeliveryMessageInfo mInfo;
+          PendingDeliveryMessageRecord mInfo;
 
           PushMessageInfo mMessage;
 
@@ -369,7 +337,7 @@ namespace openpeer
 
           String mDeliveryURL;
 
-          size_t mSent;
+          size_t mSent {};
           SecureByteBlockPtr mData;
 
           IMessageMonitorPtr mPendingDeliveryPrecheckMessageMetaDataGetMonitor;
@@ -377,8 +345,6 @@ namespace openpeer
           MessageUpdateRequestPtr mPendingDeliveryMessageUpdateRequest;
           IMessageMonitorPtr mPendingDeliveryMessageUpdateErrorMonitor;
           IMessageMonitorPtr mPendingDeliveryMessageUpdateUploadCompleteMonitor;
-
-          ProcessedPendingDeliveryMessageInfo();
         };
         typedef std::map<MessageID, ProcessedPendingDeliveryMessageInfo> PendingDeliveryMap;
 
@@ -406,8 +372,7 @@ namespace openpeer
                                   IMessageQueuePtr queue,
                                   BootstrappedNetworkPtr network,
                                   IServicePushMailboxSessionDelegatePtr delegate,
-                                  IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                  IMessageQueuePtr databaseDelegateAsyncQueue,
+                                  IServicePushMailboxSessionTransferDelegatePtr transferDelegate,
                                   AccountPtr account,
                                   ServiceNamespaceGrantSessionPtr grantSession,
                                   ServiceLockboxSessionPtr lockboxSession
@@ -435,8 +400,7 @@ namespace openpeer
 
         static ServicePushMailboxSessionPtr create(
                                                    IServicePushMailboxSessionDelegatePtr delegate,
-                                                   IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                                   IMessageQueuePtr databaseDelegateAsyncQueue,
+                                                   IServicePushMailboxSessionTransferDelegatePtr transferDelegate,
                                                    IServicePushMailboxPtr servicePushMailbox,
                                                    IAccountPtr account,
                                                    IServiceNamespaceGrantSessionPtr grantSession,
@@ -458,16 +422,7 @@ namespace openpeer
 
         virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                    IServicePushMailboxRegisterQueryDelegatePtr delegate,
-                                                                   const char *deviceToken,
-                                                                   const char *folder,
-                                                                   Time expires,
-                                                                   const char *mappedType,
-                                                                   bool unreadBadge,
-                                                                   const char *sound,
-                                                                   const char *action,
-                                                                   const char *launchImage,
-                                                                   unsigned int priority,
-                                                                   const ValueNameList &valueNames
+                                                                   const RegisterDeviceInfo &registerDeviceInfo
                                                                    );
 
         virtual void monitorFolder(const char *folderName);
@@ -1066,9 +1021,6 @@ namespace openpeer
         ChannelID pickNextChannel();
 
       public:
-#define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
-#include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncDatabase.h>
-#undef OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DATABASE
 
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DECRYPT
 #include <openpeer/stack/internal/stack_ServicePushMailboxSession_AsyncDecrypt.h>
@@ -1104,8 +1056,9 @@ namespace openpeer
         IServicePushMailboxSessionDelegateSubscriptions mSubscriptions;
         IServicePushMailboxSessionSubscriptionPtr mDefaultSubscription;
 
-        IServicePushMailboxDatabaseAbstractionDelegatePtr mDB;
-        AsyncDatabasePtr mAsyncDB;
+        IServicePushMailboxSessionTransferDelegatePtr mTransferDelegate;
+
+        IServicePushMailboxSessionDatabaseAbstractionPtr mDB;
 
         SessionStates mCurrentState;
 
@@ -1246,8 +1199,7 @@ namespace openpeer
 
         virtual ServicePushMailboxSessionPtr create(
                                                     IServicePushMailboxSessionDelegatePtr delegate,
-                                                    IServicePushMailboxDatabaseAbstractionDelegatePtr databaseDelegate,
-                                                    IMessageQueuePtr databaseDelegateAsyncQueue,
+                                                    IServicePushMailboxSessionTransferDelegatePtr transferDelegate,
                                                     IServicePushMailboxPtr servicePushMailbox,
                                                     IAccountPtr account,
                                                     IServiceNamespaceGrantSessionPtr grantSession,
@@ -1260,12 +1212,6 @@ namespace openpeer
     }
   }
 }
-
-ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDatabaseDelegate)
-ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServicePushMailboxDatabaseAbstractionNotifierPtr, IServicePushMailboxDatabaseAbstractionNotifierPtr)
-ZS_DECLARE_PROXY_METHOD_5(asyncUploadFileDataToURL, const char *, const char *, std::uintmax_t, std::uintmax_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
-ZS_DECLARE_PROXY_METHOD_5(asyncDownloadDataFromURL, const char *, const char *, std::uintmax_t, std::uintmax_t, IServicePushMailboxDatabaseAbstractionNotifierPtr)
-ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::internal::IServicePushMailboxSessionAsyncDelegate)
 ZS_DECLARE_PROXY_METHOD_2(onNotifierComplete, const char *, bool)
