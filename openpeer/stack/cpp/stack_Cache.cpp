@@ -36,13 +36,26 @@
 
 #include <openpeer/stack/IMessageMonitor.h>
 
+#include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
+
+#include <easySQLite/SqlCommon.h>
+#include <easySQLite/SqlField.h>
+#include <easySQLite/SqlTable.h>
+#include <easySQLite/SqlRecord.h>
 
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
+
+
+#define OPENPEER_STACK_CACHE_DATABASE_VERSION 1
+
+#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE "cookie"
+#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES "expires"
+#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE "value"
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -54,6 +67,37 @@ namespace openpeer
     {
       using namespace zsLib::XML;
       using services::IHelper;
+
+      ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Value, SqlValue)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark (table definitions)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      SqlField TableDefinition_Version[] =
+      {
+        SqlField(sql::FIELD_KEY),
+        SqlField("version", sql::type_int, sql::flag_not_null),
+        SqlField(sql::DEFINITION_END)
+      };
+
+      //-----------------------------------------------------------------------
+      SqlField TableDefinition_Cache[] =
+      {
+        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE, sql::type_text, sql::flag_primary_key | sql::flag_not_null),
+        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, sql::type_int, sql::flag_not_null),
+        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, sql::type_text, sql::flag_not_null),
+        SqlField(sql::DEFINITION_END)
+      };
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -225,6 +269,10 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
+
+          prepareDB();
+          String result;
+          if (fetchFromDatabase(cookieNamePath, result)) return result;
         }
 
         if (!delegate) {
@@ -257,6 +305,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
+
+          prepareDB();
+          if (storeInDatabase(cookieNamePath, expires, str)) return;
         }
 
         if (!delegate) {
@@ -277,6 +328,9 @@ namespace openpeer
         {
           AutoRecursiveLock lock(mLock);
           delegate = mDelegate;
+
+          prepareDB();
+          if (clearFromDatabase(cookieNamePath)) return;
         }
 
         if (!delegate) {
@@ -315,6 +369,234 @@ namespace openpeer
       Log::Params Cache::slog(const char *message)
       {
         return Log::Params(message, "stack::Cache");
+      }
+
+      //-----------------------------------------------------------------------
+      void Cache::prepareDB() const
+      {
+        if (mDelegate) return;
+        if (mDB) return;
+
+        String path = UseSettings::getString(OPENPEER_STACK_SETTING_CACHE_DATABASE_PATH);
+
+        if (path.length() < 1) {
+          ZS_LOG_FATAL(Basic, log("missing setting") + ZS_PARAM("name", OPENPEER_STACK_SETTING_CACHE_DATABASE_PATH))
+          return;
+        }
+
+        char endChar = path[path.length()-1];
+        if (('/' != endChar) &&
+            ('\\' != endChar)) {
+
+          endChar = '/';
+
+          String::size_type found1 = path.find('/');
+          String::size_type found2 = path.find('\\');
+
+          if (String::npos == found1) {
+            if (String::npos != found2) endChar = '\\';
+          } else {
+            if ((String::npos != found2) &&
+                (found2 < found1)) endChar = '\\';
+          }
+
+          path += endChar;
+        }
+
+        String fileName = UseSettings::getString(OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME);
+
+        if (fileName.length() < 1) {
+          ZS_LOG_FATAL(Basic, log("missing setting") + ZS_PARAM("name", OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME))
+          return;
+        }
+
+        path += fileName;
+
+        try {
+          mDB = SQLDatabasePtr(new SQLDatabase);
+
+          mDB->open(path);
+
+          SqlTable versionTable(mDB->getHandle(), "version", TableDefinition_Version);
+
+          if (!versionTable.exists()) {
+
+            versionTable.create();
+
+            SqlRecord record(versionTable.fields());
+            record.setInteger("version", OPENPEER_STACK_CACHE_DATABASE_VERSION);
+            versionTable.addRecord(&record);
+          }
+
+          versionTable.open();
+
+          SqlRecord *versionRecord = versionTable.getTopRecord();
+
+          auto databaseVersion = versionRecord->getValue("version")->asInteger();
+
+          bool flushAllTables = false;
+
+          if (OPENPEER_STACK_CACHE_DATABASE_VERSION != databaseVersion) {
+            ZS_LOG_WARNING(Detail, log("version mismatch thus flushing cache") + ZS_PARAM("db version", databaseVersion) + ZS_PARAM("current version", OPENPEER_STACK_CACHE_DATABASE_VERSION))
+
+            flushAllTables = true;
+
+            versionRecord->setInteger("version", OPENPEER_STACK_CACHE_DATABASE_VERSION);
+            versionTable.updateRecord(versionRecord);
+          }
+
+          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+
+          if (cacheTable.exists()) {
+            if (flushAllTables) {
+              ZS_LOG_DETAIL(log("cache database is being upgraded"))
+              cacheTable.remove();
+              cacheTable.create();
+              ZS_LOG_DETAIL(log("cache database is upgraded"))
+            }
+          } else {
+            ZS_LOG_DETAIL(log("creating cache table"))
+            cacheTable.create();
+          }
+
+          ZS_LOG_DEBUG(log("cleaning out expired records"))
+
+          cacheTable.deleteRecords("expires = 0");
+
+          Time now = zsLib::now();
+          auto sinceEpoch = zsLib::timeSinceEpoch<Seconds>(now);
+
+          cacheTable.deleteRecords("expires < " + string(sinceEpoch.count()));
+
+        } catch (SQLException &e) {
+          ZS_LOG_ERROR(Detail, log("database preparation failure") + ZS_PARAM("message", e.msg()))
+          mDB.reset();
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      bool Cache::fetchFromDatabase(
+                                    const char *cookieNamePath,
+                                    String &outValue
+                                    ) const
+      {
+        if (!mDB) return false;
+
+        String cookieName(cookieNamePath);
+
+        try {
+          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+
+          if (!cacheTable.open("cookie = \'" + SqlEscape(cookieName) + "\'")) {
+            ZS_LOG_WARNING(Detail, log("unable to lookup cookie database"))
+            return false;
+          }
+
+          SqlRecord *cookieRecord = cacheTable.getTopRecord();
+          if (!cookieRecord) {
+            ZS_LOG_TRACE(log("no database cache entry for cookie") + ZS_PARAM("cookie name", cookieName))
+            outValue.clear();
+            return true;
+          }
+
+          auto expires = cookieRecord->getValue(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES)->asInteger();
+          if (0 != expires) {
+            Time expiryTime = zsLib::timeSinceEpoch<Seconds>(Seconds(expires));
+            if (zsLib::now() > expiryTime) {
+              ZS_LOG_TRACE(log("cookie already expired") + ZS_PARAM("cookie name", cookieName))
+              outValue.clear();
+              return true;
+            }
+          }
+
+          outValue = cookieRecord->getValue(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE)->asString();
+
+          ZS_LOG_TRACE(log("cookie fetched") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("value", outValue))
+
+        } catch(SQLException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+          return false;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Cache::storeInDatabase(
+                                  const char *cookieNamePath,
+                                  Time expires,
+                                  const char *str
+                                  )
+      {
+        if (!mDB) return false;
+
+        String cookieName(cookieNamePath);
+        String data(str);
+
+        try {
+          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+
+          if (!cacheTable.open("cookie = \'" + SqlEscape(cookieName) + "\'")) {
+            ZS_LOG_WARNING(Detail, log("unable to lookup cookie database"))
+            return false;
+          }
+
+          SqlRecord *cookieRecord = cacheTable.getTopRecord();
+          if (!cookieRecord) {
+            ZS_LOG_TRACE(log("adding new database cache entry for cookie") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("expires", expires) + ZS_PARAM("value", str))
+
+            SqlRecord record(cacheTable.fields());
+            record.setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE, cookieName);
+            record.setInteger(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
+            record.setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, data);
+            cacheTable.addRecord(&record);
+            return true;
+          }
+
+          ZS_LOG_TRACE(log("updating database cache entry for cookie") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("expires", expires) + ZS_PARAM("value", str))
+
+          cookieRecord->setInteger(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
+          cookieRecord->setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, data);
+
+          cacheTable.updateRecord(cookieRecord);
+
+        } catch(SQLException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+          return false;
+        }
+        
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      bool Cache::clearFromDatabase(const char *cookieNamePath)
+      {
+        if (!mDB) return false;
+
+        try {
+          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+
+          if (!cacheTable.deleteRecords("cookie = \'" + SqlEscape(String(cookieNamePath)) + "\'")) {
+            ZS_LOG_WARNING(Detail, log("unable to delete from cookie database"))
+            return false;
+          }
+
+          ZS_LOG_TRACE(log("cookie removed") + ZS_PARAM("cookie name", cookieNamePath))
+
+        } catch(SQLException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+          return false;
+        }
+
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
+      String Cache::SqlEscape(const String &input)
+      {
+        String result(input);
+        result.replaceAll("\'", "\'\'");
+        return result;
       }
 
     }

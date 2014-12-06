@@ -695,9 +695,9 @@ using openpeer::stack::test::TestFactoryForPeerContact;
 using openpeer::stack::test::TestFactoryForPeerContactPtr;
 
 
-void doTestPeerContactSession()
+void doTestLockboxSession()
 {
-  if (!OPENPEER_STACK_TEST_DO_PEER_CONTACT_SESSION_TEST) return;
+  if (!OPENPEER_STACK_TEST_DO_LOCKBOX_SESSION_TEST) return;
   
   TESTING_INSTALL_LOGGER();
   

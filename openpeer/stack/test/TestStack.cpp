@@ -29,6 +29,7 @@
 
  */
 
+#include "TestSetup.h"
 #include "TestStack.h"
 
 #include <zsLib/MessageQueueThread.h>
@@ -42,6 +43,13 @@
 
 #include <list>
 
+using zsLib::ULONG;
+
+ZS_DECLARE_USING_PTR(openpeer::stack, IStack)
+ZS_DECLARE_USING_PTR(openpeer::stack::test, TestStack)
+ZS_DECLARE_USING_PTR(openpeer::stack::test, TestSetup)
+
+
 namespace openpeer { namespace stack { namespace test { ZS_DECLARE_SUBSYSTEM(openpeer_stack_test) } } }
 
 namespace openpeer
@@ -50,32 +58,32 @@ namespace openpeer
   {
     namespace test
     {
-      TestStackCallback::TestStackCallback(zsLib::IMessageQueuePtr queue) :
+      TestStack::TestStack(zsLib::IMessageQueuePtr queue) :
         MessageQueueAssociator(queue),
         mNetworkDone(false),
         mCount(0)
       {
       }
 
-      TestStackCallback::~TestStackCallback()
+      TestStack::~TestStack()
       {
         mThisWeak.reset();
       }
 
-      TestStackCallbackPtr TestStackCallback::create(IMessageQueuePtr queue)
+      TestStackPtr TestStack::create(IMessageQueuePtr queue)
       {
-        TestStackCallbackPtr pThis(new TestStackCallback(queue));
+        TestStackPtr pThis(new TestStack(queue));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
       }
 
-      void TestStackCallback::init()
+      void TestStack::init()
       {
         mNetwork = IBootstrappedNetwork::prepare("unstable.hookflash.me", mThisWeak.lock());
       }
 
-      void TestStackCallback::onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork)
+      void TestStack::onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork)
       {
         AutoRecursiveLock lock(mLock);
         mNetworkDone = true;
@@ -88,31 +96,17 @@ namespace openpeer
 
 
 
-using zsLib::ULONG;
-using openpeer::stack::IStack;
-using openpeer::stack::test::TestStackCallback;
-using openpeer::stack::test::TestStackCallbackPtr;
-
 void doTestStack()
 {
   if (!OPENPEER_STACK_TEST_DO_STACK_TEST) return;
 
   TESTING_INSTALL_LOGGER();
 
+  TestSetupPtr setup = TestSetup::singleton();
+
   zsLib::MessageQueueThreadPtr thread(zsLib::MessageQueueThread::createBasic());
-  zsLib::MessageQueueThreadPtr threadDelegate(zsLib::MessageQueueThread::createBasic());
-  zsLib::MessageQueueThreadPtr threadStack(zsLib::MessageQueueThread::createBasic());
-  zsLib::MessageQueueThreadPtr threadServices(zsLib::MessageQueueThread::createBasic());
-  zsLib::MessageQueueThreadPtr threadKeyGeneration(zsLib::MessageQueueThread::createBasic());
 
-  IStack::setup(
-                threadDelegate,
-                threadStack,
-                threadServices,
-                threadKeyGeneration
-                );
-
-  TestStackCallbackPtr testObject = TestStackCallback::create(thread);
+  TestStackPtr testObject = TestStack::create(thread);
 
   std::cout << "WAITING:      Waiting for stack test to complete (max wait is 60 seconds).\n";
 
@@ -155,15 +149,13 @@ void doTestStack()
 
   // wait for shutdown
   {
-    ULONG count = 0;
+    size_t count = 0;
     do
     {
       count = 0;
 
       count += thread->getTotalUnprocessedMessages();
-      count += threadDelegate->getTotalUnprocessedMessages();
-      count += threadStack->getTotalUnprocessedMessages();
-      count += threadServices->getTotalUnprocessedMessages();
+      count += setup->getTotalUnprocessedMessages();
       if (0 != count)
         std::this_thread::yield();
     } while (count > 0);

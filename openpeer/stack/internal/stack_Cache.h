@@ -36,6 +36,11 @@
 
 #include <openpeer/services/ICache.h>
 
+#include <easySQLite/SqlDatabase.h>
+
+#define OPENPEER_STACK_SETTING_CACHE_DATABASE_PATH        "openpeer/stack/cache-database-path"
+#define OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME    "openpeer/stack/cache-database-filename"
+
 namespace openpeer
 {
   namespace stack
@@ -90,6 +95,8 @@ namespace openpeer
       {
       public:
         friend interaction ICache;
+        ZS_DECLARE_TYPEDEF_PTR(sql::Database, SQLDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Exception, SQLException)
 
       protected:
         Cache();
@@ -142,6 +149,20 @@ namespace openpeer
         Log::Params log(const char *message) const;
         static Log::Params slog(const char *message);
 
+        void prepareDB() const;
+        bool fetchFromDatabase(
+                               const char *cookieNamePath,
+                               String &outValue
+                               ) const;
+        bool storeInDatabase(
+                             const char *cookieNamePath,
+                             Time expires,
+                             const char *str
+                             );
+        bool clearFromDatabase(const char *cookieNamePath);
+
+        static String SqlEscape(const String &input);
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -153,6 +174,8 @@ namespace openpeer
         CacheWeakPtr mThisWeak;
 
         ICacheDelegatePtr mDelegate;
+
+        mutable SQLDatabasePtr mDB;
       };
     }
   }

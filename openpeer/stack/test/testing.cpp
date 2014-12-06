@@ -40,6 +40,8 @@
 
 typedef openpeer::services::ILogger ILogger;
 
+void doTestSetup();
+void doTestCache();
 void doTestStack();
 void doTestLockboxSession();
 void doTestAccount();
@@ -119,8 +121,10 @@ namespace Testing
   
   void runAllTests()
   {
+    doTestSetup();
+    doTestCache();
     doTestStack();
-//    doTestPeerContactSession();
+//    doTestLockboxSession();
 //    doTestAccount();
   }
 }

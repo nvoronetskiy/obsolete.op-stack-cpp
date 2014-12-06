@@ -160,6 +160,7 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PTR(IServiceNamespaceGrantSessionWait)
       ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionDatabaseAbstractionTypes)
       ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionDatabaseAbstraction)
+      ZS_DECLARE_INTERACTION_PTR(IServicePushMailboxSessionDatabaseAbstractionTables)
 
       ZS_DECLARE_INTERACTION_PROXY(IAccountFinderDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IAccountPeerLocationDelegate)

@@ -857,7 +857,7 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
 
-        ElementPtr resultEl = Element::create("ServicePushMailboxSession");
+        ElementPtr resultEl = Element::create("ServicePushMailboxSessionDatabaseAbstraction");
 
         UseServicesHelper::debugAppend(resultEl, "id", mID);
 

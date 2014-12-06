@@ -186,6 +186,7 @@
 		000CC03B17A482390075E86C /* stack_IFinderConnectionRelayChannel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnectionRelayChannel.h; sourceTree = "<group>"; };
 		000CC03D17A4825A0075E86C /* stack_FinderRelayChannel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderRelayChannel.cpp; sourceTree = "<group>"; };
 		001BBA00183B996600F14A64 /* stack_javascript.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_javascript.cpp; sourceTree = "<group>"; };
+		002DF4151A322CDB0046DE49 /* stack_IServicePushMailboxSessionDatabaseAbstractionTables.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_IServicePushMailboxSessionDatabaseAbstractionTables.h; sourceTree = "<group>"; };
 		002FCF4C19A915DD00F360CE /* IServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IServerMessaging.h; sourceTree = "<group>"; };
 		002FCF4E19A915F600F360CE /* stack_ServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServerMessaging.h; sourceTree = "<group>"; };
 		002FCF5019A915F600F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_AsyncDecrypt.h; sourceTree = "<group>"; };
@@ -780,6 +781,7 @@
 				00C3EAED198319F600D7AE29 /* stack_ServicePushMailboxSession_SendQuery.h */,
 				0009C5951A20D703002564DB /* stack_IServicePushMailboxSessionDatabaseAbstraction.h */,
 				0009C5981A265EF9002564DB /* stack_ServicePushMailboxSessionDatabaseAbstraction.h */,
+				002DF4151A322CDB0046DE49 /* stack_IServicePushMailboxSessionDatabaseAbstractionTables.h */,
 				0063B6DE16CA8E8A00E6DB4D /* stack_ServiceSaltFetchSignedSaltQuery.h */,
 				0063B6DF16CA8E8A00E6DB4D /* stack_Stack.h */,
 				004B8DA8189C2D2400D4F6A8 /* stack_Settings.h */,
@@ -1508,6 +1510,8 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
+					../../../../easysqlite/easySQLite/easySQLite,
+					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
@@ -1546,6 +1550,8 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
+					../../../../easysqlite/easySQLite/easySQLite,
+					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;

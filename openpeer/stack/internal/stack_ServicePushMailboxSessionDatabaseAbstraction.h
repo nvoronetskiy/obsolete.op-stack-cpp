@@ -35,6 +35,8 @@
 
 #include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstraction.h>
 
+#include <easySQLite/SqlDatabase.h>
+
 namespace openpeer
 {
   namespace stack

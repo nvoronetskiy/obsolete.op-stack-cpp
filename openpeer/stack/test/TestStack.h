@@ -49,27 +49,27 @@ namespace openpeer
       using stack::IBootstrappedNetworkPtr;
       using stack::IBootstrappedNetworkDelegate;
 
-      ZS_DECLARE_CLASS_PTR(TestStackCallback)
+      ZS_DECLARE_CLASS_PTR(TestStack)
 
-      class TestStackCallback : public MessageQueueAssociator,
+      class TestStack : public MessageQueueAssociator,
                                 public IBootstrappedNetworkDelegate
       {
       private:
-        TestStackCallback(IMessageQueuePtr queue);
+        TestStack(IMessageQueuePtr queue);
 
         void init();
 
       public:
-        ~TestStackCallback();
+        ~TestStack();
 
-        static TestStackCallbackPtr create(zsLib::IMessageQueuePtr queue);
+        static TestStackPtr create(zsLib::IMessageQueuePtr queue);
 
       protected:
         virtual void onBootstrappedNetworkPreparationCompleted(IBootstrappedNetworkPtr bootstrappedNetwork);
 
       public:
         mutable RecursiveLock mLock;
-        TestStackCallbackWeakPtr mThisWeak;
+        TestStackWeakPtr mThisWeak;
 
         ULONG mCount;
 

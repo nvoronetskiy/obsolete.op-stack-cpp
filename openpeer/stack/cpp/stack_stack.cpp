@@ -87,6 +87,9 @@ namespace openpeer
       using message::peer_to_peer::MessageFactoryPeerToPeer;
       using message::push_mailbox::MessageFactoryPushMailbox;
 
+      ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
+      ZS_DECLARE_TYPEDEF_PTR(ISettingsForStack, UseStackSettings)
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -237,18 +240,6 @@ namespace openpeer
           mKeyGenerationQueue = keyGenerationQueue;
         }
 
-        ISettingsForStack::applyDefaultsIfNoDelegatePresent();
-
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_URL);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_USER_AGENT);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_DEVICE_ID);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_OS);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_SYSTEM);
-        verifySettingIsSet(OPENPEER_COMMON_SETTING_INSTANCE_ID);
-
         ZS_THROW_INVALID_ARGUMENT_IF(!mDelegateQueue)
       }
 
@@ -263,6 +254,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Stack::getAgentInfo(AgentInfo &result) const
       {
+        UseStackSettings::verifyRequiredSettingsOnce();
+
         result.mUserAgent = services::ISettings::getString(OPENPEER_COMMON_SETTING_USER_AGENT);
         result.mName = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
         result.mImageURL = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
@@ -309,6 +302,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Stack::logInstanceInformation()
       {
+        UseStackSettings::verifyRequiredSettingsOnce();
+
         String deviceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_DEVICE_ID);
         String instanceID = services::ISettings::getString(OPENPEER_COMMON_SETTING_INSTANCE_ID);
         String authorizedAppId = services::ISettings::getString(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);

@@ -58,11 +58,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void ISettingsForStack::applyDefaultsIfNoDelegatePresent()
+      void ISettingsForStack::verifyRequiredSettingsOnce() throw (ISettings::InvalidUsage)
       {
         SettingsPtr singleton = Settings::singleton();
         if (!singleton) return;
-        singleton->applyDefaultsIfNoDelegatePresent();
+        singleton->verifyRequiredSettingsOnce();
       }
 
       //-----------------------------------------------------------------------
@@ -135,11 +135,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Settings::applyDefaults()
       {
-        {
-          AutoRecursiveLock lock(mLock);
-          mAppliedDefaults = true;
-        }
-
         services::ISettings::applyDefaults();
 
         setString(OPENPEER_STACK_SETTING_STACK_STACK_THREAD_PRIORITY, "normal");
@@ -181,6 +176,32 @@ namespace openpeer
         setUInt(OPENPEER_STACK_SETTING_PUBLICATION_MOVE_DOCUMENT_TO_CACHE_TIME, 120);
 
         setString(OPENPEER_STACK_SETTING_SERVERMESSAGING_DEFAULT_KEY_DOMAIN, "https://meta.openpeer.org/dh/modp/4096");
+
+        setString(OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME, "cache.db");
+
+        {
+          AutoRecursiveLock lock(mLock);
+          mAppliedDefaults = true;
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void Settings::verifyRequiredSettings() throw (InvalidUsage)
+      {
+        applyDefaultsIfNoDelegatePresent();
+
+        // check any required settings here:
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_APPLICATION_NAME);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_APPLICATION_URL);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_APPLICATION_AUTHORIZATION_ID);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_USER_AGENT);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_DEVICE_ID);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_OS);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_SYSTEM);
+        UseServicesSettings::verifySettingExists(OPENPEER_COMMON_SETTING_INSTANCE_ID);
+
+        UseServicesSettings::verifyRequiredSettings();
       }
 
       //-----------------------------------------------------------------------
@@ -192,18 +213,19 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Settings::applyDefaultsIfNoDelegatePresent()
+      void Settings::verifyRequiredSettingsOnce() throw (InvalidUsage)
       {
         {
           AutoRecursiveLock lock(mLock);
-          if (mDelegate) return;
-
-          if (mAppliedDefaults) return;
+          if (mVerifiedOnce) return;
         }
 
-        ZS_LOG_WARNING(Detail, log("To prevent issues with missing settings, the default settings are being applied. Recommend installing a settings delegate to fetch settings required from a externally."))
+        verifyRequiredSettings();
 
-        applyDefaults();
+        {
+          AutoRecursiveLock lock(mLock);
+          mVerifiedOnce = true;
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -423,6 +445,24 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void Settings::clearAll()
+      {
+        ISettingsDelegatePtr delegate;
+        {
+          AutoRecursiveLock lock(mLock);
+          delegate = mDelegate;
+
+          mVerifiedOnce = false;
+        }
+
+        if (!delegate) {
+          UseServicesSettings::clearAll();
+          return;
+        }
+        delegate->clearAll();
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -444,6 +484,21 @@ namespace openpeer
         return Log::Params(message, "stack::Settings");
       }
 
+      //-----------------------------------------------------------------------
+      void Settings::applyDefaultsIfNoDelegatePresent()
+      {
+        {
+          AutoRecursiveLock lock(mLock);
+          if (mDelegate) return;
+
+          if (mAppliedDefaults) return;
+        }
+
+        ZS_LOG_WARNING(Detail, log("To prevent issues with missing settings, the default settings are being applied. Recommend installing a settings delegate to fetch settings required from a externally."))
+
+        applyDefaults();
+      }
+      
     }
 
     //-------------------------------------------------------------------------
@@ -531,8 +586,29 @@ namespace openpeer
     //-------------------------------------------------------------------------
     void ISettings::applyDefaults()
     {
-      internal::Settings::singleton()->applyDefaults();
+      internal::SettingsPtr singleton = internal::Settings::singleton();
+      if (!singleton) return;
+      singleton->applyDefaults();
     }
 
+    //-------------------------------------------------------------------------
+    void ISettings::clearAll()
+    {
+      UseServicesSettings::clearAll();
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::verifySettingExists(const char *key) throw (InvalidUsage)
+    {
+      UseServicesSettings::verifySettingExists(key);
+    }
+
+    //-------------------------------------------------------------------------
+    void ISettings::verifyRequiredSettings() throw (InvalidUsage)
+    {
+      internal::SettingsPtr singleton = internal::Settings::singleton();
+      if (!singleton) return;
+      singleton->verifyRequiredSettings();
+    }
   }
 }
