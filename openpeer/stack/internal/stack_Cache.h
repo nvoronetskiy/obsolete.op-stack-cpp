@@ -95,8 +95,8 @@ namespace openpeer
       {
       public:
         friend interaction ICache;
-        ZS_DECLARE_TYPEDEF_PTR(sql::Database, SQLDatabase)
-        ZS_DECLARE_TYPEDEF_PTR(sql::Exception, SQLException)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Exception, SqlException)
 
       protected:
         Cache();
@@ -175,7 +175,7 @@ namespace openpeer
 
         ICacheDelegatePtr mDelegate;
 
-        mutable SQLDatabasePtr mDB;
+        mutable SqlDatabasePtr mDB;
       };
     }
   }

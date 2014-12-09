@@ -31,9 +31,16 @@
 
 #include <openpeer/stack/internal/stack_ServicePushMailboxSessionDatabaseAbstraction.h>
 
+#include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstractionTables.h>
+
+#include <openpeer/stack/IHelper.h>
+
+#include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
 
 #include <zsLib/XML.h>
+
+#define OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION 1
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -44,6 +51,11 @@ namespace openpeer
     namespace internal
     {
       ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+      ZS_DECLARE_TYPEDEF_PTR(stack::IHelper, UseStackHelper)
+
+      ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
+
+      ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstractionTables, UseTables)
 
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::MessageDeliveryStateRecordList, MessageDeliveryStateRecordList)
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::PendingDeliveryMessageRecord, PendingDeliveryMessageRecord)
@@ -73,6 +85,9 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::MessageRecord, MessageRecord)
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::MessageRecordList, MessageRecordList)
 
+      ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+
       typedef ServicePushMailboxSessionDatabaseAbstraction::index index;
 
       //-----------------------------------------------------------------------
@@ -94,6 +109,9 @@ namespace openpeer
         mTempPath(inUserTemporaryFilePath),
         mStoragePath(inUserStorageFilePath)
       {
+        ZS_THROW_INVALID_ARGUMENT_IF((mUserHash.isEmpty()) && (mStoragePath.isEmpty()))
+        ZS_THROW_INVALID_ARGUMENT_IF(mTempPath.isEmpty())
+
         ZS_LOG_BASIC(log("created"))
       }
 
@@ -111,6 +129,7 @@ namespace openpeer
       void ServicePushMailboxSessionDatabaseAbstraction::init()
       {
         AutoRecursiveLock lock(*this);
+        prepareDB();
       }
 
       //-----------------------------------------------------------------------
@@ -868,6 +887,150 @@ namespace openpeer
         return resultEl;
       }
 
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSessionDatabaseAbstraction::cancel()
+      {
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSessionDatabaseAbstraction::prepareDB()
+      {
+        if (mDB) return;
+
+        bool alreadyDeleted = false;
+
+        String postFix = UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX);
+
+        String path = UseStackHelper::appendPath(mStoragePath, (mUserHash + postFix).c_str());
+
+        ZS_THROW_BAD_STATE_IF(path.isEmpty())
+
+        try {
+          while (true) {
+            ZS_LOG_DETAIL(log("loading push mailbox database") + ZS_PARAM("path", path))
+
+            mDB = SqlDatabasePtr(new SqlDatabase);
+
+            mDB->open(path);
+
+            SqlTable versionTable(mDB->getHandle(), UseTables::Version_name(), UseTables::Version());
+
+            if (!versionTable.exists()) {
+              versionTable.create();
+
+              SqlRecord record(versionTable.fields());
+              record.setInteger("version", OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION);
+              versionTable.addRecord(&record);
+
+              constructDBTables();
+            }
+
+            versionTable.open();
+
+            SqlRecord *versionRecord = versionTable.getTopRecord();
+
+            auto databaseVersion = versionRecord->getValue(UseTables::version)->asInteger();
+
+            switch (databaseVersion) {
+              // "upgrades" are possible here...
+              case OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION: {
+                ZS_LOG_DEBUG(log("push mailbox database loaded"))
+                goto database_open_complete;
+              }
+              default: {
+                ZS_LOG_DEBUG(log("push mailbox database version is not not compatible (thus will delete database)"))
+
+                // close the database
+                mDB.reset();
+
+                if (alreadyDeleted) {
+                  // already attempted delete once
+                  ZS_LOG_FATAL(Basic, log("failed to load database"))
+                  goto database_open_complete;
+                }
+
+                auto status = remove(path);
+                if (0 != status) {
+                  ZS_LOG_ERROR(Detail, log("attempt to remove incompatible push mailbox database file failed") + ZS_PARAM("path", path) + ZS_PARAM("result", status) + ZS_PARAM("errno", errno))
+                }
+                alreadyDeleted = true;
+                break;
+              }
+            }
+          }
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database preparation failure") + ZS_PARAM("message", e.msg()))
+          mDB.reset();
+        }
+
+      database_open_complete:
+        {
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSessionDatabaseAbstraction::constructDBTables()
+      {
+        ZS_LOG_DEBUG(log("constructing push mailbox database tables"))
+
+        {
+          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::Folder_name(), UseTables::Folder());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::FolderMessage_name(), UseTables::FolderMessage());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::FolderVersionedMessage_name(), UseTables::FolderVersionedMessage());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::Message_name(), UseTables::Message());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::List_name(), UseTables::List());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::ListURI_name(), UseTables::ListURI());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::KeyDomain_name(), UseTables::KeyDomain());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::SendingKey_name(), UseTables::SendingKey());
+          table.create();
+        }
+        {
+          SqlTable table(mDB->getHandle(), UseTables::ReceivingKey_name(), UseTables::ReceivingKey());
+          table.create();
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSessionDatabaseAbstraction::SqlEscape(const String &input)
+      {
+        String result(input);
+        result.replaceAll("\'", "\'\'");
+        return result;
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

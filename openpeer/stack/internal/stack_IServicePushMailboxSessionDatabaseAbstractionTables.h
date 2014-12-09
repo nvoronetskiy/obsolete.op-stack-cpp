@@ -129,7 +129,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Version_name() {return "version";}
 
         //---------------------------------------------------------------------
         static SqlField *Settings()
@@ -140,7 +143,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Settings_name() {return "settings";}
 
         //---------------------------------------------------------------------
         static SqlField *Folder()
@@ -157,7 +163,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Folder_name() {return "folder";}
 
         //---------------------------------------------------------------------
         static SqlField *FolderMessage()
@@ -169,10 +178,13 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
 
         //---------------------------------------------------------------------
-        static SqlField *FolderVersionedMessaged()
+        static const char *FolderMessage_name() {return "folder_message";}
+
+        //---------------------------------------------------------------------
+        static SqlField *FolderVersionedMessage()
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
@@ -182,7 +194,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *FolderVersionedMessage_name() {return "folder_versioned_message";}
 
         //---------------------------------------------------------------------
         static SqlField *Message()
@@ -220,7 +235,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Message_name() {return "message";}
 
         //---------------------------------------------------------------------
         static SqlField *MessageDeliveryState()
@@ -235,7 +253,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *MessageDeliveryState_name() {return "message_delivery_state";}
 
         //---------------------------------------------------------------------
         static SqlField *PendingDeliveryMessage()
@@ -250,7 +271,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *PendingDeliveryMessage_name() {return "pending_message_delivery";}
 
         //---------------------------------------------------------------------
         static SqlField *List()
@@ -263,7 +287,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *List_name() {return "list";}
 
         //---------------------------------------------------------------------
         static SqlField *ListURI()
@@ -276,7 +303,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *ListURI_name() {return "list_uri";}
 
         //---------------------------------------------------------------------
         static SqlField *KeyDomain()
@@ -289,8 +319,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
 
+        //---------------------------------------------------------------------
+        static const char *KeyDomain_name() {return "key_domain";}
 
         //---------------------------------------------------------------------
         static SqlField *SendingKey()
@@ -311,7 +343,10 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *SendingKey_name() {return "sending_key";}
 
         //---------------------------------------------------------------------
         static SqlField *ReceivingKey()
@@ -328,7 +363,11 @@ namespace openpeer
             SqlField(sql::DEFINITION_END)
           };
           return table;
-        };
+        }
+
+        //---------------------------------------------------------------------
+        static const char *ReceivingKey_name() {return "receiving_key";}
+
       };
     }
   }

@@ -78,6 +78,11 @@ namespace openpeer
                                              SecureByteBlock &key,
                                              const char *saltAndProofAndBase64EncodedData
                                              );
+
+      static String appendPath(
+                               const char *path,
+                               const char *fileName = NULL
+                               );
     };
   }
 }

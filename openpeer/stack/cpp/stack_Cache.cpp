@@ -35,6 +35,7 @@
 #include <openpeer/stack/message/IMessageHelper.h>
 
 #include <openpeer/stack/IMessageMonitor.h>
+#include <openpeer/stack/IHelper.h>
 
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
@@ -53,9 +54,6 @@
 
 #define OPENPEER_STACK_CACHE_DATABASE_VERSION 1
 
-#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE "cookie"
-#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES "expires"
-#define OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE "value"
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -66,7 +64,9 @@ namespace openpeer
     namespace internal
     {
       using namespace zsLib::XML;
-      using services::IHelper;
+
+      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+      ZS_DECLARE_TYPEDEF_PTR(stack::IHelper, UseStackHelper)
 
       ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
       ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
@@ -82,22 +82,53 @@ namespace openpeer
       #pragma mark (table definitions)
       #pragma mark
 
-      //-----------------------------------------------------------------------
-      SqlField TableDefinition_Version[] =
+      interaction ICacheTables
       {
-        SqlField(sql::FIELD_KEY),
-        SqlField("version", sql::type_int, sql::flag_not_null),
-        SqlField(sql::DEFINITION_END)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Value, SqlValue)
+
+        static const char *version;
+        static const char *cookie;
+        static const char *expires;
+        static const char *value;
+
+        //---------------------------------------------------------------------
+        static SqlField *Version()
+        {
+          static SqlField table[] = {
+            SqlField(sql::FIELD_KEY),
+            SqlField(version, sql::type_int, sql::flag_not_null),
+            SqlField(sql::DEFINITION_END)
+          };
+          return table;
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Version_name() {return "version";}
+
+        //---------------------------------------------------------------------
+        static SqlField *Cache()
+        {
+          static SqlField table[] = {
+            SqlField(cookie, sql::type_text, sql::flag_primary_key | sql::flag_not_null),
+            SqlField(expires, sql::type_int, sql::flag_not_null),
+            SqlField(value, sql::type_text, sql::flag_not_null),
+            SqlField(sql::DEFINITION_END)
+          };
+          return table;
+        }
+
+        //---------------------------------------------------------------------
+        static const char *Cache_name() {return "cache";}
       };
 
-      //-----------------------------------------------------------------------
-      SqlField TableDefinition_Cache[] =
-      {
-        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE, sql::type_text, sql::flag_primary_key | sql::flag_not_null),
-        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, sql::type_int, sql::flag_not_null),
-        SqlField(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, sql::type_text, sql::flag_not_null),
-        SqlField(sql::DEFINITION_END)
-      };
+      const char *ICacheTables::version = "version";
+      const char *ICacheTables::cookie = "cookie";
+      const char *ICacheTables::expires = "expires";
+      const char *ICacheTables::value = "value";
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -142,7 +173,7 @@ namespace openpeer
         MessagePtr message = Message::create(rootEl, source);
         if (!message) return MessagePtr();
 
-        outRawBuffer = IHelper::convertToBuffer(str);
+        outRawBuffer = UseServicesHelper::convertToBuffer(str);
         return message;
       }
 
@@ -361,7 +392,7 @@ namespace openpeer
       Log::Params Cache::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("stack::Cache");
-        IHelper::debugAppend(objectEl, "id", mID);
+        UseServicesHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
 
@@ -384,25 +415,6 @@ namespace openpeer
           return;
         }
 
-        char endChar = path[path.length()-1];
-        if (('/' != endChar) &&
-            ('\\' != endChar)) {
-
-          endChar = '/';
-
-          String::size_type found1 = path.find('/');
-          String::size_type found2 = path.find('\\');
-
-          if (String::npos == found1) {
-            if (String::npos != found2) endChar = '\\';
-          } else {
-            if ((String::npos != found2) &&
-                (found2 < found1)) endChar = '\\';
-          }
-
-          path += endChar;
-        }
-
         String fileName = UseSettings::getString(OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME);
 
         if (fileName.length() < 1) {
@@ -410,21 +422,23 @@ namespace openpeer
           return;
         }
 
-        path += fileName;
+        path = UseStackHelper::appendPath(path, fileName);
 
         try {
-          mDB = SQLDatabasePtr(new SQLDatabase);
+          ZS_LOG_DETAIL(log("loading cache database") + ZS_PARAM("path", path))
+
+          mDB = SqlDatabasePtr(new SqlDatabase);
 
           mDB->open(path);
 
-          SqlTable versionTable(mDB->getHandle(), "version", TableDefinition_Version);
+          SqlTable versionTable(mDB->getHandle(), ICacheTables::Version_name(), ICacheTables::Version());
 
           if (!versionTable.exists()) {
 
             versionTable.create();
 
             SqlRecord record(versionTable.fields());
-            record.setInteger("version", OPENPEER_STACK_CACHE_DATABASE_VERSION);
+            record.setInteger(ICacheTables::version, OPENPEER_STACK_CACHE_DATABASE_VERSION);
             versionTable.addRecord(&record);
           }
 
@@ -432,7 +446,7 @@ namespace openpeer
 
           SqlRecord *versionRecord = versionTable.getTopRecord();
 
-          auto databaseVersion = versionRecord->getValue("version")->asInteger();
+          auto databaseVersion = versionRecord->getValue(ICacheTables::version)->asInteger();
 
           bool flushAllTables = false;
 
@@ -441,11 +455,11 @@ namespace openpeer
 
             flushAllTables = true;
 
-            versionRecord->setInteger("version", OPENPEER_STACK_CACHE_DATABASE_VERSION);
+            versionRecord->setInteger(ICacheTables::version, OPENPEER_STACK_CACHE_DATABASE_VERSION);
             versionTable.updateRecord(versionRecord);
           }
 
-          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+          SqlTable cacheTable(mDB->getHandle(), ICacheTables::Cache_name(), ICacheTables::Cache());
 
           if (cacheTable.exists()) {
             if (flushAllTables) {
@@ -461,14 +475,14 @@ namespace openpeer
 
           ZS_LOG_DEBUG(log("cleaning out expired records"))
 
-          cacheTable.deleteRecords("expires = 0");
+          cacheTable.deleteRecords(String(ICacheTables::expires) + " = 0");
 
           Time now = zsLib::now();
           auto sinceEpoch = zsLib::timeSinceEpoch<Seconds>(now);
 
-          cacheTable.deleteRecords("expires < " + string(sinceEpoch.count()));
+          cacheTable.deleteRecords(String(ICacheTables::expires) + " < " + string(sinceEpoch.count()));
 
-        } catch (SQLException &e) {
+        } catch (SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database preparation failure") + ZS_PARAM("message", e.msg()))
           mDB.reset();
         }
@@ -485,7 +499,7 @@ namespace openpeer
         String cookieName(cookieNamePath);
 
         try {
-          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+          SqlTable cacheTable(mDB->getHandle(), ICacheTables::Cache_name(), ICacheTables::Cache());
 
           if (!cacheTable.open("cookie = \'" + SqlEscape(cookieName) + "\'")) {
             ZS_LOG_WARNING(Detail, log("unable to lookup cookie database"))
@@ -499,7 +513,7 @@ namespace openpeer
             return true;
           }
 
-          auto expires = cookieRecord->getValue(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES)->asInteger();
+          auto expires = cookieRecord->getValue(ICacheTables::expires)->asInteger();
           if (0 != expires) {
             Time expiryTime = zsLib::timeSinceEpoch<Seconds>(Seconds(expires));
             if (zsLib::now() > expiryTime) {
@@ -509,11 +523,11 @@ namespace openpeer
             }
           }
 
-          outValue = cookieRecord->getValue(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE)->asString();
+          outValue = cookieRecord->getValue(ICacheTables::value)->asString();
 
           ZS_LOG_TRACE(log("cookie fetched") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("value", outValue))
 
-        } catch(SQLException &e) {
+        } catch(SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
           return false;
         }
@@ -534,9 +548,9 @@ namespace openpeer
         String data(str);
 
         try {
-          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+          SqlTable cacheTable(mDB->getHandle(), ICacheTables::Cache_name(), ICacheTables::Cache());
 
-          if (!cacheTable.open("cookie = \'" + SqlEscape(cookieName) + "\'")) {
+          if (!cacheTable.open(String(ICacheTables::cookie) + " = \'" + SqlEscape(cookieName) + "\'")) {
             ZS_LOG_WARNING(Detail, log("unable to lookup cookie database"))
             return false;
           }
@@ -546,21 +560,21 @@ namespace openpeer
             ZS_LOG_TRACE(log("adding new database cache entry for cookie") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("expires", expires) + ZS_PARAM("value", str))
 
             SqlRecord record(cacheTable.fields());
-            record.setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_COOKIE, cookieName);
-            record.setInteger(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
-            record.setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, data);
+            record.setString(ICacheTables::cookie, cookieName);
+            record.setInteger(ICacheTables::expires, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
+            record.setString(ICacheTables::value, data);
             cacheTable.addRecord(&record);
             return true;
           }
 
           ZS_LOG_TRACE(log("updating database cache entry for cookie") + ZS_PARAM("cookie name", cookieName) + ZS_PARAM("expires", expires) + ZS_PARAM("value", str))
 
-          cookieRecord->setInteger(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_EXPIRES, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
-          cookieRecord->setString(OPENPEER_STACK_CACHE_TABLE_CACHE_FIELD_VALUE, data);
+          cookieRecord->setInteger(ICacheTables::expires, Time() == expires ? 0 : zsLib::timeSinceEpoch<Seconds>(expires).count());
+          cookieRecord->setString(ICacheTables::value, data);
 
           cacheTable.updateRecord(cookieRecord);
 
-        } catch(SQLException &e) {
+        } catch(SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
           return false;
         }
@@ -574,16 +588,16 @@ namespace openpeer
         if (!mDB) return false;
 
         try {
-          SqlTable cacheTable(mDB->getHandle(), "cache", TableDefinition_Cache);
+          SqlTable cacheTable(mDB->getHandle(), ICacheTables::Cache_name(), ICacheTables::Cache());
 
-          if (!cacheTable.deleteRecords("cookie = \'" + SqlEscape(String(cookieNamePath)) + "\'")) {
+          if (!cacheTable.deleteRecords(String(ICacheTables::cookie) + " = \'" + SqlEscape(String(cookieNamePath)) + "\'")) {
             ZS_LOG_WARNING(Detail, log("unable to delete from cookie database"))
             return false;
           }
 
           ZS_LOG_TRACE(log("cookie removed") + ZS_PARAM("cookie name", cookieNamePath))
 
-        } catch(SQLException &e) {
+        } catch(SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
           return false;
         }

@@ -37,6 +37,8 @@
 
 #include <easySQLite/SqlDatabase.h>
 
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX "openpeer/stack/push-mailbox-database-filename-postfix"
+
 namespace openpeer
 {
   namespace stack
@@ -86,6 +88,9 @@ namespace openpeer
         friend class SendingKeyTable;
         friend class ReceivingKeyTable;
         friend class Storage;
+
+        ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Exception, SqlException)
 
       protected:
         ServicePushMailboxSessionDatabaseAbstraction(
@@ -764,6 +769,11 @@ namespace openpeer
 
         void cancel();
 
+        void prepareDB();
+        void constructDBTables();
+
+        static String SqlEscape(const String &input);
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -777,6 +787,8 @@ namespace openpeer
         String mUserHash;
         String mTempPath;
         String mStoragePath;
+
+        mutable SqlDatabasePtr mDB;
       };
 
       //-----------------------------------------------------------------------

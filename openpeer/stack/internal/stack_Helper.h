@@ -86,6 +86,11 @@ namespace openpeer
                                                const char *saltAndProofAndBase64EncodedData
                                                );
 
+        static String appendPath(
+                                 const char *path,
+                                 const char *fileName = NULL
+                                 );
+
         static Log::Level getJavaScriptLogLevel();
 
       protected:

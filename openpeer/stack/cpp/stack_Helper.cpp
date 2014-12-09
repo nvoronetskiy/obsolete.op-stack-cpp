@@ -200,6 +200,38 @@ namespace openpeer
         return decryptedData;
       }
 
+      //-------------------------------------------------------------------------
+      String Helper::appendPath(
+                                const char *inPath,
+                                const char *fileName
+                                )
+      {
+        String path(inPath);
+
+        if (path.length() < 1) return String(fileName);
+
+        char endChar = path[path.length()-1];
+        if (('/' != endChar) &&
+            ('\\' != endChar)) {
+
+          endChar = '/';
+
+          String::size_type found1 = path.find('/');
+          String::size_type found2 = path.find('\\');
+
+          if (String::npos == found1) {
+            if (String::npos != found2) endChar = '\\';
+          } else {
+            if ((String::npos != found2) &&
+                (found2 < found1)) endChar = '\\';
+          }
+          
+          path += endChar;
+        }
+
+        return path + String(fileName);
+      }
+
       //-----------------------------------------------------------------------
       Log::Level Helper::getJavaScriptLogLevel()
       {
@@ -272,5 +304,13 @@ namespace openpeer
       return internal::Helper::splitDecrypt(key, hexIVAndBase64EncodedData);
     }
 
+    //-------------------------------------------------------------------------
+    String IHelper::appendPath(
+                             const char *path,
+                             const char *fileName
+                             )
+    {
+      return internal::Helper::appendPath(path, fileName);
+    }
   }
 }

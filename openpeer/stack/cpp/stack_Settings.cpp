@@ -179,6 +179,8 @@ namespace openpeer
 
         setString(OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME, "cache.db");
 
+        setString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX, "_push_mailbox.db");
+
         {
           AutoRecursiveLock lock(mLock);
           mAppliedDefaults = true;
