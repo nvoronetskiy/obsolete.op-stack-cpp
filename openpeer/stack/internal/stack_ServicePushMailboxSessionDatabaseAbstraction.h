@@ -59,7 +59,7 @@ namespace openpeer
       {
       public:
         friend interaction IServicePushMailboxSessionDatabaseAbstractionFactory;
-        friend interaction IServicePushMailboxSession;
+        friend interaction IServicePushMailboxSessionDatabaseAbstraction;
 
         ZS_DECLARE_CLASS_PTR(SettingsTable)
         ZS_DECLARE_CLASS_PTR(FolderTable)

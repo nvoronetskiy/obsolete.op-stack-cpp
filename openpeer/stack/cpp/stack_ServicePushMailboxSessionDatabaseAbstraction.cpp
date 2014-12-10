@@ -263,12 +263,37 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_getLastDownloadedVersionForFolders() const
       {
+        try {
+          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+
+          table.open();
+
+          SqlRecord *settingsRecord = table.getTopRecord();
+
+          return settingsRecord->getValue(UseTables::lastDownloadedVersionForFolders)->asString();
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return String();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_setLastDownloadedVersionForFolders(const char *version)
       {
+        try {
+          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+
+          table.open();
+
+          SqlRecord *settingsRecord = table.getTopRecord();
+
+          settingsRecord->setString(UseTables::lastDownloadedVersionForFolders, String(version));
+
+          table.updateRecord(settingsRecord);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -919,7 +944,7 @@ namespace openpeer
               versionTable.create();
 
               SqlRecord record(versionTable.fields());
-              record.setInteger("version", OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION);
+              record.setInteger(UseTables::version, OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION);
               versionTable.addRecord(&record);
 
               constructDBTables();
@@ -977,6 +1002,10 @@ namespace openpeer
         {
           SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
           table.create();
+
+          SqlRecord record(table.fields());
+          record.setString(UseTables::lastDownloadedVersionForFolders, String());
+          table.addRecord(&record);
         }
         {
           SqlTable table(mDB->getHandle(), UseTables::Folder_name(), UseTables::Folder());
@@ -1061,8 +1090,27 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServicePushMailboxSession
+      #pragma mark
 
+      //-----------------------------------------------------------------------
+      ElementPtr IServicePushMailboxSessionDatabaseAbstraction::toDebug(IServicePushMailboxSessionDatabaseAbstractionPtr session)
+      {
+        return ServicePushMailboxSessionDatabaseAbstraction::toDebug(session);
+      }
+
+      //-----------------------------------------------------------------------
+      IServicePushMailboxSessionDatabaseAbstractionPtr IServicePushMailboxSessionDatabaseAbstraction::create(
+                                                                                                             const char *inHashRepresentingUser,
+                                                                                                             const char *inUserTemporaryFilePath,
+                                                                                                             const char *inUserStorageFilePath
+                                                                                                             )
+      {
+        return IServicePushMailboxSessionDatabaseAbstractionFactory::singleton().create(inHashRepresentingUser, inUserTemporaryFilePath, inUserStorageFilePath);
+      }
 
     }
+
   }
 }

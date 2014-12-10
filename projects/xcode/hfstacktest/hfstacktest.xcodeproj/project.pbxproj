@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0026383E1A2FC139008EC96E /* TestCache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0026383D1A2FC139008EC96E /* TestCache.cpp */; };
 		002638411A2FC39E008EC96E /* TestSetup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002638401A2FC39E008EC96E /* TestSetup.cpp */; };
+		002DF47F1A38B2AA0046DE49 /* TestPushMailboxDB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 002DF47E1A38B2AA0046DE49 /* TestPushMailboxDB.cpp */; };
 		0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97716CAB85000E6DB4D /* testing.cpp */; };
 		0063CA3516CAB85000E6DB4D /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97A16CAB85000E6DB4D /* main.cpp */; };
 		0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97B16CAB85000E6DB4D /* TestStack.cpp */; };
@@ -160,6 +161,8 @@
 		0026383F1A2FC144008EC96E /* TestCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestCache.h; sourceTree = "<group>"; };
 		002638401A2FC39E008EC96E /* TestSetup.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestSetup.cpp; sourceTree = "<group>"; };
 		002638421A2FC3AB008EC96E /* TestSetup.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestSetup.h; sourceTree = "<group>"; };
+		002DF47E1A38B2AA0046DE49 /* TestPushMailboxDB.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestPushMailboxDB.cpp; sourceTree = "<group>"; };
+		002DF4801A38B2B90046DE49 /* TestPushMailboxDB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestPushMailboxDB.h; sourceTree = "<group>"; };
 		0063C7B016CAB81A00E6DB4D /* hfstackTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hfstackTest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0063C97716CAB85000E6DB4D /* testing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = testing.cpp; sourceTree = "<group>"; };
 		0063C97816CAB85000E6DB4D /* testing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = testing.h; sourceTree = "<group>"; };
@@ -255,6 +258,8 @@
 				002638401A2FC39E008EC96E /* TestSetup.cpp */,
 				0026383F1A2FC144008EC96E /* TestCache.h */,
 				0026383D1A2FC139008EC96E /* TestCache.cpp */,
+				002DF47E1A38B2AA0046DE49 /* TestPushMailboxDB.cpp */,
+				002DF4801A38B2B90046DE49 /* TestPushMailboxDB.h */,
 				0063C97B16CAB85000E6DB4D /* TestStack.cpp */,
 				0063C97C16CAB85000E6DB4D /* TestStack.h */,
 				58E68C8116D640CA0098B4E3 /* TestServiceLockboxSession.h */,
@@ -515,6 +520,7 @@
 			files = (
 				0026383E1A2FC139008EC96E /* TestCache.cpp in Sources */,
 				0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */,
+				002DF47F1A38B2AA0046DE49 /* TestPushMailboxDB.cpp in Sources */,
 				0063CA3516CAB85000E6DB4D /* main.cpp in Sources */,
 				0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */,
 				58E68C8316D7877F0098B4E3 /* TestServiceLockboxSession.cpp in Sources */,
@@ -602,6 +608,7 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
+					../../../../easysqlite/easySQLite/easySQLite,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
@@ -642,6 +649,7 @@
 					"../../../../ortc-lib/libs/op-services-cpp",
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
+					../../../../easysqlite/easySQLite/easySQLite,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";

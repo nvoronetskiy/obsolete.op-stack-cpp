@@ -60,8 +60,8 @@ namespace openpeer
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::indexFolderRecord = "indexFolderRecord";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::messageID = "messageID";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::removedFlag = "removedFlag";
-      const char *IServicePushMailboxSessionDatabaseAbstractionTables::to = "to";
-      const char *IServicePushMailboxSessionDatabaseAbstractionTables::from = "from";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::to = "_to";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::from = "_from";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::cc = "cc";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::bcc = "bcc";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::type = "type";
@@ -96,7 +96,7 @@ namespace openpeer
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::needsDownload = "needsDownload";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::failedDownload = "failedDownload";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::indexListRecord = "indexListRecord";
-      const char *IServicePushMailboxSessionDatabaseAbstractionTables::order = "order";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::order = "_order";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::keyDomain = "keyDomain";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::rsaPassphrase = "rsaPassphrase";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhPassphrase = "dhPassphrase";

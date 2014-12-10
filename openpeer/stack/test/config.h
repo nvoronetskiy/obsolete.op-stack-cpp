@@ -43,7 +43,8 @@
 #define OPENPEER_STACK_TEST_TELNET_LOGGING_PORT    (59999)
 
 #define OPENPEER_STACK_TEST_DO_SETUP_TEST                   (true)
-#define OPENPEER_STACK_TEST_DO_CACHE_TEST                   (true)
+#define OPENPEER_STACK_TEST_DO_CACHE_TEST                   (false)
+#define OPENPEER_STACK_TEST_DO_PUSH_MAILBOX_DB_TEST         (true)
 #define OPENPEER_STACK_TEST_DO_STACK_TEST                   (false)
 #define OPENPEER_STACK_TEST_DO_LOCKBOX_SESSION_TEST         (false)
 #define OPENPEER_STACK_TEST_DO_ACCOUNT_TEST                 (false)

@@ -31,10 +31,11 @@
 
 #pragma once
 
-#include <openpeer/stack/types.h>
-#include <openpeer/services/IDHKeyDomain.h>
+#include <openpeer/stack/internal/types.h>
 
 #include <openpeer/stack/IServicePushMailbox.h>
+
+#include <openpeer/services/IDHKeyDomain.h>
 
 #define OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN (-1)
 #define OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN (-1)
