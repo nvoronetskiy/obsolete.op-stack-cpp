@@ -120,6 +120,7 @@ namespace openpeer
         static TestPushMailboxDBPtr create();
 
         void testCreate();
+        void testSettings();
 
       protected:
 
@@ -165,6 +166,8 @@ namespace openpeer
         TestPushMailboxDBWeakPtr mThisWeak;
 
         ULONG mCount {};
+
+        String mUserHash;
 
         IUseAbstractionPtr mAbstraction;
 

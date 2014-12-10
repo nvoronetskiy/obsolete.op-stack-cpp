@@ -40,6 +40,8 @@
 #include <openpeer/stack/ICache.h>
 #include <openpeer/stack/ISettings.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include "config.h"
 #include "testing.h"
 
@@ -51,6 +53,8 @@ using zsLib::ULONG;
 ZS_DECLARE_USING_PTR(openpeer::stack, IStack)
 ZS_DECLARE_USING_PTR(openpeer::stack, ICache)
 ZS_DECLARE_USING_PTR(openpeer::stack, ISettings)
+
+ZS_DECLARE_TYPEDEF_PTR(openpeer::services::IHelper, UseServicesHelper)
 
 ZS_DECLARE_USING_PTR(openpeer::stack::test, TestPushMailboxDB)
 ZS_DECLARE_USING_PTR(openpeer::stack::test, TestSetup)
@@ -155,7 +159,8 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      TestPushMailboxDB::TestPushMailboxDB()
+      TestPushMailboxDB::TestPushMailboxDB() :
+        mUserHash(UseServicesHelper::randomString(8))
       {
         mFactory = OverrideAbstractionFactory::create();
 
@@ -193,13 +198,47 @@ namespace openpeer
         mkdir("/tmp/testpushdb/tmp", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         mkdir("/tmp/testpushdb/users", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-        mAbstraction = IUseAbstraction::create("abcdef", "/tmp/testpushdb/tmp", "/tmp/testpushdb/users");
+        mAbstraction = IUseAbstraction::create(mUserHash, "/tmp/testpushdb/tmp", "/tmp/testpushdb/users");
         mOverride = OverridePushMailboxAbstraction::convert(mAbstraction);
 
         TESTING_CHECK(mAbstraction)
         TESTING_CHECK(mOverride)
 
         checkIndexValue(UseTables::Version(), UseTables::Version_name(), 0, UseTables::version, 1);
+        checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, String());
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testSettings()
+      {
+        auto settings = mAbstraction->settingsTable();
+
+        {
+          String result = settings->getLastDownloadedVersionForFolders();
+          TESTING_EQUAL(result, String())
+          checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, String());
+        }
+        {
+          String value("foo-1");
+          settings->setLastDownloadedVersionForFolders(value);
+          String result = settings->getLastDownloadedVersionForFolders();
+          TESTING_EQUAL(result, value)
+          checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, value);
+        }
+        {
+          String value("foo-2");
+          settings->setLastDownloadedVersionForFolders(value);
+          String result = settings->getLastDownloadedVersionForFolders();
+          TESTING_EQUAL(result, value)
+          checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, value);
+        }
+        {
+          String value;
+          settings->setLastDownloadedVersionForFolders(value);
+          String result = settings->getLastDownloadedVersionForFolders();
+          TESTING_EQUAL(result, value)
+          checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, value);
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -334,6 +373,7 @@ void doTestPushMailboxDB()
   TestPushMailboxDBPtr testObject = TestPushMailboxDB::create();
 
   testObject->testCreate();
+  testObject->testSettings();
 
   std::cout << "COMPLETE:     Push mailbox db complete.\n";
 
