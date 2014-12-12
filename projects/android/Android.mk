@@ -2,10 +2,10 @@ LOCAL_PATH := $(call my-dir)/../../
 include $(CLEAR_VARS)
 
 LOCAL_ARM_MODE := arm
+LOCAL_CLANG := true
 
 LOCAL_CFLAGS	:= -Wall \
 -W \
--std=c++11 \
 -O2 \
 -pipe \
 -fPIC \
@@ -13,23 +13,28 @@ LOCAL_CFLAGS	:= -Wall \
 -fexceptions \
 -D_ANDROID \
 
+LOCAL_CPPFLAGS += -std=c++11
+
 LOCAL_MODULE    := hfstack_android
 
 LOCAL_EXPORT_C_INCLUDES:= $(LOCAL_PATH) \
 		
 
 LOCAL_C_INCLUDES:= $(LOCAL_PATH) \
+$(LOCAL_PATH)/../easysqlite/easySQLite/easySQLite \
 $(LOCAL_PATH)/openpeer/stack/internal \
 $(LOCAL_PATH)/../ortc-lib/libs/zsLib \
-$(LOCAL_PATH)/../ortc-lib/libs/zsLib/internal \
+$(LOCAL_PATH)/../ortc-lib/libs/zsLib/zsLib/internal \
+$(LOCAL_PATH)/../ortc-lib/libs/zsLib/zsLib/extras \
 $(LOCAL_PATH)/../ortc-lib/libs/op-services-cpp \
 $(LOCAL_PATH)/../ortc-lib/libs \
 $(LOCAL_PATH)/.. \
 $(LOCAL_PATH)/../ortc-lib/libs/build/android/curl/include \
 $(LOCAL_PATH)/../ortc-lib/libs/udns \
-$(LOCAL_PATH)../ortc-lib/libs/build/android/boost/include/boost-1_53 \
-$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.7/include \
-$(ANDROIDNDK_PATH)/sources/cxx-stl/gnu-libstdc++/4.7/libs/armeabi/include \
+$(LOCAL_PATH)/../sqlite/build \
+$(ANDROIDNDK_PATH)/sources/android/support/include \
+$(ANDROIDNDK_PATH)/sources/cxx-stl/llvm-libc++/libcxx/include \
+$(ANDROIDNDK_PATH)/platforms/android-19/arch-arm/usr/include \
 
 SOURCE_PATH := openpeer/stack/cpp
 MESSAGE_SOURCE_PATH := openpeer/stack/message
@@ -45,6 +50,7 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_FinderConnection.cpp \
 		   $(SOURCE_PATH)/stack_FinderRelayChannel.cpp \
 		   $(SOURCE_PATH)/stack_Helper.cpp \
+		   $(SOURCE_PATH)/stack_IServicePushMailboxSessionDatabaseAbstractionTables.cpp \
 		   $(SOURCE_PATH)/stack_KeyGenerator.cpp \
 		   $(SOURCE_PATH)/stack_Location.cpp \
 		   $(SOURCE_PATH)/stack_MessageIncoming.cpp \
@@ -57,6 +63,7 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_PeerSubscription.cpp \
 		   $(SOURCE_PATH)/stack_Publication.cpp \
 		   $(SOURCE_PATH)/stack_PublicationMetaData.cpp \
+		   $(SOURCE_PATH)/stack_PublicationRepository.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Fetcher.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_PeerCache.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_PeerSubscriptionIncoming.cpp \
@@ -64,19 +71,19 @@ LOCAL_SRC_FILES := $(SOURCE_PATH)/stack.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Publisher.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_Remover.cpp \
 		   $(SOURCE_PATH)/stack_PublicationRepository_SubscriptionLocal.cpp \
-		   $(SOURCE_PATH)/stack_PublicationRepository.cpp \
+		   $(SOURCE_PATH)/stack_ServerMessaging.cpp \
 		   $(SOURCE_PATH)/stack_ServiceCertificatesValidateQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServiceIdentitySession.cpp \
 		   $(SOURCE_PATH)/stack_ServiceLockboxSession.cpp \
+		   $(SOURCE_PATH)/stack_ServiceNamespaceGrantSession.cpp \
 		   $(SOURCE_PATH)/stack_ServicePeerFileLookup.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession.cpp \
-		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncDatabase.cpp \
+		   $(SOURCE_PATH)/stack_ServicePushMailboxSessionDatabaseAbstraction.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncDecrypt.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncEncrypt.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_AsyncNotifier.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_RegisterQuery.cpp \
 		   $(SOURCE_PATH)/stack_ServicePushMailboxSession_SendQuery.cpp \
-		   $(SOURCE_PATH)/stack_ServiceNamespaceGrantSession.cpp \
 		   $(SOURCE_PATH)/stack_ServiceSaltFetchSignedSaltQuery.cpp \
 		   $(SOURCE_PATH)/stack_Settings.cpp \
                    $(SOURCE_PATH)/stack_javascript.cpp \

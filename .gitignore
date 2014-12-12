@@ -3,3 +3,5 @@ xcshareddata
 **/obj
 **/*.a
 **/.project
+projects/android/obj
+projects/android/libs
