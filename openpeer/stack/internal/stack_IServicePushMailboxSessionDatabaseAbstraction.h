@@ -481,7 +481,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: Assign a brand new unique random ID to the folder
           //          specified
-          virtual void resetUniqueID(index indexFolderIndex) = 0;
+          virtual void resetUniqueID(index indexFolderRecord) = 0;
         };
 
 

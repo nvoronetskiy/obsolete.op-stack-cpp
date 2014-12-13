@@ -75,6 +75,7 @@ namespace Testing
   {
     std::cout << "INSTALLING LOGGER...\n\n";
     ILogger::setLogLevel("zsLib", zsLib::Log::Trace);
+    ILogger::setLogLevel("sqlite", zsLib::Log::Trace);
     ILogger::setLogLevel("openpeer_services", zsLib::Log::Trace);
     ILogger::setLogLevel("openpeer_stack", zsLib::Log::Trace);
     ILogger::setLogLevel("openpeer_stack_message", zsLib::Log::Trace);

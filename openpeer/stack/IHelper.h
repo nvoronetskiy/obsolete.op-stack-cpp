@@ -34,6 +34,8 @@
 #include <openpeer/stack/types.h>
 #include <openpeer/stack/message/types.h>
 
+#include <easySQLite/SqlDatabase.h>
+
 namespace openpeer
 {
   namespace stack
@@ -48,6 +50,8 @@ namespace openpeer
 
     interaction IHelper
     {
+      ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
+
       // RETURNS: returns the actual signed element, rather than the bundle element (if bundle was passed in) or NULL if no signature was found
       static ElementPtr getSignatureInfo(
                                          ElementPtr signedEl,
@@ -83,6 +87,8 @@ namespace openpeer
                                const char *path,
                                const char *fileName = NULL
                                );
+
+      static zsLib::Log::Severity toSeverity(SqlDatabase::Trace::Severity severity);
     };
   }
 }

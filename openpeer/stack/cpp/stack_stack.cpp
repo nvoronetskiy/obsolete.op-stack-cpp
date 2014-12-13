@@ -49,6 +49,7 @@
 #include <openpeer/stack/internal/stack_Settings.h>
 
 #include <openpeer/stack/ISettings.h>
+#include <openpeer/stack/IHelper.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/IMessageQueueManager.h>
@@ -57,6 +58,8 @@
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
+
+#include <sqlite3.h>
 
 
 #define OPENPEER_STACK_STACK_THREAD_NAME          "org.openpeer.stack.stackThread"
@@ -68,9 +71,11 @@ namespace openpeer
 {
   namespace stack
   {
+    ZS_DECLARE_TYPEDEF_PTR(stack::internal::Helper, UseStackHelper)
+
     namespace internal
     {
-      using services::IHelper;
+      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
 
       using message::bootstrapper::MessageFactoryBootstrapper;
       using message::bootstrapped_servers::MessageFactoryBootstrappedServers;
@@ -285,7 +290,7 @@ namespace openpeer
       IMessageQueuePtr Stack::queueServices()
       {
         AutoRecursiveLock lock(mLock);
-        if (!mServicesQueue) mServicesQueue = IHelper::getServiceQueue();
+        if (!mServicesQueue) mServicesQueue = UseServicesHelper::getServiceQueue();
         return mServicesQueue;
       }
 
@@ -326,7 +331,7 @@ namespace openpeer
       Log::Params Stack::log(const char *message) const
       {
         ElementPtr objectEl = Element::create("stack::Stack");
-        IHelper::debugAppend(objectEl, "id", mID);
+        UseServicesHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
 
@@ -372,6 +377,8 @@ namespace openpeer
                        IMessageQueuePtr keyGenerationQueue
                        )
     {
+      UseStackHelper::enableSqliteErrorLogging();
+
       services::IHelper::setSocketThreadPriority();
       services::IHelper::setTimerThreadPriority();
 

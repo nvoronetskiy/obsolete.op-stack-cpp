@@ -212,6 +212,7 @@ namespace openpeer
       void TestPushMailboxDB::testSettings()
       {
         auto settings = mAbstraction->settingsTable();
+        TESTING_CHECK(settings)
 
         {
           String result = settings->getLastDownloadedVersionForFolders();
@@ -239,6 +240,92 @@ namespace openpeer
           TESTING_EQUAL(result, value)
           checkIndexValue(UseTables::Settings(), UseTables::Settings_name(), 0, UseTables::lastDownloadedVersionForFolders, value);
         }
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testFolder()
+      {
+        auto folder = mAbstraction->folderTable();
+        TESTING_CHECK(folder)
+
+        {
+          folder->resetUniqueID(5); // this will not do anything
+        }
+
+        String originalUniqueID;
+
+        {
+          IUseAbstraction::FolderRecord value;
+          value.mFolderName = "inbox";
+          value.mTotalUnreadMessages = 5;
+          value.mTotalMessages = 7;
+          value.mUpdateNext = zsLib::now() + Seconds(5);
+          folder->addOrUpdate(value);
+
+          auto index = folder->getIndex("inbox");
+          TESTING_EQUAL(index, 1)
+
+          auto resultRecord = folder->getIndexAndUniqueID("inbox");
+          TESTING_EQUAL(resultRecord->mIndex, 1)
+          TESTING_EQUAL(resultRecord->mFolderName, "inbox")
+          TESTING_CHECK(resultRecord->mUniqueID.hasData())
+          TESTING_EQUAL(resultRecord->mServerVersion, String())
+          TESTING_EQUAL(resultRecord->mDownloadedVersion, String())
+          TESTING_EQUAL(resultRecord->mTotalUnreadMessages, 5)
+          TESTING_EQUAL(resultRecord->mTotalMessages, 7)
+          TESTING_CHECK(zsLib::now() < resultRecord->mUpdateNext)
+          TESTING_CHECK(zsLib::now() + Seconds(10) > resultRecord->mUpdateNext)
+
+          originalUniqueID = resultRecord->mUniqueID;
+
+          auto name = folder->getName(index);
+          TESTING_EQUAL(name, "inbox")
+
+          folder->updateFolderName(index, "inbox2");
+
+          auto name2 = folder->getName(index);
+          TESTING_EQUAL(name2, "inbox2")
+        }
+
+        {
+          folder->updateServerVersionIfFolderExists("inbox2", "server-1");
+
+          auto resultRecord = folder->getIndexAndUniqueID("inbox2");
+          TESTING_EQUAL(resultRecord->mIndex, 1)
+          TESTING_EQUAL(resultRecord->mFolderName, "inbox2")
+          TESTING_CHECK(resultRecord->mUniqueID.hasData())
+          TESTING_EQUAL(resultRecord->mServerVersion, "server-1")
+          TESTING_EQUAL(resultRecord->mDownloadedVersion, String())
+          TESTING_EQUAL(resultRecord->mTotalUnreadMessages, 5)
+          TESTING_EQUAL(resultRecord->mTotalMessages, 7)
+          TESTING_CHECK(zsLib::now() < resultRecord->mUpdateNext)
+          TESTING_CHECK(zsLib::now() + Seconds(10) > resultRecord->mUpdateNext)
+        }
+
+        {
+          folder->updateServerVersionIfFolderExists("bogus", "server-2"); // noop
+        }
+
+        {
+          folder->updateDownloadInfo(1, "download-1", zsLib::now() + Seconds(15));
+        }
+
+        {
+          folder->resetUniqueID(1);
+
+          auto resultRecord = folder->getIndexAndUniqueID("inbox2");
+          TESTING_EQUAL(resultRecord->mIndex, 1)
+          TESTING_EQUAL(resultRecord->mFolderName, "inbox2")
+          TESTING_CHECK(resultRecord->mUniqueID.hasData())
+          TESTING_CHECK(resultRecord->mUniqueID != originalUniqueID)
+          TESTING_EQUAL(resultRecord->mServerVersion, "server-1")
+          TESTING_EQUAL(resultRecord->mDownloadedVersion, "download-1")
+          TESTING_EQUAL(resultRecord->mTotalUnreadMessages, 5)
+          TESTING_EQUAL(resultRecord->mTotalMessages, 7)
+          TESTING_CHECK(zsLib::now() < resultRecord->mUpdateNext)
+          TESTING_CHECK(zsLib::now() + Seconds(10) < resultRecord->mUpdateNext)
+        }
+
       }
 
       //-----------------------------------------------------------------------
@@ -374,6 +461,7 @@ void doTestPushMailboxDB()
 
   testObject->testCreate();
   testObject->testSettings();
+  testObject->testFolder();
 
   std::cout << "COMPLETE:     Push mailbox db complete.\n";
 

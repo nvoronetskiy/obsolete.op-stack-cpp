@@ -55,7 +55,8 @@ namespace openpeer
 
       class ServicePushMailboxSessionDatabaseAbstraction : public Noop,
                                                            public SharedRecursiveLock,
-                                                           public IServicePushMailboxSessionDatabaseAbstraction
+                                                           public IServicePushMailboxSessionDatabaseAbstraction,
+                                                           public sql::Database::Trace
       {
       public:
         friend interaction IServicePushMailboxSessionDatabaseAbstractionFactory;
@@ -192,7 +193,7 @@ namespace openpeer
                                           const char *inDownloadedVersion,
                                           const Time &inUpdateNext
                                           )                                           {mOuter->IFolderTable_updateDownloadInfo(indexFolderRecord, inDownloadedVersion, inUpdateNext);}
-          virtual void resetUniqueID(index indexFolderIndex)                          {mOuter->IFolderTable_resetUniqueID(indexFolderIndex);}
+          virtual void resetUniqueID(index indexFolderRecord)                         {mOuter->IFolderTable_resetUniqueID(indexFolderRecord);}
 
         protected:
           ServicePushMailboxSessionDatabaseAbstractionPtr mOuter;
@@ -555,7 +556,7 @@ namespace openpeer
                                              const char *inDownloadedVersion,
                                              const Time &inUpdateNext
                                              );
-        void IFolderTable_resetUniqueID(index indexFolderIndex);
+        void IFolderTable_resetUniqueID(index indexFolderRecord);
 
 
         //---------------------------------------------------------------------
@@ -756,6 +757,16 @@ namespace openpeer
         String IStorage_storeToTemporaryFile(const SecureByteBlock &buffer);
         String IStorage_getStorageFileName() const;
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServicePushMailboxSessionDatabaseAbstraction => SqlDatabase::Trace
+        #pragma mark
+
+        virtual void notifyDatabaseTrace(
+                                         SqlDatabase::Trace::Severity severity,
+                                         const char *message
+                                         ) const;
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -773,6 +784,7 @@ namespace openpeer
         void constructDBTables();
 
         static String SqlEscape(const String &input);
+        static String SqlQuote(const String &input);
 
       protected:
         //---------------------------------------------------------------------

@@ -91,9 +91,23 @@ namespace openpeer
                                  const char *fileName = NULL
                                  );
 
+        static zsLib::Log::Severity toSeverity(SqlDatabase::Trace::Severity severity);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Helper => (friends)
+        #pragma mark
+
         static Log::Level getJavaScriptLogLevel();
 
+        static void enableSqliteErrorLogging();
+
       protected:
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Helper => (internal)
+        #pragma mark
+
         static Log::Params log(const char *message);
       };
     }

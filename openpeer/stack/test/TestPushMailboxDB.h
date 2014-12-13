@@ -121,6 +121,7 @@ namespace openpeer
 
         void testCreate();
         void testSettings();
+        void testFolder();
 
       protected:
 

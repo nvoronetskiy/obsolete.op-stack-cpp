@@ -38,9 +38,12 @@
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
 
+#include <zsLib/helpers.h>
 #include <zsLib/XML.h>
 
 #define OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION 1
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDERS_NEEDING_UPDATE_LIMIT 5
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDER_UNIQUE_ID_LENGTH 16
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -87,6 +90,8 @@ namespace openpeer
 
       ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
       ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+      ZS_DECLARE_TYPEDEF_PTR(sql::RecordSet, SqlRecordSet)
+      ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
 
       typedef ServicePushMailboxSessionDatabaseAbstraction::index index;
 
@@ -264,7 +269,7 @@ namespace openpeer
       String ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_getLastDownloadedVersionForFolders() const
       {
         try {
-          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+          SqlTable table(*mDB, UseTables::Settings_name(), UseTables::Settings());
 
           table.open();
 
@@ -282,7 +287,7 @@ namespace openpeer
       void ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_setLastDownloadedVersionForFolders(const char *version)
       {
         try {
-          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+          SqlTable table(*mDB, UseTables::Settings_name(), UseTables::Settings());
 
           table.open();
 
@@ -307,34 +312,163 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_flushAll()
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.deleteRecords(String());
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_removeByIndex(index indexFolderRecord)
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.deleteRecords(String(SqlField::id) + " = " + string(indexFolderRecord));
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       index ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getIndex(const char *inFolderName) const
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.open(String(UseTables::folderName) + " = " + SqlQuote(inFolderName));
+
+          SqlRecord *record = table.getTopRecord();
+          if (record) {
+            auto result = record->getKeyIdValue()->asInteger();
+            ZS_LOG_TRACE(log("folder found") + ZS_PARAM("folder name", inFolderName) + ZS_PARAM("index", result))
+            return static_cast<index>(result);
+          }
+
+          ZS_LOG_TRACE(log("folder does not exist") + ZS_PARAM("folder name", inFolderName))
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+      }
+
+      //-----------------------------------------------------------------------
+      static FolderRecordPtr convertFolderRecord(SqlRecord *record)
+      {
+        FolderRecordPtr result(new FolderRecord);
+
+        result->mIndex = static_cast<decltype(result->mIndex)>(record->getKeyIdValue()->asInteger());
+        result->mUniqueID = record->getValue(UseTables::uniqueID)->asString();
+        result->mFolderName = record->getValue(UseTables::folderName)->asString();
+        result->mServerVersion = record->getValue(UseTables::serverVersion)->asString();
+        result->mDownloadedVersion = record->getValue(UseTables::downloadedVersion)->asString();
+        result->mTotalUnreadMessages = static_cast<decltype(result->mTotalUnreadMessages)>(record->getValue(UseTables::totalUnreadMessages)->asInteger());
+        result->mTotalMessages = static_cast<decltype(result->mTotalMessages)>(record->getValue(UseTables::totalMessages)->asInteger());
+        result->mUpdateNext = zsLib::timeSinceEpoch(Seconds(record->getValue(UseTables::updateNext)->asInteger()));
+
+        return result;
       }
 
       //-----------------------------------------------------------------------
       FolderRecordPtr ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getIndexAndUniqueID(const char *inFolderName) const
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.open(String(UseTables::folderName) + " = " + SqlQuote(inFolderName));
+
+          SqlRecord *record = table.getTopRecord();
+          if (record) {
+            FolderRecordPtr result = convertFolderRecord(record);
+
+            ZS_LOG_TRACE(log("folder found") + ZS_PARAM("folder name", result->mFolderName) + ZS_PARAM("index", result->mIndex))
+            return result;
+          }
+
+          ZS_LOG_TRACE(log("folder does not exist") + ZS_PARAM("folder name", inFolderName))
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return FolderRecordPtr();
       }
 
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getName(index indexFolderRecord)
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.open(String(SqlField::id) + " = " + string(indexFolderRecord));
+
+          SqlRecord *record = table.getTopRecord();
+          if (record) {
+            auto result = record->getValue(UseTables::folderName)->asString();
+            ZS_LOG_TRACE(log("folder found") + ZS_PARAM("folder name", result) + ZS_PARAM("index", indexFolderRecord))
+            return result;
+          }
+
+          ZS_LOG_TRACE(log("folder does not exist") + ZS_PARAM("index", indexFolderRecord))
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return String();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_addOrUpdate(const FolderRecord &folder)
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          table.open(String(UseTables::folderName) + " = " + SqlQuote(folder.mFolderName));
+
+          SqlRecord *found = table.getTopRecord();
+          SqlRecord addRecord(table.fields());
+
+          SqlRecord *useRecord = found ? found : &addRecord;
+
+          if (found) {
+            if (folder.mUniqueID.hasData()) {
+              if (folder.mUniqueID == useRecord->getValue(UseTables::uniqueID)->asString()) {
+                useRecord->setIgnored(UseTables::uniqueID);
+              }
+            } else {
+              useRecord->setIgnored(UseTables::uniqueID);
+            }
+            if (folder.mFolderName.hasData()) {
+              if (folder.mFolderName == useRecord->getValue(UseTables::folderName)->asString()) {
+                useRecord->setIgnored(UseTables::folderName);
+              }
+            } else {
+              useRecord->setIgnored(UseTables::folderName);
+            }
+            useRecord->setIgnored(UseTables::downloadedVersion);
+          } else {
+            useRecord->setString(UseTables::uniqueID, UseServicesHelper::randomString(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDER_UNIQUE_ID_LENGTH));
+            useRecord->setString(UseTables::folderName, folder.mFolderName);
+            useRecord->setString(UseTables::downloadedVersion, String());
+          }
+
+          useRecord->setString(UseTables::serverVersion, folder.mServerVersion);
+          useRecord->setInteger(UseTables::totalUnreadMessages, folder.mTotalUnreadMessages);
+          useRecord->setInteger(UseTables::totalMessages, folder.mTotalMessages);
+          useRecord->setInteger(UseTables::updateNext, Time() == folder.mUpdateNext ? 0 : zsLib::timeSinceEpoch<Seconds>(folder.mUpdateNext).count());
+
+          if (found) {
+            table.updateRecord(useRecord);
+          } else {
+            table.addRecord(useRecord);
+          }
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -343,6 +477,14 @@ namespace openpeer
                                                                                        const char *newfolderName
                                                                                        )
       {
+        try {
+          SqlRecordSet query(*mDB);
+
+          query.query(String("UPDATE ") + UseTables::Folder_name() + " SET " + UseTables::folderName + "=" + SqlQuote(newfolderName) + " WHERE " + SqlField::id + " = " + string(indexFolderRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -351,11 +493,37 @@ namespace openpeer
                                                                                                         const char *inServerVersion
                                                                                                         )
       {
+        try {
+          SqlRecordSet query(*mDB);
+
+          query.query(String("UPDATE ") + UseTables::Folder_name() + " SET " + UseTables::serverVersion + "=" + SqlQuote(inServerVersion) + " WHERE " + UseTables::folderName + " = " + SqlQuote(inFolderName));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       FolderRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getNeedingUpdate(const Time &now) const
       {
+        try {
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
+
+          FolderRecordListPtr result(new FolderRecordList);
+
+          table.open(String(UseTables::updateNext) + " < " + string(zsLib::timeSinceEpoch<Seconds>(now).count()) + " OR " + UseTables::downloadedVersion + " != " + UseTables::serverVersion + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDERS_NEEDING_UPDATE_LIMIT));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+            FolderRecordPtr folder = convertFolderRecord(record);
+            result->push_back(*folder);
+          }
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
+        // mUpdateNext or downloadVersion != serverVersion
         return FolderRecordListPtr();
       }
 
@@ -366,11 +534,27 @@ namespace openpeer
                                                                                          const Time &inUpdateNext
                                                                                          )
       {
+        try {
+          SqlRecordSet query(*mDB);
+
+          query.query(String("UPDATE ") + UseTables::Folder_name() + " SET " + UseTables::downloadedVersion + "=" + SqlQuote(inDownloadedVersion) + ", " + UseTables::updateNext + "=" + string(zsLib::timeSinceEpoch<Seconds>(inUpdateNext).count()) + " WHERE " + SqlField::id + " = " + string(indexFolderRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
-      
+
       //-----------------------------------------------------------------------
-      void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_resetUniqueID(index indexFolderIndex)
+      void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_resetUniqueID(index indexFolderRecord)
       {
+        try {
+          SqlRecordSet query(*mDB);
+
+          query.query(String("UPDATE ") + UseTables::Folder_name() + " SET " + UseTables::uniqueID + "=" + SqlQuote(UseServicesHelper::randomString(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDER_UNIQUE_ID_LENGTH)) + " WHERE " + SqlField::id + " = " + string(indexFolderRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -873,6 +1057,27 @@ namespace openpeer
         return String();
       }
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ServicePushMailboxSessionDatabaseAbstraction => SqlDatabase::Trace
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSessionDatabaseAbstraction::notifyDatabaseTrace(
+                                                                             SqlDatabase::Trace::Severity severity,
+                                                                             const char *message
+                                                                             ) const
+      {
+        switch (severity) {
+          case SqlDatabase::Trace::Informational: ZS_INTERNAL_LOG_TRACE_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Warning:       ZS_INTERNAL_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Error:         ZS_INTERNAL_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Fatal:         ZS_INTERNAL_LOG_BASIC_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+        }
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -934,11 +1139,11 @@ namespace openpeer
           while (true) {
             ZS_LOG_DETAIL(log("loading push mailbox database") + ZS_PARAM("path", path))
 
-            mDB = SqlDatabasePtr(new SqlDatabase);
+            mDB = SqlDatabasePtr(new SqlDatabase(ZS_IS_LOGGING(Trace) ? this : NULL));
 
             mDB->open(path);
 
-            SqlTable versionTable(mDB->getHandle(), UseTables::Version_name(), UseTables::Version());
+            SqlTable versionTable(*mDB, UseTables::Version_name(), UseTables::Version());
 
             if (!versionTable.exists()) {
               versionTable.create();
@@ -1000,7 +1205,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("constructing push mailbox database tables"))
 
         {
-          SqlTable table(mDB->getHandle(), UseTables::Settings_name(), UseTables::Settings());
+          SqlTable table(*mDB, UseTables::Settings_name(), UseTables::Settings());
           table.create();
 
           SqlRecord record(table.fields());
@@ -1008,47 +1213,47 @@ namespace openpeer
           table.addRecord(&record);
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::Folder_name(), UseTables::Folder());
+          SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::FolderMessage_name(), UseTables::FolderMessage());
+          SqlTable table(*mDB, UseTables::FolderMessage_name(), UseTables::FolderMessage());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::FolderVersionedMessage_name(), UseTables::FolderVersionedMessage());
+          SqlTable table(*mDB, UseTables::FolderVersionedMessage_name(), UseTables::FolderVersionedMessage());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::Message_name(), UseTables::Message());
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
+          SqlTable table(*mDB, UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+          SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::List_name(), UseTables::List());
+          SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::ListURI_name(), UseTables::ListURI());
+          SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::KeyDomain_name(), UseTables::KeyDomain());
+          SqlTable table(*mDB, UseTables::KeyDomain_name(), UseTables::KeyDomain());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::SendingKey_name(), UseTables::SendingKey());
+          SqlTable table(*mDB, UseTables::SendingKey_name(), UseTables::SendingKey());
           table.create();
         }
         {
-          SqlTable table(mDB->getHandle(), UseTables::ReceivingKey_name(), UseTables::ReceivingKey());
+          SqlTable table(*mDB, UseTables::ReceivingKey_name(), UseTables::ReceivingKey());
           table.create();
         }
       }
@@ -1059,6 +1264,14 @@ namespace openpeer
         String result(input);
         result.replaceAll("\'", "\'\'");
         return result;
+      }
+
+      //-----------------------------------------------------------------------
+      String ServicePushMailboxSessionDatabaseAbstraction::SqlQuote(const String &input)
+      {
+        String result(input);
+        result.replaceAll("\'", "\'\'");
+        return "\'" + result + "\'";
       }
 
       //-----------------------------------------------------------------------

@@ -1707,6 +1707,7 @@ namespace openpeer
           folderRecord.mServerVersion = info.mVersion;
           folderRecord.mTotalUnreadMessages = info.mUnread;
           folderRecord.mTotalMessages = info.mTotal;
+          folderRecord.mUpdateNext = info.mUpdateNext;
           mDB->folderTable()->addOrUpdate(folderRecord);
         }
 

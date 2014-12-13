@@ -53,9 +53,56 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark Forwards
+      #pragma mark Helpers
       #pragma mark
 
+      namespace sqlite_logger
+      {
+        ZS_IMPLEMENT_SUBSYSTEM(sqlite)
+        ZS_DECLARE_SUBSYSTEM(sqlite)
+
+        class SqliteLog {
+        private:
+          static Log::Params slog(const char *message)
+          {
+            return Log::Params(message, "sqlite");
+          }
+
+          static void sqliteLog(void *pArg, int iErrCode, const char *zMsg) {
+            int primaryResultCode = (0xFF & iErrCode);
+            int extendedResultCode = (0xFFFFFF00 & iErrCode);
+
+            switch (primaryResultCode) {
+              case SQLITE_OK:
+              case SQLITE_NOTICE: {
+                ZS_LOG_DEBUG(slog(zMsg) + ZS_PARAM("code", iErrCode) + ZS_PARAM("primary", primaryResultCode) + ZS_PARAM("extended", extendedResultCode))
+                break;
+              }
+              case SQLITE_WARNING: {
+                ZS_LOG_WARNING(Debug, slog(zMsg) + ZS_PARAM("code", iErrCode) + ZS_PARAM("primary", primaryResultCode) + ZS_PARAM("extended", extendedResultCode))
+                break;
+              }
+              default: {
+                ZS_LOG_ERROR(Debug, slog(zMsg) + ZS_PARAM("code", iErrCode) + ZS_PARAM("primary", primaryResultCode) + ZS_PARAM("extended", extendedResultCode))
+                break;
+              }
+            }
+          }
+
+        public:
+          SqliteLog()
+          {
+            sqlite3_config(SQLITE_CONFIG_LOG, sqliteLog, NULL);
+          }
+
+          static void prepare()
+          {
+            zsLib::Singleton<SqliteLog> singleton;
+          }
+        };
+      }
+
+      //-----------------------------------------------------------------------
       Log::Level getJavaScriptLogLevel();
 
       //-----------------------------------------------------------------------
@@ -233,16 +280,44 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      zsLib::Log::Severity Helper::toSeverity(SqlDatabase::Trace::Severity severity)
+      {
+        switch (severity) {
+          case SqlDatabase::Trace::Informational: return zsLib::Log::Informational;
+          case SqlDatabase::Trace::Warning:       return zsLib::Log::Warning;
+          case SqlDatabase::Trace::Error:         return zsLib::Log::Error;
+          case SqlDatabase::Trace::Fatal:         return zsLib::Log::Fatal;
+        }
+        return zsLib::Log::Informational;
+      }
+
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Helper => (friends)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
       Log::Level Helper::getJavaScriptLogLevel()
       {
         return internal::getJavaScriptLogLevel();
       }
 
       //-----------------------------------------------------------------------
+      void Helper::enableSqliteErrorLogging()
+      {
+      }
+
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Helper => (internal)
+      #pragma mark
+
+      //-----------------------------------------------------------------------
       Log::Params Helper::log(const char *message)
       {
         return Log::Params(message, "stack::Helper");
       }
+
     }
 
     //-------------------------------------------------------------------------
@@ -311,6 +386,12 @@ namespace openpeer
                              )
     {
       return internal::Helper::appendPath(path, fileName);
+    }
+
+    //-------------------------------------------------------------------------
+    zsLib::Log::Severity IHelper::toSeverity(SqlDatabase::Trace::Severity severity)
+    {
+      return internal::Helper::toSeverity(severity);
     }
   }
 }
