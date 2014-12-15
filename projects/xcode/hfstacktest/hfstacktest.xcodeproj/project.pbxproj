@@ -609,6 +609,7 @@
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
 					../../../../easysqlite/easySQLite/easySQLite,
+					../../../../easysqlite/sqlite,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
@@ -650,6 +651,7 @@
 					"../../../../ortc-lib/libs/zsLib",
 					"../../../../ortc-lib/libs",
 					../../../../easysqlite/easySQLite/easySQLite,
+					../../../../easysqlite/sqlite,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";

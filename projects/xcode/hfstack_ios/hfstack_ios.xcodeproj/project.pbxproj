@@ -1515,6 +1515,7 @@
 					"../../../../ortc-lib/libs",
 					"../../../../ortc-lib/libs/curl-build-scripts/curl",
 					../../../../easysqlite/easySQLite/easySQLite,
+					../../../../easysqlite/sqlite,
 					"$(inherited)",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
@@ -1553,6 +1554,7 @@
 					"../../../../ortc-lib/libs",
 					"../../../../ortc-lib/libs/curl-build-scripts/curl",
 					../../../../easysqlite/easySQLite/easySQLite,
+					../../../../easysqlite/sqlite,
 					"$(inherited)",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
