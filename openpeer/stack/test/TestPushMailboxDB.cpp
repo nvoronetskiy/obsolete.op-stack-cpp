@@ -266,6 +266,7 @@ namespace openpeer
           TESTING_EQUAL(index, 1)
 
           auto resultRecord = folder->getIndexAndUniqueID("inbox");
+          TESTING_CHECK(resultRecord)
           TESTING_EQUAL(resultRecord->mIndex, 1)
           TESTING_EQUAL(resultRecord->mFolderName, "inbox")
           TESTING_CHECK(resultRecord->mUniqueID.hasData())
@@ -318,6 +319,7 @@ namespace openpeer
           TESTING_EQUAL(resultRecord->mFolderName, "inbox2")
           TESTING_CHECK(resultRecord->mUniqueID.hasData())
           TESTING_CHECK(resultRecord->mUniqueID != originalUniqueID)
+          TESTING_CHECK(resultRecord->mUniqueID.hasData())
           TESTING_EQUAL(resultRecord->mServerVersion, "server-1")
           TESTING_EQUAL(resultRecord->mDownloadedVersion, "download-1")
           TESTING_EQUAL(resultRecord->mTotalUnreadMessages, 5)

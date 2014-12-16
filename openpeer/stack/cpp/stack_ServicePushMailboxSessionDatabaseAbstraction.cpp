@@ -268,6 +268,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_getLastDownloadedVersionForFolders() const
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Settings_name(), UseTables::Settings());
 
@@ -286,6 +288,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::ISettingsTable_setLastDownloadedVersionForFolders(const char *version)
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Settings_name(), UseTables::Settings());
 
@@ -312,6 +316,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_flushAll()
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -324,6 +330,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_removeByIndex(index indexFolderRecord)
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -336,6 +344,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       index ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getIndex(const char *inFolderName) const
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -376,6 +386,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FolderRecordPtr ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getIndexAndUniqueID(const char *inFolderName) const
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -400,6 +412,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getName(index indexFolderRecord)
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -423,6 +437,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_addOrUpdate(const FolderRecord &folder)
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -477,6 +493,8 @@ namespace openpeer
                                                                                        const char *newfolderName
                                                                                        )
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlRecordSet query(*mDB);
 
@@ -493,6 +511,8 @@ namespace openpeer
                                                                                                         const char *inServerVersion
                                                                                                         )
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlRecordSet query(*mDB);
 
@@ -506,6 +526,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       FolderRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_getNeedingUpdate(const Time &now) const
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlTable table(*mDB, UseTables::Folder_name(), UseTables::Folder());
 
@@ -534,6 +556,8 @@ namespace openpeer
                                                                                          const Time &inUpdateNext
                                                                                          )
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlRecordSet query(*mDB);
 
@@ -547,6 +571,8 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderTable_resetUniqueID(index indexFolderRecord)
       {
+        AutoRecursiveLock lock(*this);
+
         try {
           SqlRecordSet query(*mDB);
 
@@ -568,11 +594,31 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderMessageTable_flushAll()
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::FolderMessage_name(), UseTables::FolderMessage());
+          
+          table.deleteRecords(String());
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IFolderMessageTable_addToFolderIfNotPresent(const FolderMessageRecord &folderMessage)
       {
+        AutoRecursiveLock lock(*this);
+        
+        try {
+          SqlTable table(*mDB, UseTables::FolderMessage_name(), UseTables::FolderMessage());
+          
+          table.deleteRecords(String());
+          
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
