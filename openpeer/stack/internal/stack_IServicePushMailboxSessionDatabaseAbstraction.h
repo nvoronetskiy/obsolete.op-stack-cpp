@@ -103,6 +103,8 @@ namespace openpeer
         struct SettingsRecord
         {
           String mLastDownloadedVersionForFolders;
+          
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -124,6 +126,8 @@ namespace openpeer
           ULONG   mTotalUnreadMessages {0};
           ULONG   mTotalMessages {0};
           Time    mUpdateNext;
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -140,6 +144,8 @@ namespace openpeer
           index   mIndex {-1};              // [auto, unique]
           index   mIndexFolderRecord {-1};
           String  mMessageID;
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -157,6 +163,8 @@ namespace openpeer
           int     mIndexFolderRecord {-1};
           String  mMessageID;
           bool    mRemovedFlag {false};     // true = message is removed
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -193,11 +201,15 @@ namespace openpeer
           bool          mHasEncryptedData {false};
           bool          mHasDecryptedData {false};
           bool          mDownloadedEncryptedData {false};
+          size_t        mDownloadFailures {0};
+          Time          mDownloadRetryAfter;
           bool          mProcessedKey {false};
           String        mDecryptKeyID;
           bool          mDecryptLater {false};
           bool          mDecryptFailure {false};
           bool          mNeedsNotification {false};
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -217,6 +229,8 @@ namespace openpeer
           String  mURI;                   // uri of delivered party (empty = no list)
           int     mErrorCode {0};         // optional error code
           String  mErrorReason;           // optional error reason
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -236,6 +250,8 @@ namespace openpeer
           bool      mCopyToSent {false};    // copy to sent folder
           UINT      mSubscribeFlags;
           ULONGEST  mEncryptedDataLength {};
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -253,6 +269,8 @@ namespace openpeer
           String  mListID;                // [unique]
           bool    mNeedsDownload {true};
           bool    mFailedDownload {false};
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -270,6 +288,8 @@ namespace openpeer
           index   mIndexListRecord {-1};
           int     mOrder {-1};            // each URI in the list is given an order ID starting at 0 for each list
           String  mURI;                   // uri of delivered party (empty = no list)
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -287,6 +307,8 @@ namespace openpeer
           int     mKeyDomain {0};         // [unqiue]
           String  mDHStaticPrivateKey;
           String  mDHStaticPublicKey;
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -313,6 +335,8 @@ namespace openpeer
           String  mAckDHPassphraseSet;        // the set representation of which parties have received the DH key and which have not
           Time    mActiveUntil;               // this key can be used actively until a particular date
           Time    mExpires;                   // this key can be deleted after this date
+
+          ElementPtr toDebug() const;
         };
 
         //---------------------------------------------------------------------
@@ -334,6 +358,8 @@ namespace openpeer
           String  mDHEphemeralPrivateKey;     // diffie hellman ephemeral private key used in offer/answer
           String  mDHEphemeralPublicKey;      // diffie hellman ephemeral private key used in offer/answer
           Time    mExpires;                   // when is this key no longer valid
+
+          ElementPtr toDebug() const;
         };
       };
 
@@ -521,7 +547,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: remove all entries that contain a particular folder index
           //          value
-          virtual void removeAllFromFolder(index folderIndex) = 0;
+          virtual void removeAllFromFolder(index indexFolderRecord) = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: get a list of folder indexes which have the supplied
@@ -551,16 +577,17 @@ namespace openpeer
 
           //-------------------------------------------------------------------
           // PURPOSE: Add an entry that contains a "removed" flag for a given
-          //          folderIndex and messageID pairing
+          //          indexFolderRecord and messageID pairing
           // NOTES:   Only add if:
           //          - a previous entry exists containing the same
-          //            "folderIndex" and "messageID"
+          //            "indexFolderRecord" and "messageID"
           //          - if the last occurance of that entry does not have a
           //            "removedFlag" set to true.
           virtual void addRemovedEntryIfNotAlreadyRemoved(const FolderVersionedMessageRecord &message) = 0;
 
           //-------------------------------------------------------------------
-          // PURPOSE: Remove any folder versioned message whose folderIndex matches
+          // PURPOSE: Remove any folder versioned message whose
+          //          indexFolderRecord matches
           virtual void removeAllRelatedToFolder(index indexFolderRecord) = 0;
 
           //-------------------------------------------------------------------
@@ -575,7 +602,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: Obtain the last index of a folder version message record
           //          for any message whose
-          //          indexFolderRecord matches the "inFolderIndex" value.
+          //          indexFolderRecord matches the "indexFolderRecord" value.
           // RETURNS: index of latest folder versioned message if found or
           //          OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN if not
           //          present.
@@ -593,11 +620,13 @@ namespace openpeer
 
         interaction IMessageTable
         {
-          //-----------------------------------------------------------------------
+          //-------------------------------------------------------------------
           struct MessageNeedingUpdateInfo
           {
             decltype(MessageRecord::mIndex) mIndexMessageRecord {-1};
             decltype(MessageRecord::mMessageID) mMessageID;
+
+            ElementPtr toDebug() const;
           };
           ZS_DECLARE_PTR(MessageNeedingUpdateInfo)
 
@@ -699,20 +728,18 @@ namespace openpeer
           //          method can filter out messages larger than the maximum
           //          size the application wishes to download.
           //
-          //          Also if data failed to download, the message can be excluded
-          //          from downloading for a period of time or indefinitely. A
-          //          failure typically means the message is no longer on the
-          //          server but sometimes the server maybe merely in a funky
-          //          state.
+          //          Also if data failed to download, the message can be
+          //          excluded from downloading for a period of time or
+          //          indefinitely. A failure typically means the message is no
+          //          longer on the server but sometimes the server maybe
+          //          merely in a funky state.
           //
-          //          If the message already has a decrypted file name then it does
-          //          not need data to be downloaded.
+          //          If the message already has a decrypted file name or
+          //          decrypted data then it does not need data to be
+          //          downloaded.
           //
           //          This routine should filter all messages already marked as
           //          downloaded.
-          //
-          //          Messages that failed to download can be blocked from
-          //          download reattempt for a period of time.
           virtual MessageRecordListPtr getBatchNeedingData() const = 0;
 
           //-------------------------------------------------------------------

@@ -490,7 +490,7 @@ namespace openpeer
 
         MessagePtr getMessageFromQuery(
                                        IHTTPQueryPtr query,
-                                       MessagePtr originalMesssage,
+                                       MessagePtr originalMessage,
                                        SecureByteBlockPtr *outRawData = NULL
                                        );
 

@@ -38,6 +38,8 @@
 #include <easySQLite/SqlDatabase.h>
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX "openpeer/stack/push-mailbox-database-filename-postfix"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-size-in-bytes"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_MAX_DOWNLOAD_RETRIES "openpeer/stack/push-mailbox-max-message-download-retries"
 
 namespace openpeer
 {
@@ -215,7 +217,7 @@ namespace openpeer
           virtual void flushAll()                                                         {mOuter->IFolderMessageTable_flushAll();}
           virtual void addToFolderIfNotPresent(const FolderMessageRecord &folderMessage)  {mOuter->IFolderMessageTable_addToFolderIfNotPresent(folderMessage);}
           virtual void removeFromFolder(const FolderMessageRecord &folderMessage)         {mOuter->IFolderMessageTable_removeFromFolder(folderMessage);}
-          virtual void removeAllFromFolder(index folderIndex)                             {mOuter->IFolderMessageTable_removeAllFromFolder(folderIndex);}
+          virtual void removeAllFromFolder(index indexFolderRecord)                       {mOuter->IFolderMessageTable_removeAllFromFolder(indexFolderRecord);}
           virtual IndexListPtr getWithMessageID(const char *messageID) const              {return mOuter->IFolderMessageTable_getWithMessageID(messageID);}
 
         protected:
@@ -567,7 +569,7 @@ namespace openpeer
         void IFolderMessageTable_flushAll();
         void IFolderMessageTable_addToFolderIfNotPresent(const FolderMessageRecord &folderMessage);
         void IFolderMessageTable_removeFromFolder(const FolderMessageRecord &folderMessage);
-        void IFolderMessageTable_removeAllFromFolder(index folderIndex);
+        void IFolderMessageTable_removeAllFromFolder(index indexFolderRecord);
         IFolderMessageTable::IndexListPtr IFolderMessageTable_getWithMessageID(const char *messageID) const;
 
 

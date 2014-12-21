@@ -96,16 +96,15 @@ namespace openpeer
 {
   namespace stack
   {
+    ZS_DECLARE_TYPEDEF_PTR(message::IMessageHelper, UseMessageHelper)
+    ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+
     namespace internal
     {
       using CryptoPP::SHA1;
       using zsLib::Numeric;
 
-      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
-
       typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
-
-      typedef message::IMessageHelper IMessageHelper;
 
       ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
 
@@ -962,17 +961,29 @@ namespace openpeer
 
         PushMessagePtr result(new PushMessage);
 
-        String to;
-        String from;
-        String cc;
-        String bcc;
-
         MessageRecordPtr message = mDB->messageTable()->getByMessageID(messageID);
 
         if (!message) {
           ZS_LOG_WARNING(Detail, log("message was not found in database") + ZS_PARAM("message id", messageID))
           return PushMessagePtr();
         }
+
+        result->mMessageID = message->mMessageID;
+        String to = message->mTo;
+        String from = message->mFrom;
+        String cc = message->mCC;
+        String bcc = message->mBCC;
+        result->mMessageType = message->mType;
+        result->mMimeType = message->mMimeType;
+        result->mFullMessage = message->mDecryptedData;
+        result->mFullMessageFileName = message->mDecryptedFileName;
+
+        result->mPushType = message->mPushType;
+        result->mPushInfos = message->mPushInfos;
+
+        result->mSent = message->mSent;
+        result->mExpires = message->mExpires;
+
 
         result->mTo = convertFromDatabaseList(to);
 
@@ -6912,7 +6923,7 @@ namespace openpeer
     #pragma mark
 
     //-------------------------------------------------------------------------
-    const char *IServicePushMailboxSession::toString(SessionStates state)
+    const char *IServicePushMailboxSessionTypes::toString(SessionStates state)
     {
       switch (state)
       {
@@ -6928,7 +6939,7 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    const char *IServicePushMailboxSession::toString(PushStates state)
+    const char *IServicePushMailboxSessionTypes::toString(PushStates state)
     {
       switch (state) {
         case PushState_None:      return "none";
@@ -6949,7 +6960,7 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    IServicePushMailboxSession::PushStates IServicePushMailboxSession::toPushState(const char *state)
+    IServicePushMailboxSessionTypes::PushStates IServicePushMailboxSessionTypes::toPushState(const char *state)
     {
       if (!state) return PushState_None;
 
@@ -6980,7 +6991,7 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    bool IServicePushMailboxSession::canSubscribeState(PushStates state)
+    bool IServicePushMailboxSessionTypes::canSubscribeState(PushStates state)
     {
       switch (state) {
         case PushState_None:      return false;
@@ -7019,6 +7030,147 @@ namespace openpeer
       return internal::IServicePushMailboxSessionFactory::singleton().create(delegate, transferDelegate, servicePushMailbox, account, grantSession, lockboxSession);
     }
 
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSession::PushInfo
+    #pragma mark
+
+    //-------------------------------------------------------------------------
+    IServicePushMailboxSession::PushInfoPtr IServicePushMailboxSession::PushInfo::create(ElementPtr pushInfoEl)
+    {
+      if (!pushInfoEl) return PushInfoPtr();
+
+      PushInfoPtr result(new PushInfo);
+      result->mServiceType = UseMessageHelper::getElementTextAndDecode(pushInfoEl->findFirstChildElement(Definitions::Names::serviceType()));
+      result->mValues = pushInfoEl->findFirstChildElement(Definitions::Names::values());
+      result->mCustom = pushInfoEl->findFirstChildElement(Definitions::Names::custom());
+
+      if (result->mValues) result->mValues = result->mValues->clone()->toElement();
+      if (result->mCustom) result->mValues = result->mCustom->clone()->toElement();
+
+      return result;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr IServicePushMailboxSessionTypes::PushInfo::createElement() const
+    {
+      ElementPtr pushInfoEl = Element::create(Definitions::Names::pushRoot());
+
+      if (mServiceType.hasData()) {
+        pushInfoEl->adoptAsLastChild(UseMessageHelper::createElementWithTextAndJSONEncode(Definitions::Names::serviceType(), mServiceType));
+      }
+
+      if (mValues) {
+        if (Definitions::Names::values() == mValues->getValue()) {
+          pushInfoEl->adoptAsLastChild(mValues->clone()->toElement());
+        } else {
+          ElementPtr valuesEl = Element::create(Definitions::Names::values());
+          valuesEl->adoptAsFirstChild(mValues->clone()->toElement());
+          pushInfoEl->adoptAsLastChild(valuesEl);
+        }
+      }
+
+      if (mCustom) {
+        if (PushInfo::Definitions::Names::custom() == mCustom->getValue()) {
+          pushInfoEl->adoptAsLastChild(mCustom->clone()->toElement());
+        } else {
+          ElementPtr customEl = Element::create(Definitions::Names::custom());
+          customEl->adoptAsFirstChild(mCustom->clone()->toElement());
+          pushInfoEl->adoptAsLastChild(customEl);
+        }
+      }
+
+      return pushInfoEl;
+    }
+
+    //-------------------------------------------------------------------------
+    bool IServicePushMailboxSessionTypes::PushInfo::hasData() const
+    {
+      return ((mServiceType.hasData()) ||
+              (mValues) ||
+              (mCustom));
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr IServicePushMailboxSessionTypes::PushInfo::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("IServicePushMailboxSessionTypes::PushInfo");
+
+      UseServicesHelper::debugAppend(resultEl, "service type", mServiceType);
+      UseServicesHelper::debugAppend(resultEl, "values", (bool)mValues);
+      UseServicesHelper::debugAppend(resultEl, "custom", (bool)mCustom);
+
+      return resultEl;
+    }
+
+    //-------------------------------------------------------------------------
+    IServicePushMailboxSessionTypes::PushInfoListPtr IServicePushMailboxSessionTypes::PushInfoList::create(ElementPtr pushInfosEl)
+    {
+      PushInfoListPtr result(new PushInfoList);
+      return result;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr IServicePushMailboxSessionTypes::PushInfoList::createElement() const
+    {
+      ElementPtr resultEl = Element::create(Definitions::Names::pushes());
+
+      for (auto iter = begin(); iter != end(); ++iter)
+      {
+        const PushInfo &info = (*iter);
+        if (!info.hasData()) continue;
+
+        resultEl->adoptAsLastChild(info.createElement());
+      }
+
+      return resultEl;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr IServicePushMailboxSessionTypes::PushInfoList::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("IServicePushMailboxSessionTypes::PushInfoList");
+
+      for (auto iter = begin(); iter != end(); ++iter)
+      {
+        const PushInfo &info = (*iter);
+        if (!info.hasData()) continue;
+
+        UseServicesHelper::debugAppend(resultEl, info.toDebug());
+      }
+      return resultEl;
+    }
+
+    //-------------------------------------------------------------------------
+    ElementPtr IServicePushMailboxSessionTypes::PushMessage::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("IServicePushMailboxSessionTypes::PushMessage");
+
+      UseServicesHelper::debugAppend(resultEl, "message id", mMessageID);
+
+      UseServicesHelper::debugAppend(resultEl, "message type", mMessageType);
+      UseServicesHelper::debugAppend(resultEl, "mime type", mMimeType);
+      UseServicesHelper::debugAppend(resultEl, "full message", (bool)mFullMessage);
+      UseServicesHelper::debugAppend(resultEl, "full message filename", mFullMessageFileName);
+
+      UseServicesHelper::debugAppend(resultEl, "push type", mPushType);
+      UseServicesHelper::debugAppend(resultEl, mPushInfos.toDebug());
+      UseServicesHelper::debugAppend(resultEl, "sent", mSent);
+      UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+
+      UseServicesHelper::debugAppend(resultEl, "from", IPeer::toDebug(mFrom));
+
+      UseServicesHelper::debugAppend(resultEl, "to", mTo ? mTo->size() : 0);
+      UseServicesHelper::debugAppend(resultEl, "cc", mCC ? mCC->size() : 0);
+      UseServicesHelper::debugAppend(resultEl, "bcc", mBCC ? mBCC->size() : 0);
+
+      UseServicesHelper::debugAppend(resultEl, "push state details", mPushStateDetails.size());
+
+      return resultEl;
+    }
 
   }
 }

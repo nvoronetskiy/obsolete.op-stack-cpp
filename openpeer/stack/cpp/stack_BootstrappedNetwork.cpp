@@ -1291,7 +1291,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       MessagePtr BootstrappedNetwork::getMessageFromQuery(
                                                           IHTTPQueryPtr query,
-                                                          MessagePtr originalMesssage,
+                                                          MessagePtr originalMessage,
                                                           SecureByteBlockPtr *outRawData
                                                           )
       {
@@ -1318,8 +1318,8 @@ namespace openpeer
               // from a HTTP GET request where no data was posted. As a result,
               // the returned message might not contain the message ID. Thus
               // force the message to have the same message ID as the request.
-              if (originalMesssage) {
-                IMessageHelper::setAttributeID(rootEl, originalMesssage->messageID());
+              if (originalMessage) {
+                IMessageHelper::setAttributeID(rootEl, originalMessage->messageID());
               }
               IMessageHelper::setAttributeTimestamp(rootEl, zsLib::now());
             }
@@ -1333,7 +1333,7 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           ZS_LOG_BASIC(log("<----<----<----<----<----<---- HTTP RECEIVED DATA START <----<----<----<----<----<----<----"))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
-          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + ZS_PARAM("override message ID", fakeQuery ? (originalMesssage ? originalMesssage->messageID() : String()) : String()) + Message::toDebug(message))
+          ZS_LOG_BASIC(log("MESSAGE INFO") + ZS_PARAM("from cache", (bool)fakeQuery) + ZS_PARAM("override message ID", fakeQuery ? (originalMessage ? originalMessage->messageID() : String()) : String()) + Message::toDebug(message))
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
           if (buffer.SizeInBytes() > 0) {
             ZS_LOG_BASIC(log("HTTP RECEIVED") + ZS_PARAM("size", buffer.SizeInBytes()) + ZS_PARAM("json in", ((const char *)(buffer.BytePtr()))))

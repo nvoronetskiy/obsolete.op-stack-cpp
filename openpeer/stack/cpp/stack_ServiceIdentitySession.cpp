@@ -991,7 +991,7 @@ namespace openpeer
         ZS_LOG_DEBUG(log("kill associate called"))
 
         if (mKillAssociation) {
-          ZS_LOG_WARNING(Detail, log("asssoication already killed"))
+          ZS_LOG_WARNING(Detail, log("assoication already killed"))
           return;
         }
 

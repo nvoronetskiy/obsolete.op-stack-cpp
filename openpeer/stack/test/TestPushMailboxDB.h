@@ -122,8 +122,17 @@ namespace openpeer
         void testCreate();
         void testSettings();
         void testFolder();
+        void testFolderMessage();
+        void testFolderVersionedMessage();
+        void testMessage();
 
       protected:
+        
+        void checkCount(
+                        SqlField *definition,
+                        const char *tableName,
+                        int total
+                        );
 
         void checkIndexValue(
                              SqlField *definition,

@@ -66,8 +66,11 @@ namespace openpeer
     #pragma mark IServicePushMailboxSession
     #pragma mark
 
-    interaction IServicePushMailboxSession
+    interaction IServicePushMailboxSessionTypes
     {
+      ZS_DECLARE_STRUCT_PTR(PushInfo)
+      ZS_DECLARE_STRUCT_PTR(PushInfoList)
+
       enum SessionStates
       {
         SessionState_Pending,
@@ -122,12 +125,41 @@ namespace openpeer
 
       struct PushInfo
       {
+        struct Definitions
+        {
+          struct Names
+          {
+            static const char *pushRoot()                                       {return "push";}
+            static const char *serviceType()                                    {return "serviceType";}
+            static const char *values()                                         {return "values";}
+            static const char *custom()                                         {return "custom";}
+          };
+        };
+
         String mServiceType;              // e.g. "apns", "gcm", or "all"
         ElementPtr mValues;               // "values" related to mapped type
         ElementPtr mCustom;               // extended push related custom data
+
+        static PushInfoPtr create(ElementPtr pushInfoEl);
+        ElementPtr createElement() const;
+        bool hasData() const;
+        ElementPtr toDebug() const;
       };
 
-      typedef std::list<PushInfo> PushInfoList;
+      struct PushInfoList : public std::list<PushInfo>
+      {
+        struct Definitions
+        {
+          struct Names
+          {
+            static const char *pushes()                                         {return "pushes";}
+          };
+        };
+
+        static PushInfoListPtr create(ElementPtr pushInfosEl);
+        ElementPtr createElement() const;
+        ElementPtr toDebug() const;
+      };
 
       struct PushMessage
       {
@@ -151,14 +183,41 @@ namespace openpeer
         PeerOrIdentityListPtr mBCC;
 
         PushStateDetailMap mPushStateDetails;   // detailed related state information about the push
+
+        ElementPtr toDebug() const;
       };
 
       ZS_DECLARE_PTR(PushMessage)
-
+      
       ZS_DECLARE_TYPEDEF_PTR(std::list<PushMessagePtr>, PushMessageList)
-
+      
       ZS_DECLARE_TYPEDEF_PTR(std::list<MessageID>, MessageIDList)
 
+      struct RegisterDeviceInfo
+      {
+        String mDeviceToken;
+        String mFolder;             // what folder to monitor for push requests
+        Time mExpires;              // how long should the registrration to the device last
+        String mMappedType;         // for APNS maps to "loc-key"
+        bool mUnreadBadge {};       // true causes total unread messages to be displayed in badge
+        String mSound;              // what sound to play upon receiving a message. For APNS, maps to "sound" field
+        String mAction;             // for APNS, maps to "action-loc-key"
+        String mLaunchImage;        // for APNS, maps to "launch-image"
+        UINT mPriority {};          // for APNS, maps to push priority
+        ValueNameList mValueNames;  // list of values requested from each push from the push server (in order they should be delivered); empty = all values
+      };
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServicePushMailboxSession
+    #pragma mark
+
+    interaction IServicePushMailboxSession : public IServicePushMailboxSessionTypes
+    {
       static ElementPtr toDebug(IServicePushMailboxSessionPtr session);
 
       static IServicePushMailboxSessionPtr create(
@@ -182,20 +241,6 @@ namespace openpeer
                                      ) const = 0;
 
       virtual void shutdown() = 0;
-
-      struct RegisterDeviceInfo
-      {
-        String mDeviceToken;
-        String mFolder;             // what folder to monitor for push requests
-        Time mExpires;              // how long should the registrration to the device last
-        String mMappedType;         // for APNS maps to "loc-key"
-        bool mUnreadBadge {};       // true causes total unread messages to be displayed in badge
-        String mSound;              // what sound to play upon receiving a message. For APNS, maps to "sound" field
-        String mAction;             // for APNS, maps to "action-loc-key"
-        String mLaunchImage;        // for APNS, maps to "launch-image"
-        UINT mPriority {};          // for APNS, maps to push priority
-        ValueNameList mValueNames;  // list of values requested from each push from the push server (in order they should be delivered); empty = all values
-      };
 
       virtual IServicePushMailboxRegisterQueryPtr registerDevice(
                                                                  IServicePushMailboxRegisterQueryDelegatePtr delegate,

@@ -38,6 +38,10 @@
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 
+#include <easySQLite/SqlField.h>
+#include <easySQLite/SqlFieldSet.h>
+#include <easySQLite/SqlValue.h>
+
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
 using namespace zsLib::XML;
@@ -46,6 +50,11 @@ namespace openpeer
 {
   namespace stack
   {
+    ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+    ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
+    ZS_DECLARE_TYPEDEF_PTR(sql::FieldSet, SqlFieldSet)
+    ZS_DECLARE_TYPEDEF_PTR(sql::Value, SqlValue)
+
     namespace internal
     {
       //-----------------------------------------------------------------------
@@ -126,7 +135,7 @@ namespace openpeer
                                           )
       {
         ElementPtr signatureEl;
-        signedEl = services::IHelper::getSignatureInfo(signedEl, &signatureEl, outFullPublicKey, outFingerprint);
+        signedEl = UseServicesHelper::getSignatureInfo(signedEl, &signatureEl, outFullPublicKey, outFingerprint);
 
         if (outSignatureEl) {
           *outSignatureEl = signatureEl;
@@ -195,13 +204,13 @@ namespace openpeer
                                   SecureByteBlock &value
                                   )
       {
-        String salt = services::IHelper::randomString(services::IHelper::getHashDigestSize(services::IHelper::HashAlgorthm_MD5)*8/5);
+        String salt = UseServicesHelper::randomString(UseServicesHelper::getHashDigestSize(UseServicesHelper::HashAlgorthm_MD5)*8/5);
 
-        SecureByteBlockPtr iv = services::IHelper::hash(salt, services::IHelper::HashAlgorthm_MD5);
-        String base64 = services::IHelper::convertToBase64(*services::IHelper::encrypt(key, *iv, value));
+        SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
+        String base64 = UseServicesHelper::convertToBase64(*UseServicesHelper::encrypt(key, *iv, value));
 
-        SecureByteBlockPtr proofHash = services::IHelper::hash(value);
-        String proof = services::IHelper::convertToHex(*services::IHelper::hmac(key, "proof:" + salt + ":" + services::IHelper::convertToHex(*services::IHelper::hash(value))));
+        SecureByteBlockPtr proofHash = UseServicesHelper::hash(value);
+        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(key, "proof:" + salt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(value))));
 
         return salt + ":" + proof + ":" + base64;
       }
@@ -214,8 +223,8 @@ namespace openpeer
       {
         if (!saltAndProofAndBase64EncodedData) return SecureByteBlockPtr();
 
-        services::IHelper::SplitMap split;
-        services::IHelper::split(saltAndProofAndBase64EncodedData, split, ':');
+        UseServicesHelper::SplitMap split;
+        UseServicesHelper::split(saltAndProofAndBase64EncodedData, split, ':');
 
         if (split.size() != 3) {
           ZS_LOG_WARNING(Detail, log("failed to decode data (does not have salt:proof:base64 pattern") + ZS_PARAM("value", saltAndProofAndBase64EncodedData))
@@ -226,18 +235,18 @@ namespace openpeer
         const String &proof = split[1];
         const String &value = split[2];
 
-        SecureByteBlockPtr iv = services::IHelper::hash(salt, services::IHelper::HashAlgorthm_MD5);
+        SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
 
-        SecureByteBlockPtr dataToConvert = services::IHelper::convertFromBase64(value);
-        if (services::IHelper::isEmpty(dataToConvert)) {
+        SecureByteBlockPtr dataToConvert = UseServicesHelper::convertFromBase64(value);
+        if (UseServicesHelper::isEmpty(dataToConvert)) {
           ZS_LOG_WARNING(Detail, log("failed to decode data from base64") + ZS_PARAM("value", value))
           return SecureByteBlockPtr();
         }
 
-        SecureByteBlockPtr decryptedData = services::IHelper::decrypt(key, *iv, *dataToConvert);
+        SecureByteBlockPtr decryptedData = UseServicesHelper::decrypt(key, *iv, *dataToConvert);
 
-        SecureByteBlockPtr proofHash = services::IHelper::hash(*decryptedData);
-        String calculatedProof = services::IHelper::convertToHex(*services::IHelper::hmac(key, "proof:" + salt + ":" + services::IHelper::convertToHex(*services::IHelper::hash(*decryptedData))));
+        SecureByteBlockPtr proofHash = UseServicesHelper::hash(*decryptedData);
+        String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(key, "proof:" + salt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(*decryptedData))));
 
         if (calculatedProof != proof) {
           ZS_LOG_WARNING(Detail, log("decryption proof failure") + ZS_PARAM("proof", proof) + ZS_PARAM("calculated", calculatedProof))
@@ -307,6 +316,48 @@ namespace openpeer
       {
       }
 
+      //-----------------------------------------------------------------------
+      ElementPtr Helper::toDebug(
+                                 const SqlTable *table,
+                                 const SqlRecord *record
+                                 )
+      {
+        if (!table) return ElementPtr();
+
+        ElementPtr resultEl = Element::create(table->name().c_str());
+        
+        if (!record) {
+          UseServicesHelper::debugAppend(resultEl, "record", false);
+          return resultEl;
+        }
+        
+        const SqlFieldSet *fields = table->fields();
+
+        for (int loop = 0; loop < fields->count(); ++loop) {
+          const SqlField *field = fields->getByIndex(loop);
+          if (field->isIgnored()) continue;
+          
+          const SqlValue *value = record->getValue(loop);
+          if (value->isIgnored()) continue;
+          
+          if (value->isNull()) {
+            UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), "(null)");
+            continue;
+          }
+          
+          switch (field->getType()) {
+            case sql::type_undefined: UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asString()); break;
+            case sql::type_int:       UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asInteger()); break;
+            case sql::type_text:      UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asString()); break;
+            case sql::type_float:     UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asDouble()); break;
+            case sql::type_bool:      UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asBool()); break;
+            case sql::type_time:      UseServicesHelper::debugAppend(resultEl, field->getName().c_str(), value->asInteger()); break;
+          }
+        }
+
+        return resultEl;
+      }
+      
       //-----------------------------------------------------------------------
       #pragma mark
       #pragma mark Helper => (internal)

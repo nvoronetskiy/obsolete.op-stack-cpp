@@ -331,6 +331,373 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testFolderMessage()
+      {
+        auto folderMessage = mAbstraction->folderMessageTable();
+        TESTING_CHECK(folderMessage)
+
+        {
+          folderMessage->flushAll();            // nooop
+        }
+        
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 5;
+          record.mMessageID = "foo";
+          folderMessage->addToFolderIfNotPresent(record);
+
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::indexFolderRecord, 5);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::messageID, "foo");
+        }
+        
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 6;
+          record.mMessageID = "foo";
+          folderMessage->addToFolderIfNotPresent(record);
+
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::indexFolderRecord, 6);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::messageID, "foo");
+        }
+
+        {
+          IUseAbstraction::FolderMessageRecord record;      // noop
+          record.mIndexFolderRecord = 5;
+          record.mMessageID = "foo";
+          folderMessage->addToFolderIfNotPresent(record);
+        }
+
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 4;
+          record.mMessageID = "bar";
+          folderMessage->addToFolderIfNotPresent(record);
+
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, UseTables::indexFolderRecord, 4);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, UseTables::messageID, "bar");
+        }
+
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 6;
+          record.mMessageID = "bar";
+          folderMessage->addToFolderIfNotPresent(record);
+
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 3, SqlField::id, 4);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 3, UseTables::indexFolderRecord, 6);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 3, UseTables::messageID, "bar");
+        }
+        
+        checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 4);
+        
+        {
+          IUseAbstraction::IFolderMessageTable::IndexListPtr indexes = folderMessage->getWithMessageID("foo");
+
+          int loop = 0;
+          for (auto iter = indexes->begin(); iter != indexes->end(); ++iter, ++loop)
+          {
+            auto value = (*iter);
+            switch (loop) {
+              case 0:   TESTING_EQUAL(5, value); break;
+              case 1:   TESTING_EQUAL(6, value); break;
+              default:  TESTING_CHECK(false); break;
+            }
+          }
+          TESTING_EQUAL(loop, 2)
+        }
+
+        {
+          folderMessage->flushAll();            // remove all four
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0);
+        }
+        
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 9;
+          record.mMessageID = "foo2";
+          folderMessage->addToFolderIfNotPresent(record);
+          
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::indexFolderRecord, 9);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::messageID, "foo2");
+        }
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 8;
+          record.mMessageID = "foo2";
+          folderMessage->addToFolderIfNotPresent(record);
+          
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::indexFolderRecord, 8);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::messageID, "foo2");
+        }
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 9;
+          record.mMessageID = "foo";
+          folderMessage->addToFolderIfNotPresent(record);
+          
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 3);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, UseTables::indexFolderRecord, 9);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2, UseTables::messageID, "foo");
+        }
+        
+        {
+          folderMessage->removeAllFromFolder(9);
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, SqlField::id, 2);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::indexFolderRecord, 8);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 0, UseTables::messageID, "foo2");
+        }
+        {
+          IUseAbstraction::FolderMessageRecord record;
+          record.mIndexFolderRecord = 9;
+          record.mMessageID = "foo";
+          folderMessage->addToFolderIfNotPresent(record);
+          
+          checkCount(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 2);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, SqlField::id, 3);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::indexFolderRecord, 9);
+          checkIndexValue(UseTables::FolderMessage(), UseTables::FolderMessage_name(), 1, UseTables::messageID, "foo");
+        }
+      }
+      
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testFolderVersionedMessage()
+      {
+        auto folderVersionedMessage = mAbstraction->folderVersionedMessageTable();
+        TESTING_CHECK(folderVersionedMessage)
+
+        {
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0);
+          folderVersionedMessage->flushAll();   // noop
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0);
+        }
+
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 5;
+          record.mMessageID = "foo";
+          record.mRemovedFlag = false;
+
+          folderVersionedMessage->add(record);
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::indexFolderRecord, 5);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::messageID, "foo");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::removedFlag, 0);
+        }
+
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 5;
+          record.mMessageID = "foo";
+          
+          folderVersionedMessage->addRemovedEntryIfNotAlreadyRemoved(record);
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::indexFolderRecord, 5);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::messageID, "foo");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::removedFlag, 1);
+        }
+
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 6;
+          record.mMessageID = "foo2";
+          
+          folderVersionedMessage->add(record);   // noop
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::indexFolderRecord, 6);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::messageID, "foo2");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::removedFlag, 0);
+        }
+        
+        {
+          folderVersionedMessage->removeAllRelatedToFolder(6);
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2);
+          
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 6;
+          record.mMessageID = "foo2";
+          folderVersionedMessage->addRemovedEntryIfNotAlreadyRemoved(record); // noop
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2);
+        }
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 8;
+          record.mMessageID = "foo3";
+          
+          folderVersionedMessage->add(record);   // noop
+
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, SqlField::id, 4);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::indexFolderRecord, 8);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::messageID, "foo3");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::removedFlag, 0);
+        }
+
+        {
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3);
+          folderVersionedMessage->flushAll();   // noop
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0);
+        }
+
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 10;
+          record.mMessageID = "foo4";
+          
+          folderVersionedMessage->add(record);   // noop
+          
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, SqlField::id, 5);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::indexFolderRecord, 10);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::messageID, "foo4");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 0, UseTables::removedFlag, 0);
+        }
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 10;
+          record.mMessageID = "foo5";
+          
+          folderVersionedMessage->add(record);   // noop
+          
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, SqlField::id, 6);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::indexFolderRecord, 10);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::messageID, "foo5");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 1, UseTables::removedFlag, 0);
+        }
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 8;
+          record.mMessageID = "foo6";
+          
+          folderVersionedMessage->add(record);   // noop
+          
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, SqlField::id, 7);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::indexFolderRecord, 8);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::messageID, "foo6");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 2, UseTables::removedFlag, 0);
+        }
+        {
+          IUseAbstraction::FolderVersionedMessageRecord record;
+          record.mIndexFolderRecord = 8;
+          record.mMessageID = "foo6";
+          
+          folderVersionedMessage->addRemovedEntryIfNotAlreadyRemoved(record);   // noop
+          
+          checkCount(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 4);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3, SqlField::id, 8);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3, UseTables::indexFolderRecord, 8);
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3, UseTables::messageID, "foo6");
+          checkIndexValue(UseTables::FolderVersionedMessage(), UseTables::FolderVersionedMessage_name(), 3, UseTables::removedFlag, 1);
+        }
+        
+        {
+          auto result = folderVersionedMessage->getBatchAfterIndex(5, 10);
+          int loop = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
+          {
+            auto value = (*iter);
+            switch (loop) {
+              case 0: {
+                TESTING_EQUAL(value.mIndex, 6)
+                TESTING_EQUAL(value.mIndexFolderRecord, 10)
+                TESTING_EQUAL(value.mMessageID, "foo5")
+                TESTING_CHECK(!value.mRemovedFlag)
+                break;
+              }
+              default: TESTING_CHECK(false); break;
+            }
+          }
+          TESTING_EQUAL(1, loop)
+        }
+
+        {
+          auto result = folderVersionedMessage->getBatchAfterIndex(-1, 8);
+          int loop = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
+          {
+            auto value = (*iter);
+            switch (loop) {
+              case 0: {
+                TESTING_EQUAL(value.mIndex, 7)
+                TESTING_EQUAL(value.mIndexFolderRecord, 8)
+                TESTING_EQUAL(value.mMessageID, "foo6")
+                TESTING_CHECK(!value.mRemovedFlag)
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(value.mIndex, 8)
+                TESTING_EQUAL(value.mIndexFolderRecord, 8)
+                TESTING_EQUAL(value.mMessageID, "foo6")
+                TESTING_CHECK(value.mRemovedFlag)
+                break;
+              }
+              default: TESTING_CHECK(false); break;
+            }
+          }
+          TESTING_EQUAL(2, loop)
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testMessage()
+      {
+        auto message = mAbstraction->messageTable();
+        TESTING_CHECK(message)
+        
+        {
+          message->addOrUpdate("foo", "v1");
+          checkCount(UseTables::Message(), UseTables::Message_name(), 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "foo");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v1");
+        }
+
+        {
+          message->addOrUpdate("foo", "v2");
+          checkCount(UseTables::Message(), UseTables::Message_name(), 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "foo");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2");
+        }
+      }
+      
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::checkCount(
+                                         SqlField *definition,
+                                         const char *tableName,
+                                         int total
+                                         )
+      {
+        TESTING_CHECK(definition)
+        TESTING_CHECK(tableName)
+        
+        TESTING_CHECK(mOverride)
+        if (!mOverride) return;
+        
+        SqlDatabasePtr database = mOverride->getDatabase();
+        TESTING_CHECK(database)
+        if (!database) return;
+        
+        SqlTable table(database->getHandle(), tableName, definition);
+        table.open();
+        
+        TESTING_EQUAL(table.recordCount(), total);
+      }
+
+      //-----------------------------------------------------------------------
       void TestPushMailboxDB::checkIndexValue(
                                               SqlField *definition,
                                               const char *tableName,
@@ -464,6 +831,9 @@ void doTestPushMailboxDB()
   testObject->testCreate();
   testObject->testSettings();
   testObject->testFolder();
+  testObject->testFolderMessage();
+  testObject->testFolderVersionedMessage();
+  testObject->testMessage();
 
   std::cout << "COMPLETE:     Push mailbox db complete.\n";
 

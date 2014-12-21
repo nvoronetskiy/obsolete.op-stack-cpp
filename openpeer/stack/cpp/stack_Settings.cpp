@@ -180,6 +180,7 @@ namespace openpeer
         setString(OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME, "cache.db");
 
         setString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX, "_push_mailbox.db");
+        setUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES, 0);
 
         {
           AutoRecursiveLock lock(mLock);

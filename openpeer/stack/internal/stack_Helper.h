@@ -34,6 +34,9 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/IHelper.h>
 
+#include <easySQLite/SqlTable.h>
+#include <easySQLite/SqlRecord.h>
+
 namespace openpeer
 {
   namespace stack
@@ -50,6 +53,10 @@ namespace openpeer
 
       class Helper : public IHelper
       {
+      public:
+        ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
+        ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+
       public:
         //---------------------------------------------------------------------
         #pragma mark
@@ -101,6 +108,11 @@ namespace openpeer
         static Log::Level getJavaScriptLogLevel();
 
         static void enableSqliteErrorLogging();
+
+        static ElementPtr toDebug(
+                                  const SqlTable *table,
+                                  const SqlRecord *record
+                                  );
 
       protected:
         //---------------------------------------------------------------------

@@ -91,6 +91,8 @@ namespace openpeer
         static const char *hasEncryptedData;
         static const char *hasDecryptedData;
         static const char *downloadedEncryptedData;
+        static const char *downloadFailures;
+        static const char *downloadRetryAfter;
         static const char *processedKey;
         static const char *decryptKeyID;
         static const char *decryptLater;
@@ -187,7 +189,7 @@ namespace openpeer
         static SqlField *FolderVersionedMessage()
         {
           static SqlField table[] = {
-            SqlField(sql::FIELD_KEY),
+            SqlField(sql::FIELD_KEY_AUTOINCREMENT),
             SqlField(indexFolderRecord, sql::type_int, sql::flag_not_null),
             SqlField(messageID, sql::type_text, sql::flag_not_null),
             SqlField(removedFlag, sql::type_bool, sql::flag_not_null),
@@ -204,8 +206,7 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(indexFolderRecord, sql::type_int, sql::flag_not_null),
-            SqlField(messageID, sql::type_text, sql::flag_not_null),
+            SqlField(messageID, sql::type_text, sql::flag_not_null | sql::flag_unique),
             SqlField(serverVersion, sql::type_text, sql::flag_not_null),
             SqlField(downloadedVersion, sql::type_text, sql::flag_not_null),
             SqlField(to, sql::type_text, sql::flag_not_null),
@@ -227,6 +228,8 @@ namespace openpeer
             SqlField(hasEncryptedData, sql::type_bool, sql::flag_not_null),
             SqlField(hasDecryptedData, sql::type_bool, sql::flag_not_null),
             SqlField(downloadedEncryptedData, sql::type_bool, sql::flag_not_null),
+            SqlField(downloadFailures, sql::type_int, sql::flag_not_null),
+            SqlField(downloadRetryAfter, sql::type_int, sql::flag_not_null),
             SqlField(processedKey, sql::type_bool, sql::flag_not_null),
             SqlField(decryptKeyID, sql::type_text, sql::flag_not_null),
             SqlField(decryptLater, sql::type_bool, sql::flag_not_null),
