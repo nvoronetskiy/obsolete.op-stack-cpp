@@ -153,30 +153,6 @@ namespace openpeer
       }
       
       //-----------------------------------------------------------------------
-      static void setInts(
-                          SqlRecord &record,
-                          const char *names[],
-                          const int value = 0
-                          )
-      {
-        for (int loop = 0; NULL != names[loop]; ++loop) {
-          record.setInteger(names[loop], value);
-        }
-      }
-
-      //-----------------------------------------------------------------------
-      static void setBools(
-                           SqlRecord &record,
-                           const char *names[],
-                           const bool value = false
-                           )
-      {
-        for (int loop = 0; NULL != names[loop]; ++loop) {
-          record.setBool(names[loop], value);
-        }
-      }
-      
-      //-----------------------------------------------------------------------
       static FolderRecordPtr convertFolderRecord(SqlRecord *record)
       {
         FolderRecordPtr result(new FolderRecord);
@@ -1905,11 +1881,68 @@ namespace openpeer
                                                                                       bool downloaded
                                                                                       )
       {
-      }
+        AutoRecursiveLock lock(*this);
 
-      //-----------------------------------------------------------------------
-      void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_notifyDownloadFailure(index indexMessageRecord)
-      {
+        try {
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadedEncryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadRetryAfter)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadFailures)->setIgnored(false);
+
+          table.open(String(SqlField::id) + " = " + string(indexMessageRecord));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_WARNING(Detail, log("message record not found") + ZS_PARAMIZE(indexMessageRecord))
+            return;
+          }
+
+          record->setBool(UseTables::downloadedEncryptedData, downloaded);
+
+          auto downloadFailures = record->getValue(UseTables::downloadFailures)->asInteger();
+          ++downloadFailures;
+
+          record->setInteger(UseTables::downloadRetryAfter, 0);
+          record->setInteger(UseTables::downloadFailures, 0);
+
+          String maxSizeClause;
+          if (0 != maxDownloadSize) {
+            maxSizeClause = String(" AND ") + UseTables::encryptedDataLength + " < " + string(maxDownloadSize);
+          }
+
+          auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
+
+          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " != '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + " AND " + UseTables::downloadFailures + " < " + string(maxDownloadRetries) + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
+
+          if (table.recordCount() < 1) {
+            ZS_LOG_TRACE(log("no messages needing data"))
+            return result;
+          }
+
+          for (int loop = 0; loop < table.recordCount(); ++loop)
+          {
+            SqlRecord *record = table.getRecord(loop);
+            if (!record) {
+              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing data"))
+              continue;
+            }
+
+            MessageRecordPtr message = convertMessageRecord(record);
+
+            ZS_LOG_TRACE(log("found message needing data") + message->toDebug())
+
+            result->push_back(*message);
+          }
+
+          return  result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------

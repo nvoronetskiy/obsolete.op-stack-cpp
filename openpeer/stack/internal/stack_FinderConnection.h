@@ -490,7 +490,7 @@ namespace openpeer
 
         bool mSendStreamNotifiedReady {};
 
-        Seconds mSendKeepAliveAfter;
+        Seconds mSendKeepAliveAfter {};
         Time mLastSentData;
         TimerPtr mPingTimer;
 

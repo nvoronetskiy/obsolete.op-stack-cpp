@@ -1100,9 +1100,6 @@ namespace openpeer
               mRefreshMessagesNeedingData = true;
             } else {
               ZS_LOG_ERROR(Detail, log("notified download complete failed") + ZS_PARAM("message ID", messageID))
-
-              // database should clear the flag after a period of time to cause the download to happen again later
-              mDB->messageTable()->notifyDownloadFailure(processedInfo.mInfo.mIndex);
             }
 
             mMessagesNeedingData.erase(found);
@@ -1730,7 +1727,7 @@ namespace openpeer
         }
 
         Time updateNextTime = result->updateNext();
-        Seconds updateNextDuration;
+        Seconds updateNextDuration {};
         if (Time() != updateNextTime) {
           Time now = zsLib::now();
           if (now < updateNextTime) {

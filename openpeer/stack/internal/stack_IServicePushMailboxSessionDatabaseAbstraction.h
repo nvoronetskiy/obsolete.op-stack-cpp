@@ -745,15 +745,12 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: Set flag that a message has downloaded (or not
           //          downloaded)
+          // NOTES:   If download is false then the download is considered to
+          //          have failed to download.
           virtual void notifyDownload(
                                       index indexMessageRecord,
                                       bool downloaded
                                       ) = 0;
-
-          //-------------------------------------------------------------------
-          // PURPOSE: Notify that a message failed to download so it can be
-          //          blocked from repeated downloading for a period of time.
-          virtual void notifyDownloadFailure(index indexMessageRecord) = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: Get a small batch of messages which has "processedKey"

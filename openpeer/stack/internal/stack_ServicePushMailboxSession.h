@@ -1096,11 +1096,11 @@ namespace openpeer
         bool mObtainedLock {};
 
         bool mRequiresConnection;
-        Seconds mInactivityTimeout;
+        Seconds mInactivityTimeout {};
         Time mLastActivity;
 
-        Seconds mDefaultLastRetryDuration;
-        Seconds mLastRetryDuration;
+        Seconds mDefaultLastRetryDuration {};
+        Seconds mLastRetryDuration {};
         Time mDoNotRetryConnectionBefore;
         TimerPtr mRetryTimer;
 

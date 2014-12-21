@@ -812,7 +812,7 @@ namespace openpeer
           // because the peer location will notify us of other peer locations for the existing peer.
           // NOTE: Presence can also give us a hint to when we should redo the search.
           Time mNextScheduledFind;                                    // if peer was not found, schedule finds to try again
-          Seconds mLastScheduleFindDuration;                          // how long was the duration between finds (used because it will double each time a search is completed)
+          Seconds mLastScheduleFindDuration {};                       // how long was the duration between finds (used because it will double each time a search is completed)
 
           bool mFindAgainAfterBackgrounded {};
         };
@@ -860,7 +860,7 @@ namespace openpeer
         UseAccountFinderPtr mFinder;
 
         Time mFinderRetryAfter;
-        Seconds mLastRetryFinderAfterDuration;
+        Seconds mLastRetryFinderAfterDuration {};
 
         ServerList mAvailableFinders;
         IDNS::SRVResultPtr mAvailableFinderSRVResult;

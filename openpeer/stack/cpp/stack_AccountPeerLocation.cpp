@@ -379,7 +379,7 @@ namespace openpeer
             (Time() != mIdentifyTime)) {
           Time tick = zsLib::now();
 
-          Seconds timeConnected;
+          Seconds timeConnected {};
           if (tick > mIdentifyTime) {
             timeConnected = zsLib::toSeconds(tick - mIdentifyTime);
           }

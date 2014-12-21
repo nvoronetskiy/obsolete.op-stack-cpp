@@ -533,7 +533,7 @@ namespace openpeer
           AutoPUID mID;
           CacheableDocumentWeakPtr mThisWeak;
 
-          Seconds mMoveToCacheDuration;
+          Seconds mMoveToCacheDuration {};
 
           mutable DocumentPtr mDocument;
           mutable size_t mOutputSize;
