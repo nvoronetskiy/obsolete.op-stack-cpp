@@ -39,8 +39,7 @@
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX "openpeer/stack/push-mailbox-database-filename-postfix"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-size-in-bytes"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_MAX_DOWNLOAD_RETRIES "openpeer/stack/push-mailbox-max-message-download-retries"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_AFTER_IN_SECONDS "openpeer/stack/push-mailbox-download-failure-retry-after-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-download-failure-retry-pattern-in-seconds"
 
 namespace openpeer
 {

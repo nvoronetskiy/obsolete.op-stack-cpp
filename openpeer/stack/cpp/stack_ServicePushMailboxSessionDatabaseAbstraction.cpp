@@ -37,6 +37,7 @@
 
 #include <openpeer/services/ISettings.h>
 #include <openpeer/services/IHelper.h>
+#include <openpeer/services/IBackOffTimer.h>
 
 #include <zsLib/helpers.h>
 #include <zsLib/XML.h>
@@ -63,6 +64,7 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(Helper, UseStackHelper)
 
       ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
+      ZS_DECLARE_TYPEDEF_PTR(services::IBackOffTimer, UseBackOffTimer)
 
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstractionTables, UseTables)
 
@@ -1829,7 +1831,9 @@ namespace openpeer
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
           auto maxDownloadSize = UseSettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES);
-          auto maxDownloadRetries = UseSettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_MAX_DOWNLOAD_RETRIES);
+
+          UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS));
+          auto maxDownloadRetries = backoff->getMaxFailures();
 
           ignoreAllFieldsInTable(table);
 
@@ -1843,9 +1847,14 @@ namespace openpeer
             maxSizeClause = String(" AND ") + UseTables::encryptedDataLength + " < " + string(maxDownloadSize);
           }
 
+          String maxDownloadRetriesClause;
+          if (0 != maxDownloadRetries) {
+            maxDownloadRetriesClause = String(" AND ") + UseTables::downloadFailures + " < " + string(maxDownloadRetries);
+          }
+
           auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
 
-          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " != '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + " AND " + UseTables::downloadFailures + " < " + string(maxDownloadRetries) + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
+          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " != '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no messages needing data"))
@@ -1904,42 +1913,23 @@ namespace openpeer
 
           record->setBool(UseTables::downloadedEncryptedData, downloaded);
 
-          auto downloadFailures = record->getValue(UseTables::downloadFailures)->asInteger();
-          ++downloadFailures;
+          if (!downloaded) {
+            auto downloadFailures = record->getValue(UseTables::downloadFailures)->asInteger();
+            UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS), downloadFailures);
+            backoff->notifyFailure();
 
-          record->setInteger(UseTables::downloadRetryAfter, 0);
-          record->setInteger(UseTables::downloadFailures, 0);
-
-          String maxSizeClause;
-          if (0 != maxDownloadSize) {
-            maxSizeClause = String(" AND ") + UseTables::encryptedDataLength + " < " + string(maxDownloadSize);
-          }
-
-          auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
-
-          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " != '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + " AND " + UseTables::downloadFailures + " < " + string(maxDownloadRetries) + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
-
-          if (table.recordCount() < 1) {
-            ZS_LOG_TRACE(log("no messages needing data"))
-            return result;
-          }
-
-          for (int loop = 0; loop < table.recordCount(); ++loop)
-          {
-            SqlRecord *record = table.getRecord(loop);
-            if (!record) {
-              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing data"))
-              continue;
+            record->setInteger(UseTables::downloadFailures, backoff->getTotalFailures());
+            if (Time() != backoff->getNextRetryAfterTime()) {
+              record->setInteger(UseTables::downloadRetryAfter, zsLib::timeSinceEpoch<Seconds>(backoff->getNextRetryAfterTime()).count());
+            } else {
+              record->setInteger(UseTables::downloadRetryAfter, 0);
             }
-
-            MessageRecordPtr message = convertMessageRecord(record);
-
-            ZS_LOG_TRACE(log("found message needing data") + message->toDebug())
-
-            result->push_back(*message);
+          } else {
+            record->setInteger(UseTables::downloadRetryAfter, 0);
+            record->setInteger(UseTables::downloadFailures, 0);
           }
 
-          return  result;
+          table.updateRecord(record);
         } catch (SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
         }
