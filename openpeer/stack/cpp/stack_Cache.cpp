@@ -72,6 +72,7 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
       ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
       ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+      ZS_DECLARE_TYPEDEF_PTR(sql::RecordSet, SqlRecordSet)
       ZS_DECLARE_TYPEDEF_PTR(sql::Value, SqlValue)
 
       //-----------------------------------------------------------------------
@@ -457,6 +458,15 @@ namespace openpeer
 
             versionRecord->setInteger(ICacheTables::version, OPENPEER_STACK_CACHE_DATABASE_VERSION);
             versionTable.updateRecord(versionRecord);
+          } else {
+            auto randomlyAnalyze = UseSettings::getUInt(OPENPEER_STACK_SETTING_CACHE_RANDOMLY_ANALYZE_EVERY);
+            if (0 != randomlyAnalyze) {
+              if (0 == UseServicesHelper::random(0, randomlyAnalyze)) {
+                ZS_LOG_BASIC(log("performing random database analyzation") + ZS_PARAM(OPENPEER_STACK_SETTING_CACHE_RANDOMLY_ANALYZE_EVERY, randomlyAnalyze))
+                SqlRecordSet query(*mDB);
+                query.query("ANALYZE");
+              }
+            }
           }
 
           SqlTable cacheTable(mDB->getHandle(), ICacheTables::Cache_name(), ICacheTables::Cache());

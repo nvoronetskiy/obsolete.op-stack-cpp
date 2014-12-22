@@ -38,8 +38,9 @@
 
 #include <easySQLite/SqlDatabase.h>
 
-#define OPENPEER_STACK_SETTING_CACHE_DATABASE_PATH        "openpeer/stack/cache-database-path"
-#define OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME    "openpeer/stack/cache-database-filename"
+#define OPENPEER_STACK_SETTING_CACHE_RANDOMLY_ANALYZE_EVERY   "openpeer/stack/cache-randomly-analyze-every"
+#define OPENPEER_STACK_SETTING_CACHE_DATABASE_PATH            "openpeer/stack/cache-database-path"
+#define OPENPEER_STACK_SETTING_CACHE_DATABASE_FILENAME        "openpeer/stack/cache-database-filename"
 
 namespace openpeer
 {

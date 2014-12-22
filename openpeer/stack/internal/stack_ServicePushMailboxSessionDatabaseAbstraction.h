@@ -38,6 +38,7 @@
 #include <easySQLite/SqlDatabase.h>
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX "openpeer/stack/push-mailbox-database-filename-postfix"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ANALYZE_DATABASE_RANDOMLY_EVERY "openpeer/stack/push-mailbox-analyze-database-randomly-every"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-size-in-bytes"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-download-failure-retry-pattern-in-seconds"
 

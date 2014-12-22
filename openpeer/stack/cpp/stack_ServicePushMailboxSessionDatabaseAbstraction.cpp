@@ -51,6 +51,9 @@
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_FOLDER_VERSIONED_MESSAGES_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_UPDATE_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_KEY_PROCESSING_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT 10
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -1459,6 +1462,7 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          record.setInteger(SqlField::id, indexMessageRecord);
           record.setString(UseTables::encoding, encoding);
           record.setInteger(UseTables::encryptedDataLength, encryptedDataLength);
           record.setInteger(UseTables::encryptedDataLength, encryptedDataLength);
@@ -1497,6 +1501,7 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          record.setInteger(SqlField::id, indexMessageRecord);
           record.setString(UseTables::encoding, encoding);
           record.setString(UseTables::encryptedFileName, encryptedFileName);
           record.setString(UseTables::decryptedFileName, decryptedFileName);
@@ -1530,6 +1535,7 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          record.setInteger(SqlField::id, indexMessageRecord);
           record.setString(UseTables::encryptedFileName, encryptedFileName);
 
           table.updateRecord(&record);
@@ -1562,6 +1568,7 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          record.setInteger(SqlField::id, indexMessageRecord);
           record.setString(UseTables::encryptedFileName, encryptedFileName);
           record.setInteger(UseTables::encryptedDataLength, encryptedDataLength);
 
@@ -1732,10 +1739,9 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
 
         try {
-          SqlRecordSet query(*mDB);
-
           ZS_LOG_TRACE(log("updating message server version") + ZS_PARAMIZE(messageID) + ZS_PARAMIZE(serverVersion))
 
+          SqlRecordSet query(*mDB);
           query.query(String("UPDATE ") + UseTables::Message_name() + " SET " + UseTables::serverVersion + " = " + SqlQuote(serverVersion) + " WHERE " + UseTables::messageID + " = " + SqlQuote(messageID));
 
         } catch (SqlException &e) {
@@ -1752,8 +1758,6 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
 
         try {
-          SqlRecordSet query(*mDB);
-
           ZS_LOG_TRACE(log("updating message encrypted data") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAM("encrypted data", encryptedData.SizeInBytes()))
 
           String dataStr;
@@ -1761,6 +1765,7 @@ namespace openpeer
             dataStr = UseServicesHelper::convertToBase64(encryptedData);
           }
 
+          SqlRecordSet query(*mDB);
           query.query(String("UPDATE ") + UseTables::Message_name() + " SET " + UseTables::encryptedData + " = " + SqlQuote(dataStr) + " WHERE " + SqlField::id + " = " + string(indexMessageRecord));
 
         } catch (SqlException &e) {
@@ -1893,6 +1898,7 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
 
         try {
+          ZS_LOG_TRACE(log("notifying downloaded") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAMIZE(downloaded))
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
@@ -1937,22 +1943,162 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingKeysProcessing(
-                                                                                                                                                                   index indexFolderRecord,
-                                                                                                                                                                   const char *whereMessageTypeIs,
-                                                                                                                                                                   const char *whereMimeType
-                                                                                                                                                                   ) const
+                                                                                                                     index indexFolderRecord,
+                                                                                                                     const char *inWhereMessageTypeIs,
+                                                                                                                     const char *inWhereMimeType
+                                                                                                                     ) const
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::encoding)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::from)->setIgnored(false);
+          table.fields()->getByName(UseTables::processedKey)->setIgnored(false);
+
+          String whereMessageTypeIs(inWhereMessageTypeIs);
+          String whereMimeType(inWhereMimeType);
+
+          String messageTypeClause;
+          if (whereMessageTypeIs.hasData()) {
+            messageTypeClause = String(" AND ") + UseTables::type + " = " + SqlQuote(whereMessageTypeIs);
+          }
+          String mimeTypeClause;
+          if (whereMimeType.hasData()) {
+            mimeTypeClause = String(" AND ") + UseTables::mimeType + " = " + SqlQuote(whereMimeType);
+          }
+
+          table.open(String(UseTables::indexFolderRecord) + " = " + string(indexFolderRecord) + messageTypeClause + mimeTypeClause + " AND " + UseTables::processedKey + " = 0 LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_KEY_PROCESSING_BATCH_LIMIT));
+
+          if (table.recordCount() < 1) {
+            ZS_LOG_TRACE(log("no messages needing key processing"))
+            return result;
+          }
+
+          for (int loop = 0; loop < table.recordCount(); ++loop)
+          {
+            SqlRecord *record = table.getRecord(loop);
+            if (!record) {
+              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing key processing"))
+              continue;
+            }
+
+            MessageRecordPtr message = convertMessageRecord(record);
+            if (!message->mEncryptedData) {
+              ZS_LOG_WARNING(Detail, log("no message data found in message record (keying material exceeded max message \"in memory\" size?)") + message->toDebug())
+              continue;
+            }
+
+            ZS_LOG_TRACE(log("found message needing key processing") + message->toDebug())
+
+            result->push_back(*message);
+          }
+
+          return  result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return MessageRecordListPtr();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_notifyKeyingProcessed(index indexMessageRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying keying processed") + ZS_PARAMIZE(indexMessageRecord))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::processedKey)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          record.setBool(UseTables::processedKey, true);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingDecrypting(const char *excludeWhereMessageTypeIs) const
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
+          table.fields()->getByName(UseTables::encoding)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
+
+          String whereMessageTypeIsNot(excludeWhereMessageTypeIs);
+
+          String messageTypeNotClause;
+          if (whereMessageTypeIsNot.hasData()) {
+            messageTypeNotClause = String(" AND ") + UseTables::type + " != " + SqlQuote(whereMessageTypeIsNot);
+          }
+
+          table.open(String(UseTables::decryptLater) + " = 0 AND " + UseTables::decryptedData + " == '' AND " + UseTables::decryptedFileName + " == '' AND " + UseTables::decryptFailure + " = 0" + messageTypeNotClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT));
+
+          if (table.recordCount() < 1) {
+            ZS_LOG_TRACE(log("no messages needing decrypting"))
+            return result;
+          }
+
+          for (int loop = 0; loop < table.recordCount(); ++loop)
+          {
+            SqlRecord *record = table.getRecord(loop);
+            if (!record) {
+              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing decrypting"))
+              continue;
+            }
+
+            MessageRecordPtr message = convertMessageRecord(record);
+            if ((!message->mEncryptedData) &&
+                (message->mEncryptedFileName.isEmpty())) {
+              ZS_LOG_WARNING(Detail, log("no encrypted message data found in message record") + message->toDebug())
+              continue;
+            }
+
+            ZS_LOG_TRACE(log("found message needing decryption") + message->toDebug())
+
+            result->push_back(*message);
+          }
+
+          return  result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return MessageRecordListPtr();
       }
 
@@ -1962,16 +2108,77 @@ namespace openpeer
                                                                                           const char *decryptKeyID
                                                                                           )
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypt later") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAMIZE(decryptKeyID))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptLater)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptKeyID)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          record.setBool(UseTables::decryptLater, false);
+          record.setString(UseTables::decryptKeyID, decryptKeyID);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_notifyDecryptionFailure(index indexMessageRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypt failure") + ZS_PARAMIZE(indexMessageRecord))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptFailure)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          record.setBool(UseTables::decryptFailure, true);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
       
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_notifyDecryptNowForKeys(const char *whereDecryptKeyIDIs)
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypt now for keys") + ZS_PARAMIZE(whereDecryptKeyIDIs))
+
+          SqlRecordSet query(*mDB);
+          query.query(String("UPDATE ") + UseTables::Message_name() + " SET " + UseTables::decryptLater + " = 0 " + " WHERE " + UseTables::decryptKeyID + " = " + SqlQuote(whereDecryptKeyIDIs));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
       
       //-----------------------------------------------------------------------
@@ -1981,6 +2188,35 @@ namespace openpeer
                                                                                        bool needsNotification
                                                                                        )
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypted") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAM("decrypted data", decryptedData ? decryptedData->SizeInBytes() : 0) + ZS_PARAMIZE(needsNotification))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::needsNotification)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          if (decryptedData) {
+            record.setString(UseTables::decryptedData, UseServicesHelper::convertToBase64(*decryptedData));
+          } else {
+            record.setString(UseTables::decryptedData, String());
+          }
+          record.setBool(UseTables::needsNotification, needsNotification);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
       
       //-----------------------------------------------------------------------
@@ -1991,22 +2227,156 @@ namespace openpeer
                                                                                        bool needsNotification
                                                                                        )
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypted") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAMIZE(encrytpedFileName) + ZS_PARAMIZE(decryptedFileName) + ZS_PARAMIZE(needsNotification))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::needsNotification)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          record.setString(UseTables::encryptedFileName, String(encrytpedFileName));
+          record.setString(UseTables::decryptedFileName, String(decryptedFileName));
+          record.setBool(UseTables::needsNotification, needsNotification);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
       
       //-----------------------------------------------------------------------
       MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingNotification() const
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
+          table.fields()->getByName(UseTables::hasDecryptedData)->setIgnored(false);
+
+          table.open(String(UseTables::needsNotification) + " = 1 LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT));
+
+          if (table.recordCount() < 1) {
+            ZS_LOG_TRACE(log("no messages needing notification"))
+            return result;
+          }
+
+          for (int loop = 0; loop < table.recordCount(); ++loop)
+          {
+            SqlRecord *record = table.getRecord(loop);
+            if (!record) {
+              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing notification"))
+              continue;
+            }
+
+            MessageRecordPtr message = convertMessageRecord(record);
+
+            ZS_LOG_TRACE(log("found message needing notification") + message->toDebug())
+
+            result->push_back(*message);
+          }
+
+          return  result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return MessageRecordListPtr();
       }
       
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_clearNeedsNotification(index indexMessageRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("clearing notification") + ZS_PARAMIZE(indexMessageRecord))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::needsNotification)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          record.setBool(UseTables::needsNotification, false);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
       
       //-----------------------------------------------------------------------
       MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingExpiry(Time now) const
       {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
+
+          Seconds nowAsSeconds = zsLib::timeSinceEpoch<Seconds>(zsLib::now());
+
+          table.open(String(UseTables::expires) + " != 0 AND " + UseTables::expires + " < " + string(nowAsSeconds.count()) + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT));
+
+          if (table.recordCount() < 1) {
+            ZS_LOG_TRACE(log("no messages needing expiry"))
+            return result;
+          }
+
+          for (int loop = 0; loop < table.recordCount(); ++loop)
+          {
+            SqlRecord *record = table.getRecord(loop);
+            if (!record) {
+              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing expiry"))
+              continue;
+            }
+
+            MessageRecordPtr message = convertMessageRecord(record);
+
+            ZS_LOG_TRACE(log("found message needing expiry") + message->toDebug())
+
+            result->push_back(*message);
+          }
+
+          return  result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return MessageRecordListPtr();
       }
 
@@ -2333,6 +2703,14 @@ namespace openpeer
               // "upgrades" are possible here...
               case OPENPEER_STACK_PUSH_MAILBOX_DATABASE_VERSION: {
                 ZS_LOG_DEBUG(log("push mailbox database loaded"))
+                auto randomlyAnalyze = UseSettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ANALYZE_DATABASE_RANDOMLY_EVERY);
+                if (0 != randomlyAnalyze) {
+                  if (0 == UseServicesHelper::random(0, randomlyAnalyze)) {
+                    ZS_LOG_BASIC(log("performing random database analyzation") + ZS_PARAM(OPENPEER_STACK_SETTING_PUSH_MAILBOX_ANALYZE_DATABASE_RANDOMLY_EVERY, randomlyAnalyze))
+                    SqlRecordSet query(*mDB);
+                    query.query("ANALYZE");
+                  }
+                }
                 goto database_open_complete;
               }
               default: {
@@ -2407,6 +2785,11 @@ namespace openpeer
           query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::downloadedVersion + " ON " + UseTables::Message_name() + "(" + UseTables::downloadedVersion + ")");
           query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::downloadedEncryptedData + " ON " + UseTables::Message_name() + "(" + UseTables::downloadedEncryptedData + ")");
           query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::hasDecryptedData + " ON " + UseTables::Message_name() + "(" + UseTables::hasDecryptedData + ")");
+          query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::indexFolderRecord + " ON " + UseTables::Message_name() + "(" + UseTables::indexFolderRecord + ")");
+          query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::processedKey + " ON " + UseTables::Message_name() + "(" + UseTables::processedKey + ")");
+          query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::decryptLater + " ON " + UseTables::Message_name() + "(" + UseTables::decryptLater + ")");
+          query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::needsNotification + " ON " + UseTables::Message_name() + "(" + UseTables::needsNotification + ")");
+          query.query(String("CREATE INDEX ") + UseTables::Message_name() + "i" + UseTables::expires + " ON " + UseTables::Message_name() + "(" + UseTables::expires + ")");
           table.create();
         }
         {
