@@ -88,7 +88,6 @@ namespace openpeer
         static const char *decryptedData;
         static const char *encryptedFileName;
         static const char *decryptedFileName;
-        static const char *hasEncryptedData;
         static const char *hasDecryptedData;
         static const char *downloadedEncryptedData;
         static const char *downloadFailures;
@@ -225,7 +224,6 @@ namespace openpeer
             SqlField(decryptedData, sql::type_text, sql::flag_not_null),
             SqlField(encryptedFileName, sql::type_text, sql::flag_not_null),
             SqlField(decryptedFileName, sql::type_text, sql::flag_not_null),
-            SqlField(hasEncryptedData, sql::type_bool, sql::flag_not_null),
             SqlField(hasDecryptedData, sql::type_bool, sql::flag_not_null),
             SqlField(downloadedEncryptedData, sql::type_bool, sql::flag_not_null),
             SqlField(downloadFailures, sql::type_int, sql::flag_not_null),

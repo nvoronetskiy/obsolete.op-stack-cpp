@@ -658,19 +658,224 @@ namespace openpeer
         TESTING_CHECK(message)
         
         {
-          message->addOrUpdate("foo", "v1");
+          message->addOrUpdate("fooa", "v1a");
           checkCount(UseTables::Message(), UseTables::Message_name(), 1);
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
-          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "foo");
-          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v1");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "fooa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v1a");
         }
 
         {
-          message->addOrUpdate("foo", "v2");
+          message->addOrUpdate("fooa", "v2a");
           checkCount(UseTables::Message(), UseTables::Message_name(), 1);
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
-          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "foo");
-          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "fooa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2a");
+        }
+        {
+          message->addOrUpdate("foob", "v1b");
+          checkCount(UseTables::Message(), UseTables::Message_name(), 2);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::messageID, "foob");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::serverVersion, "v1b");
+        }
+        {
+          message->addOrUpdate("fooc", "v1c");
+          checkCount(UseTables::Message(), UseTables::Message_name(), 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::messageID, "fooc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::serverVersion, "v1c");
+        }
+
+        {
+          auto index = message->getIndex("fooa");
+          TESTING_EQUAL(1, index)
+        }
+        {
+          auto index = message->getIndex("foob");
+          TESTING_EQUAL(2, index)
+        }
+        {
+          auto index = message->getIndex("fooc");
+          TESTING_EQUAL(3, index)
+        }
+        {
+          message->remove(2);
+          auto index = message->getIndex("foob");
+          TESTING_CHECK(index < 0)
+
+          checkCount(UseTables::Message(), UseTables::Message_name(), 2);
+
+          index = message->getIndex("fooa");
+          TESTING_EQUAL(1, index)
+
+          index = message->getIndex("fooc");
+          TESTING_EQUAL(3, index)
+        }
+
+        {
+          IUseAbstraction::MessageRecord record;
+          record.mIndex = 3;
+          record.mServerVersion = "v2c";
+          record.mTo = "alicec";
+          record.mFrom = "bobc";
+          record.mCC = "debbiec";
+          record.mBCC = "charlesc";
+          record.mType = "typec";
+          record.mMimeType = "text/c-text";
+          record.mEncoding = "bogusc";
+          record.mPushType = "pushc";
+
+          record.mPushType = "pushc";
+
+          IServicePushMailboxSession::PushInfo info1;
+          info1.mServiceType = "apns";
+          info1.mCustom = UseServicesHelper::toJSON("{ \"fooc\": \"customc\" }");
+          info1.mValues = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value1ca\",\"value1cb\" ] } }");
+
+          IServicePushMailboxSession::PushInfo info2;
+          info2.mServiceType = "gcm";
+          info2.mCustom = UseServicesHelper::toJSON("{ \"custom2c\": \"custom2c\" }");
+          info2.mValues = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2ca\",\"value2cb\" ] } }");
+
+          record.mPushInfos.push_back(info1);
+          record.mPushInfos.push_back(info2);
+
+          record.mEncryptedDataLength = 100;
+          record.mNeedsNotification = true;
+
+          message->update(record);
+
+          checkCount(UseTables::Message(), UseTables::Message_name(), 2);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, SqlField::id, 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::messageID, "fooc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::serverVersion, "v2c");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::to, "alicec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::from, "bobc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::cc, "debbiec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::bcc, "charlesc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::type, "typec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::mimeType, "text/c-text");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encoding, "bogusc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::pushType, "pushc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::pushInfo, "{\"pushes\":{\"push\":[{\"serviceType\":\"apns\",\"values\":{\"value\":[\"value1ca\",\"value1cb\"]},\"custom\":{\"fooc\":\"customc\"}},{\"serviceType\":\"gcm\",\"values\":{\"value\":[\"value2ca\",\"value2cb\"]},\"custom\":{\"custom2c\":\"custom2c\"}}]}}");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedDataLength, 100);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::needsNotification, 1);
+
+          // make sure other record is not touched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "fooa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2a");
+        }
+
+        {
+          message->updateEncodingAndEncryptedDataLength(1, "bogusa", 1001);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encoding, "bogusa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encryptedDataLength, 1001);
+
+          // check to make sure other record is untouched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encoding, "bogusc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedDataLength, 100);
+        }
+
+        {
+          message->updateEncodingAndFileNames(3, "bogusc2", "encryptc.enc", "decryptc.dec", 999);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, SqlField::id, 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encoding, "bogusc2");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedFileName, "encryptc.enc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::decryptedFileName, "decryptc.dec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedDataLength, 999);
+
+          // check to make sure other record is untouched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encoding, "bogusa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encryptedFileName, "");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::decryptedFileName, "");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encryptedDataLength, 1001);
+        }
+
+        {
+          message->updateEncryptionFileName(3, "encryptc2.enc");
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, SqlField::id, 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encoding, "bogusc2");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedFileName, "encryptc2.enc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::decryptedFileName, "decryptc.dec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::encryptedDataLength, 999);
+
+          // check to make sure other record is untouched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encoding, "bogusa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encryptedFileName, "");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::decryptedFileName, "");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::encryptedDataLength, 1001);
+        }
+
+        {
+          IUseAbstraction::MessageRecord record;
+          record.mMessageID = "food";
+          record.mTo = "juand";
+          record.mFrom = "edwardd";
+          record.mCC = "frankd";
+          record.mBCC = "georged";
+          record.mType = "simpled";
+          record.mMimeType = "text/text-d";
+          record.mEncoding = "bogusd";
+          record.mPushType = "pushd";
+
+          IServicePushMailboxSession::PushInfo info1;
+          info1.mServiceType = "apns";
+          info1.mCustom = UseServicesHelper::toJSON("{ \"food\": \"customd\" }");
+          info1.mValues = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value1da\",\"value1db\" ] } }");
+
+          IServicePushMailboxSession::PushInfo info2;
+          info2.mServiceType = "gcm";
+          info2.mCustom = UseServicesHelper::toJSON("{ \"custom2d\": \"custom2d\" }");
+          info2.mValues = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2da\",\"value2db\" ] } }");
+
+          record.mPushInfos.push_back(info1);
+          record.mPushInfos.push_back(info2);
+
+          Time now = zsLib::now();
+
+          record.mSent = now;
+          record.mExpires = now + Hours(2);
+
+          record.mEncryptedData = UseServicesHelper::convertToBuffer("encryptedbufferd");
+          record.mEncryptedFileName = "encryptd.enc";
+          record.mDecryptedData = UseServicesHelper::convertToBuffer("decryptedbufferd");
+          record.mNeedsNotification = true;
+
+          message->insert(record);
+
+          checkCount(UseTables::Message(), UseTables::Message_name(), 3);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, SqlField::id, 4);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::messageID, "food");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::to, "juand");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::from, "edwardd");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::cc, "frankd");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::bcc, "georged");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::type, "simpled");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::mimeType, "text/text-d");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encoding, "bogusd");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::pushType, "pushd");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::pushInfo, "{\"pushes\":{\"push\":[{\"serviceType\":\"apns\",\"values\":{\"value\":[\"value1da\",\"value1db\"]},\"custom\":{\"food\":\"customd\"}},{\"serviceType\":\"gcm\",\"values\":{\"value\":[\"value2da\",\"value2db\"]},\"custom\":{\"custom2d\":\"custom2d\"}}]}}");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::sent, (int) zsLib::timeSinceEpoch<Seconds>(now).count());
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::expires, (int) (zsLib::timeSinceEpoch<Seconds>(now).count() + zsLib::toSeconds(Hours(2)).count()));
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encryptedData, UseServicesHelper::convertToBase64(*UseServicesHelper::convertToBuffer("encryptedbufferd")));
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encryptedDataLength, (int) UseServicesHelper::convertToBuffer("encryptedbufferd")->SizeInBytes());
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encryptedFileName, "encryptd.enc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::decryptedData, UseServicesHelper::convertToBase64(*UseServicesHelper::convertToBuffer("decryptedbufferd")));
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::hasDecryptedData, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::needsNotification, 1);
+
+          // make sure other record is not touched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "fooa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2a");
         }
       }
       

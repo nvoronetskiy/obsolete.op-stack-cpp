@@ -4808,7 +4808,7 @@ namespace openpeer
 
             processedInfo.mInfo.mEncryptedDataLength = processedInfo.mData->SizeInBytes();
 
-            mDB->messageTable()->updateEncryptionStorage(processedInfo.mInfo.mIndexMessage, processedInfo.mMessage.mID, processedInfo.mInfo.mEncryptedDataLength);
+            mDB->messageTable()->updateEncryptionStorage(processedInfo.mInfo.mIndexMessage, processedInfo.mEncryptedFileName, processedInfo.mInfo.mEncryptedDataLength);
 
             processedInfo.mData.reset();
           }

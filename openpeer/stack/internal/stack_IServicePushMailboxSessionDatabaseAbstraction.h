@@ -674,14 +674,14 @@ namespace openpeer
                                                   ) = 0;
 
           //-------------------------------------------------------------------
-          // PURPOSE: Record that encrypted data is not recorded into a file
+          // PURPOSE: Record that encrypted data is now recorded into a file
           virtual void updateEncryptionFileName(
                                                 index indexMessageRecord,
                                                 const char *encryptedFileName
                                                 ) = 0;
 
           //-------------------------------------------------------------------
-          // PURPOSE: Record that encrypted data is not recorded into a file
+          // PURPOSE: Record that encrypted data is now recorded into a file
           virtual void updateEncryptionStorage(
                                                index indexMessageRecord,
                                                const char *encryptedFileName,
