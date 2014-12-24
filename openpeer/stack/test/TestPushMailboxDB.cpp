@@ -926,6 +926,55 @@ namespace openpeer
           TESTING_EQUAL(record->mEncryptedFileName, "encryptd.enc")
           TESTING_EQUAL(record->mDecryptedFileName, "")
         }
+
+        {
+          IUseAbstraction::MessageRecordPtr record = message->getByMessageID("bogus");
+          TESTING_CHECK(!record)
+        }
+
+        {
+          IUseAbstraction::MessageRecordPtr record = message->getByMessageID("food");
+          TESTING_CHECK(record)
+
+          TESTING_EQUAL(record->mIndex, 4)
+          TESTING_EQUAL(record->mMessageID, "food")
+          TESTING_EQUAL(record->mTo, "juand")
+          TESTING_EQUAL(record->mFrom, "edwardd")
+          TESTING_EQUAL(record->mCC, "frankd")
+          TESTING_EQUAL(record->mBCC, "georged")
+          TESTING_EQUAL(record->mType, "simpled")
+          TESTING_EQUAL(record->mMimeType, "text/text-d")
+
+          TESTING_CHECK(record->mDecryptedData)
+          TESTING_EQUAL(UseServicesHelper::convertToString(*record->mDecryptedData), "decryptedbufferd");
+          TESTING_EQUAL(record->mDecryptedFileName, String())
+
+          TESTING_EQUAL(record->mPushType, "pushd")
+          TESTING_EQUAL(record->mPushInfos.size(), 2)
+
+          IServicePushMailboxSession::PushInfo info1 = record->mPushInfos.front();
+          record->mPushInfos.pop_front();
+
+          IServicePushMailboxSession::PushInfo info2 = record->mPushInfos.front();
+          record->mPushInfos.pop_front();
+
+          TESTING_EQUAL(info1.mServiceType, "apns")
+          TESTING_EQUAL(UseServicesHelper::toString(info1.mCustom), "{\"custom\":{\"food\":\"customd\"}}");
+          TESTING_EQUAL(UseServicesHelper::toString(info1.mValues), "{\"values\":{\"value\":[\"value1da\",\"value1db\"]}}")
+
+          TESTING_EQUAL(info2.mServiceType, "gcm")
+          TESTING_EQUAL(UseServicesHelper::toString(info2.mCustom), "{\"custom\":{\"custom2d\":\"custom2d\"}}")
+          TESTING_EQUAL(UseServicesHelper::toString(info2.mValues), "{\"values\":{\"value\":[\"value2da\",\"value2db\"]}}")
+
+          Time now = zsLib::now();
+
+          TESTING_CHECK(now >= record->mSent)
+          TESTING_CHECK(now < record->mSent + Seconds(3))
+
+          TESTING_CHECK(now < record->mExpires)
+          TESTING_CHECK(now + Hours(2) > record->mExpires)
+          TESTING_CHECK(now + Hours(2) < record->mExpires + Seconds(3))
+        }
       }
       
       //-----------------------------------------------------------------------
