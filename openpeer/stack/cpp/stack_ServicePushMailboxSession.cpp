@@ -7046,7 +7046,7 @@ namespace openpeer
       result->mCustom = pushInfoEl->findFirstChildElement(Definitions::Names::custom());
 
       if (result->mValues) result->mValues = result->mValues->clone()->toElement();
-      if (result->mCustom) result->mValues = result->mCustom->clone()->toElement();
+      if (result->mCustom) result->mCustom = result->mCustom->clone()->toElement();
 
       return result;
     }
@@ -7104,9 +7104,18 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
-    IServicePushMailboxSessionTypes::PushInfoListPtr IServicePushMailboxSessionTypes::PushInfoList::create(ElementPtr pushInfosEl)
+    IServicePushMailboxSessionTypes::PushInfoListPtr IServicePushMailboxSessionTypes::PushInfoList::create(ElementPtr pushesEl)
     {
+      if (!pushesEl) return PushInfoListPtr();
+
       PushInfoListPtr result(new PushInfoList);
+      ElementPtr pushEl = pushesEl->findFirstChildElement(PushInfo::Definitions::Names::pushRoot());
+      while (pushEl) {
+        PushInfoPtr pushInfo = PushInfo::create(pushEl);
+        if (pushInfo) result->push_back(*pushInfo);
+
+        pushEl = pushEl->findNextSiblingElement(PushInfo::Definitions::Names::pushRoot());
+      }
       return result;
     }
 

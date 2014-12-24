@@ -222,7 +222,7 @@ namespace openpeer
         if (0 != sent) {
           result->mSent = zsLib::timeSinceEpoch(Seconds(sent));
         }
-        auto expires = record->getValue(UseTables::sent)->asInteger();
+        auto expires = record->getValue(UseTables::expires)->asInteger();
         if (0 != expires) {
           result->mExpires = zsLib::timeSinceEpoch(Seconds(expires));
         }

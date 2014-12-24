@@ -156,7 +156,7 @@ namespace openpeer
           };
         };
 
-        static PushInfoListPtr create(ElementPtr pushInfosEl);
+        static PushInfoListPtr create(ElementPtr pushesEl);
         ElementPtr createElement() const;
         ElementPtr toDebug() const;
       };
