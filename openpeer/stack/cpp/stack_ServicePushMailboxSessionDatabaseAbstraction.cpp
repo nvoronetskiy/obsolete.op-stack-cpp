@@ -1388,6 +1388,7 @@ namespace openpeer
           ignoreAllFieldsInTable(table);
 
           table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadedVersion)->setIgnored(false);
           table.fields()->getByName(UseTables::serverVersion)->setIgnored(false);
           table.fields()->getByName(UseTables::to)->setIgnored(false);
           table.fields()->getByName(UseTables::from)->setIgnored(false);
@@ -1406,6 +1407,7 @@ namespace openpeer
           SqlRecord record(table.fields());
 
           record.setInteger(SqlField::id, message.mIndex);
+          record.setString(UseTables::downloadedVersion, message.mDownloadedVersion);
           record.setString(UseTables::serverVersion, message.mServerVersion);
           record.setString(UseTables::to, message.mTo);
           record.setString(UseTables::from, message.mFrom);
@@ -1429,6 +1431,15 @@ namespace openpeer
             record.setInteger(UseTables::expires, 0);
           }
           record.setInteger(UseTables::encryptedDataLength, message.mEncryptedDataLength);
+          if (0 == message.mEncryptedDataLength) {
+            record.setBool(UseTables::downloadedEncryptedData, true);
+
+            table.fields()->getByName(UseTables::hasDecryptedData)->setIgnored(false);
+            table.fields()->getByName(UseTables::decryptedData)->setIgnored(false);
+
+            record.setBool(UseTables::hasDecryptedData, true);
+            record.setString(UseTables::decryptedData, String());
+          }
           record.setBool(UseTables::needsNotification, message.mNeedsNotification);
 
           table.updateRecord(&record);
@@ -1782,6 +1793,8 @@ namespace openpeer
 
           table.fields()->getByName(SqlField::id)->setIgnored(false);
           table.fields()->getByName(UseTables::encryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadedEncryptedData)->setIgnored(false);
 
           SqlRecord record(table.fields());
 
@@ -1793,6 +1806,9 @@ namespace openpeer
           } else {
             record.setString(UseTables::encryptedData, String());
           }
+
+          record.setInteger(UseTables::encryptedDataLength, encryptedData.SizeInBytes());
+          record.setInteger(UseTables::downloadedEncryptedData, true);
 
           table.updateRecord(&record);
 
@@ -1887,7 +1903,7 @@ namespace openpeer
 
           auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
 
-          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " != '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
+          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " = '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no messages needing data"))
@@ -2649,10 +2665,10 @@ namespace openpeer
                                                                              ) const
       {
         switch (severity) {
-          case SqlDatabase::Trace::Informational: ZS_INTERNAL_LOG_TRACE_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
-          case SqlDatabase::Trace::Warning:       ZS_INTERNAL_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
-          case SqlDatabase::Trace::Error:         ZS_INTERNAL_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
-          case SqlDatabase::Trace::Fatal:         ZS_INTERNAL_LOG_BASIC_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Informational: ZS_LOG_TRACE_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Warning:       ZS_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Error:         ZS_LOG_DETAIL_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
+          case SqlDatabase::Trace::Fatal:         ZS_LOG_BASIC_WITH_SEVERITY(UseStackHelper::toSeverity(severity), log(message)) break;
         }
       }
 

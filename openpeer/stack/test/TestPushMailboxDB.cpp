@@ -38,6 +38,7 @@
 
 #include <openpeer/stack/IStack.h>
 #include <openpeer/stack/ICache.h>
+#include <openpeer/stack/IHelper.h>
 #include <openpeer/stack/ISettings.h>
 
 #include <openpeer/services/IHelper.h>
@@ -55,6 +56,7 @@ ZS_DECLARE_USING_PTR(openpeer::stack, ICache)
 ZS_DECLARE_USING_PTR(openpeer::stack, ISettings)
 
 ZS_DECLARE_TYPEDEF_PTR(openpeer::services::IHelper, UseServicesHelper)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::IHelper, UseStackHelper)
 
 ZS_DECLARE_USING_PTR(openpeer::stack::test, TestPushMailboxDB)
 ZS_DECLARE_USING_PTR(openpeer::stack::test, TestSetup)
@@ -716,6 +718,7 @@ namespace openpeer
         {
           IUseAbstraction::MessageRecord record;
           record.mIndex = 3;
+          record.mDownloadedVersion = "v2c";
           record.mServerVersion = "v2c";
           record.mTo = "alicec";
           record.mFrom = "bobc";
@@ -750,6 +753,7 @@ namespace openpeer
 
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, SqlField::id, 3);
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::messageID, "fooc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::downloadedVersion, "v2c");
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::serverVersion, "v2c");
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::to, "alicec");
           checkIndexValue(UseTables::Message(), UseTables::Message_name(), 1, UseTables::from, "bobc");
@@ -975,8 +979,109 @@ namespace openpeer
           TESTING_CHECK(now + Hours(2) > record->mExpires)
           TESTING_CHECK(now + Hours(2) < record->mExpires + Seconds(3))
         }
+
+        {
+          message->updateServerVersionIfExists("bogus", "foobar");
+
+          IUseAbstraction::MessageRecordPtr record = message->getByMessageID("bogus");
+          TESTING_CHECK(!record)  // this shoudl not exist (i.e. not created)
+        }
+
+        {
+          message->updateServerVersionIfExists("food", "server-v2");
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, SqlField::id, 4);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::messageID, "food");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::serverVersion, "server-v2");
+        }
+
+        {
+          SecureByteBlockPtr encryptedData = UseServicesHelper::convertToBuffer("encrypted-data-test");
+          message->updateEncryptedData(4, *encryptedData);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, SqlField::id, 4);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::messageID, "food");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encryptedData, UseServicesHelper::convertToBase64(*encryptedData));
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 2, UseTables::encryptedDataLength, (int) encryptedData->SizeInBytes());
+        }
+
+        {
+          IUseAbstraction::IMessageTable::MessageNeedingUpdateListPtr updateList = message->getBatchNeedingUpdate();
+          TESTING_CHECK(updateList)
+
+          int index = 0;
+          for (auto iter = updateList->begin(); iter != updateList->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::IMessageTable::MessageNeedingUpdateInfo &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndexMessageRecord, 1)
+                TESTING_EQUAL(info.mMessageID, "fooa")
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mIndexMessageRecord, 4)
+                TESTING_EQUAL(info.mMessageID, "food")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          IUseAbstraction::MessageRecordListPtr needingData = message->getBatchNeedingData();
+          TESTING_CHECK(needingData)
+
+          int index = 0;
+          for (auto iter = needingData->begin(); iter != needingData->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                break;
+              }
+              case 1: {
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
       }
-      
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::tableDump(
+                                        SqlField *definition,
+                                        const char *tableName
+                                        )
+      {
+        TESTING_CHECK(definition)
+        TESTING_CHECK(tableName)
+
+        TESTING_CHECK(mOverride)
+        if (!mOverride) return;
+
+        SqlDatabasePtr database = mOverride->getDatabase();
+        TESTING_CHECK(database)
+        if (!database) return;
+
+        SqlTable table(*database, tableName, definition);
+        table.open();
+      }
+
       //-----------------------------------------------------------------------
       void TestPushMailboxDB::checkCount(
                                          SqlField *definition,

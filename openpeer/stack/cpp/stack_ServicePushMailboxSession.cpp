@@ -2253,6 +2253,7 @@ namespace openpeer
 
           MessageRecord message;
           message.mIndex = processedInfo.mInfo.mIndexMessageRecord;
+          message.mDownloadedVersion = info.mVersion;
           message.mServerVersion = info.mVersion;
           message.mTo = info.mTo;
           message.mFrom = info.mFrom;

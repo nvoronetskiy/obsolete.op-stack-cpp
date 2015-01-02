@@ -127,7 +127,11 @@ namespace openpeer
         void testMessage();
 
       protected:
-        
+        void tableDump(
+                       SqlField *definition,
+                       const char *tableName
+                       );
+
         void checkCount(
                         SqlField *definition,
                         const char *tableName,
