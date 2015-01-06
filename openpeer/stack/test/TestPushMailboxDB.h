@@ -106,6 +106,7 @@ namespace openpeer
         
         ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
         ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
+        ZS_DECLARE_TYPEDEF_PTR(sql::RecordSet, SqlRecordSet)
         ZS_DECLARE_TYPEDEF_PTR(sql::Table, SqlTable)
         ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
 
@@ -153,6 +154,14 @@ namespace openpeer
                              int value
                              );
         void checkIndexValue(
+                             SqlField *definition,
+                             const char *tableName,
+                             int index,
+                             const char *fieldName,
+                             int minValue,
+                             int maxValue
+                             );
+        void checkIndexValue(
                              SqlTable *table,
                              int index,
                              const char *fieldName,
@@ -162,7 +171,8 @@ namespace openpeer
                              SqlTable *table,
                              int index,
                              const char *fieldName,
-                             int value
+                             int minValue,
+                             int maxValue
                              );
         void checkValue(
                         SqlRecord *record,
@@ -172,7 +182,8 @@ namespace openpeer
         void checkValue(
                         SqlRecord *record,
                         const char *fieldName,
-                        int value
+                        int minValue,
+                        int maxValue
                         );
 
       public:

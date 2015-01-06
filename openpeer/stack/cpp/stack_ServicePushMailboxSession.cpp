@@ -2272,6 +2272,7 @@ namespace openpeer
           mDB->messageTable()->update(message);
 
           mRefreshVersionedFolders = true;
+          mRefreshMessagesNeedingData = true;
 
           {
             String listID =  extractListID(info.mTo);
@@ -3724,7 +3725,7 @@ namespace openpeer
 
         if (updateList->size() < 1) {
           ZS_LOG_DEBUG(log("no messages are requiring an data right now"))
-          mRefreshMessagesNeedingData = true;
+          mRefreshMessagesNeedingData = false;
           return true;
         }
 

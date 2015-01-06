@@ -339,7 +339,7 @@ namespace openpeer
         TESTING_CHECK(folderMessage)
 
         {
-          folderMessage->flushAll();            // nooop
+          folderMessage->flushAll();            // noop
         }
         
         {
@@ -1009,6 +1009,8 @@ namespace openpeer
           IUseAbstraction::IMessageTable::MessageNeedingUpdateListPtr updateList = message->getBatchNeedingUpdate();
           TESTING_CHECK(updateList)
 
+          TESTING_EQUAL(updateList->size(), 2)
+
           int index = 0;
           for (auto iter = updateList->begin(); iter != updateList->end(); ++iter, ++index)
           {
@@ -1036,8 +1038,58 @@ namespace openpeer
         }
 
         {
+          message->addOrUpdate("fooe", "v1e");
+          checkCount(UseTables::Message(), UseTables::Message_name(), 4);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::serverVersion, "v1e");
+        }
+        {
+          IUseAbstraction::MessageRecord record;
+          record.mIndex = 5;
+          record.mDownloadedVersion = "v2e";
+          record.mServerVersion = "v2e";
+          record.mTo = "alicee";
+          record.mFrom = "bobe";
+          record.mCC = "debbiee";
+          record.mBCC = "charlese";
+          record.mType = "typee";
+          record.mMimeType = "text/e-text";
+          record.mEncoding = "boguse";
+          record.mPushType = "pushe";
+
+          record.mEncryptedDataLength = 100;
+          record.mNeedsNotification = true;
+
+          message->update(record);
+
+          checkCount(UseTables::Message(), UseTables::Message_name(), 4);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadedVersion, "v2e");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::serverVersion, "v2e");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::to, "alicee");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::from, "bobe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::cc, "debbiee");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::bcc, "charlese");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::type, "typee");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::mimeType, "text/e-text");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::encoding, "boguse");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::encryptedDataLength, 100);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::needsNotification, 1);
+
+          // make sure other record is not touched
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::messageID, "fooa");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 0, UseTables::serverVersion, "v2a");
+        }
+
+        {
           IUseAbstraction::MessageRecordListPtr needingData = message->getBatchNeedingData();
           TESTING_CHECK(needingData)
+
+          TESTING_EQUAL(needingData->size(), 1)
 
           int index = 0;
           for (auto iter = needingData->begin(); iter != needingData->end(); ++iter, ++index)
@@ -1047,9 +1099,376 @@ namespace openpeer
             switch (index)
             {
               case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                TESTING_EQUAL(info.mEncryptedDataLength, 100)
+                TESTING_EQUAL(info.mEncryptedFileName, "")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          Time retryTime = zsLib::now();
+
+          Seconds minRetryAfter = zsLib::timeSinceEpoch<Seconds>(retryTime);
+
+          minRetryAfter = minRetryAfter + Seconds(58);
+          Seconds maxRetryAfter = minRetryAfter + Seconds(4);
+
+          message->notifyDownload(5, false);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadFailures, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadRetryAfter, (int) minRetryAfter.count(), (int) maxRetryAfter.count());
+        }
+
+        {
+          Time retryTime = zsLib::now();
+
+          Seconds minRetryAfter = zsLib::timeSinceEpoch<Seconds>(retryTime);
+
+          minRetryAfter = minRetryAfter + Seconds(60*2) - Seconds(2);
+          Seconds maxRetryAfter = minRetryAfter + Seconds(4);
+
+          message->notifyDownload(5, false);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadFailures, 2);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadRetryAfter, (int) minRetryAfter.count(), (int) maxRetryAfter.count());
+        }
+        {
+          Time retryTime = zsLib::now();
+
+          Seconds minRetryAfter = zsLib::timeSinceEpoch<Seconds>(retryTime);
+
+          minRetryAfter = minRetryAfter + Seconds(60*4) - Seconds(2);
+          Seconds maxRetryAfter = minRetryAfter + Seconds(4);
+
+          message->notifyDownload(5, false);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadFailures, 3);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadRetryAfter, (int) minRetryAfter.count(), (int) maxRetryAfter.count());
+        }
+
+        {
+          message->notifyDownload(5, true);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadFailures, 0);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::downloadRetryAfter, 0);
+        }
+
+        {
+          auto folderMessage = mAbstraction->folderMessageTable();
+          TESTING_CHECK(folderMessage)
+
+          {
+            folderMessage->flushAll();            // ensure folder message table is empty
+
+            {
+              IUseAbstraction::FolderMessageRecord record;
+              record.mIndexFolderRecord = 2;
+              record.mMessageID = "fooa";
+              folderMessage->addToFolderIfNotPresent(record);
+            }
+            {
+              IUseAbstraction::FolderMessageRecord record;
+              record.mIndexFolderRecord = 2;
+              record.mMessageID = "foob";
+              folderMessage->addToFolderIfNotPresent(record);
+            }
+            {
+              IUseAbstraction::FolderMessageRecord record;
+              record.mIndexFolderRecord = 3;
+              record.mMessageID = "fooc";
+              folderMessage->addToFolderIfNotPresent(record);
+            }
+            {
+              IUseAbstraction::FolderMessageRecord record;
+              record.mIndexFolderRecord = 3;
+              record.mMessageID = "food";
+              folderMessage->addToFolderIfNotPresent(record);
+            }
+            {
+              IUseAbstraction::FolderMessageRecord record;
+              record.mIndexFolderRecord = 3;
+              record.mMessageID = "fooe";
+              folderMessage->addToFolderIfNotPresent(record);
+            }
+
+            message->updateEncryptionFileName(5, "fooe.enc");
+          }
+
+          IUseAbstraction::MessageRecordListPtr needingKeyProcessing = message->getBatchNeedingKeysProcessing(3, "", "");
+          TESTING_CHECK(needingKeyProcessing)
+
+          TESTING_EQUAL(needingKeyProcessing->size(), 2)
+
+          int index = 0;
+          for (auto iter = needingKeyProcessing->begin(); iter != needingKeyProcessing->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "food")
                 break;
               }
               case 1: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          message->notifyKeyingProcessed(5);
+
+          IUseAbstraction::MessageRecordListPtr needingKeyProcessing = message->getBatchNeedingKeysProcessing(3, "", "");
+          TESTING_CHECK(needingKeyProcessing)
+
+          TESTING_EQUAL(needingKeyProcessing->size(), 1)
+
+          int index = 0;
+          for (auto iter = needingKeyProcessing->begin(); iter != needingKeyProcessing->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "food")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          IUseAbstraction::MessageRecordListPtr needingDecrypting = message->getBatchNeedingDecrypting("");
+          TESTING_CHECK(needingDecrypting)
+
+          TESTING_EQUAL(needingDecrypting->size(), 1)
+
+          int index = 0;
+          for (auto iter = needingDecrypting->begin(); iter != needingDecrypting->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          message->notifyDecryptLater(5, "keye");
+
+          IUseAbstraction::MessageRecordListPtr needingDecrypting = message->getBatchNeedingDecrypting("");
+          TESTING_CHECK(needingDecrypting)
+
+          TESTING_EQUAL(needingDecrypting->size(), 0)
+        }
+
+        {
+          message->notifyDecryptNowForKeys("keye");
+
+          IUseAbstraction::MessageRecordListPtr needingDecrypting = message->getBatchNeedingDecrypting("");
+          TESTING_CHECK(needingDecrypting)
+
+          TESTING_EQUAL(needingDecrypting->size(), 1)
+
+          int index = 0;
+          for (auto iter = needingDecrypting->begin(); iter != needingDecrypting->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          message->notifyDecrypted(5, UseServicesHelper::convertToBuffer("decrypted-fooe"), true);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptedData, UseServicesHelper::convertToBase64(*UseServicesHelper::convertToBuffer("decrypted-fooe")));
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptFailure, 0);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::needsNotification, 1);
+
+          {
+            IUseAbstraction::MessageRecordListPtr needingDecrypting = message->getBatchNeedingDecrypting("");
+            TESTING_CHECK(needingDecrypting)
+
+            TESTING_EQUAL(needingDecrypting->size(), 0)
+          }
+
+          message->notifyDecryptNowForKeys("keye");
+
+          {
+            IUseAbstraction::MessageRecordListPtr needingDecrypting = message->getBatchNeedingDecrypting("");
+            TESTING_CHECK(needingDecrypting)
+
+            TESTING_EQUAL(needingDecrypting->size(), 0)
+          }
+        }
+
+        {
+          SqlDatabasePtr database = mOverride->getDatabase();
+          TESTING_CHECK(database)
+
+          SqlRecordSet recordSet(*database);
+
+          recordSet.query(String("UPDATE ") + UseTables::Message_name() + " SET " + UseTables::decryptedData + "='', " + UseTables::needsNotification + "=0, " + UseTables::decryptFailure + "=1 WHERE " + SqlField::id + " = 5");
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptedData, String());
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptFailure, 1);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::needsNotification, 0);
+
+          message->notifyDecrypted(5, "fooe.enc", "fooe.dec", 1);
+
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, SqlField::id, 5);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::messageID, "fooe");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::encryptedFileName, "fooe.enc");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptedFileName, "fooe.dec");
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::decryptFailure, 0);
+          checkIndexValue(UseTables::Message(), UseTables::Message_name(), 3, UseTables::needsNotification, 1);
+        }
+
+        {
+          IUseAbstraction::MessageRecordListPtr needingNotification = message->getBatchNeedingNotification();
+          TESTING_CHECK(needingNotification)
+
+          TESTING_EQUAL(needingNotification->size(), 3)
+
+          int index = 0;
+          for (auto iter = needingNotification->begin(); iter != needingNotification->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooc")
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mMessageID, "food")
+                break;
+              }
+              case 2: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          message->clearNeedsNotification(3);
+          message->clearNeedsNotification(4);
+
+          IUseAbstraction::MessageRecordListPtr needingNotification = message->getBatchNeedingNotification();
+          TESTING_CHECK(needingNotification)
+
+          TESTING_EQUAL(needingNotification->size(), 1)
+
+          int index = 0;
+          for (auto iter = needingNotification->begin(); iter != needingNotification->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          IUseAbstraction::MessageRecordListPtr needingExpiry = message->getBatchNeedingExpiry(zsLib::now());
+          TESTING_CHECK(needingExpiry)
+
+          TESTING_EQUAL(needingExpiry->size(), 0)
+        }
+
+        {
+          Time now = zsLib::now();
+          Seconds expires = zsLib::timeSinceEpoch<Seconds>(now) - Seconds(1);
+
+          SqlDatabasePtr database = mOverride->getDatabase();
+          TESTING_CHECK(database)
+
+          SqlRecordSet recordSet(*database);
+
+          recordSet.query(String("UPDATE ") + UseTables::Message_name() + " SET " + UseTables::expires + "=" + zsLib::string(expires.count()) + " WHERE " + SqlField::id + " = 5");
+
+          IUseAbstraction::MessageRecordListPtr needingExpiry = message->getBatchNeedingExpiry(now);
+          TESTING_CHECK(needingExpiry)
+
+          TESTING_EQUAL(needingExpiry->size(), 1)
+
+          int index = 0;
+          for (auto iter = needingExpiry->begin(); iter != needingExpiry->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mMessageID, "fooe")
                 break;
               }
               default:
@@ -1150,9 +1569,34 @@ namespace openpeer
 
         SqlTable table(database->getHandle(), tableName, definition);
         table.open();
-        checkIndexValue(&table, index, fieldName, value);
+        checkIndexValue(&table, index, fieldName, value, value);
       }
 
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::checkIndexValue(
+                                              SqlField *definition,
+                                              const char *tableName,
+                                              int index,
+                                              const char *fieldName,
+                                              int minValue,
+                                              int maxValue
+                                              )
+      {
+        TESTING_CHECK(definition)
+        TESTING_CHECK(tableName)
+
+        TESTING_CHECK(mOverride)
+        if (!mOverride) return;
+
+        SqlDatabasePtr database = mOverride->getDatabase();
+        TESTING_CHECK(database)
+        if (!database) return;
+
+        SqlTable table(database->getHandle(), tableName, definition);
+        table.open();
+        checkIndexValue(&table, index, fieldName, minValue, maxValue);
+      }
+      
       //-----------------------------------------------------------------------
       void TestPushMailboxDB::checkIndexValue(
                                               SqlTable *table,
@@ -1173,14 +1617,15 @@ namespace openpeer
                                               SqlTable *table,
                                               int index,
                                               const char *fieldName,
-                                              int value
+                                              int minValue,
+                                              int maxValue
                                               )
       {
         TESTING_CHECK(table)
 
         SqlRecord *record = table->getRecord(index);
 
-        checkValue(record, fieldName, value);
+        checkValue(record, fieldName, minValue, maxValue);
       }
       
       //-----------------------------------------------------------------------
@@ -1207,7 +1652,8 @@ namespace openpeer
       void TestPushMailboxDB::checkValue(
                                          SqlRecord *record,
                                          const char *fieldName,
-                                         int inValue
+                                         int minValue,
+                                         int maxValue
                                          )
       {
         TESTING_CHECK(record)
@@ -1220,7 +1666,12 @@ namespace openpeer
 
         auto result = value->asInteger();
 
-        TESTING_EQUAL(result, inValue)
+        if (minValue == maxValue) {
+          TESTING_EQUAL(result, minValue)
+          return;
+        }
+        TESTING_CHECK(result >= minValue)
+        TESTING_CHECK(result <= maxValue)
       }
     }
   }

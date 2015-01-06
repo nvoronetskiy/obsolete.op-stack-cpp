@@ -1419,6 +1419,8 @@ namespace openpeer
           record.setString(UseTables::pushType, message.mPushType);
           if (message.mPushInfos.size() > 0) {
             record.setString(UseTables::pushInfo, UseServicesHelper::toString(message.mPushInfos.createElement()));
+          } else {
+            record.setString(UseTables::pushInfo, String());
           }
           if (Time() != message.mSent) {
             record.setInteger(UseTables::sent, zsLib::timeSinceEpoch<Seconds>(message.mSent).count());
@@ -1673,23 +1675,8 @@ namespace openpeer
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
-          table.fields()->getByName(UseTables::to)->setIgnored(false);
-          table.fields()->getByName(UseTables::from)->setIgnored(false);
-          table.fields()->getByName(UseTables::cc)->setIgnored(false);
-          table.fields()->getByName(UseTables::bcc)->setIgnored(false);
-          table.fields()->getByName(UseTables::type)->setIgnored(false);
-          table.fields()->getByName(UseTables::mimeType)->setIgnored(false);
-          table.fields()->getByName(UseTables::encoding)->setIgnored(false);
-          table.fields()->getByName(UseTables::pushType)->setIgnored(false);
-          table.fields()->getByName(UseTables::pushInfo)->setIgnored(false);
-          table.fields()->getByName(UseTables::sent)->setIgnored(false);
-          table.fields()->getByName(UseTables::expires)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
-          table.fields()->getByName(UseTables::decryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
 
           table.open(String(SqlField::id) + " = " + string(indexMessageRecord));
           SqlRecord *record = table.getTopRecord();
@@ -1720,22 +1707,7 @@ namespace openpeer
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
-          table.fields()->getByName(UseTables::to)->setIgnored(false);
-          table.fields()->getByName(UseTables::from)->setIgnored(false);
-          table.fields()->getByName(UseTables::cc)->setIgnored(false);
-          table.fields()->getByName(UseTables::bcc)->setIgnored(false);
-          table.fields()->getByName(UseTables::type)->setIgnored(false);
-          table.fields()->getByName(UseTables::mimeType)->setIgnored(false);
-          table.fields()->getByName(UseTables::decryptedData)->setIgnored(false);
-          table.fields()->getByName(UseTables::decryptedFileName)->setIgnored(false);
-          table.fields()->getByName(UseTables::pushType)->setIgnored(false);
-          table.fields()->getByName(UseTables::pushInfo)->setIgnored(false);
-          table.fields()->getByName(UseTables::sent)->setIgnored(false);
-          table.fields()->getByName(UseTables::expires)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
 
           table.open(String(UseTables::messageID) + " = " + SqlQuote(messageID));
           SqlRecord *record = table.getTopRecord();
@@ -1884,12 +1856,8 @@ namespace openpeer
           UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS));
           auto maxDownloadRetries = backoff->getMaxFailures();
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
 
           String maxSizeClause;
           if (0 != maxDownloadSize) {
@@ -1903,7 +1871,7 @@ namespace openpeer
 
           auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
 
-          table.open(String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " = '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
+          table.open(String(UseTables::downloadedVersion) + " != '' AND " + String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " = '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no messages needing data"))
@@ -2000,15 +1968,7 @@ namespace openpeer
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::encoding)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedData)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
-          table.fields()->getByName(UseTables::from)->setIgnored(false);
-          table.fields()->getByName(UseTables::processedKey)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
 
           String whereMessageTypeIs(inWhereMessageTypeIs);
           String whereMimeType(inWhereMimeType);
@@ -2022,8 +1982,8 @@ namespace openpeer
             mimeTypeClause = String(" AND ") + UseTables::Message_name() + "." + UseTables::mimeType + " = " + SqlQuote(whereMimeType);
           }
 
-          String queryStr = "SELECT " + table.fields()->getDefinition(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::FolderMessage_name() + " ON " + table.name() + "." + UseTables::messageID + " = " + UseTables::FolderMessage_name() + "." + UseTables::messageID + " WHERE ";
-          String whereStr = String(UseTables::FolderMessage_name()) + "." + UseTables::indexFolderRecord + " = " + string(indexFolderRecord) + messageTypeClause + mimeTypeClause + " AND " + UseTables::Message_name() + "." + UseTables::processedKey + " = 0 LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_KEY_PROCESSING_BATCH_LIMIT);
+          String queryStr = "SELECT " + table.getSelectFields(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::FolderMessage_name() + " ON " + table.name() + "." + UseTables::messageID + " = " + UseTables::FolderMessage_name() + "." + UseTables::messageID + " WHERE ";
+          String whereStr = String(UseTables::FolderMessage_name()) + "." + UseTables::indexFolderRecord + " = " + string(indexFolderRecord) + " AND " + UseTables::Message_name() + "." + UseTables::encryptedDataLength + " > 0 AND " + UseTables::Message_name() + "." + UseTables::downloadedEncryptedData + " = 1" + messageTypeClause + mimeTypeClause + " AND " + UseTables::Message_name() + "." + UseTables::processedKey + " = 0 LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_KEY_PROCESSING_BATCH_LIMIT);
 
           queryStr += whereStr;
 
@@ -2045,7 +2005,8 @@ namespace openpeer
             }
 
             MessageRecordPtr message = convertMessageRecord(record);
-            if (!message->mEncryptedData) {
+            if ((!message->mEncryptedData) &&
+                (message->mEncryptedFileName.isEmpty())){
               ZS_LOG_WARNING(Detail, log("no message data found in message record (keying material exceeded max message \"in memory\" size?)") + message->toDebug())
               continue;
             }
@@ -2102,14 +2063,7 @@ namespace openpeer
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
-          table.fields()->getByName(UseTables::encoding)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedData)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
 
           String whereMessageTypeIsNot(excludeWhereMessageTypeIs);
 
@@ -2118,7 +2072,7 @@ namespace openpeer
             messageTypeNotClause = String(" AND ") + UseTables::type + " != " + SqlQuote(whereMessageTypeIsNot);
           }
 
-          table.open(String(UseTables::decryptLater) + " = 0 AND " + UseTables::decryptedData + " == '' AND " + UseTables::decryptedFileName + " == '' AND " + UseTables::decryptFailure + " = 0" + messageTypeNotClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT));
+          table.open(String(UseTables::decryptLater) + " = 0 AND " + UseTables::decryptedData + " == '' AND " + UseTables::decryptedFileName + " == '' AND " + UseTables::decryptFailure + " = 0 AND " + UseTables::downloadedEncryptedData + " = 1" + messageTypeNotClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no messages needing decrypting"))
@@ -2177,7 +2131,7 @@ namespace openpeer
           SqlRecord record(table.fields());
 
           record.setInteger(SqlField::id, indexMessageRecord);
-          record.setBool(UseTables::decryptLater, false);
+          record.setBool(UseTables::decryptLater, true);
           record.setString(UseTables::decryptKeyID, decryptKeyID);
 
           table.updateRecord(&record);
@@ -2255,6 +2209,7 @@ namespace openpeer
           if (decryptedData) {
             table.fields()->getByName(UseTables::hasDecryptedData)->setIgnored(false);
           }
+          table.fields()->getByName(UseTables::decryptFailure)->setIgnored(false);
           table.fields()->getByName(UseTables::needsNotification)->setIgnored(false);
 
           SqlRecord record(table.fields());
@@ -2263,8 +2218,11 @@ namespace openpeer
           if (decryptedData) {
             record.setString(UseTables::decryptedData, UseServicesHelper::convertToBase64(*decryptedData));
             record.setBool(UseTables::hasDecryptedData, true);
+            record.setBool(UseTables::decryptFailure, false);
           } else {
             record.setString(UseTables::decryptedData, String());
+            record.setBool(UseTables::hasDecryptedData, false);
+            record.setBool(UseTables::decryptFailure, true);
           }
           record.setBool(UseTables::needsNotification, needsNotification);
 
@@ -2296,6 +2254,7 @@ namespace openpeer
           table.fields()->getByName(SqlField::id)->setIgnored(false);
           table.fields()->getByName(UseTables::encryptedFileName)->setIgnored(false);
           table.fields()->getByName(UseTables::decryptedFileName)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptFailure)->setIgnored(false);
           table.fields()->getByName(UseTables::needsNotification)->setIgnored(false);
 
           SqlRecord record(table.fields());
@@ -2303,6 +2262,7 @@ namespace openpeer
           record.setInteger(SqlField::id, indexMessageRecord);
           record.setString(UseTables::encryptedFileName, String(encrytpedFileName));
           record.setString(UseTables::decryptedFileName, String(decryptedFileName));
+          record.setBool(UseTables::decryptFailure, false);
           record.setBool(UseTables::needsNotification, needsNotification);
 
           table.updateRecord(&record);
@@ -2322,12 +2282,8 @@ namespace openpeer
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
 
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::messageID)->setIgnored(false);
-          table.fields()->getByName(UseTables::encryptedDataLength)->setIgnored(false);
-          table.fields()->getByName(UseTables::hasDecryptedData)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
 
           table.open(String(UseTables::needsNotification) + " = 1 LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT));
 
