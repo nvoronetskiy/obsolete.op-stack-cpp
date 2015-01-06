@@ -78,6 +78,7 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::KeyDomainRecord, KeyDomainRecord)
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::SendingKeyRecord, SendingKeyRecord)
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::ReceivingKeyRecord, ReceivingKeyRecord)
+      ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::MessageDeliveryStateRecord, MessageDeliveryStateRecord)
 
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::ISettingsTable, ISettingsTable)
       ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::IFolderTable, IFolderTable)
@@ -255,6 +256,20 @@ namespace openpeer
         result->mNeedsNotification = record->getValue(UseTables::needsNotification)->asBool();
 
         return result;
+      }
+
+      //-----------------------------------------------------------------------
+      static void convertMessageDeliveryRecord(
+                                                SqlRecord *record,
+                                                MessageDeliveryStateRecord &output
+                                                )
+      {
+        output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
+        output.mIndexMessage = static_cast<decltype(output.mIndexMessage)>(record->getValue(UseTables::indexMessageRecord)->asInteger());
+        output.mFlag = record->getValue(UseTables::flag)->asString();
+        output.mURI = record->getValue(UseTables::uri)->asString();
+        output.mErrorCode = static_cast<decltype(output.mErrorCode)>(record->getValue(UseTables::errorCode)->asInteger());
+        output.mErrorReason = record->getValue(UseTables::errorReason)->asString();
       }
 
       //-----------------------------------------------------------------------
@@ -2402,19 +2417,96 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageDeliveryStateTable_removeForMessage(index indexMessageRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          ZS_LOG_TRACE(log("deleting message delivery states") + ZS_PARAMIZE(indexMessageRecord))
+
+          SqlTable table(*mDB, UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
+
+          table.deleteRecords(String(UseTables::indexMessageRecord) + " = " + string(indexMessageRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IMessageDeliveryStateTable_updateForMessage(
                                                                                                      index indexMessageRecord,
-                                                                                                     const MessageDeliveryStateRecordList &uris
+                                                                                                     const MessageDeliveryStateRecordList &states
                                                                                                      )
       {
+        AutoRecursiveLock lock(*this);
+        IMessageDeliveryStateTable_removeForMessage(indexMessageRecord);
+
+        ZS_LOG_TRACE(log("inserting message delivery states") + ZS_PARAM("states", states.size()))
+
+        try {
+
+          SqlTable table(*mDB, UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
+
+          for (auto iter = states.begin(); iter != states.end(); ++iter)
+          {
+            auto info = (*iter);
+
+            SqlRecord record(table.fields());
+
+            if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN != info.mIndexMessage) {
+              record.setInteger(UseTables::indexMessageRecord, info.mIndexMessage);
+            } else {
+              record.setInteger(UseTables::indexMessageRecord, indexMessageRecord);
+            }
+
+            record.setString(UseTables::flag, info.mFlag);
+            record.setString(UseTables::uri, info.mURI);
+            if (0 != info.mErrorCode) {
+              record.setInteger(UseTables::errorCode, info.mErrorCode);
+            }
+            if (info.mErrorReason.hasData()) {
+              record.setString(UseTables::errorReason, info.mErrorReason);
+            }
+
+            initializeFields(record);
+
+            table.addRecord(&record);
+          }
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       MessageDeliveryStateRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageDeliveryStateTable_getForMessage(index indexMessageRecord) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
+
+          MessageDeliveryStateRecordListPtr result(new MessageDeliveryStateRecordList);
+
+          table.open(String(UseTables::indexMessageRecord) + " = " + string(indexMessageRecord));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            MessageDeliveryStateRecord deliveryRecord;
+
+            convertMessageDeliveryRecord(record, deliveryRecord);
+
+            ZS_LOG_TRACE(log("found message delivery state record") + deliveryRecord.toDebug())
+
+            result->push_back(deliveryRecord);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
+        // mUpdateNext or downloadVersion != serverVersion
         return MessageDeliveryStateRecordListPtr();
       }
 
@@ -2806,6 +2898,9 @@ namespace openpeer
         {
           SqlTable table(*mDB, UseTables::MessageDeliveryState_name(), UseTables::MessageDeliveryState());
           table.create();
+
+          SqlRecordSet query(*mDB);
+          query.query(String("CREATE INDEX ") + UseTables::MessageDeliveryState_name() + "i" + UseTables::indexMessageRecord + " ON " + UseTables::MessageDeliveryState_name() + "(" + UseTables::indexMessageRecord + ")");
         }
         {
           SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());

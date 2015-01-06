@@ -1482,6 +1482,228 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testDeliveryState()
+      {
+        auto deliveryState = mAbstraction->messageDeliveryStateTable();
+        TESTING_CHECK(deliveryState)
+
+        {
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0);
+          deliveryState->removeForMessage(3); // noop
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0);
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordListPtr states = deliveryState->getForMessage(1);
+          TESTING_CHECK(states)
+
+          TESTING_EQUAL(states->size(), 0)
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordList states;
+          deliveryState->updateForMessage(2, states);
+
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0);
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordList states;
+          deliveryState->updateForMessage(2, states);
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mIndexMessage = 2;
+            record.mFlag = "read";
+            record.mURI = "identity://foo.com/a1";
+            states.push_back(record);
+          }
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mFlag = "read";
+            record.mURI = "identity://foo.com/a2";
+            states.push_back(record);
+          }
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mFlag = "error";
+            record.mURI = "identity://foo.com/a3";
+            record.mErrorCode = 403;
+            record.mErrorReason = "Not found";
+            states.push_back(record);
+          }
+
+          deliveryState->updateForMessage(2, states);
+
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 3);
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::indexMessageRecord, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::flag, "read");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::uri, "identity://foo.com/a1");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorCode, 0);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorReason, String());
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::indexMessageRecord, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::flag, "read");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::uri, "identity://foo.com/a2");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::errorCode, 0);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::errorReason, String());
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::indexMessageRecord, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::flag, "error");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::uri, "identity://foo.com/a3");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::errorCode, 403);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::errorReason, "Not found");
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordList states;
+          deliveryState->updateForMessage(2, states);
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mIndexMessage = 2;
+            record.mFlag = "delivered";
+            record.mURI = "identity://foo.com/a4";
+            states.push_back(record);
+          }
+
+          deliveryState->updateForMessage(2, states);
+
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1);
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::indexMessageRecord, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::flag, "delivered");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::uri, "identity://foo.com/a4");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorCode, 0);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorReason, String());
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordList states;
+          deliveryState->updateForMessage(3, states);
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mFlag = "found";
+            record.mURI = "identity://foo.com/b1";
+            states.push_back(record);
+          }
+
+          {
+            IUseAbstraction::MessageDeliveryStateRecord record;
+            record.mFlag = "pending";
+            record.mURI = "identity://foo.com/b2";
+            record.mErrorCode = 500;
+            record.mErrorReason = "Internal error";
+            states.push_back(record);
+          }
+
+          deliveryState->updateForMessage(3, states);
+
+          checkCount(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 3);
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::indexMessageRecord, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::flag, "delivered");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::uri, "identity://foo.com/a4");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorCode, 0);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 0, UseTables::errorReason, String());
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::indexMessageRecord, 3);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::flag, "found");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::uri, "identity://foo.com/b1");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::errorCode, 0);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 1, UseTables::errorReason, String());
+
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::indexMessageRecord, 3);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::flag, "pending");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::uri, "identity://foo.com/b2");
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::errorCode, 500);
+          checkIndexValue(UseTables::MessageDeliveryState(), UseTables::MessageDeliveryState_name(), 2, UseTables::errorReason, "Internal error");
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordListPtr result = deliveryState->getForMessage(2);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageDeliveryStateRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 1)
+                TESTING_EQUAL(info.mIndexMessage, 2)
+                TESTING_EQUAL(info.mFlag, "delivered")
+                TESTING_EQUAL(info.mURI, "identity://foo.com/a4")
+                TESTING_EQUAL(info.mErrorCode, 0)
+                TESTING_EQUAL(info.mErrorReason, String())
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          IUseAbstraction::MessageDeliveryStateRecordListPtr result = deliveryState->getForMessage(3);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 2)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::MessageDeliveryStateRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mIndexMessage, 3)
+                TESTING_EQUAL(info.mFlag, "found")
+                TESTING_EQUAL(info.mURI, "identity://foo.com/b1")
+                TESTING_EQUAL(info.mErrorCode, 0)
+                TESTING_EQUAL(info.mErrorReason, String())
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mIndex, 3)
+                TESTING_EQUAL(info.mIndexMessage, 3)
+                TESTING_EQUAL(info.mFlag, "pending")
+                TESTING_EQUAL(info.mURI, "identity://foo.com/b2")
+                TESTING_EQUAL(info.mErrorCode, 500)
+                TESTING_EQUAL(info.mErrorReason, "Internal error")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      //-----------------------------------------------------------------------
       void TestPushMailboxDB::tableDump(
                                         SqlField *definition,
                                         const char *tableName
@@ -1693,6 +1915,7 @@ void doTestPushMailboxDB()
   testObject->testFolderMessage();
   testObject->testFolderVersionedMessage();
   testObject->testMessage();
+  testObject->testDeliveryState();
 
   std::cout << "COMPLETE:     Push mailbox db complete.\n";
 

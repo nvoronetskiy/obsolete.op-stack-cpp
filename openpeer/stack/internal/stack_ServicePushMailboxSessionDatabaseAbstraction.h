@@ -676,7 +676,7 @@ namespace openpeer
         void IMessageDeliveryStateTable_removeForMessage(index indexMessageRecord);
         void IMessageDeliveryStateTable_updateForMessage(
                                                          index indexMessageRecord,
-                                                         const MessageDeliveryStateRecordList &uris
+                                                         const MessageDeliveryStateRecordList &states
                                                          );
         MessageDeliveryStateRecordListPtr IMessageDeliveryStateTable_getForMessage(index indexMessageRecord) const;
 

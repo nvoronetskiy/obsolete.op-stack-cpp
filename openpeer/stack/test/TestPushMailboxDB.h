@@ -126,6 +126,7 @@ namespace openpeer
         void testFolderMessage();
         void testFolderVersionedMessage();
         void testMessage();
+        void testDeliveryState();
 
       protected:
         void tableDump(
