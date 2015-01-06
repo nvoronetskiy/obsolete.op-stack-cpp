@@ -264,7 +264,7 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(indexMessageRecord, sql::type_int, sql::flag_not_null),
+            SqlField(indexMessageRecord, sql::type_int, sql::flag_not_null | sql::flag_unique),
             SqlField(remoteFolder, sql::type_text, sql::flag_not_null),
             SqlField(copyToSent, sql::type_bool, sql::flag_not_null),
             SqlField(subscribeFlags, sql::type_int, sql::flag_not_null),

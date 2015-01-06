@@ -127,6 +127,13 @@ namespace openpeer
         void testFolderVersionedMessage();
         void testMessage();
         void testDeliveryState();
+        void testPendingDelivery();
+        void testList();
+        void testListURI();
+        void testKeyDomain();
+        void testSendingKey();
+        void testReceivingKey();
+        void testStorage();
 
       protected:
         void tableDump(

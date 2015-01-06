@@ -54,6 +54,7 @@
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_KEY_PROCESSING_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_PENDING_DELIVERY_MESSAGES_BATCH_LIMIT 10
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -260,9 +261,9 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       static void convertMessageDeliveryRecord(
-                                                SqlRecord *record,
-                                                MessageDeliveryStateRecord &output
-                                                )
+                                               SqlRecord *record,
+                                               MessageDeliveryStateRecord &output
+                                               )
       {
         output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
         output.mIndexMessage = static_cast<decltype(output.mIndexMessage)>(record->getValue(UseTables::indexMessageRecord)->asInteger());
@@ -271,6 +272,21 @@ namespace openpeer
         output.mErrorCode = static_cast<decltype(output.mErrorCode)>(record->getValue(UseTables::errorCode)->asInteger());
         output.mErrorReason = record->getValue(UseTables::errorReason)->asString();
       }
+
+      //-----------------------------------------------------------------------
+      static void convertPendingDeliveryMessageRecord(
+                                                      SqlRecord *record,
+                                                      PendingDeliveryMessageRecord &output
+                                                      )
+      {
+        output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
+        output.mIndexMessage = static_cast<decltype(output.mIndexMessage)>(record->getValue(UseTables::indexMessageRecord)->asInteger());
+        output.mRemoteFolder = record->getValue(UseTables::remoteFolder)->asString();
+        output.mCopyToSent = record->getValue(UseTables::copyToSent)->asBool();
+        output.mSubscribeFlags = static_cast<decltype(output.mSubscribeFlags)>(record->getValue(UseTables::subscribeFlags)->asInteger());
+        output.mEncryptedDataLength = static_cast<decltype(output.mEncryptedDataLength)>(record->getValue(UseTables::encryptedDataLength)->asInteger());
+      }
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -2506,7 +2522,6 @@ namespace openpeer
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
         }
 
-        // mUpdateNext or downloadVersion != serverVersion
         return MessageDeliveryStateRecordListPtr();
       }
 
@@ -2521,22 +2536,95 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IPendingDeliveryMessageTable_insert(const PendingDeliveryMessageRecord &message)
       {
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_TRACE(log("inserting pending delivery message") + message.toDebug())
+
+        try {
+
+          SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(UseTables::indexMessageRecord, message.mIndexMessage);
+          record.setString(UseTables::remoteFolder, message.mRemoteFolder);
+          record.setBool(UseTables::copyToSent, message.mCopyToSent);
+          record.setInteger(UseTables::subscribeFlags, message.mSubscribeFlags);
+          record.setInteger(UseTables::encryptedDataLength, message.mEncryptedDataLength);
+
+          initializeFields(record);
+
+          table.addRecord(&record);
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       PendingDeliveryMessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IPendingDeliveryMessageTable_getBatchToDeliver()
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+
+          PendingDeliveryMessageRecordListPtr result(new PendingDeliveryMessageRecordList);
+
+          table.query(String("SELECT ") + table.getSelectFields() + " FROM " + UseTables::PendingDeliveryMessage_name() + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_PENDING_DELIVERY_MESSAGES_BATCH_LIMIT));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            PendingDeliveryMessageRecord pendingRecord;
+
+            convertPendingDeliveryMessageRecord(record, pendingRecord);
+
+            ZS_LOG_TRACE(log("found pending delivery record") + pendingRecord.toDebug())
+
+            result->push_back(pendingRecord);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return PendingDeliveryMessageRecordListPtr();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IPendingDeliveryMessageTable_removeByMessageIndex(index indexMessageRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          ZS_LOG_TRACE(log("deleting pending delivery message") + ZS_PARAMIZE(indexMessageRecord))
+
+          SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+
+          table.deleteRecords(String(UseTables::indexMessageRecord) + " = " + string(indexMessageRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IPendingDeliveryMessageTable_remove(index indexPendingDeliveryRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          ZS_LOG_TRACE(log("deleting pending delivery message") + ZS_PARAMIZE(indexPendingDeliveryRecord))
+
+          SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
+
+          table.deleteRecords(String(SqlField::id) + " = " + string(indexPendingDeliveryRecord));
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
 

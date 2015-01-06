@@ -1704,6 +1704,256 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testPendingDelivery()
+      {
+        auto pendingDelivery = mAbstraction->pendingDeliveryMessageTable();
+        TESTING_CHECK(pendingDelivery)
+
+        {
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0);
+          pendingDelivery->remove(1); // noop
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0);
+        }
+
+        {
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0);
+          pendingDelivery->removeByMessageIndex(2); // noop
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0);
+        }
+
+        {
+          IUseAbstraction::PendingDeliveryMessageRecord record;
+
+          record.mIndexMessage = 3;
+          record.mRemoteFolder = "inbox1";
+          record.mCopyToSent = true;
+          record.mSubscribeFlags = 16;
+          record.mEncryptedDataLength = 9999;
+
+          pendingDelivery->insert(record);
+
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1);
+
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, UseTables::indexMessageRecord, 3);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, UseTables::remoteFolder, "inbox1");
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, UseTables::copyToSent, 1);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, UseTables::subscribeFlags, 16);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 0, UseTables::encryptedDataLength, 9999);
+        }
+
+        {
+          IUseAbstraction::PendingDeliveryMessageRecord record;
+
+          record.mIndexMessage = 4;
+          record.mRemoteFolder = "inbox2";
+          record.mCopyToSent = false;
+          record.mSubscribeFlags = 64;
+          record.mEncryptedDataLength = 555;
+
+          pendingDelivery->insert(record);
+
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2);
+
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, UseTables::indexMessageRecord, 4);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, UseTables::remoteFolder, "inbox2");
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, UseTables::copyToSent, 0);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, UseTables::subscribeFlags, 64);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1, UseTables::encryptedDataLength, 555);
+        }
+
+        {
+          IUseAbstraction::PendingDeliveryMessageRecord record;
+
+          record.mIndexMessage = 5;
+          record.mRemoteFolder = "inbox3";
+          record.mCopyToSent = true;
+          record.mSubscribeFlags = 128;
+          record.mEncryptedDataLength = 1555;
+
+          pendingDelivery->insert(record);
+
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 3);
+
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, UseTables::indexMessageRecord, 5);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, UseTables::remoteFolder, "inbox3");
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, UseTables::copyToSent, 1);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, UseTables::subscribeFlags, 128);
+          checkIndexValue(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2, UseTables::encryptedDataLength, 1555);
+        }
+
+        {
+          IUseAbstraction::PendingDeliveryMessageRecordListPtr result = pendingDelivery->getBatchToDeliver();
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 3)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::PendingDeliveryMessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 1)
+                TESTING_EQUAL(info.mIndexMessage, 3)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox1")
+                TESTING_EQUAL(info.mCopyToSent, true)
+                TESTING_EQUAL(info.mSubscribeFlags, 16)
+                TESTING_EQUAL(info.mEncryptedDataLength, 9999)
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mIndexMessage, 4)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox2")
+                TESTING_EQUAL(info.mCopyToSent, false)
+                TESTING_EQUAL(info.mSubscribeFlags, 64)
+                TESTING_EQUAL(info.mEncryptedDataLength, 555)
+                break;
+              }
+              case 2: {
+                TESTING_EQUAL(info.mIndex, 3)
+                TESTING_EQUAL(info.mIndexMessage, 5)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox3")
+                TESTING_EQUAL(info.mCopyToSent, true)
+                TESTING_EQUAL(info.mSubscribeFlags, 128)
+                TESTING_EQUAL(info.mEncryptedDataLength, 1555)
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          pendingDelivery->remove(2);
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 2);
+
+          IUseAbstraction::PendingDeliveryMessageRecordListPtr result = pendingDelivery->getBatchToDeliver();
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 2)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::PendingDeliveryMessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 1)
+                TESTING_EQUAL(info.mIndexMessage, 3)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox1")
+                TESTING_EQUAL(info.mCopyToSent, true)
+                TESTING_EQUAL(info.mSubscribeFlags, 16)
+                TESTING_EQUAL(info.mEncryptedDataLength, 9999)
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mIndex, 3)
+                TESTING_EQUAL(info.mIndexMessage, 5)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox3")
+                TESTING_EQUAL(info.mCopyToSent, true)
+                TESTING_EQUAL(info.mSubscribeFlags, 128)
+                TESTING_EQUAL(info.mEncryptedDataLength, 1555)
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          pendingDelivery->removeByMessageIndex(3);
+          checkCount(UseTables::PendingDeliveryMessage(), UseTables::PendingDeliveryMessage_name(), 1);
+
+          IUseAbstraction::PendingDeliveryMessageRecordListPtr result = pendingDelivery->getBatchToDeliver();
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::PendingDeliveryMessageRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 3)
+                TESTING_EQUAL(info.mIndexMessage, 5)
+                TESTING_EQUAL(info.mRemoteFolder, "inbox3")
+                TESTING_EQUAL(info.mCopyToSent, true)
+                TESTING_EQUAL(info.mSubscribeFlags, 128)
+                TESTING_EQUAL(info.mEncryptedDataLength, 1555)
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testList()
+      {
+        auto listTable = mAbstraction->listTable();
+        TESTING_CHECK(listTable)
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testListURI()
+      {
+        auto listURI = mAbstraction->listURITable();
+        TESTING_CHECK(listURI)
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testKeyDomain()
+      {
+        auto keyDomain = mAbstraction->keyDomainTable();
+        TESTING_CHECK(keyDomain)
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testSendingKey()
+      {
+        auto sendingKey = mAbstraction->sendingKeyTable();
+        TESTING_CHECK(sendingKey)
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testReceivingKey()
+      {
+        auto receivingKey = mAbstraction->sendingKeyTable();
+        TESTING_CHECK(receivingKey)
+      }
+
+      //-----------------------------------------------------------------------
+      void TestPushMailboxDB::testStorage()
+      {
+        auto storage = mAbstraction->storage();
+        TESTING_CHECK(storage)
+      }
+
+      //-----------------------------------------------------------------------
       void TestPushMailboxDB::tableDump(
                                         SqlField *definition,
                                         const char *tableName
@@ -1916,6 +2166,13 @@ void doTestPushMailboxDB()
   testObject->testFolderVersionedMessage();
   testObject->testMessage();
   testObject->testDeliveryState();
+  testObject->testPendingDelivery();
+  testObject->testList();
+  testObject->testListURI();
+  testObject->testKeyDomain();
+  testObject->testSendingKey();
+  testObject->testReceivingKey();
+  testObject->testStorage();
 
   std::cout << "COMPLETE:     Push mailbox db complete.\n";
 
