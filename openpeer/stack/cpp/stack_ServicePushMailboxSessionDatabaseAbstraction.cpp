@@ -2831,6 +2831,35 @@ namespace openpeer
                                                                               const IListURITable::URIList &uris
                                                                               )
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          ZS_LOG_TRACE(log("deleting any existing list URIs") + ZS_PARAMIZE(indexListRecord))
+
+          SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());
+
+          table.deleteRecords(String(UseTables::indexListRecord) + " = " + string(indexListRecord));
+
+          int order = 0;
+          for (auto iter = uris.begin(); iter != uris.end(); ++iter, ++order)
+          {
+            auto info = (*iter);
+
+            SqlRecord record(table.fields());
+
+            record.setInteger(UseTables::indexListRecord, indexListRecord);
+            record.setInteger(UseTables::order, order);
+            record.setString(UseTables::uri, info);
+
+            initializeFields(record);
+
+            ZS_LOG_TRACE(log("adding new list URI record") + UseStackHelper::toDebug(&table, &record))
+            
+            table.addRecord(&record);
+          }
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -2838,6 +2867,47 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IListURITable::URIList, URIList)
 
+        AutoRecursiveLock lock(*this);
+
+        index indexListRecord = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+
+        try {
+          URIListPtr result(new URIList);
+
+          // figure out list ID
+          {
+            SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+            table.open(String(UseTables::listID) + " = " + SqlQuote(String(listID)));
+
+            SqlRecord *found = table.getTopRecord();
+            if (!found) {
+              ZS_LOG_TRACE(log("did not find existing list") + ZS_PARAMIZE(listID))
+              return result;
+            }
+
+            indexListRecord = static_cast<decltype(indexListRecord)>(found->getValue(SqlField::id)->asInteger());
+          }
+
+          SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());
+
+          table.open(String(UseTables::indexListRecord) + " = " + string(indexListRecord));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            ZS_LOG_TRACE(log("found list uri record") + UseStackHelper::toDebug(&table, record))
+
+            String uri = record->getValue(UseTables::uri)->asString();
+
+            result->push_back(uri);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return URIListPtr();
       }
 
@@ -2847,6 +2917,43 @@ namespace openpeer
                                                                                const char *uri
                                                                                )
       {
+        AutoRecursiveLock lock(*this);
+
+        index indexListRecord = OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
+
+        try {
+          // figure out list ID
+          {
+            SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+            table.open(String(UseTables::listID) + " = " + SqlQuote(String(listID)));
+
+            SqlRecord *found = table.getTopRecord();
+            if (!found) {
+              ZS_LOG_TRACE(log("did not find existing list") + ZS_PARAMIZE(listID))
+              return OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN;
+            }
+
+            indexListRecord = static_cast<decltype(indexListRecord)>(found->getValue(SqlField::id)->asInteger());
+          }
+
+          SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());
+
+          table.open(String(UseTables::indexListRecord) + " = " + string(indexListRecord) + " AND " + UseTables::uri + " = " + SqlQuote(uri));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_TRACE(log("did not find existing list uri") + ZS_PARAMIZE(listID) + ZS_PARAMIZE(uri))
+            return OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN;
+          }
+
+          ZS_LOG_TRACE(log("found list uri record") + UseStackHelper::toDebug(&table, record))
+
+          return static_cast<int>(record->getValue(UseTables::order)->asInteger());
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN;
       }
 
@@ -3157,6 +3264,10 @@ namespace openpeer
         {
           SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());
           table.create();
+
+          SqlRecordSet query(*mDB);
+          query.query(String("CREATE INDEX ") + UseTables::ListURI_name() + "i" + UseTables::indexListRecord + " ON " + UseTables::ListURI_name() + "(" + UseTables::indexListRecord + ")");
+          query.query(String("CREATE INDEX ") + UseTables::ListURI_name() + "i" + UseTables::uri + " ON " + UseTables::ListURI_name() + "(" + UseTables::uri + ")");
         }
         {
           SqlTable table(*mDB, UseTables::KeyDomain_name(), UseTables::KeyDomain());

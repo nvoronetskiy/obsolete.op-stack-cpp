@@ -2197,8 +2197,210 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void TestPushMailboxDB::testListURI()
       {
+        auto listTable = mAbstraction->listTable();
+        TESTING_CHECK(listTable)
+
         auto listURI = mAbstraction->listURITable();
         TESTING_CHECK(listURI)
+
+        {
+          int order = listURI->getOrder("bogus", "identity://bogus1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+
+        {
+          IUseAbstraction::IListURITable::URIList uris;
+
+          IUseAbstraction::index foundIndex = listTable->addOrUpdateListID("foo");
+
+          uris.push_back("identity://fooa1");
+          uris.push_back("identity://fooa2");
+          uris.push_back("identity://fooa3");
+
+          listURI->update(foundIndex, uris);
+
+          checkCount(UseTables::ListURI(), UseTables::ListURI_name(), 3);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::uri, "identity://fooa1");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::order, 0);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::uri, "identity://fooa2");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::order, 1);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::uri, "identity://fooa3");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::order, 2);
+        }
+
+        {
+          IUseAbstraction::IListURITable::URIList uris;
+
+          IUseAbstraction::index foundIndex = listTable->addOrUpdateListID("foo");
+
+          uris.push_back("identity://foob1");
+          uris.push_back("identity://foob2");
+          uris.push_back("identity://foob3");
+
+          listURI->update(foundIndex, uris);
+
+          checkCount(UseTables::ListURI(), UseTables::ListURI_name(), 3);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::uri, "identity://foob1");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 0, UseTables::order, 0);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::uri, "identity://foob2");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 1, UseTables::order, 1);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::uri, "identity://foob3");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 2, UseTables::order, 2);
+        }
+
+        {
+          IUseAbstraction::IListURITable::URIList uris;
+
+          IUseAbstraction::index foundIndex = listTable->addOrUpdateListID("bar");
+          {
+            IUseAbstraction::index fooIndex = listTable->addOrUpdateListID("foo");
+            TESTING_CHECK(foundIndex != fooIndex)
+          }
+
+          uris.push_back("identity://bara1");
+          uris.push_back("identity://bara2");
+
+          listURI->update(foundIndex, uris);
+
+          checkCount(UseTables::ListURI(), UseTables::ListURI_name(), 5);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 3, SqlField::id, 4);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 3, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 3, UseTables::uri, "identity://bara1");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 3, UseTables::order, 0);
+
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 4, SqlField::id, 5);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 4, UseTables::indexListRecord, foundIndex);
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 4, UseTables::uri, "identity://bara2");
+          checkIndexValue(UseTables::ListURI(), UseTables::ListURI_name(), 4, UseTables::order, 1);
+        }
+
+        {
+          IUseAbstraction::IListURITable::URIListPtr result = listURI->getURIs("foo");
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 3)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::IListURITable::URI &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info, "identity://foob1")
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info, "identity://foob2")
+                break;
+              }
+              case 2: {
+                TESTING_EQUAL(info, "identity://foob3")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          IUseAbstraction::IListURITable::URIListPtr result = listURI->getURIs("bar");
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 2)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::IListURITable::URI &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info, "identity://bara1")
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info, "identity://bara2")
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          int order = listURI->getOrder("foo", "identity://foob1");
+          TESTING_EQUAL(order, 0)
+        }
+        {
+          int order = listURI->getOrder("foo", "identity://foob2");
+          TESTING_EQUAL(order, 1)
+        }
+        {
+          int order = listURI->getOrder("foo", "identity://foob3");
+          TESTING_EQUAL(order, 2)
+        }
+        {
+          int order = listURI->getOrder("bar", "identity://bara1");
+          TESTING_EQUAL(order, 0)
+        }
+        {
+          int order = listURI->getOrder("bar", "identity://bara2");
+          TESTING_EQUAL(order, 1)
+        }
+        {
+          int order = listURI->getOrder("bar", "identity://foob1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+        {
+          int order = listURI->getOrder("foo", "identity://bara1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+        {
+          int order = listURI->getOrder("bogus", "identity://foob1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+        {
+          int order = listURI->getOrder("bogus", "identity://bara1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+        {
+          int order = listURI->getOrder("foo", "identity://bogus1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
+        {
+          int order = listURI->getOrder("bar", "identity://bogus1");
+          TESTING_EQUAL(order, OPENPEER_STACK_PUSH_MAILBOX_ORDER_UNKNOWN)
+        }
       }
 
       //-----------------------------------------------------------------------
