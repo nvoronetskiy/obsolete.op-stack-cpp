@@ -115,8 +115,11 @@ namespace openpeer
         static const char *dhPassphrase;
         static const char *dhStaticPrivateKey;
         static const char *dhStaticPublicKey;
+        static const char *dhEphemeralPrivateKey;
+        static const char *dhEphemeralPublicKey;
         static const char *listSize;
         static const char *totalWithDHPassphraseSet;
+        static const char *ackDHPassphraseSet;
         static const char *activeUntil;
         static const char *passphrase;
 
@@ -315,7 +318,7 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(keyDomain, sql::type_int, sql::flag_not_null),
+            SqlField(keyDomain, sql::type_int, sql::flag_not_null | sql::flag_unique),
             SqlField(dhStaticPrivateKey, sql::type_text, sql::flag_not_null),
             SqlField(dhStaticPublicKey, sql::type_text, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
@@ -331,15 +334,16 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(keyID, sql::type_text, sql::flag_not_null),
+            SqlField(keyID, sql::type_text, sql::flag_not_null | sql::flag_unique),
             SqlField(uri, sql::type_text, sql::flag_not_null),
             SqlField(rsaPassphrase, sql::type_text, sql::flag_not_null),
             SqlField(dhPassphrase, sql::type_text, sql::flag_not_null),
             SqlField(keyDomain, sql::type_int, sql::flag_not_null),
-            SqlField(dhStaticPrivateKey, sql::type_text, sql::flag_not_null),
-            SqlField(dhStaticPublicKey, sql::type_text, sql::flag_not_null),
+            SqlField(dhEphemeralPrivateKey, sql::type_text, sql::flag_not_null),
+            SqlField(dhEphemeralPublicKey, sql::type_text, sql::flag_not_null),
             SqlField(listSize, sql::type_int, sql::flag_not_null),
             SqlField(totalWithDHPassphraseSet, sql::type_int, sql::flag_not_null),
+            SqlField(ackDHPassphraseSet, sql::type_text, sql::flag_not_null),
             SqlField(activeUntil, sql::type_int, sql::flag_not_null),
             SqlField(expires, sql::type_int, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
@@ -355,12 +359,12 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(keyID, sql::type_text, sql::flag_not_null),
+            SqlField(keyID, sql::type_text, sql::flag_not_null | sql::flag_unique),
             SqlField(uri, sql::type_text, sql::flag_not_null),
             SqlField(passphrase, sql::type_text, sql::flag_not_null),
             SqlField(keyDomain, sql::type_int, sql::flag_not_null),
-            SqlField(dhStaticPrivateKey, sql::type_text, sql::flag_not_null),
-            SqlField(dhStaticPublicKey, sql::type_text, sql::flag_not_null),
+            SqlField(dhEphemeralPrivateKey, sql::type_text, sql::flag_not_null),
+            SqlField(dhEphemeralPublicKey, sql::type_text, sql::flag_not_null),
             SqlField(expires, sql::type_int, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };

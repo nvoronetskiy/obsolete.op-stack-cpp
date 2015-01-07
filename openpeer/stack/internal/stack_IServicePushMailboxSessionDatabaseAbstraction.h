@@ -1032,7 +1032,7 @@ namespace openpeer
           //            the table
           virtual SendingKeyRecordPtr getActive(
                                                 const char *uri,
-                                                Time now
+                                                const Time &now
                                                 ) const = 0;
 
           //-------------------------------------------------------------------

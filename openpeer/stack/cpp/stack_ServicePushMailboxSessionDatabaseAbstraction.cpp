@@ -306,6 +306,67 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      static KeyDomainRecordPtr convertKeyDomain(SqlRecord *record)
+      {
+        KeyDomainRecordPtr result(new KeyDomainRecord);
+
+        result->mIndex = static_cast<decltype(result->mIndex)>(record->getKeyIdValue()->asInteger());
+        result->mKeyDomain = static_cast<decltype(result->mKeyDomain)>(record->getValue(UseTables::keyDomain)->asInteger());
+        result->mDHStaticPrivateKey = record->getValue(UseTables::dhStaticPrivateKey)->asString();
+        result->mDHStaticPublicKey = record->getValue(UseTables::dhStaticPublicKey)->asString();
+
+        return result;
+      }
+
+      //-----------------------------------------------------------------------
+      static SendingKeyRecordPtr convertSendingKey(SqlRecord *record)
+      {
+        SendingKeyRecordPtr result(new SendingKeyRecord);
+
+        result->mIndex = static_cast<decltype(result->mIndex)>(record->getKeyIdValue()->asInteger());
+        result->mKeyID = record->getValue(UseTables::keyID)->asString();
+        result->mURI = record->getValue(UseTables::uri)->asString();
+        result->mRSAPassphrase = record->getValue(UseTables::rsaPassphrase)->asString();
+        result->mDHPassphrase = record->getValue(UseTables::dhPassphrase)->asString();
+        result->mKeyDomain = static_cast<decltype(result->mKeyDomain)>(record->getValue(UseTables::keyDomain)->asInteger());
+        result->mDHEphemeralPrivateKey = record->getValue(UseTables::dhEphemeralPrivateKey)->asString();
+        result->mDHEphemeralPublicKey = record->getValue(UseTables::dhEphemeralPublicKey)->asString();
+        result->mListSize = static_cast<decltype(result->mListSize)>(record->getValue(UseTables::listSize)->asInteger());
+        result->mTotalWithDHPassphrase = static_cast<decltype(result->mTotalWithDHPassphrase)>(record->getValue(UseTables::totalWithDHPassphraseSet)->asInteger());
+        result->mAckDHPassphraseSet = record->getValue(UseTables::ackDHPassphraseSet)->asString();
+        auto activeUntil = record->getValue(UseTables::activeUntil)->asInteger();
+        if (0 != activeUntil) {
+          result->mActiveUntil = zsLib::timeSinceEpoch(Seconds(activeUntil));
+        }
+        auto expires = record->getValue(UseTables::expires)->asInteger();
+        if (0 != expires) {
+          result->mExpires = zsLib::timeSinceEpoch(Seconds(expires));
+        }
+
+        return result;
+      }
+
+      //-----------------------------------------------------------------------
+      static ReceivingKeyRecordPtr convertReceivingKey(SqlRecord *record)
+      {
+        ReceivingKeyRecordPtr result(new ReceivingKeyRecord);
+
+        result->mIndex = static_cast<decltype(result->mIndex)>(record->getKeyIdValue()->asInteger());
+        result->mKeyID = record->getValue(UseTables::keyID)->asString();
+        result->mURI = record->getValue(UseTables::uri)->asString();
+        result->mPassphrase = record->getValue(UseTables::passphrase)->asString();
+        result->mKeyDomain = static_cast<decltype(result->mKeyDomain)>(record->getValue(UseTables::keyDomain)->asInteger());
+        result->mDHEphemeralPrivateKey = record->getValue(UseTables::dhEphemeralPrivateKey)->asString();
+        result->mDHEphemeralPublicKey = record->getValue(UseTables::dhEphemeralPublicKey)->asString();
+        auto expires = record->getValue(UseTables::expires)->asInteger();
+        if (0 != expires) {
+          result->mExpires = zsLib::timeSinceEpoch(Seconds(expires));
+        }
+
+        return result;
+      }
+      
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -2969,12 +3030,54 @@ namespace openpeer
       //-----------------------------------------------------------------------
       KeyDomainRecordPtr ServicePushMailboxSessionDatabaseAbstraction::IKeyDomainTable_getByKeyDomain(int keyDomain) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::KeyDomain_name(), UseTables::KeyDomain());
+
+          table.open(String(UseTables::keyDomain) + " = " + string(keyDomain));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_TRACE(log("key domain not found") + ZS_PARAMIZE(keyDomain))
+            return KeyDomainRecordPtr();
+          }
+
+          auto result = convertKeyDomain(record);
+
+          ZS_LOG_TRACE(log("found key domain record") + result->toDebug() + UseStackHelper::toDebug(&table, record))
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return KeyDomainRecordPtr();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IKeyDomainTable_add(const KeyDomainRecord &keyDomain)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::KeyDomain_name(), UseTables::KeyDomain());
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(UseTables::keyDomain, keyDomain.mKeyDomain);
+          record.setString(UseTables::dhStaticPrivateKey, keyDomain.mDHStaticPrivateKey);
+          record.setString(UseTables::dhStaticPublicKey, keyDomain.mDHStaticPublicKey);
+
+          initializeFields(record);
+
+          ZS_LOG_TRACE(log("adding new key domain record") + UseStackHelper::toDebug(&table, &record))
+
+          table.addRecord(&record);
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
 
@@ -2989,21 +3092,106 @@ namespace openpeer
       //-----------------------------------------------------------------------
       SendingKeyRecordPtr ServicePushMailboxSessionDatabaseAbstraction::ISendingKeyTable_getByKeyID(const char *keyID) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::SendingKey_name(), UseTables::SendingKey());
+
+          table.open(String(UseTables::keyID) + " = " + SqlQuote(keyID));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_TRACE(log("sending key not found") + ZS_PARAMIZE(keyID))
+            return SendingKeyRecordPtr();
+          }
+
+          auto result = convertSendingKey(record);
+
+          ZS_LOG_TRACE(log("found sending key record") + result->toDebug() + UseStackHelper::toDebug(&table, record))
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return SendingKeyRecordPtr();
       }
 
       //-----------------------------------------------------------------------
       SendingKeyRecordPtr ServicePushMailboxSessionDatabaseAbstraction::ISendingKeyTable_getActive(
                                                                                                    const char *uri,
-                                                                                                   Time now
+                                                                                                   const Time &now
                                                                                                    ) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::SendingKey_name(), UseTables::SendingKey());
+
+          Seconds activeUntil = zsLib::timeSinceEpoch<Seconds>(now);
+
+          table.open(String(UseTables::uri) + " = " + SqlQuote(uri) + " AND " + UseTables::activeUntil + " > " + string(activeUntil.count()) + " ORDER BY " + SqlField::id + " DESC LIMIT 1");
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_TRACE(log("sending key not found") + ZS_PARAMIZE(uri) + ZS_PARAMIZE(now))
+            return SendingKeyRecordPtr();
+          }
+
+          auto result = convertSendingKey(record);
+
+          ZS_LOG_TRACE(log("found sending key record") + result->toDebug() + UseStackHelper::toDebug(&table, record))
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return SendingKeyRecordPtr();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::ISendingKeyTable_addOrUpdate(const SendingKeyRecord &key)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::SendingKey_name(), UseTables::SendingKey());
+
+          SqlRecord *found = NULL;
+          if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN != key.mIndex) {
+            table.open(String(SqlField::id) + " = " + string(key.mIndex));
+            found = table.getTopRecord();
+          }
+
+          SqlRecord addRecord(table.fields());
+
+          SqlRecord *useRecord = found ? found : &addRecord;
+
+          useRecord->setString(UseTables::keyID, key.mKeyID);
+          useRecord->setString(UseTables::uri, key.mURI);
+          useRecord->setString(UseTables::rsaPassphrase, key.mRSAPassphrase);
+          useRecord->setString(UseTables::dhPassphrase, key.mDHPassphrase);
+          useRecord->setInteger(UseTables::keyDomain, key.mKeyDomain);
+          useRecord->setString(UseTables::dhEphemeralPrivateKey, key.mDHEphemeralPrivateKey);
+          useRecord->setString(UseTables::dhEphemeralPublicKey, key.mDHEphemeralPublicKey);
+          useRecord->setInteger(UseTables::listSize, key.mListSize);
+          useRecord->setInteger(UseTables::totalWithDHPassphraseSet, key.mTotalWithDHPassphrase);
+          useRecord->setString(UseTables::ackDHPassphraseSet, key.mAckDHPassphraseSet);
+          useRecord->setInteger(UseTables::activeUntil, Time() == key.mActiveUntil ? 0 : zsLib::timeSinceEpoch<Seconds>(key.mActiveUntil).count());
+          useRecord->setInteger(UseTables::expires, Time() == key.mExpires ? 0 : zsLib::timeSinceEpoch<Seconds>(key.mExpires).count());
+
+          if (found) {
+            ZS_LOG_TRACE(log("updating existing sending key record") + UseStackHelper::toDebug(&table, useRecord))
+            table.updateRecord(useRecord);
+          } else {
+            ZS_LOG_TRACE(log("adding new sending key record") + UseStackHelper::toDebug(&table, useRecord))
+            table.addRecord(useRecord);
+          }
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
 
@@ -3018,12 +3206,68 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ReceivingKeyRecordPtr ServicePushMailboxSessionDatabaseAbstraction::IReceivingKeyTable_getByKeyID(const char *keyID) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::ReceivingKey_name(), UseTables::ReceivingKey());
+
+          table.open(String(UseTables::keyID) + " = " + SqlQuote(keyID));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_TRACE(log("receiving key not found") + ZS_PARAMIZE(keyID))
+            return ReceivingKeyRecordPtr();
+          }
+
+          auto result = convertReceivingKey(record);
+
+          ZS_LOG_TRACE(log("found receiving key record") + result->toDebug() + UseStackHelper::toDebug(&table, record))
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return ReceivingKeyRecordPtr();
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IReceivingKeyTable_addOrUpdate(const ReceivingKeyRecord &key)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::ReceivingKey_name(), UseTables::ReceivingKey());
+
+          SqlRecord *found = NULL;
+          if (OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN != key.mIndex) {
+            table.open(String(SqlField::id) + " = " + string(key.mIndex));
+            found = table.getTopRecord();
+          }
+
+          SqlRecord addRecord(table.fields());
+
+          SqlRecord *useRecord = found ? found : &addRecord;
+
+          useRecord->setString(UseTables::keyID, key.mKeyID);
+          useRecord->setString(UseTables::uri, key.mURI);
+          useRecord->setString(UseTables::passphrase, key.mPassphrase);
+          useRecord->setInteger(UseTables::keyDomain, key.mKeyDomain);
+          useRecord->setString(UseTables::dhEphemeralPrivateKey, key.mDHEphemeralPrivateKey);
+          useRecord->setString(UseTables::dhEphemeralPublicKey, key.mDHEphemeralPublicKey);
+          useRecord->setInteger(UseTables::expires, Time() == key.mExpires ? 0 : zsLib::timeSinceEpoch<Seconds>(key.mExpires).count());
+
+          if (found) {
+            ZS_LOG_TRACE(log("updating existing receiving key record") + UseStackHelper::toDebug(&table, useRecord))
+            table.updateRecord(useRecord);
+          } else {
+            ZS_LOG_TRACE(log("adding new receiving key record") + UseStackHelper::toDebug(&table, useRecord))
+            table.addRecord(useRecord);
+          }
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -3037,13 +3281,46 @@ namespace openpeer
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::IStorage_storeToTemporaryFile(const SecureByteBlock &buffer)
       {
-        return String();
+        String path = UseStackHelper::appendPath(mTempPath, (mUserHash + "_" + UseServicesHelper::randomString(32)).c_str());
+
+        ZS_LOG_TRACE(log("storing to temp file name") + ZS_PARAMIZE(path))
+
+        FILE *file = fopen(path, "wb");
+        if (NULL == file) {
+          ZS_LOG_ERROR(Detail, log("unable to create temporary file") + ZS_PARAMIZE(path))
+          return String();
+        }
+
+        auto count = buffer.SizeInBytes();
+        while (count > 0) {
+          auto written = fwrite(&(buffer.BytePtr()[buffer.SizeInBytes() - count]), sizeof(BYTE), count, file);
+          if (0 == written) {
+            ZS_LOG_ERROR(Detail, log("unable to write to temporary file") + ZS_PARAM("error", ferror(file)))
+
+            fclose(file);
+            remove(path);
+            return String();
+          }
+          count -= written;
+        }
+
+        auto result = fclose(file);
+        if (0 != result) {
+          ZS_LOG_ERROR(Detail, log("unable to write to temporary file") + ZS_PARAMIZE(result))
+          remove(path);
+          return String();
+        }
+
+        return path;
       }
 
       //-----------------------------------------------------------------------
       String ServicePushMailboxSessionDatabaseAbstraction::IStorage_getStorageFileName() const
       {
-        return String();
+        String path = UseStackHelper::appendPath(mStoragePath, (mUserHash + "_" + UseServicesHelper::randomString(32)).c_str());
+
+        ZS_LOG_TRACE(log("get storage file name") + ZS_PARAMIZE(path))
+        return path;
       }
 
       //-----------------------------------------------------------------------
@@ -3276,6 +3553,9 @@ namespace openpeer
         {
           SqlTable table(*mDB, UseTables::SendingKey_name(), UseTables::SendingKey());
           table.create();
+
+          SqlRecordSet query(*mDB);
+          query.query(String("CREATE INDEX ") + UseTables::SendingKey_name() + "i" + UseTables::uri + " ON " + UseTables::SendingKey_name() + "(" + UseTables::uri + ")");
         }
         {
           SqlTable table(*mDB, UseTables::ReceivingKey_name(), UseTables::ReceivingKey());

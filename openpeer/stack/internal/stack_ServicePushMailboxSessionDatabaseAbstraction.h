@@ -475,7 +475,7 @@ namespace openpeer
           virtual SendingKeyRecordPtr getByKeyID(const char *keyID) const                   {return mOuter->ISendingKeyTable_getByKeyID(keyID);}
           virtual SendingKeyRecordPtr getActive(
                                                 const char *uri,
-                                                Time now
+                                                const Time &now
                                                 ) const                                     {return mOuter->ISendingKeyTable_getActive(uri, now);}
           virtual void addOrUpdate(const SendingKeyRecord &key)                             {mOuter->ISendingKeyTable_addOrUpdate(key);}
 
@@ -737,7 +737,7 @@ namespace openpeer
         SendingKeyRecordPtr ISendingKeyTable_getByKeyID(const char *keyID) const;
         SendingKeyRecordPtr ISendingKeyTable_getActive(
                                                        const char *uri,
-                                                       Time now
+                                                       const Time &now
                                                        ) const;
         void ISendingKeyTable_addOrUpdate(const SendingKeyRecord &key);
 

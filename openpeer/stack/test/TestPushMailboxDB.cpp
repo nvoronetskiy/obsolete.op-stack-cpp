@@ -2408,6 +2408,66 @@ namespace openpeer
       {
         auto keyDomain = mAbstraction->keyDomainTable();
         TESTING_CHECK(keyDomain)
+
+        {
+          IUseAbstraction::KeyDomainRecordPtr result = keyDomain->getByKeyDomain(4096);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::KeyDomainRecord record;
+          record.mKeyDomain = 4096;
+          record.mDHStaticPrivateKey = "private1";
+          record.mDHStaticPublicKey = "public1";
+          keyDomain->add(record);
+
+          checkCount(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 1);
+
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 0, UseTables::keyDomain, 4096);
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 0, UseTables::dhStaticPrivateKey, "private1");
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 0, UseTables::dhStaticPublicKey, "public1");
+        }
+
+        {
+          IUseAbstraction::KeyDomainRecordPtr result = keyDomain->getByKeyDomain(4096);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 1)
+          TESTING_EQUAL(result->mKeyDomain, 4096)
+          TESTING_EQUAL(result->mDHStaticPrivateKey, "private1")
+          TESTING_EQUAL(result->mDHStaticPublicKey, "public1")
+        }
+
+        {
+          IUseAbstraction::KeyDomainRecordPtr result = keyDomain->getByKeyDomain(1024);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::KeyDomainRecord record;
+          record.mKeyDomain = 1024;
+          record.mDHStaticPrivateKey = "private2";
+          record.mDHStaticPublicKey = "public2";
+          keyDomain->add(record);
+
+          checkCount(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 2);
+
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 1, UseTables::keyDomain, 1024);
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 1, UseTables::dhStaticPrivateKey, "private2");
+          checkIndexValue(UseTables::KeyDomain(), UseTables::KeyDomain_name(), 1, UseTables::dhStaticPublicKey, "public2");
+        }
+
+        {
+          IUseAbstraction::KeyDomainRecordPtr result = keyDomain->getByKeyDomain(1024);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 2)
+          TESTING_EQUAL(result->mKeyDomain, 1024)
+          TESTING_EQUAL(result->mDHStaticPrivateKey, "private2")
+          TESTING_EQUAL(result->mDHStaticPublicKey, "public2")
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -2415,13 +2475,415 @@ namespace openpeer
       {
         auto sendingKey = mAbstraction->sendingKeyTable();
         TESTING_CHECK(sendingKey)
+
+        {
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getByKeyID("key1");
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://foo1", zsLib::now());
+          TESTING_CHECK(!result)
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecord record;
+          record.mKeyID = "key1";
+          record.mURI = "identity://foo1";
+          record.mRSAPassphrase = "rsa1";
+          record.mDHPassphrase = "dh1";
+          record.mKeyDomain = 4096;
+          record.mDHEphemeralPrivateKey = "private1";
+          record.mDHEphemeralPublicKey = "public1";
+          record.mListSize = 5;
+          record.mTotalWithDHPassphrase = 3;
+          record.mAckDHPassphraseSet = "ack1";
+          record.mActiveUntil = activeUntil;
+          record.mExpires = expires;
+
+          sendingKey->addOrUpdate(record);
+
+          checkCount(UseTables::SendingKey(), UseTables::SendingKey_name(), 1);
+
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::keyID, "key1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::uri, "identity://foo1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::rsaPassphrase, "rsa1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::dhPassphrase, "dh1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::keyDomain, 4096);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::dhEphemeralPrivateKey, "private1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::dhEphemeralPublicKey, "public1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::listSize, 5);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::totalWithDHPassphraseSet, 3);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::ackDHPassphraseSet, "ack1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::activeUntil, (int) zsLib::timeSinceEpoch<Seconds>(activeUntil).count());
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 0, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getByKeyID("key1");
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 1)
+          TESTING_EQUAL(result->mKeyID, "key1")
+          TESTING_EQUAL(result->mURI, "identity://foo1")
+          TESTING_EQUAL(result->mRSAPassphrase, "rsa1")
+          TESTING_EQUAL(result->mDHPassphrase, "dh1")
+          TESTING_EQUAL(result->mKeyDomain, 4096)
+          TESTING_EQUAL(result->mDHEphemeralPrivateKey, "private1")
+          TESTING_EQUAL(result->mDHEphemeralPublicKey, "public1")
+          TESTING_EQUAL(result->mListSize, 5)
+          TESTING_EQUAL(result->mTotalWithDHPassphrase, 3)
+          TESTING_EQUAL(result->mAckDHPassphraseSet, "ack1")
+
+          TESTING_CHECK(result->mActiveUntil > (activeUntil - Seconds(2)))
+          TESTING_CHECK(result->mActiveUntil < (activeUntil + Seconds(2)))
+
+          TESTING_CHECK(result->mExpires > (expires - Seconds(2)))
+          TESTING_CHECK(result->mExpires < (expires + Seconds(2)))
+        }
+
+        {
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getByKeyID("key2");
+          TESTING_CHECK(!result)
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://foo1", now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 1)
+          TESTING_EQUAL(result->mKeyID, "key1")
+          TESTING_EQUAL(result->mURI, "identity://foo1")
+          TESTING_EQUAL(result->mRSAPassphrase, "rsa1")
+          TESTING_EQUAL(result->mDHPassphrase, "dh1")
+          TESTING_EQUAL(result->mKeyDomain, 4096)
+          TESTING_EQUAL(result->mDHEphemeralPrivateKey, "private1")
+          TESTING_EQUAL(result->mDHEphemeralPublicKey, "public1")
+          TESTING_EQUAL(result->mListSize, 5)
+          TESTING_EQUAL(result->mTotalWithDHPassphrase, 3)
+          TESTING_EQUAL(result->mAckDHPassphraseSet, "ack1")
+
+          TESTING_CHECK(result->mActiveUntil > (activeUntil - Seconds(2)))
+          TESTING_CHECK(result->mActiveUntil < (activeUntil + Seconds(2)))
+
+          TESTING_CHECK(result->mExpires > (expires - Seconds(2)))
+          TESTING_CHECK(result->mExpires < (expires + Seconds(2)))
+        }
+
+        {
+          Time now = zsLib::now();
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://bogus", now);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          Time now = zsLib::now() + Seconds(60) + Seconds(2);
+
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://foo1", now);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecord record;
+          record.mKeyID = "key2";
+          record.mURI = "identity://foo2";
+          record.mRSAPassphrase = "rsa2";
+          record.mDHPassphrase = "dh2";
+          record.mKeyDomain = 8192;
+          record.mDHEphemeralPrivateKey = "private2";
+          record.mDHEphemeralPublicKey = "public2";
+          record.mListSize = 11;
+          record.mTotalWithDHPassphrase = 7;
+          record.mAckDHPassphraseSet = "ack2";
+          record.mActiveUntil = activeUntil;
+          record.mExpires = expires;
+
+          sendingKey->addOrUpdate(record);
+
+          checkCount(UseTables::SendingKey(), UseTables::SendingKey_name(), 2);
+
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::keyID, "key2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::uri, "identity://foo2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::rsaPassphrase, "rsa2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::dhPassphrase, "dh2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::keyDomain, 8192);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::dhEphemeralPrivateKey, "private2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::dhEphemeralPublicKey, "public2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::listSize, 11);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::totalWithDHPassphraseSet, 7);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::ackDHPassphraseSet, "ack2");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::activeUntil, (int) zsLib::timeSinceEpoch<Seconds>(activeUntil).count());
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 1, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecord record;
+          record.mKeyID = "key3";
+          record.mURI = "identity://foo1";
+          record.mRSAPassphrase = "rsa3";
+          record.mDHPassphrase = "dh3";
+          record.mKeyDomain = 1024;
+          record.mDHEphemeralPrivateKey = "private3";
+          record.mDHEphemeralPublicKey = "public3";
+          record.mListSize = 21;
+          record.mTotalWithDHPassphrase = 19;
+          record.mAckDHPassphraseSet = "ack3";
+          record.mActiveUntil = activeUntil;
+          record.mExpires = expires;
+
+          sendingKey->addOrUpdate(record);
+
+          checkCount(UseTables::SendingKey(), UseTables::SendingKey_name(), 3);
+
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::keyID, "key3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::uri, "identity://foo1");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::rsaPassphrase, "rsa3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhPassphrase, "dh3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::keyDomain, 1024);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhEphemeralPrivateKey, "private3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhEphemeralPublicKey, "public3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::listSize, 21);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::totalWithDHPassphraseSet, 19);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::ackDHPassphraseSet, "ack3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::activeUntil, (int) zsLib::timeSinceEpoch<Seconds>(activeUntil).count());
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+        
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(60);
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://foo1", now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 3)
+          TESTING_EQUAL(result->mKeyID, "key3")
+          TESTING_EQUAL(result->mURI, "identity://foo1")
+          TESTING_EQUAL(result->mRSAPassphrase, "rsa3")
+          TESTING_EQUAL(result->mDHPassphrase, "dh3")
+          TESTING_EQUAL(result->mKeyDomain, 1024)
+          TESTING_EQUAL(result->mDHEphemeralPrivateKey, "private3")
+          TESTING_EQUAL(result->mDHEphemeralPublicKey, "public3")
+          TESTING_EQUAL(result->mListSize, 21)
+          TESTING_EQUAL(result->mTotalWithDHPassphrase, 19)
+          TESTING_EQUAL(result->mAckDHPassphraseSet, "ack3")
+
+          TESTING_CHECK(result->mActiveUntil > (activeUntil - Seconds(2)))
+          TESTING_CHECK(result->mActiveUntil < (activeUntil + Seconds(2)))
+
+          TESTING_CHECK(result->mExpires > (expires - Seconds(2)))
+          TESTING_CHECK(result->mExpires < (expires + Seconds(2)))
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time activeUntil = now + Seconds(300);
+          Time expires = now + Seconds(360);
+
+          IUseAbstraction::SendingKeyRecordPtr result = sendingKey->getActive("identity://foo1", now);
+          TESTING_CHECK(result)
+
+          result->mKeyID = "key3";
+          result->mURI = "identity://foo1b";
+          result->mRSAPassphrase = "rsa3b";
+          result->mDHPassphrase = "dh3b";
+          result->mKeyDomain = 2048;
+          result->mDHEphemeralPrivateKey = "private3b";
+          result->mDHEphemeralPublicKey = "public3b";
+          result->mListSize = 43;
+          result->mTotalWithDHPassphrase = 31;
+          result->mAckDHPassphraseSet = "ack3b";
+          result->mActiveUntil = activeUntil;
+          result->mExpires = expires;
+
+          sendingKey->addOrUpdate(*result);
+
+          checkCount(UseTables::SendingKey(), UseTables::SendingKey_name(), 3);
+
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, SqlField::id, 3);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::keyID, "key3");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::uri, "identity://foo1b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::rsaPassphrase, "rsa3b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhPassphrase, "dh3b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::keyDomain, 2048);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhEphemeralPrivateKey, "private3b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::dhEphemeralPublicKey, "public3b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::listSize, 43);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::totalWithDHPassphraseSet, 31);
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::ackDHPassphraseSet, "ack3b");
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::activeUntil, (int) zsLib::timeSinceEpoch<Seconds>(activeUntil).count());
+          checkIndexValue(UseTables::SendingKey(), UseTables::SendingKey_name(), 2, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+
       }
 
       //-----------------------------------------------------------------------
       void TestPushMailboxDB::testReceivingKey()
       {
-        auto receivingKey = mAbstraction->sendingKeyTable();
+        auto receivingKey = mAbstraction->receivingKeyTable();
         TESTING_CHECK(receivingKey)
+
+        {
+          IUseAbstraction::ReceivingKeyRecordPtr result = receivingKey->getByKeyID("rkey1");
+          TESTING_CHECK(!result)
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::ReceivingKeyRecord record;
+          record.mKeyID = "rkey1";
+          record.mURI = "identity://foo1";
+          record.mPassphrase = "passphrase1";
+          record.mKeyDomain = 4096;
+          record.mDHEphemeralPrivateKey = "private1";
+          record.mDHEphemeralPublicKey = "public1";
+          record.mExpires = expires;
+
+          receivingKey->addOrUpdate(record);
+
+          checkCount(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1);
+
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::keyID, "rkey1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::uri, "identity://foo1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::passphrase, "passphrase1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::keyDomain, 4096);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::dhEphemeralPrivateKey, "private1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::dhEphemeralPublicKey, "public1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::ReceivingKeyRecordPtr result = receivingKey->getByKeyID("rkey1");
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 1)
+          TESTING_EQUAL(result->mKeyID, "rkey1")
+          TESTING_EQUAL(result->mURI, "identity://foo1")
+          TESTING_EQUAL(result->mPassphrase, "passphrase1")
+          TESTING_EQUAL(result->mKeyDomain, 4096)
+          TESTING_EQUAL(result->mDHEphemeralPrivateKey, "private1")
+          TESTING_EQUAL(result->mDHEphemeralPublicKey, "public1")
+
+          TESTING_CHECK(result->mExpires > (expires - Seconds(2)))
+          TESTING_CHECK(result->mExpires < (expires + Seconds(2)))
+        }
+
+        {
+          Time now = zsLib::now();
+
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::ReceivingKeyRecord record;
+          record.mKeyID = "rkey2";
+          record.mURI = "identity://foo2";
+          record.mPassphrase = "passphrase2";
+          record.mKeyDomain = 8192;
+          record.mDHEphemeralPrivateKey = "private2";
+          record.mDHEphemeralPublicKey = "public2";
+          record.mExpires = expires;
+
+          receivingKey->addOrUpdate(record);
+
+          checkCount(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 2);
+
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::keyID, "rkey2");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::uri, "identity://foo2");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::passphrase, "passphrase2");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::keyDomain, 8192);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::dhEphemeralPrivateKey, "private2");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::dhEphemeralPublicKey, "public2");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 1, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
+        
+        {
+          Time now = zsLib::now();
+
+          Time expires = now + Seconds(120);
+
+          IUseAbstraction::ReceivingKeyRecordPtr result = receivingKey->getByKeyID("rkey2");
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->mIndex, 2)
+          TESTING_EQUAL(result->mKeyID, "rkey2")
+          TESTING_EQUAL(result->mURI, "identity://foo2")
+          TESTING_EQUAL(result->mPassphrase, "passphrase2")
+          TESTING_EQUAL(result->mKeyDomain, 8192)
+          TESTING_EQUAL(result->mDHEphemeralPrivateKey, "private2")
+          TESTING_EQUAL(result->mDHEphemeralPublicKey, "public2")
+
+          TESTING_CHECK(result->mExpires > (expires - Seconds(2)))
+          TESTING_CHECK(result->mExpires < (expires + Seconds(2)))
+        }
+        
+        {
+          Time now = zsLib::now();
+
+          Time expires = now + Seconds(300);
+
+          IUseAbstraction::ReceivingKeyRecordPtr result = receivingKey->getByKeyID("rkey1");
+          TESTING_CHECK(result)
+
+          result->mKeyID = "rkey1";
+          result->mURI = "identity://foo1b";
+          result->mPassphrase = "passphrase1b";
+          result->mKeyDomain = 1024;
+          result->mDHEphemeralPrivateKey = "private1b";
+          result->mDHEphemeralPublicKey = "public1b";
+          result->mExpires = expires;
+
+          receivingKey->addOrUpdate(*result);
+
+          checkCount(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 2);
+
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::keyID, "rkey1");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::uri, "identity://foo1b");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::passphrase, "passphrase1b");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::keyDomain, 1024);
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::dhEphemeralPrivateKey, "private1b");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::dhEphemeralPublicKey, "public1b");
+          checkIndexValue(UseTables::ReceivingKey(), UseTables::ReceivingKey_name(), 0, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(expires).count());
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -2429,6 +2891,36 @@ namespace openpeer
       {
         auto storage = mAbstraction->storage();
         TESTING_CHECK(storage)
+
+        String tempPrefix = String("/tmp/testpushdb/tmp/") + mUserHash + "_";
+        String storagePrefix = String("/tmp/testpushdb/users/") + mUserHash + "_";
+
+        {
+          String path = storage->getStorageFileName();
+          TESTING_EQUAL(path.substr(0, storagePrefix.length()), storagePrefix)
+        }
+
+        {
+          SecureByteBlockPtr buffer = UseServicesHelper::random(5000);
+          String path = storage->storeToTemporaryFile(*buffer);
+          TESTING_EQUAL(path.substr(0, tempPrefix.length()), tempPrefix)
+
+          FILE *file = fopen(path, "rb");
+          TESTING_CHECK(NULL != file)
+
+          SecureByteBlock buffer2(5000);
+
+          size_t read = 0;
+
+          while (read != buffer2.SizeInBytes()) {
+            auto actualRead = fread(&(buffer2.BytePtr()[read]), sizeof(BYTE), buffer2.SizeInBytes() - read, file);
+            TESTING_CHECK(actualRead > 0)
+
+            read += actualRead;
+          }
+
+          TESTING_EQUAL(0, UseServicesHelper::compare(*buffer, buffer2))
+        }
       }
 
       //-----------------------------------------------------------------------

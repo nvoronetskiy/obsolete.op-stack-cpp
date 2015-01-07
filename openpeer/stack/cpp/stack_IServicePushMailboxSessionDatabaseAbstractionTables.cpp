@@ -103,8 +103,11 @@ namespace openpeer
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhPassphrase = "dhPassphrase";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhStaticPrivateKey = "dhStaticPrivateKey";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhStaticPublicKey = "dhStaticPublicKey";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhEphemeralPrivateKey = "dhEphemeralPrivateKey";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::dhEphemeralPublicKey = "dhEphemeralPublicKey";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::listSize = "listSize";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::totalWithDHPassphraseSet = "totalWithDHPassphraseSet";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::ackDHPassphraseSet = "ackDHPassphraseSet";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::activeUntil = "activeUntil";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::passphrase = "passphrase";
     }
