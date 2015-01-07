@@ -1086,7 +1086,7 @@ namespace openpeer
         }
 
         {
-          IUseAbstraction::MessageRecordListPtr needingData = message->getBatchNeedingData();
+          IUseAbstraction::MessageRecordListPtr needingData = message->getBatchNeedingData(zsLib::now());
           TESTING_CHECK(needingData)
 
           TESTING_EQUAL(needingData->size(), 1)
@@ -1916,6 +1916,282 @@ namespace openpeer
       {
         auto listTable = mAbstraction->listTable();
         TESTING_CHECK(listTable)
+
+        {
+          IUseAbstraction::index result = listTable->addOrUpdateListID("foo");
+          TESTING_EQUAL(result, 1)
+
+          checkCount(UseTables::List(), UseTables::List_name(), 1);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::listID, "foo");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::needsDownload, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadFailures, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadRetryAfter, 0);
+        }
+        {
+          IUseAbstraction::index result = listTable->addOrUpdateListID("bar");
+          TESTING_EQUAL(result, 2)
+
+          checkCount(UseTables::List(), UseTables::List_name(), 2);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::listID, "bar");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::needsDownload, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadFailures, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadRetryAfter, 0);
+        }
+        {
+          IUseAbstraction::index result = listTable->addOrUpdateListID("foo");
+          TESTING_EQUAL(result, 1)
+
+          checkCount(UseTables::List(), UseTables::List_name(), 2);
+        }
+        {
+          IUseAbstraction::index result = listTable->addOrUpdateListID("bar");
+          TESTING_EQUAL(result, 2)
+
+          checkCount(UseTables::List(), UseTables::List_name(), 2);
+        }
+
+        {
+          bool result = listTable->hasListID("foo");
+          TESTING_CHECK(result)
+        }
+        {
+          bool result = listTable->hasListID("bar");
+          TESTING_CHECK(result)
+        }
+        {
+          bool result = listTable->hasListID("bogus");
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(zsLib::now());
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 2)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::ListRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 1)
+                TESTING_EQUAL(info.mListID, "foo")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                TESTING_EQUAL(info.mDownloadFailures, 0)
+                TESTING_CHECK(info.mDownloadRetryAfter == Time())
+                break;
+              }
+              case 1: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mListID, "bar")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                TESTING_CHECK(info.mDownloadRetryAfter == Time())
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          listTable->notifyFailedToDownload(1);
+
+          Time now = zsLib::now();
+          Seconds min = zsLib::timeSinceEpoch<Seconds>(now) + Seconds(60) - Seconds(2);
+          Seconds max = min + Seconds(4);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::listID, "foo");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::needsDownload, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadFailures, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadRetryAfter, (int) min.count(), (int) max.count());
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::ListRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mListID, "bar")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                TESTING_CHECK(info.mDownloadRetryAfter == Time())
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          listTable->notifyFailedToDownload(1);
+
+          Time now = zsLib::now();
+          Seconds min = zsLib::timeSinceEpoch<Seconds>(now) + Seconds(60*2) - Seconds(2);
+          Seconds max = min + Seconds(4);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::listID, "foo");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::needsDownload, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadFailures, 2);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadRetryAfter, (int) min.count(), (int) max.count());
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::ListRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mListID, "bar")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                TESTING_CHECK(info.mDownloadRetryAfter == Time())
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          listTable->notifyDownloaded(1);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, SqlField::id, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::listID, "foo");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::needsDownload, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadFailures, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 0, UseTables::downloadRetryAfter, 0);
+
+          Time now = zsLib::now();
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::ListRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mListID, "bar")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                TESTING_CHECK(info.mDownloadRetryAfter == Time())
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          listTable->notifyFailedToDownload(2);
+
+          Time now = zsLib::now();
+          Seconds min = zsLib::timeSinceEpoch<Seconds>(now) + Seconds(60) - Seconds(2);
+          Seconds max = min + Seconds(4);
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::listID, "bar");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::needsDownload, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadFailures, 1);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadRetryAfter, (int) min.count(), (int) max.count());
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(now);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 0)
+        }
+
+        {
+          Time now = zsLib::now();
+          Time fakeNow = zsLib::timeSinceEpoch(zsLib::timeSinceEpoch<Seconds>(now) + Seconds(61));
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(fakeNow);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 1)
+
+          int index = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++iter, ++index)
+          {
+            const IUseAbstraction::ListRecord &info = *iter;
+
+            switch (index)
+            {
+              case 0: {
+                TESTING_EQUAL(info.mIndex, 2)
+                TESTING_EQUAL(info.mListID, "bar")
+                TESTING_EQUAL(info.mNeedsDownload, true)
+                break;
+              }
+              default:
+              {
+                TESTING_CHECK(false)  // should not reach here
+                break;
+              }
+            }
+          }
+        }
+
+        {
+          listTable->notifyDownloaded(2);
+
+          Time now = zsLib::now();
+          Time fakeNow = zsLib::timeSinceEpoch(zsLib::timeSinceEpoch<Seconds>(now) + Seconds(61));
+
+          IUseAbstraction::ListRecordListPtr result = listTable->getBatchNeedingDownload(fakeNow);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(result->size(), 0)
+
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, SqlField::id, 2);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::listID, "bar");
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::needsDownload, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadFailures, 0);
+          checkIndexValue(UseTables::List(), UseTables::List_name(), 1, UseTables::downloadRetryAfter, 0);
+        }
       }
 
       //-----------------------------------------------------------------------

@@ -55,6 +55,7 @@
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_NOTIFICATION_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_PENDING_DELIVERY_MESSAGES_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_LIST_NEEDING_DOWNLOAD_BATCH_LIMIT 10
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -100,6 +101,7 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::FolderVersionedMessageRecordList, FolderVersionedMessageRecordList)
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::MessageRecord, MessageRecord)
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::MessageRecordList, MessageRecordList)
+      ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::ListRecord, ListRecord)
 
       ZS_DECLARE_TYPEDEF_PTR(ServicePushMailboxSessionDatabaseAbstraction::FolderVersionedMessageRecord, FolderVersionedMessageRecord)
       
@@ -287,6 +289,21 @@ namespace openpeer
         output.mEncryptedDataLength = static_cast<decltype(output.mEncryptedDataLength)>(record->getValue(UseTables::encryptedDataLength)->asInteger());
       }
 
+      //-----------------------------------------------------------------------
+      static void convertListRecord(
+                                    SqlRecord *record,
+                                    ListRecord &output
+                                    )
+      {
+        output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
+        output.mListID = record->getValue(UseTables::listID)->asString();
+        output.mNeedsDownload = record->getValue(UseTables::needsDownload)->asBool();
+        output.mDownloadFailures = static_cast<decltype(output.mIndex)>(record->getValue(UseTables::downloadFailures)->asInteger());
+        auto downloadRetryAfter = record->getValue(UseTables::downloadRetryAfter)->asInteger();
+        if (0 != downloadRetryAfter) {
+          output.mDownloadRetryAfter = zsLib::timeSinceEpoch(Seconds(downloadRetryAfter));
+        }
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -421,7 +438,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "index", mIndex);
         UseServicesHelper::debugAppend(resultEl, "list id", mListID);
         UseServicesHelper::debugAppend(resultEl, "needs download", mNeedsDownload);
-        UseServicesHelper::debugAppend(resultEl, "failed download", mFailedDownload);
+        UseServicesHelper::debugAppend(resultEl, "download failures", mDownloadFailures);
+        UseServicesHelper::debugAppend(resultEl, "download retry after", mDownloadRetryAfter);
 
         return resultEl;
       }
@@ -1040,6 +1058,8 @@ namespace openpeer
           SqlRecord record(table.fields());
           record.setInteger(UseTables::indexFolderRecord, folderMessage.mIndexFolderRecord);
           record.setString(UseTables::messageID, folderMessage.mMessageID);
+
+          ZS_LOG_TRACE(log("adding new folder message") + UseStackHelper::toDebug(&table, &record))
           table.addRecord(&record);
 
         } catch (SqlException &e) {
@@ -1153,14 +1173,14 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
         
         try {
-          ZS_LOG_TRACE(log("adding folder versioned message") + message.toDebug())
-
           SqlTable table(*mDB, UseTables::FolderVersionedMessage_name(), UseTables::FolderVersionedMessage());
           
           SqlRecord record(table.fields());
           record.setInteger(UseTables::indexFolderRecord, message.mIndexFolderRecord);
           record.setString(UseTables::messageID, message.mMessageID);
           record.setBool(UseTables::removedFlag, message.mRemovedFlag);
+
+          ZS_LOG_TRACE(log("adding new versioned folder message") + message.toDebug() + UseStackHelper::toDebug(&table, &record))
           table.addRecord(&record);
 
         } catch (SqlException &e) {
@@ -1189,12 +1209,13 @@ namespace openpeer
             return;
           }
 
-          ZS_LOG_TRACE(log("adding folder versioned message record") + message.toDebug())
-
           SqlRecord record(table.fields());
           record.setInteger(UseTables::indexFolderRecord, message.mIndexFolderRecord);
           record.setString(UseTables::messageID, message.mMessageID);
           record.setBool(UseTables::removedFlag, true);
+
+          ZS_LOG_TRACE(log("adding new versioned folder message") + message.toDebug() + UseStackHelper::toDebug(&table, &record))
+
           table.addRecord(&record);
           
         } catch (SqlException &e) {
@@ -1644,8 +1665,6 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_TRACE(log("inserting message") + message.toDebug())
-
         try {
 
           SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
@@ -1688,6 +1707,8 @@ namespace openpeer
           record.setBool(UseTables::needsNotification, message.mNeedsNotification);
 
           initializeFields(record);
+
+          ZS_LOG_TRACE(log("adding new message") + message.toDebug() + UseStackHelper::toDebug(&table, &record))
 
           table.addRecord(&record);
 
@@ -1872,7 +1893,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingData() const
+      MessageRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_getBatchNeedingData(const Time &now) const
       {
         AutoRecursiveLock lock(*this);
 
@@ -1884,7 +1905,7 @@ namespace openpeer
 
           auto maxDownloadSize = UseSettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES);
 
-          UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS));
+          UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MESSAGE_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS));
           auto maxDownloadRetries = backoff->getMaxFailures();
 
           table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
@@ -1900,7 +1921,7 @@ namespace openpeer
             maxDownloadRetriesClause = String(" AND ") + UseTables::downloadFailures + " < " + string(maxDownloadRetries);
           }
 
-          auto retryAfter = zsLib::timeSinceEpoch<Seconds>(zsLib::now()).count();
+          auto retryAfter = zsLib::timeSinceEpoch<Seconds>(now).count();
 
           table.open(String(UseTables::downloadedVersion) + " != '' AND " + String(UseTables::hasDecryptedData) + " = 0 AND " + UseTables::decryptedFileName + " = '' AND " + UseTables::downloadedEncryptedData + " = 0 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + maxSizeClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DATA_BATCH_LIMIT));
 
@@ -1964,7 +1985,7 @@ namespace openpeer
 
           if (!downloaded) {
             auto downloadFailures = record->getValue(UseTables::downloadFailures)->asInteger();
-            UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS), downloadFailures);
+            UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_MESSAGE_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS), downloadFailures);
             backoff->notifyFailure();
 
             record->setInteger(UseTables::downloadFailures, backoff->getTotalFailures());
@@ -2485,6 +2506,8 @@ namespace openpeer
 
             initializeFields(record);
 
+            ZS_LOG_TRACE(log("adding new delivery state") + UseStackHelper::toDebug(&table, &record))
+
             table.addRecord(&record);
           }
 
@@ -2538,8 +2561,6 @@ namespace openpeer
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_TRACE(log("inserting pending delivery message") + message.toDebug())
-
         try {
 
           SqlTable table(*mDB, UseTables::PendingDeliveryMessage_name(), UseTables::PendingDeliveryMessage());
@@ -2553,6 +2574,8 @@ namespace openpeer
           record.setInteger(UseTables::encryptedDataLength, message.mEncryptedDataLength);
 
           initializeFields(record);
+
+          ZS_LOG_TRACE(log("adding new pending delivery record") + message.toDebug() + UseStackHelper::toDebug(&table, &record))
 
           table.addRecord(&record);
 
@@ -2639,28 +2662,158 @@ namespace openpeer
       //-----------------------------------------------------------------------
       index ServicePushMailboxSessionDatabaseAbstraction::IListTable_addOrUpdateListID(const char *listID)
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+          table.open(String(UseTables::listID) + " = " + SqlQuote(String(listID)));
+
+          SqlRecord *found = table.getTopRecord();
+          if (found) {
+            index indexListID = static_cast<index>(found->getValue(SqlField::id)->asInteger());
+            ZS_LOG_TRACE(log("found existing list") + ZS_PARAMIZE(indexListID))
+            return static_cast<index>(found->getValue(SqlField::id)->asInteger());
+          }
+
+          SqlRecord addRecord(table.fields());
+
+          addRecord.setString(UseTables::listID, String(listID));
+          addRecord.setBool(UseTables::needsDownload, true);
+
+          initializeFields(addRecord);
+
+          ZS_LOG_TRACE(log("adding new list record") + UseStackHelper::toDebug(&table, &addRecord))
+          table.addRecord(&addRecord);
+
+          return IListTable_addOrUpdateListID(listID);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
         return OPENPEER_STACK_PUSH_MAILBOX_INDEX_UNKNOWN;
       }
 
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSessionDatabaseAbstraction::IListTable_hasListID(const char *listID) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+          table.open(String(UseTables::listID) + " = " + SqlQuote(String(listID)));
+
+          SqlRecord *found = table.getTopRecord();
+          if (found) {
+            ZS_LOG_TRACE(log("found existing list") + ZS_PARAMIZE(listID))
+            return true;
+          }
+
+          ZS_LOG_TRACE(log("did not find existing list") + ZS_PARAMIZE(listID))
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return false;
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IListTable_notifyDownloaded(index indexListRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_TRACE(log("notifying downloaded") + ZS_PARAMIZE(indexListRecord))
+
+        try {
+          SqlRecordSet query(*mDB);
+
+          query.query(String("UPDATE ") + UseTables::List_name() + " SET " + UseTables::needsDownload + " = 0, " + UseTables::downloadFailures + " = 0, " + UseTables::downloadRetryAfter + " = 0 WHERE " + SqlField::id + " = " + string(indexListRecord));
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
       void ServicePushMailboxSessionDatabaseAbstraction::IListTable_notifyFailedToDownload(index indexListRecord)
       {
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_TRACE(log("notifying downloaded failed") + ZS_PARAMIZE(indexListRecord))
+
+        try {
+          SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadFailures)->setIgnored(false);
+          table.fields()->getByName(UseTables::downloadRetryAfter)->setIgnored(false);
+
+          table.open(String(SqlField::id) + " = " + string(indexListRecord));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_WARNING(Detail, log("list record not found") + ZS_PARAMIZE(indexListRecord))
+            return;
+          }
+
+          auto downloadFailures = record->getValue(UseTables::downloadFailures)->asInteger();
+          UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_LIST_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS), downloadFailures);
+          backoff->notifyFailure();
+
+          record->setInteger(UseTables::downloadFailures, backoff->getTotalFailures());
+          if (Time() != backoff->getNextRetryAfterTime()) {
+            record->setInteger(UseTables::downloadRetryAfter, zsLib::timeSinceEpoch<Seconds>(backoff->getNextRetryAfterTime()).count());
+          } else {
+            record->setInteger(UseTables::downloadRetryAfter, 0);
+          }
+
+          table.updateRecord(record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
       }
 
       //-----------------------------------------------------------------------
-      ListRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IListTable_getBatchNeedingDownload() const
+      ListRecordListPtr ServicePushMailboxSessionDatabaseAbstraction::IListTable_getBatchNeedingDownload(const Time &now) const
       {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
+
+          UseBackOffTimerPtr backoff = UseBackOffTimer::create<Seconds>(UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_LIST_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS));
+          auto maxDownloadRetries = backoff->getMaxFailures();
+
+          String maxDownloadRetriesClause;
+          if (0 != maxDownloadRetries) {
+            maxDownloadRetriesClause = String(" AND ") + UseTables::downloadFailures + " < " + string(maxDownloadRetries);
+          }
+
+          auto retryAfter = zsLib::timeSinceEpoch<Seconds>(now).count();
+
+          ListRecordListPtr result(new ListRecordList);
+
+          table.open(String(UseTables::needsDownload) + " = 1 AND " + UseTables::downloadRetryAfter + " < " + string(retryAfter) + maxDownloadRetriesClause + " LIMIT " +  + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_LIST_NEEDING_DOWNLOAD_BATCH_LIMIT));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            ListRecord listRecord;
+
+            convertListRecord(record, listRecord);
+
+            ZS_LOG_TRACE(log("found list record") + listRecord.toDebug())
+
+            result->push_back(listRecord);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
         return ListRecordListPtr();
       }
 
@@ -2997,6 +3150,9 @@ namespace openpeer
         {
           SqlTable table(*mDB, UseTables::List_name(), UseTables::List());
           table.create();
+
+          SqlRecordSet query(*mDB);
+          query.query(String("CREATE INDEX ") + UseTables::List_name() + "i" + UseTables::needsDownload + " ON " + UseTables::List_name() + "(" + UseTables::needsDownload + ")");
         }
         {
           SqlTable table(*mDB, UseTables::ListURI_name(), UseTables::ListURI());

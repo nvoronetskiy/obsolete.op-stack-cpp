@@ -40,7 +40,8 @@
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX "openpeer/stack/push-mailbox-database-filename-postfix"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_ANALYZE_DATABASE_RANDOMLY_EVERY "openpeer/stack/push-mailbox-analyze-database-randomly-every"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-size-in-bytes"
-#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-download-failure-retry-pattern-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MESSAGE_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-message-download-failure-retry-pattern-in-seconds"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_LIST_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-list-download-failure-retry-pattern-in-seconds"
 
 namespace openpeer
 {
@@ -305,7 +306,7 @@ namespace openpeer
                                                   const SecureByteBlock &encryptedData
                                                   )                                         {mOuter->IMessageTable_updateEncryptedData(indexMessageRecord, encryptedData);}
           virtual MessageNeedingUpdateListPtr getBatchNeedingUpdate()                       {return mOuter->IMessageTable_getBatchNeedingUpdate();}
-          virtual MessageRecordListPtr getBatchNeedingData() const                          {return mOuter->IMessageTable_getBatchNeedingData();}
+          virtual MessageRecordListPtr getBatchNeedingData(const Time &now) const           {return mOuter->IMessageTable_getBatchNeedingData(now);}
           virtual void notifyDownload(
                                       index indexMessageRecord,
                                       bool downloaded
@@ -403,9 +404,9 @@ namespace openpeer
 
           virtual index addOrUpdateListID(const char *listID)                               {return mOuter->IListTable_addOrUpdateListID(listID);}
           virtual bool hasListID(const char *listID) const                                  {return mOuter->IListTable_hasListID(listID);}
-          virtual void notifyDownloaded(index indexListRecord)                          {mOuter->IListTable_notifyDownloaded(indexListRecord);}
-          virtual void notifyFailedToDownload(index indexListRecord)                    {mOuter->IListTable_notifyFailedToDownload(indexListRecord);}
-          virtual ListRecordListPtr getBatchNeedingDownload() const                         {return mOuter->IListTable_getBatchNeedingDownload();}
+          virtual void notifyDownloaded(index indexListRecord)                              {mOuter->IListTable_notifyDownloaded(indexListRecord);}
+          virtual void notifyFailedToDownload(index indexListRecord)                        {mOuter->IListTable_notifyFailedToDownload(indexListRecord);}
+          virtual ListRecordListPtr getBatchNeedingDownload(const Time &now) const          {return mOuter->IListTable_getBatchNeedingDownload(now);}
 
         protected:
           ServicePushMailboxSessionDatabaseAbstractionPtr mOuter;
@@ -634,7 +635,7 @@ namespace openpeer
                                                const SecureByteBlock &encryptedData
                                                );
         IMessageTable::MessageNeedingUpdateListPtr IMessageTable_getBatchNeedingUpdate();
-        MessageRecordListPtr IMessageTable_getBatchNeedingData() const;
+        MessageRecordListPtr IMessageTable_getBatchNeedingData(const Time &now) const;
         void IMessageTable_notifyDownload(
                                           index indexMessageRecord,
                                           bool downloaded
@@ -701,7 +702,7 @@ namespace openpeer
         bool IListTable_hasListID(const char *listID) const;
         void IListTable_notifyDownloaded(index indexListRecord);
         void IListTable_notifyFailedToDownload(index indexListRecord);
-        ListRecordListPtr IListTable_getBatchNeedingDownload() const;
+        ListRecordListPtr IListTable_getBatchNeedingDownload(const Time &now) const;
 
 
         //---------------------------------------------------------------------

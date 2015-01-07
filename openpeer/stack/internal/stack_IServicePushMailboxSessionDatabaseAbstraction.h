@@ -268,7 +268,8 @@ namespace openpeer
           index   mIndex {-1};            // [auto, unique]
           String  mListID;                // [unique]
           bool    mNeedsDownload {true};
-          bool    mFailedDownload {false};
+          size_t  mDownloadFailures {0};
+          Time    mDownloadRetryAfter;
 
           ElementPtr toDebug() const;
         };
@@ -740,7 +741,7 @@ namespace openpeer
           //
           //          This routine should filter all messages already marked as
           //          downloaded.
-          virtual MessageRecordListPtr getBatchNeedingData() const = 0;
+          virtual MessageRecordListPtr getBatchNeedingData(const Time &now) const = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: Set flag that a message has downloaded (or not
@@ -936,7 +937,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: get a list of lists that need to be downloaded from the
           //          server
-          virtual ListRecordListPtr getBatchNeedingDownload() const = 0;
+          virtual ListRecordListPtr getBatchNeedingDownload(const Time &now) const = 0;
         };
 
 

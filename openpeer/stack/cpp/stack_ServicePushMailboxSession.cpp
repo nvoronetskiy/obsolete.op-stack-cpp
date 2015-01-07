@@ -3720,7 +3720,7 @@ namespace openpeer
           return true;
         }
 
-        MessageRecordListPtr updateList = mDB->messageTable()->getBatchNeedingData();
+        MessageRecordListPtr updateList = mDB->messageTable()->getBatchNeedingData(zsLib::now());
         updateList = (updateList ? updateList : MessageRecordListPtr(new MessageRecordList));
 
         if (updateList->size() < 1) {
@@ -3897,7 +3897,7 @@ namespace openpeer
           return true;
         }
 
-        ListRecordListPtr downloadList = mDB->listTable()->getBatchNeedingDownload();
+        ListRecordListPtr downloadList = mDB->listTable()->getBatchNeedingDownload(zsLib::now());
         downloadList = (downloadList ? downloadList : ListRecordListPtr(new ListRecordList));
 
         if (downloadList->size() < 1) {

@@ -282,9 +282,10 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(listID, sql::type_text, sql::flag_not_null),
+            SqlField(listID, sql::type_text, sql::flag_not_null | sql::flag_unique),
             SqlField(needsDownload, sql::type_bool, sql::flag_not_null),
-            SqlField(failedDownload, sql::type_bool, sql::flag_not_null),
+            SqlField(downloadFailures, sql::type_int, sql::flag_not_null),
+            SqlField(downloadRetryAfter, sql::type_int, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };
           return table;
