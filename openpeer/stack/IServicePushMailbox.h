@@ -167,8 +167,11 @@ namespace openpeer
 
         String mMessageType;
         String mMimeType;
-        SecureByteBlockPtr mFullMessage;  // if data fits in memory the data will be included here
-        String mFullMessageFileName;      // if data is too large then this file will contain the data
+
+        SecureByteBlockPtr mFullMessage;  // if data fits in memory the data will be included here (data will be encrypted)
+        String mFullMessageFileName;      // if data is too large then this file will contain the data (data will be encrypted)
+
+        ElementPtr mMetaData;             // any meta data to include with the message (meta data will be encrypted)
 
         String mPushType;
         PushInfoList mPushInfos;

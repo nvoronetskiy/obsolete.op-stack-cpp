@@ -53,6 +53,7 @@
 #include <openpeer/stack/message/push-mailbox/ListFetchRequest.h>
 #include <openpeer/stack/message/push-mailbox/ChangedNotify.h>
 
+#include <openpeer/stack/IHelper.h>
 #include <openpeer/stack/IPeer.h>
 #include <openpeer/stack/IPeerFiles.h>
 #include <openpeer/stack/IPeerFilePublic.h>
@@ -98,6 +99,7 @@ namespace openpeer
   {
     ZS_DECLARE_TYPEDEF_PTR(message::IMessageHelper, UseMessageHelper)
     ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+    ZS_DECLARE_TYPEDEF_PTR(stack::IHelper, UseStackHelper)
 
     namespace internal
     {
@@ -575,6 +577,11 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
+        if (!mDB) {
+          ZS_LOG_WARNING(Detail, log("database not ready"))
+          return false;
+        }
+
         FolderRecordPtr folderRecord = mDB->folderTable()->getIndexAndUniqueID(inFolder);
 
         if (!folderRecord) {
@@ -687,6 +694,11 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
+        if (!mDB) {
+          ZS_LOG_WARNING(Detail, log("database not ready"))
+          return String();
+        }
+
         FolderRecordPtr folderRecord = mDB->folderTable()->getIndexAndUniqueID(inFolder);
 
         if (!folderRecord) {
@@ -715,6 +727,11 @@ namespace openpeer
         typedef std::list<PeerOrIdentityListPtr> PeerPtrList;
 
         AutoRecursiveLock lock(*this);
+
+        if (!mDB) {
+          ZS_LOG_WARNING(Detail, log("database not ready"))
+          return IServicePushMailboxSendQueryPtr();
+        }
 
         String messageID = prepareMessageID(message.mMessageID);
 
@@ -786,20 +803,30 @@ namespace openpeer
         String keyID = (sendingKeyRecord->mListSize == sendingKeyRecord->mTotalWithDHPassphrase ? makeDHSendingKeyID(sendingKeyRecord->mKeyID) : makeRSASendingKeyID(sendingKeyRecord->mKeyID));
         String passphrase = (sendingKeyRecord->mListSize == sendingKeyRecord->mTotalWithDHPassphrase ? sendingKeyRecord->mDHPassphrase : sendingKeyRecord->mRSAPassphrase);
 
-        String encryptedFileName;
+        String decryptedFileName;
         String encoding;
         SecureByteBlockPtr encryptedMessage;
         if (message.mFullMessage) {
-          if (!encryptMessage(keyID, passphrase, *message.mFullMessage, encoding, encryptedMessage)) {
+          if (!encryptMessage(OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE, keyID, passphrase, *message.mFullMessage, encoding, encryptedMessage)) {
             ZS_LOG_ERROR(Detail, log("failed to encrypt emssage"))
             encoding = String();
             encryptedMessage = UseServicesHelper::clone(message.mFullMessage);
           }
         } else {
-          encryptedFileName = message.mFullMessageFileName;
-          if (encryptedFileName.hasData()) {
+          decryptedFileName = message.mFullMessageFileName;
+          if (decryptedFileName.hasData()) {
             String salt = UseServicesHelper::randomString(16*8/5);
-            encoding =  OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME + salt + ":" + keyID + ":" + passphrase;
+            encoding = String(OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME) + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + keyID + "=" + passphrase + ":" + salt;
+          }
+        }
+
+        SecureByteBlockPtr encryptedMetaData;
+        if (message.mMetaData) {
+          String metaData = UseServicesHelper::toString(message.mMetaData);
+          if (!encryptMessage(OPENPEER_STACK_PUSH_MAILBOX_KEYING_METADATA_TYPE, keyID, passphrase, *UseServicesHelper::convertToBuffer(UseServicesHelper::toString(message.mMetaData)), encoding, encryptedMetaData)) {
+            ZS_LOG_ERROR(Detail, log("failed to encrypt emssage"))
+            encoding = String();
+            encryptedMessage = UseServicesHelper::convertToBuffer(UseServicesHelper::toString(message.mMetaData));
           }
         }
 
@@ -817,7 +844,7 @@ namespace openpeer
         messageRecord.mSent = message.mSent;
         messageRecord.mExpires = message.mExpires;
         messageRecord.mEncryptedData = encryptedMessage;
-        messageRecord.mEncryptedFileName = encryptedFileName;
+        messageRecord.mDecryptedFileName = decryptedFileName;
         messageRecord.mDecryptedData = message.mFullMessage;
         messageRecord.mNeedsNotification = true;
 
@@ -975,8 +1002,10 @@ namespace openpeer
         String bcc = message->mBCC;
         result->mMessageType = message->mType;
         result->mMimeType = message->mMimeType;
+
         result->mFullMessage = message->mDecryptedData;
         result->mFullMessageFileName = message->mDecryptedFileName;
+        result->mMetaData = message->mDecryptedMetaData;
 
         result->mPushType = message->mPushType;
         result->mPushInfos = message->mPushInfos;
@@ -2266,6 +2295,9 @@ namespace openpeer
           message.mPushInfos = pushInfos;
           message.mSent = info.mSent;
           message.mExpires = info.mExpires;
+          if (info.mMetaData.hasData()) {
+            message.mEncryptedMetaData = UseServicesHelper::convertFromBase64(info.mMetaData);
+          }
           message.mEncryptedDataLength = info.mLength;
           message.mNeedsNotification = true;
 
@@ -2772,10 +2804,10 @@ namespace openpeer
 
         if (!stepBootstrapper()) goto post_step;
         if (!stepGrantLock()) goto post_step;
+        if (!stepLockboxAccess()) goto post_step;
 
         if (!stepShouldConnect()) goto post_step;
         if (!stepDNS()) goto post_step;
-        if (!stepLockboxAccess()) goto post_step;
 
         if (!stepConnect()) goto post_step;
         if (!stepRead()) goto post_step;
@@ -2884,6 +2916,62 @@ namespace openpeer
         return true;
       }
 
+      //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::stepLockboxAccess()
+      {
+        ZS_LOG_TRACE(log("step - lockbox access"))
+
+        WORD errorCode = 0;
+        String reason;
+        switch (mLockbox->getState(&errorCode, &reason)) {
+          case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
+          case IServiceLockboxSession::SessionState_Ready:
+          {
+            break;
+          }
+          case IServiceLockboxSession::SessionState_Shutdown:
+          {
+            ZS_LOG_ERROR(Detail, log("lockbox session shutdown thus shutting down mailbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
+            setError(errorCode, reason);
+            cancel();
+            return false;
+          }
+        }
+
+        if (!mLockboxSubscription) {
+          ZS_LOG_DEBUG(log("now subscribing to lockbox state"))
+          mLockboxSubscription = mLockbox->subscribe(mThisWeak.lock());
+        }
+
+        if (!mLockboxInfo.mToken.hasData()) {
+          mLockboxInfo = mLockbox->getLockboxInfo();
+          if (mLockboxInfo.mToken.hasData()) {
+            ZS_LOG_DEBUG(log("obtained lockbox token"))
+          }
+        }
+
+        if (!mDB) {
+          String userHash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(mLockboxInfo.mDomain + ":" + mLockboxInfo.mAccountID));
+
+          mDB = IServicePushMailboxSessionDatabaseAbstraction::create(userHash, UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_TEMPORARY_PATH), UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_PATH));
+
+          if (!mDB) {
+            ZS_LOG_ERROR(Detail, log("unable to create database"))
+            cancel();
+            return false;
+          }
+        }
+
+        if (mLockboxInfo.mToken.hasData()) {
+          ZS_LOG_TRACE(log("now have lockbox acess secret"))
+          return true;
+        }
+
+        ZS_LOG_TRACE(log("waiting on lockbox to login"))
+        return false;
+      }
+      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepShouldConnect()
       {
@@ -3021,50 +3109,6 @@ namespace openpeer
         return true;
       }
 
-      //-----------------------------------------------------------------------
-      bool ServicePushMailboxSession::stepLockboxAccess()
-      {
-        ZS_LOG_TRACE(log("step - lockbox access"))
-
-        WORD errorCode = 0;
-        String reason;
-        switch (mLockbox->getState(&errorCode, &reason)) {
-          case IServiceLockboxSession::SessionState_Pending:
-          case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
-          case IServiceLockboxSession::SessionState_Ready:
-          {
-            break;
-          }
-          case IServiceLockboxSession::SessionState_Shutdown:
-          {
-            ZS_LOG_ERROR(Detail, log("lockbox session shutdown thus shutting down mailbox") + ZS_PARAM("error", errorCode) + ZS_PARAM("reason", reason))
-            setError(errorCode, reason);
-            cancel();
-            return false;
-          }
-        }
-
-        if (!mLockboxSubscription) {
-          ZS_LOG_DEBUG(log("now subscribing to lockbox state"))
-          mLockboxSubscription = mLockbox->subscribe(mThisWeak.lock());
-        }
-
-        if (!mLockboxInfo.mToken.hasData()) {
-          mLockboxInfo = mLockbox->getLockboxInfo();
-          if (mLockboxInfo.mToken.hasData()) {
-            ZS_LOG_DEBUG(log("obtained lockbox token"))
-          }
-        }
-
-        if (mLockboxInfo.mToken.hasData()) {
-          ZS_LOG_TRACE(log("now have lockbox acess secret"))
-          return true;
-        }
-
-        ZS_LOG_TRACE(log("waiting on lockbox to login"))
-        return false;
-      }
-      
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::stepConnect()
       {
@@ -4308,14 +4352,33 @@ namespace openpeer
               goto decrypt_later;
             }
 
-            if (info.mEncryptedFileName.isEmpty()) {
-              if (!info.mEncryptedData) {
-                ZS_LOG_WARNING(Detail, log("message cannot decrypt as it has no data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex) + ZS_PARAM("key id", keyID))
+            if ((info.mEncryptedMetaData) &&
+                (!info.mDecryptedMetaData)) {
+
+              SecureByteBlockPtr decryptedData;
+              if (!decryptMessage(OPENPEER_STACK_PUSH_MAILBOX_KEYING_METADATA_TYPE, keyID, receivingKeyRecord->mPassphrase, split[3], split[4], *info.mEncryptedMetaData, decryptedData)) {
+                ZS_LOG_WARNING(Detail, log("failed to decrypt message meta data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex) + ZS_PARAM("key id", keyID))
                 goto failed_to_decrypt;
               }
 
+              ZS_THROW_INVALID_ASSUMPTION_IF(!decryptedData)
+
+              ZS_LOG_DEBUG(log("message meta data is now decrypted") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex) + ZS_PARAM("key id", keyID))
+
+              mDB->messageTable()->notifyDecryptedMetaData(info.mIndex, decryptedData);
+            }
+
+            if (info.mEncryptedFileName.isEmpty()) {
+              if (!info.mEncryptedData) {
+                ZS_LOG_WARNING(Detail, log("message cannot decrypt as it has no data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex) + ZS_PARAM("key id", keyID))
+
+                mDB->messageTable()->notifyDecrypted(info.mIndex, SecureByteBlockPtr(), true);
+                mRefreshVersionedFolders = true;
+                continue;
+              }
+
               SecureByteBlockPtr decryptedData;
-              if (!decryptMessage(keyID, receivingKeyRecord->mPassphrase, split[3], split[4], *info.mEncryptedData, decryptedData)) {
+              if (!decryptMessage(OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE, keyID, receivingKeyRecord->mPassphrase, split[3], split[4], *info.mEncryptedData, decryptedData)) {
                 ZS_LOG_WARNING(Detail, log("failed to decrypt message") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex) + ZS_PARAM("key id", keyID))
                 goto failed_to_decrypt;
               }
@@ -4493,6 +4556,9 @@ namespace openpeer
           processedInfo.mMessage.mType = message->mType;
           processedInfo.mMessage.mMimeType = message->mMimeType;
           processedInfo.mMessage.mEncoding = message->mEncoding;
+          if (message->mEncryptedMetaData) {
+            processedInfo.mMessage.mMetaData = UseServicesHelper::convertToBase64(*(message->mEncryptedMetaData));
+          }
           processedInfo.mMessage.mPushType = message->mPushType;
           copy(message->mPushInfos, processedInfo.mMessage.mPushInfos);
           processedInfo.mMessage.mSent = message->mSent;
@@ -6725,10 +6791,11 @@ namespace openpeer
       ServicePushMailboxSession::UseEncryptorPtr ServicePushMailboxSession::prepareEncryptor(const String &tempEncodingScheme)
       {
         UseServicesHelper::SplitMap split;
+        UseServicesHelper::SplitMap splitKey;
 
         UseServicesHelper::split(tempEncodingScheme, split, ':');
 
-        if (4 != split.size()) {
+        if (split.size() < 4) {
           ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
           return UseEncryptorPtr();
         }
@@ -6738,11 +6805,19 @@ namespace openpeer
           return UseEncryptorPtr();
         }
 
-        String salt = split[1];
-        String passphraseID = split[2];
-        String passphrase = split[3];
+        String salt = split[3];
+        String keying = split[2];
 
-        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), "push-mailbox:" + passphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        UseServicesHelper::split(keying, splitKey, '=');
+        if (splitKey.size() < 2) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
+          return UseEncryptorPtr();
+        }
+
+        String passphraseID = splitKey[0];
+        String passphrase = splitKey[1];
+
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), String("push-mailbox:") + OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE + ":" + passphraseID, UseServicesHelper::HashAlgorthm_SHA256);
         SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
 
         return UseEncryptor::create(*key, *iv);
@@ -6755,10 +6830,11 @@ namespace openpeer
                                                                )
       {
         UseServicesHelper::SplitMap split;
+        UseServicesHelper::SplitMap splitKey;
 
         UseServicesHelper::split(tempEncodingScheme, split, ':');
 
-        if (4 != split.size()) {
+        if (split.size() < 4) {
           ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
           return String();
         }
@@ -6768,31 +6844,84 @@ namespace openpeer
           return String();
         }
 
-        String salt = split[1];
-        String passphraseID = split[2];
-        String passphrase = split[3];
+        String salt = split[3];
+        String keying = split[2];
 
-        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), "proof:" + salt + ":" + sourceHexHash));
+        UseServicesHelper::split(keying, splitKey, '=');
+        if (splitKey.size() < 2) {
+          ZS_LOG_ERROR(Detail, log("temp encoding scheme is not understood") + ZS_PARAM("encoding", tempEncodingScheme))
+          return String();
+        }
+
+        String passphraseID = splitKey[0];
+        String passphrase = splitKey[1];
+
+        String proof;
+        String calculatedProof = String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE) + "=" + UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(passphrase), String("proof:") + OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE + ":" + salt + ":" + sourceHexHash));
+
+        if (split.size() > 4) {
+          proof = split[4];
+        }
+
+        if (proof.isEmpty()) {
+          proof = calculatedProof;
+        } else {
+          proof += "," + calculatedProof;
+        }
 
         return String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + passphraseID + ":" + salt + ":" + proof;
       }
 
       //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::encryptMessage(
+                                                     const char *inDataType,
                                                      const String &inPassphraseID,
                                                      const String &inPassphrase,
                                                      SecureByteBlock &inOriginalData,
-                                                     String &outEncodingScheme,
+                                                     String &ioEncodingScheme,
                                                      SecureByteBlockPtr &outEncryptedMessage
                                                      )
       {
-        String salt = UseServicesHelper::randomString(16*8/5);
+        String scheme = OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME;
+        String salt;
+        String proof;
+        String keyID = inPassphraseID;
+        String dataType(inDataType);
 
-        String proof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + salt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(inOriginalData))));
+        if (ioEncodingScheme.hasData()) {
+          UseServicesHelper::SplitMap values;
+          UseServicesHelper::split(ioEncodingScheme, values, ':');
 
-        outEncodingScheme = String(OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME) + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + inPassphraseID + ":" + salt + ":" + proof;
+          //key:encoding_type:passphrase_id:salt:proof
+          if (values.size() > 0) {
+            scheme = values[0] + ":";
+          }
+          if (values.size() > 2) {
+            keyID = values[2];
+          }
+          if (values.size() > 3) {
+            salt = values[3];
+          }
+          if (values.size() > 4) {
+            proof = values[4];
+          }
+        }
 
-        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + inPassphraseID, UseServicesHelper::HashAlgorthm_SHA256);
+        if (salt.isEmpty()) {
+          salt = UseServicesHelper::randomString(16*8/5);
+        }
+
+        String calculatedProof = dataType + "=" + UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + dataType + ":" + salt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(inOriginalData))));
+
+        if (proof.isEmpty()) {
+          proof = calculatedProof;
+        } else {
+          proof += "," + calculatedProof;
+        }
+
+        ioEncodingScheme = scheme + UseServicesHelper::convertToBase64(OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE) + ":" + keyID + ":" + salt + ":" + proof;
+
+        SecureByteBlockPtr key = UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "push-mailbox:" + dataType + ":" + inPassphraseID, UseServicesHelper::HashAlgorthm_SHA256);
         SecureByteBlockPtr iv = UseServicesHelper::hash(salt, UseServicesHelper::HashAlgorthm_MD5);
 
         outEncryptedMessage = UseServicesHelper::encrypt(*key, *iv, inOriginalData);
@@ -6823,7 +6952,7 @@ namespace openpeer
                                                          )
       {
         String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + inSalt + ":" + inDataHash));
-        if (calculatedProof != inProof) {
+        if (validateProof(OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE, calculatedProof, inProof)) {
           ZS_LOG_WARNING(Detail, log("proof failed to validate thus message failed to decrypt properly") + ZS_PARAM("proof", inProof) + ZS_PARAM("calculated proof", calculatedProof))
           return false;
         }
@@ -6831,7 +6960,46 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ServicePushMailboxSession::validateProof(
+                                                    const char *inDataType,
+                                                    const String &inCalculatedProofHash,
+                                                    const String &inProof
+                                                    )
+      {
+        String dataType(inDataType);
+
+        UseServicesHelper::SplitMap values;
+        UseServicesHelper::split(inProof, values, ',');
+
+        for (auto iter = values.begin(); iter != values.end(); ++iter) {
+          const String &value = (*iter).second;
+          UseServicesHelper::SplitMap keying;
+          UseServicesHelper::split(value, keying, '=');
+          if (keying.size() < 2) {
+            ZS_LOG_WARNING(Detail, log("proof information was not understood") + ZS_PARAMIZE(inProof) + ZS_PARAMIZE(value))
+            continue;
+          }
+
+          String type = keying[0];
+          String hash = keying[1];
+
+          if (type != dataType) continue;
+
+          if (hash != inCalculatedProofHash) {
+            ZS_LOG_WARNING(Detail, log("hash proof failure") + ZS_PARAMIZE(inDataType) + ZS_PARAMIZE(inCalculatedProofHash) + ZS_PARAMIZE(inProof) + ZS_PARAMIZE(type) + ZS_PARAMIZE(hash))
+            return false;
+          }
+
+          return true;
+        }
+
+        ZS_LOG_WARNING(Detail, log("hash proof not found") + ZS_PARAMIZE(inDataType) + ZS_PARAMIZE(inCalculatedProofHash) + ZS_PARAMIZE(inProof))
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
       bool ServicePushMailboxSession::decryptMessage(
+                                                     const char *inDataType,
                                                      const String &inPassphraseID,
                                                      const String &inPassphrase,
                                                      const String &inSalt,
@@ -6851,7 +7019,7 @@ namespace openpeer
 
         String calculatedProof = UseServicesHelper::convertToHex(*UseServicesHelper::hmac(*UseServicesHelper::hmacKeyFromPassphrase(inPassphrase), "proof:" + inSalt + ":" + UseServicesHelper::convertToHex(*UseServicesHelper::hash(*outDecryptedMessage))));
 
-        if (inProof != calculatedProof) {
+        if (validateProof(inDataType, calculatedProof, inProof)) {
           ZS_LOG_WARNING(Detail, log("proof failed to validate thus message failed to decrypt") + ZS_PARAM("proof", inProof) + ZS_PARAM("calculated proof", calculatedProof))
           outDecryptedMessage = SecureByteBlockPtr();
           return false;
@@ -7163,6 +7331,8 @@ namespace openpeer
       UseServicesHelper::debugAppend(resultEl, "mime type", mMimeType);
       UseServicesHelper::debugAppend(resultEl, "full message", (bool)mFullMessage);
       UseServicesHelper::debugAppend(resultEl, "full message filename", mFullMessageFileName);
+
+      UseServicesHelper::debugAppend(resultEl, "meta data", mMetaData ? UseServicesHelper::toString(mMetaData) : String());
 
       UseServicesHelper::debugAppend(resultEl, "push type", mPushType);
       UseServicesHelper::debugAppend(resultEl, mPushInfos.toDebug());

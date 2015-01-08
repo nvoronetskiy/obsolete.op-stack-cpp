@@ -895,6 +895,8 @@ namespace openpeer
                 (mMimeType.hasData()) ||
                 (mEncoding.hasData()) ||
 
+                ((bool)mMetaData) ||
+
                 (mPushType.hasData()) ||
                 (mPushInfos.size() > 0) ||
 
@@ -931,6 +933,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "mimeType", mMimeType);
         UseServicesHelper::debugAppend(resultEl, "encoding", mEncoding);
 
+        UseServicesHelper::debugAppend(resultEl, "meta data", mMetaData);
+
         UseServicesHelper::debugAppend(resultEl, "push type", mPushType);
         UseServicesHelper::debugAppend(resultEl, "push infos", mPushInfos.size());
 
@@ -949,9 +953,9 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void PushMessageInfo::mergeFrom(
-                                  const PushMessageInfo &source,
-                                  bool overwriteExisting
-                                  )
+                                      const PushMessageInfo &source,
+                                      bool overwriteExisting
+                                      )
       {
         merge(mID, source.mID, overwriteExisting);
         merge(mDisposition, source.mDisposition, overwriteExisting);
@@ -969,6 +973,8 @@ namespace openpeer
         merge(mType, source.mType, overwriteExisting);
         merge(mMimeType, source.mMimeType, overwriteExisting);
         merge(mEncoding, source.mEncoding, overwriteExisting);
+
+        merge(mMetaData, source.mMetaData, overwriteExisting);
 
         merge(mPushType, source.mPushType, overwriteExisting);
         merge(mPushInfos, source.mPushInfos, overwriteExisting);
@@ -1029,6 +1035,10 @@ namespace openpeer
 
         if (mEncoding.hasData()) {
           messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("encoding", mEncoding));
+        }
+
+        if (mMetaData.hasData()) {
+          messageEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("metaData", mMetaData));
         }
 
         if ((mPushType.hasData()) ||
@@ -1214,6 +1224,8 @@ namespace openpeer
         info.mType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("type"));
         info.mMimeType = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("mimeType"));
         info.mEncoding = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("encoding"));
+
+        info.mMetaData = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("metaData"));
 
 
         ElementPtr pushEl = elem->findFirstChildElement("push");

@@ -80,14 +80,18 @@
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DEFAULT_DH_KEY_DOMAIN "openpeer/stack/push-mailbox-default-dh-key-domain"
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_ENCODING_TYPE "https://meta.openpeer.org/2014/06/17/referenced-key#aes-cfb-32-16-16-sha1-md5"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_DATA_TYPE "data"
+#define OPENPEER_STACK_PUSH_MAILBOX_KEYING_METADATA_TYPE "metadata"
 
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_ACTIVE_UNTIL_IN_SECONDS   "openpeer/stack/push-mailbox-sending-key-active-until-in-seconds"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_SENDING_KEY_EXPIRES_AFTER_IN_SECONDS  "openpeer/stack/push-mailbox-sending-key-expires-after-in-seconds"
 
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_PATH "openpeer/stack/push-mailbox-database-path"
+#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_TEMPORARY_PATH "openpeer/stack/push-mailbox-temporary-path"
+
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_TIME_IN_SECONDS     "openpeer/stack/push-mailbox-max-message-upload-time-in-seconds"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_UPLOAD_CHUNK_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-upload-chunk-size-in-bytes"
 #define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_TO_MEMORY_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-to-memory-size-in-bytes"
-
 
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_PKI       "pki"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE_AGREEMENT "agreement"
@@ -99,6 +103,7 @@
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_TYPE "keying"
 #define OPENPEER_STACK_PUSH_MAILBOX_KEYING_URI_SCHEME "key:"
 #define OPENPEER_STACK_PUSH_MAILBOX_TEMP_KEYING_URI_SCHEME "temp-key:"
+
 
 namespace openpeer
 {
@@ -770,10 +775,10 @@ namespace openpeer
         void step();
         bool stepBootstrapper();
         bool stepGrantLock();
+        bool stepLockboxAccess();
 
         bool stepShouldConnect();
         bool stepDNS();
-        bool stepLockboxAccess();
 
         bool stepConnect();
         bool stepRead();
@@ -989,10 +994,11 @@ namespace openpeer
                                       );
 
         bool encryptMessage(
+                            const char *inDataType,
                             const String &inPassphraseID,
                             const String &inPassphrase,
                             SecureByteBlock &inOriginalData,
-                            String &outEncodingScheme,
+                            String &ioEncodingScheme,
                             SecureByteBlockPtr &outEncryptedMessage
                             );
 
@@ -1009,7 +1015,14 @@ namespace openpeer
                                 const String &inProof
                                 );
 
+        bool validateProof(
+                           const char *inDataType,
+                           const String &inCalculatedProofHash,
+                           const String &inProof
+                           );
+
         bool decryptMessage(
+                            const char *inDataType,
                             const String &inPassphraseID,
                             const String &inPassphrase,
                             const String &inSalt,

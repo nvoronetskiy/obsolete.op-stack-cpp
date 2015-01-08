@@ -195,7 +195,9 @@ namespace openpeer
           Time          mExpires;
           ULONGEST      mEncryptedDataLength {0};     // size of encrypted data in bytes (size of encrypted data blob if present)
           SecureByteBlockPtr  mEncryptedData;
+          SecureByteBlockPtr  mEncryptedMetaData;
           SecureByteBlockPtr  mDecryptedData;
+          ElementPtr    mDecryptedMetaData;
           String        mEncryptedFileName;
           String        mDecryptedFileName;
           bool          mHasEncryptedData {false};
@@ -819,6 +821,13 @@ namespace openpeer
                                        bool needsNotification
                                        ) = 0;
 
+          //-------------------------------------------------------------------
+          // PURPOSE: sets the message's "decryptedMetaData" and sets the
+          //          "needsNotification" flag accordingly
+          virtual void notifyDecryptedMetaData(
+                                               index indexMessageRecord,
+                                               SecureByteBlockPtr decryptedData
+                                               ) = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: gets a batch of messages whose "needsNotification" is set to

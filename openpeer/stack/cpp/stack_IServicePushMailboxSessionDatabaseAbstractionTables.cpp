@@ -73,7 +73,9 @@ namespace openpeer
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::expires = "expires";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::encryptedDataLength = "encryptedDataLength";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::encryptedData = "encryptedData";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::encryptedMetaData = "encryptedMetaData";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::decryptedData = "decryptedData";
+      const char *IServicePushMailboxSessionDatabaseAbstractionTables::decryptedMetaData = "decryptedMetaData";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::encryptedFileName = "encryptedFileName";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::decryptedFileName = "decryptedFileName";
       const char *IServicePushMailboxSessionDatabaseAbstractionTables::hasDecryptedData = "hasDecryptedData";

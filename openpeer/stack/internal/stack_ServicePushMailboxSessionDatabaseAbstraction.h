@@ -335,6 +335,10 @@ namespace openpeer
                                        const char *decryptedFileName,
                                        bool needsNotification
                                        )                                                    {mOuter->IMessageTable_notifyDecrypted(indexMessageRecord, encrytpedFileName, decryptedFileName, needsNotification);}
+          virtual void notifyDecryptedMetaData(
+                                               index indexMessageRecord,
+                                               SecureByteBlockPtr decryptedData
+                                               )                                            {mOuter->IMessageTable_notifyDecryptedMetaData(indexMessageRecord, decryptedData);}
           virtual MessageRecordListPtr getBatchNeedingNotification() const                  {return mOuter->IMessageTable_getBatchNeedingNotification();}
           virtual void clearNeedsNotification(index indexMessageRecord)                     {mOuter->IMessageTable_clearNeedsNotification(indexMessageRecord);}
           virtual MessageRecordListPtr getBatchNeedingExpiry(Time now) const                {return mOuter->IMessageTable_getBatchNeedingExpiry(now);}
@@ -664,6 +668,10 @@ namespace openpeer
                                            const char *decryptedFileName,
                                            bool needsNotification
                                            );
+        void IMessageTable_notifyDecryptedMetaData(
+                                                   index indexMessageRecord,
+                                                   SecureByteBlockPtr decryptedData
+                                                   );
         MessageRecordListPtr IMessageTable_getBatchNeedingNotification() const;
         void IMessageTable_clearNeedsNotification(index indexMessageRecord);
         MessageRecordListPtr IMessageTable_getBatchNeedingExpiry(Time now) const;

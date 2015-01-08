@@ -457,6 +457,8 @@ namespace openpeer
         String mMimeType;
         String mEncoding;
 
+        String mMetaData;
+
         String mPushType;
         PushInfoList mPushInfos;
 

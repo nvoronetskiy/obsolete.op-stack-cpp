@@ -243,6 +243,16 @@ namespace openpeer
         }
 
         result->mEncryptedFileName = record->getValue(UseTables::encryptedFileName)->asString();
+
+        String encryptedMetaData = record->getValue(UseTables::encryptedMetaData)->asString();
+        if (encryptedMetaData.hasData()) {
+          result->mEncryptedMetaData = UseServicesHelper::convertFromBase64(encryptedMetaData);
+        }
+        String decryptedMetaData = record->getValue(UseTables::decryptedMetaData)->asString();
+        if (decryptedMetaData.hasData()) {
+          result->mDecryptedMetaData = UseServicesHelper::toJSON(decryptedMetaData);
+        }
+
         result->mDecryptedFileName = record->getValue(UseTables::decryptedFileName)->asString();
         result->mHasDecryptedData = record->getValue(UseTables::hasDecryptedData)->asBool();
         result->mDownloadedEncryptedData = record->getValue(UseTables::downloadedEncryptedData)->asBool();
@@ -1790,6 +1800,7 @@ namespace openpeer
 
           table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
           table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::decryptedMetaData)->setIgnored(true);
 
           table.open(String(SqlField::id) + " = " + string(indexMessageRecord));
           SqlRecord *record = table.getTopRecord();
@@ -1970,7 +1981,9 @@ namespace openpeer
           auto maxDownloadRetries = backoff->getMaxFailures();
 
           table.fields()->getByName(UseTables::encryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::encryptedMetaData)->setIgnored(true);
           table.fields()->getByName(UseTables::decryptedData)->setIgnored(true);
+          table.fields()->getByName(UseTables::decryptedMetaData)->setIgnored(true);
 
           String maxSizeClause;
           if (0 != maxDownloadSize) {
@@ -2185,7 +2198,7 @@ namespace openpeer
             messageTypeNotClause = String(" AND ") + UseTables::type + " != " + SqlQuote(whereMessageTypeIsNot);
           }
 
-          table.open(String(UseTables::decryptLater) + " = 0 AND " + UseTables::decryptedData + " == '' AND " + UseTables::decryptedFileName + " == '' AND " + UseTables::decryptFailure + " = 0 AND " + UseTables::downloadedEncryptedData + " = 1" + messageTypeNotClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT));
+          table.open(String(UseTables::decryptLater) + " = 0 AND " + UseTables::decryptedData + " = '' AND " + UseTables::decryptedFileName + " = '' AND " + UseTables::decryptFailure + " = 0 AND " + UseTables::downloadedEncryptedData + " = 1" + messageTypeNotClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_PUSH_MAILBOX_DATABASE_ABSTRACTION_MESSAGES_NEEDING_DECRYPTING_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no messages needing decrypting"))
@@ -2330,13 +2343,11 @@ namespace openpeer
           record.setInteger(SqlField::id, indexMessageRecord);
           if (decryptedData) {
             record.setString(UseTables::decryptedData, UseServicesHelper::convertToBase64(*decryptedData));
-            record.setBool(UseTables::hasDecryptedData, true);
-            record.setBool(UseTables::decryptFailure, false);
           } else {
             record.setString(UseTables::decryptedData, String());
-            record.setBool(UseTables::hasDecryptedData, false);
-            record.setBool(UseTables::decryptFailure, true);
           }
+          record.setBool(UseTables::hasDecryptedData, true);
+          record.setBool(UseTables::decryptFailure, false);
           record.setBool(UseTables::needsNotification, needsNotification);
 
           table.updateRecord(&record);
@@ -2377,6 +2388,41 @@ namespace openpeer
           record.setString(UseTables::decryptedFileName, String(decryptedFileName));
           record.setBool(UseTables::decryptFailure, false);
           record.setBool(UseTables::needsNotification, needsNotification);
+
+          table.updateRecord(&record);
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+      }
+      
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSessionDatabaseAbstraction::IMessageTable_notifyDecryptedMetaData(
+                                                                                               index indexMessageRecord,
+                                                                                               SecureByteBlockPtr decryptedData
+                                                                                               )
+      {
+        AutoRecursiveLock lock(*this);
+
+        MessageRecordListPtr result(new MessageRecordList);
+
+        try {
+          ZS_LOG_TRACE(log("notifying decrypted meta data") + ZS_PARAMIZE(indexMessageRecord) + ZS_PARAM("decrypted data", decryptedData ? decryptedData->SizeInBytes() : 0))
+
+          SqlTable table(*mDB, UseTables::Message_name(), UseTables::Message());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::decryptedMetaData)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexMessageRecord);
+          if (decryptedData) {
+            record.setString(UseTables::decryptedMetaData, UseServicesHelper::convertToString(*decryptedData));
+          } else {
+            record.setString(UseTables::decryptedMetaData, String());
+          }
 
           table.updateRecord(&record);
         } catch (SqlException &e) {
