@@ -4312,6 +4312,10 @@ namespace openpeer
 
             if (info.mEncoding.isEmpty()) {
               ZS_LOG_DEBUG(log("message was not encoded thus the encrypted data is the decrypted data") + ZS_PARAM("message ID", info.mMessageID) + ZS_PARAM("message index", info.mIndex))
+              if ((info.mEncryptedMetaData) &&
+                  (!info.mDecryptedMetaData)) {
+                mDB->messageTable()->notifyDecryptedMetaData(info.mIndex, info.mEncryptedMetaData);
+              }
               if (info.mEncryptedFileName.hasData()) {
                 mDB->messageTable()->notifyDecrypted(info.mIndex, String(), info.mEncryptedFileName, true); // encrypted and decrypted point to same location
               } else {
