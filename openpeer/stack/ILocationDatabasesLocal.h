@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2014, Hookflash Inc.
+ Copyright (c) 2015, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -32,35 +32,28 @@
 #pragma once
 
 #include <openpeer/stack/types.h>
-#include <openpeer/stack/IAccount.h>
-#include <openpeer/stack/IBootstrappedNetwork.h>
-#include <openpeer/stack/ICache.h>
-#include <openpeer/stack/IDiff.h>
-#include <openpeer/stack/IHelper.h>
-#include <openpeer/stack/IKeyGenerator.h>
-#include <openpeer/stack/ILocation.h>
-#include <openpeer/stack/ILocationDatabase.h>
 #include <openpeer/stack/ILocationDatabases.h>
-#include <openpeer/stack/ILocationDatabaseLocal.h>
-#include <openpeer/stack/ILocationDatabasesLocal.h>
-#include <openpeer/stack/IMessageIncoming.h>
-#include <openpeer/stack/IMessageMonitor.h>
-#include <openpeer/stack/IMessageSource.h>
-#include <openpeer/stack/IPeerFiles.h>
-#include <openpeer/stack/IPeerFilePublic.h>
-#include <openpeer/stack/IPeerFilePrivate.h>
-#include <openpeer/stack/IPeer.h>
-#include <openpeer/stack/IPeerSubscription.h>
-#include <openpeer/stack/IPublication.h>
-#include <openpeer/stack/IPublicationMetaData.h>
-#include <openpeer/stack/IPublicationRepository.h>
-#include <openpeer/stack/IServiceCertificates.h>
-#include <openpeer/stack/IServiceIdentity.h>
-#include <openpeer/stack/IServiceLockbox.h>
-#include <openpeer/stack/IServiceNamespaceGrant.h>
-#include <openpeer/stack/IServicePeerFileLookupQuery.h>
-#include <openpeer/stack/IServicePushMailbox.h>
-#include <openpeer/stack/IServiceSalt.h>
-#include <openpeer/stack/IServerMessaging.h>
-#include <openpeer/stack/ISettings.h>
-#include <openpeer/stack/IStack.h>
+
+namespace openpeer
+{
+  namespace stack
+  {
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    interaction ILocationDatabasesLocal : public ILocationDatabases
+    {
+      //-----------------------------------------------------------------------
+      // PURPOSE: Open information about databases contained within the
+      //          databases contained within the local location
+      static ILocationDatabasesLocalPtr open(
+                                             IAccountPtr account,
+                                             ILocationDatabasesDelegatePtr inDelegate
+                                             );
+    };
+
+  }
+}
+

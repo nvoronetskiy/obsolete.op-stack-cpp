@@ -431,6 +431,10 @@
 		0084000B1850069C009F6934 /* stack_KeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_KeyGenerator.h; sourceTree = "<group>"; };
 		0084000C185006B2009F6934 /* stack_KeyGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_KeyGenerator.cpp; sourceTree = "<group>"; };
 		0095DEBA16CA8C2F005F53D3 /* libhfstack.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libhfstack.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		0096C58E1A65753300D6272D /* ILocationDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabase.h; sourceTree = "<group>"; };
+		0096C5911A66C27F00D6272D /* ILocationDatabaseLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabaseLocal.h; sourceTree = "<group>"; };
+		0096C5921A66C27F00D6272D /* ILocationDatabases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabases.h; sourceTree = "<group>"; };
+		0096C5931A66C30E00D6272D /* ILocationDatabasesLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabasesLocal.h; sourceTree = "<group>"; };
 		009B5EF618D5F03D00314F02 /* stack_PublicationRepository_Fetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_Fetcher.h; sourceTree = "<group>"; };
 		009B5EF718D5F03D00314F02 /* stack_PublicationRepository_PeerCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerCache.h; sourceTree = "<group>"; };
 		009B5EF818D5F03D00314F02 /* stack_PublicationRepository_PeerSubscriptionIncoming.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerSubscriptionIncoming.h; sourceTree = "<group>"; };
@@ -650,6 +654,10 @@
 				0063B6BE16CA8E8A00E6DB4D /* IHelper.h */,
 				0084000A18500613009F6934 /* IKeyGenerator.h */,
 				0063B6BF16CA8E8A00E6DB4D /* ILocation.h */,
+				0096C58E1A65753300D6272D /* ILocationDatabase.h */,
+				0096C5921A66C27F00D6272D /* ILocationDatabases.h */,
+				0096C5911A66C27F00D6272D /* ILocationDatabaseLocal.h */,
+				0096C5931A66C30E00D6272D /* ILocationDatabasesLocal.h */,
 				0063B6C016CA8E8A00E6DB4D /* IMessageIncoming.h */,
 				0063B6C116CA8E8A00E6DB4D /* IMessageMonitor.h */,
 				0063B6C216CA8E8A00E6DB4D /* IMessageSource.h */,

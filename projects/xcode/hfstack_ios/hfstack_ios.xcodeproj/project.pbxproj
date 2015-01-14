@@ -468,6 +468,7 @@
 		0084000F1850169E009F6934 /* stack_KeyGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_KeyGenerator.cpp; sourceTree = "<group>"; };
 		00840011185016B0009F6934 /* stack_KeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_KeyGenerator.h; sourceTree = "<group>"; };
 		0084FFB2184F9891009F6934 /* IKeyGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IKeyGenerator.h; sourceTree = "<group>"; };
+		0096C5901A65765A00D6272D /* ILocationDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabase.h; sourceTree = "<group>"; };
 		0099443F197DAFA300063E17 /* stack_ServicePushMailboxSession_SendQuery.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession_SendQuery.h; sourceTree = "<group>"; };
 		00994440197DAFBE00063E17 /* stack_ServicePushMailboxSession_SendQuery.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ServicePushMailboxSession_SendQuery.cpp; sourceTree = "<group>"; };
 		00A03FB519A7B7AE00268C98 /* stack_ServerMessaging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServerMessaging.h; sourceTree = "<group>"; };
@@ -699,6 +700,7 @@
 				0063BA2C16CA92CF00E6DB4D /* IHelper.h */,
 				0084FFB2184F9891009F6934 /* IKeyGenerator.h */,
 				0063BA2D16CA92CF00E6DB4D /* ILocation.h */,
+				0096C5901A65765A00D6272D /* ILocationDatabase.h */,
 				0063BA2E16CA92CF00E6DB4D /* IMessageIncoming.h */,
 				0063BA2F16CA92CF00E6DB4D /* IMessageMonitor.h */,
 				0063BA3016CA92CF00E6DB4D /* IMessageSource.h */,
