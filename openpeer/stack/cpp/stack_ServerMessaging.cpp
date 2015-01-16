@@ -952,6 +952,18 @@ namespace openpeer
     #pragma mark
     #pragma mark IServerMessaging
     #pragma mark
+    
+    //-------------------------------------------------------------------------
+    const char *IServerMessaging::toString(SessionStates state)
+    {
+      switch (state) {
+        case SessionState_Pending:      return "Pending";
+        case SessionState_Connected:    return "Connected";
+        case SessionState_ShuttingDown: return "Shutting down";
+        case SessionState_Shutdown:     return "Shutdown";
+      }
+      return "UNDEFINED";
+    }
 
     //-------------------------------------------------------------------------
     ElementPtr IServerMessaging::toDebug(IServerMessagingPtr query)
