@@ -71,22 +71,22 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       // PURPOSE: Creates a local database given a database identifier.
-      static ILocationDatabaseLocalPtr create(
-                                              ILocationDatabaseLocalDelegatePtr inDelegate,
-                                              ILocationDatabasesLocalPtr localDatabases,
-                                              const char *inDatabaseID,
-                                              ElementPtr inMetaData,
-                                              const PeerList &inPeerAccessList,
-                                              Time expires = Time()  // Time() means the database should never expire
-                                              );
+      static ILocationDatabaseLocalPtr open(
+                                            ILocationDatabaseLocalDelegatePtr inDelegate,
+                                            ILocationDatabasesLocalPtr localDatabases,
+                                            const char *inDatabaseID,
+                                            ElementPtr inMetaData,
+                                            const PeerList &inPeerAccessList,
+                                            Time expires = Time()  // Time() means the database should never expire
+                                            );
 
       //-----------------------------------------------------------------------
       // PURPOSE: Obtain list of peers that have access to this database.
-      virtual PeerListPtr getAccessList() const = 0;
+      virtual PeerListPtr getPeerAccessList() const = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Updates when a database should automatically expire.
-      virtual void setExpires(Time time) = 0;
+      virtual void setExpires(const Time &time) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Add a unique entry into the database.

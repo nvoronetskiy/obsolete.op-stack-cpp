@@ -18,118 +18,59 @@
 		00BDC2941A1B978900F0DA1C /* testing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC1E21A1B978900F0DA1C /* testing.cpp */; };
 		00BDC2951A1B978900F0DA1C /* TestServiceLockboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC1E41A1B978900F0DA1C /* TestServiceLockboxSession.cpp */; };
 		00BDC2961A1B978900F0DA1C /* TestStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC1E61A1B978900F0DA1C /* TestStack.cpp */; };
-		00BDC2D01A1B998500F0DA1C /* libzsLib_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC29D1A1B990900F0DA1C /* libzsLib_ios.a */; };
-		00BDC2D11A1B998A00F0DA1C /* libudns_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2A31A1B992F00F0DA1C /* libudns_ios.a */; };
-		00BDC2D21A1B999000F0DA1C /* libidnkit_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2A91A1B993800F0DA1C /* libidnkit_ios.a */; };
-		00BDC2D31A1B999600F0DA1C /* libortclib_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2B51A1B994400F0DA1C /* libortclib_ios.a */; };
-		00BDC2D41A1B999D00F0DA1C /* libcryptopp_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2AF1A1B993F00F0DA1C /* libcryptopp_ios.a */; };
-		00BDC2D51A1B99A300F0DA1C /* libeasysqlite_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2BB1A1B995600F0DA1C /* libeasysqlite_ios.a */; };
-		00BDC2D61A1B99AB00F0DA1C /* libhfstack_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2C11A1B996300F0DA1C /* libhfstack_ios.a */; };
 		00BDC2D81A1B99DD00F0DA1C /* libcurl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00BDC2D71A1B99DD00F0DA1C /* libcurl.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		00BDC29C1A1B990900F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2981A1B990900F0DA1C /* zsLib_ios.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 0066818216C9D64000259F81;
-			remoteInfo = zsLib_ios;
-		};
-		00BDC2A21A1B992F00F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC29E1A1B992E00F0DA1C /* udns_ios.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 0066824F16C9DA9200259F81;
-			remoteInfo = udns_ios;
-		};
-		00BDC2A81A1B993800F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2A41A1B993800F0DA1C /* idnkit_ios.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 00AA6DB11A15220000815878;
-			remoteInfo = idnkit_ios;
-		};
-		00BDC2AE1A1B993F00F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2AA1A1B993F00F0DA1C /* cryptopp_ios.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 0066863A16C9F58000259F81;
-			remoteInfo = cryptopp_ios;
-		};
-		00BDC2B41A1B994400F0DA1C /* PBXContainerItemProxy */ = {
+		007180BD1A818BE400CDA113 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = E2260E731821628E0084E4A4;
 			remoteInfo = ortclib_ios;
 		};
-		00BDC2BA1A1B995600F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 004B220C1A10793F00239AAC;
-			remoteInfo = easysqlite_ios;
-		};
-		00BDC2C01A1B996300F0DA1C /* PBXContainerItemProxy */ = {
+		0078BD601A818C97003AAD10 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */;
 			proxyType = 2;
 			remoteGlobalIDString = 0063B94916CA91F000E6DB4D;
 			remoteInfo = hfstack_ios;
 		};
-		00BDC2C21A1B997900F0DA1C /* PBXContainerItemProxy */ = {
+		008C9C851A8111A8002ADD3B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 0063B94816CA91F000E6DB4D;
-			remoteInfo = hfstack_ios;
-		};
-		00BDC2C41A1B997900F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 004B220B1A10793F00239AAC;
-			remoteInfo = easysqlite_ios;
-		};
-		00BDC2C61A1B997900F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = E2260E721821628E0084E4A4;
-			remoteInfo = ortclib_ios;
-		};
-		00BDC2C81A1B997900F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2AA1A1B993F00F0DA1C /* cryptopp_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 0066863916C9F58000259F81;
-			remoteInfo = cryptopp_ios;
-		};
-		00BDC2CA1A1B997900F0DA1C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2A41A1B993800F0DA1C /* idnkit_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 00AA6DB01A15220000815878;
+			containerPortal = 008C9C811A8111A7002ADD3B /* idnkit_ios.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 00AA6DB11A15220000815878;
 			remoteInfo = idnkit_ios;
 		};
-		00BDC2CC1A1B997900F0DA1C /* PBXContainerItemProxy */ = {
+		008C9C8B1A8111F0002ADD3B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC29E1A1B992E00F0DA1C /* udns_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 0066824E16C9DA9200259F81;
+			containerPortal = 008C9C871A8111EF002ADD3B /* zsLib_ios.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0066818216C9D64000259F81;
+			remoteInfo = zsLib_ios;
+		};
+		008C9C911A8111F7002ADD3B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 008C9C8D1A8111F6002ADD3B /* udns_ios.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0066824F16C9DA9200259F81;
 			remoteInfo = udns_ios;
 		};
-		00BDC2CE1A1B997900F0DA1C /* PBXContainerItemProxy */ = {
+		008C9C971A811204002ADD3B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 00BDC2981A1B990900F0DA1C /* zsLib_ios.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 0066818116C9D64000259F81;
-			remoteInfo = zsLib_ios;
+			containerPortal = 008C9C931A811203002ADD3B /* cryptopp_ios.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0066863A16C9F58000259F81;
+			remoteInfo = cryptopp_ios;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		008C9C811A8111A7002ADD3B /* idnkit_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit_ios.xcodeproj; path = "../../../../ortc-lib/libs/idnkit/projects/xcode/idnkit_ios.xcodeproj"; sourceTree = "<group>"; };
+		008C9C871A8111EF002ADD3B /* zsLib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = zsLib_ios.xcodeproj; path = "../../../../ortc-lib/libs/zsLib/projects/xcode/zsLib_ios/zsLib_ios.xcodeproj"; sourceTree = "<group>"; };
+		008C9C8D1A8111F6002ADD3B /* udns_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = udns_ios.xcodeproj; path = "../../../../ortc-lib/libs/udns/projects/xcode/udns_ios/udns_ios.xcodeproj"; sourceTree = "<group>"; };
+		008C9C931A811203002ADD3B /* cryptopp_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp_ios.xcodeproj; path = "../../../../ortc-lib/libs/cryptopp/projects/xcode/cryptopp_ios/cryptopp_ios.xcodeproj"; sourceTree = "<group>"; };
 		00BDC0171A1B974800F0DA1C /* hfstackTest_ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = hfstackTest_ios.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00BDC01B1A1B974800F0DA1C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00BDC01C1A1B974800F0DA1C /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -152,13 +93,9 @@
 		00BDC1E51A1B978900F0DA1C /* TestServiceLockboxSession.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestServiceLockboxSession.h; sourceTree = "<group>"; };
 		00BDC1E61A1B978900F0DA1C /* TestStack.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestStack.cpp; sourceTree = "<group>"; };
 		00BDC1E71A1B978900F0DA1C /* TestStack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestStack.h; sourceTree = "<group>"; };
-		00BDC2981A1B990900F0DA1C /* zsLib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = zsLib_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/ortc-lib/libs/zsLib/projects/xcode/zsLib_ios/zsLib_ios.xcodeproj"; sourceTree = "<absolute>"; };
-		00BDC29E1A1B992E00F0DA1C /* udns_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = udns_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/ortc-lib/libs/udns/projects/xcode/udns_ios/udns_ios.xcodeproj"; sourceTree = "<absolute>"; };
-		00BDC2A41A1B993800F0DA1C /* idnkit_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/ortc-lib/libs/idnkit/projects/xcode/idnkit_ios.xcodeproj"; sourceTree = "<absolute>"; };
-		00BDC2AA1A1B993F00F0DA1C /* cryptopp_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/ortc-lib/libs/cryptopp/projects/xcode/cryptopp_ios/cryptopp_ios.xcodeproj"; sourceTree = "<absolute>"; };
-		00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/ortc-lib/projects/xcode/ortclib_ios/ortclib_ios.xcodeproj"; sourceTree = "<absolute>"; };
-		00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite_ios.xcodeproj; path = /Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/easysqlite/projects/xcode/easysqlite_ios.xcodeproj; sourceTree = "<absolute>"; };
-		00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack_ios.xcodeproj; path = "/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/projects/xcode/../../libs/op-stack-cpp/projects/xcode/hfstack_ios/hfstack_ios.xcodeproj"; sourceTree = "<absolute>"; };
+		00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib_ios.xcodeproj; path = "../../../../ortc-lib/projects/xcode/ortclib_ios/ortclib_ios.xcodeproj"; sourceTree = "<group>"; };
+		00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite_ios.xcodeproj; path = ../../../../easysqlite/projects/xcode/easysqlite_ios.xcodeproj; sourceTree = "<group>"; };
+		00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack_ios.xcodeproj; path = ../hfstack_ios/hfstack_ios.xcodeproj; sourceTree = "<group>"; };
 		00BDC2D71A1B99DD00F0DA1C /* libcurl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcurl.a; path = "../../../../ortc-lib/libs/curl-build-scripts/curl/lib/libcurl.a"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -168,19 +105,60 @@
 			buildActionMask = 2147483647;
 			files = (
 				00BDC2D81A1B99DD00F0DA1C /* libcurl.a in Frameworks */,
-				00BDC2D61A1B99AB00F0DA1C /* libhfstack_ios.a in Frameworks */,
-				00BDC2D51A1B99A300F0DA1C /* libeasysqlite_ios.a in Frameworks */,
-				00BDC2D31A1B999600F0DA1C /* libortclib_ios.a in Frameworks */,
-				00BDC2D41A1B999D00F0DA1C /* libcryptopp_ios.a in Frameworks */,
-				00BDC2D21A1B999000F0DA1C /* libidnkit_ios.a in Frameworks */,
-				00BDC2D11A1B998A00F0DA1C /* libudns_ios.a in Frameworks */,
-				00BDC2D01A1B998500F0DA1C /* libzsLib_ios.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		007180B81A818BE300CDA113 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				007180BE1A818BE400CDA113 /* libortclib_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0078BD5C1A818C97003AAD10 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0078BD611A818C97003AAD10 /* libhfstack_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		008C9C821A8111A7002ADD3B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				008C9C861A8111A8002ADD3B /* libidnkit_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		008C9C881A8111EF002ADD3B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				008C9C8C1A8111F0002ADD3B /* libzsLib_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		008C9C8E1A8111F6002ADD3B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				008C9C921A8111F7002ADD3B /* libudns_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		008C9C941A811203002ADD3B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				008C9C981A811204002ADD3B /* libcryptopp_ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		00BDC00E1A1B974800F0DA1C = {
 			isa = PBXGroup;
 			children = (
@@ -266,68 +244,12 @@
 				00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */,
 				00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */,
 				00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */,
-				00BDC2AA1A1B993F00F0DA1C /* cryptopp_ios.xcodeproj */,
-				00BDC2A41A1B993800F0DA1C /* idnkit_ios.xcodeproj */,
-				00BDC29E1A1B992E00F0DA1C /* udns_ios.xcodeproj */,
-				00BDC2981A1B990900F0DA1C /* zsLib_ios.xcodeproj */,
+				008C9C931A811203002ADD3B /* cryptopp_ios.xcodeproj */,
+				008C9C811A8111A7002ADD3B /* idnkit_ios.xcodeproj */,
+				008C9C8D1A8111F6002ADD3B /* udns_ios.xcodeproj */,
+				008C9C871A8111EF002ADD3B /* zsLib_ios.xcodeproj */,
 			);
 			name = Projects;
-			sourceTree = "<group>";
-		};
-		00BDC2991A1B990900F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC29D1A1B990900F0DA1C /* libzsLib_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC29F1A1B992E00F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2A31A1B992F00F0DA1C /* libudns_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC2A51A1B993800F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2A91A1B993800F0DA1C /* libidnkit_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC2AB1A1B993F00F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2AF1A1B993F00F0DA1C /* libcryptopp_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC2B11A1B994400F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2B51A1B994400F0DA1C /* libortclib_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC2B71A1B995600F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2BB1A1B995600F0DA1C /* libeasysqlite_ios.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		00BDC2BD1A1B996200F0DA1C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00BDC2C11A1B996300F0DA1C /* libhfstack_ios.a */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 		00BDC2D91A1B99E800F0DA1C /* Libraries */ = {
@@ -352,13 +274,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				00BDC2C31A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2C51A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2C71A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2C91A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2CB1A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2CD1A1B997900F0DA1C /* PBXTargetDependency */,
-				00BDC2CF1A1B997900F0DA1C /* PBXTargetDependency */,
 			);
 			name = hfstackTest_ios;
 			productName = hfstackTest_ios;
@@ -392,32 +307,28 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = 00BDC2AB1A1B993F00F0DA1C /* Products */;
-					ProjectRef = 00BDC2AA1A1B993F00F0DA1C /* cryptopp_ios.xcodeproj */;
+					ProductGroup = 008C9C941A811203002ADD3B /* Products */;
+					ProjectRef = 008C9C931A811203002ADD3B /* cryptopp_ios.xcodeproj */;
 				},
 				{
-					ProductGroup = 00BDC2B71A1B995600F0DA1C /* Products */;
-					ProjectRef = 00BDC2B61A1B995600F0DA1C /* easysqlite_ios.xcodeproj */;
-				},
-				{
-					ProductGroup = 00BDC2BD1A1B996200F0DA1C /* Products */;
+					ProductGroup = 0078BD5C1A818C97003AAD10 /* Products */;
 					ProjectRef = 00BDC2BC1A1B996200F0DA1C /* hfstack_ios.xcodeproj */;
 				},
 				{
-					ProductGroup = 00BDC2A51A1B993800F0DA1C /* Products */;
-					ProjectRef = 00BDC2A41A1B993800F0DA1C /* idnkit_ios.xcodeproj */;
+					ProductGroup = 008C9C821A8111A7002ADD3B /* Products */;
+					ProjectRef = 008C9C811A8111A7002ADD3B /* idnkit_ios.xcodeproj */;
 				},
 				{
-					ProductGroup = 00BDC2B11A1B994400F0DA1C /* Products */;
+					ProductGroup = 007180B81A818BE300CDA113 /* Products */;
 					ProjectRef = 00BDC2B01A1B994400F0DA1C /* ortclib_ios.xcodeproj */;
 				},
 				{
-					ProductGroup = 00BDC29F1A1B992E00F0DA1C /* Products */;
-					ProjectRef = 00BDC29E1A1B992E00F0DA1C /* udns_ios.xcodeproj */;
+					ProductGroup = 008C9C8E1A8111F6002ADD3B /* Products */;
+					ProjectRef = 008C9C8D1A8111F6002ADD3B /* udns_ios.xcodeproj */;
 				},
 				{
-					ProductGroup = 00BDC2991A1B990900F0DA1C /* Products */;
-					ProjectRef = 00BDC2981A1B990900F0DA1C /* zsLib_ios.xcodeproj */;
+					ProductGroup = 008C9C881A8111EF002ADD3B /* Products */;
+					ProjectRef = 008C9C871A8111EF002ADD3B /* zsLib_ios.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -428,53 +339,46 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		00BDC29D1A1B990900F0DA1C /* libzsLib_ios.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libzsLib_ios.a;
-			remoteRef = 00BDC29C1A1B990900F0DA1C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		00BDC2A31A1B992F00F0DA1C /* libudns_ios.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libudns_ios.a;
-			remoteRef = 00BDC2A21A1B992F00F0DA1C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		00BDC2A91A1B993800F0DA1C /* libidnkit_ios.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libidnkit_ios.a;
-			remoteRef = 00BDC2A81A1B993800F0DA1C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		00BDC2AF1A1B993F00F0DA1C /* libcryptopp_ios.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libcryptopp_ios.a;
-			remoteRef = 00BDC2AE1A1B993F00F0DA1C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		00BDC2B51A1B994400F0DA1C /* libortclib_ios.a */ = {
+		007180BE1A818BE400CDA113 /* libortclib_ios.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libortclib_ios.a;
-			remoteRef = 00BDC2B41A1B994400F0DA1C /* PBXContainerItemProxy */;
+			remoteRef = 007180BD1A818BE400CDA113 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		00BDC2BB1A1B995600F0DA1C /* libeasysqlite_ios.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libeasysqlite_ios.a;
-			remoteRef = 00BDC2BA1A1B995600F0DA1C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		00BDC2C11A1B996300F0DA1C /* libhfstack_ios.a */ = {
+		0078BD611A818C97003AAD10 /* libhfstack_ios.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libhfstack_ios.a;
-			remoteRef = 00BDC2C01A1B996300F0DA1C /* PBXContainerItemProxy */;
+			remoteRef = 0078BD601A818C97003AAD10 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		008C9C861A8111A8002ADD3B /* libidnkit_ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libidnkit_ios.a;
+			remoteRef = 008C9C851A8111A8002ADD3B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		008C9C8C1A8111F0002ADD3B /* libzsLib_ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libzsLib_ios.a;
+			remoteRef = 008C9C8B1A8111F0002ADD3B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		008C9C921A8111F7002ADD3B /* libudns_ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libudns_ios.a;
+			remoteRef = 008C9C911A8111F7002ADD3B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		008C9C981A811204002ADD3B /* libcryptopp_ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libcryptopp_ios.a;
+			remoteRef = 008C9C971A811204002ADD3B /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -509,44 +413,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		00BDC2C31A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = hfstack_ios;
-			targetProxy = 00BDC2C21A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2C51A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = easysqlite_ios;
-			targetProxy = 00BDC2C41A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2C71A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = ortclib_ios;
-			targetProxy = 00BDC2C61A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2C91A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = cryptopp_ios;
-			targetProxy = 00BDC2C81A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2CB1A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = idnkit_ios;
-			targetProxy = 00BDC2CA1A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2CD1A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = udns_ios;
-			targetProxy = 00BDC2CC1A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-		00BDC2CF1A1B997900F0DA1C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = zsLib_ios;
-			targetProxy = 00BDC2CE1A1B997900F0DA1C /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		00BDC0241A1B974800F0DA1C /* Main.storyboard */ = {
@@ -614,10 +480,14 @@
 					"$(inherited)",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"../../../../ortc-lib/libs/curl-build-scripts/curl/lib",
+				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -666,9 +536,13 @@
 					"$(inherited)",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.1;
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"../../../../ortc-lib/libs/curl-build-scripts/curl/lib",
+				);
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -681,12 +555,8 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = hfstackTest_ios/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/libs/ortc-lib/libs/curl-build-scripts/curl/ios-appstore/lib",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
 				VALID_ARCHS = "armv7 armv7s";
 			};
 			name = Debug;
@@ -698,12 +568,8 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = hfstackTest_ios/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"/Volumes/DataHD/Hookflash/Repos/op/push/opios/libs/op/libs/ortc-lib/libs/curl-build-scripts/curl/ios-appstore/lib",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = iphoneos;
 				VALID_ARCHS = "armv7 armv7s";
 			};
 			name = Release;

@@ -36,6 +36,8 @@
 
 #include <easySQLite/SqlDatabase.h>
 
+#include <sys/stat.h>
+
 namespace openpeer
 {
   namespace stack
@@ -89,6 +91,11 @@ namespace openpeer
                                );
 
       static zsLib::Log::Severity toSeverity(SqlDatabase::Trace::Severity severity);
+
+      static bool mkdir(
+                        const char *path,
+                        mode_t modes
+                        );
     };
   }
 }

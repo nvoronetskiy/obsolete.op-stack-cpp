@@ -347,9 +347,6 @@ namespace openpeer
         ZS_LOG_BASIC(log("created"))
 
         mDefaultSubscription = mSubscriptions.subscribe(delegate, UseStack::queueDelegate());
-
-#define WARNING_TODO_CREATE_DB 1
-#define WARNING_TODO_CREATE_DB 2
       }
 
       //-----------------------------------------------------------------------

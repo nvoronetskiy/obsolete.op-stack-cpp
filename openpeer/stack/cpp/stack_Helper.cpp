@@ -301,6 +301,30 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool Helper::mkdir(
+                         const char *inPath,
+                         mode_t modes
+                         )
+      {
+        String path(inPath);
+        if (path.isEmpty()) {
+          ZS_LOG_WARNING(Detail, log("path is empty") + ZS_PARAMIZE(path))
+        }
+
+        if (::mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
+          auto error = errno;
+          if (EEXIST != error) {
+            ZS_LOG_WARNING(Detail, log("unable to create storage path") + ZS_PARAMIZE(path))
+            return false;
+          }
+          ZS_LOG_TRACE(log("path already exists") + ZS_PARAMIZE(path))
+        } else {
+          ZS_LOG_TRACE(log("path created") + ZS_PARAMIZE(path))
+        }
+        return true;
+      }
+
+      //-----------------------------------------------------------------------
       #pragma mark
       #pragma mark Helper => (friends)
       #pragma mark
@@ -443,6 +467,15 @@ namespace openpeer
     zsLib::Log::Severity IHelper::toSeverity(SqlDatabase::Trace::Severity severity)
     {
       return internal::Helper::toSeverity(severity);
+    }
+
+    //-------------------------------------------------------------------------
+    bool IHelper::mkdir(
+                        const char *path,
+                        mode_t modes
+                        )
+    {
+      return internal::Helper::mkdir(path, modes);
     }
   }
 }

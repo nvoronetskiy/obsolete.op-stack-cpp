@@ -100,10 +100,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       // PURPOSE: Subscribe to database changes for a particular database from
       //          a particular peer's location.
-      virtual ILocationDatabaseSubscriptionPtr subscribe(
-                                                         ILocationDatabaseDelegatePtr inDelegate,
-                                                         bool inAutomaticallyDownloadDatabaseData
-                                                         ) = 0;
+      virtual ILocationDatabasePtr open(
+                                        ILocationDatabaseDelegatePtr inDelegate,
+                                        ILocationDatabasesPtr locationDatabases,
+                                        const char *databaseID,
+                                        bool inAutomaticallyDownloadDatabaseData
+                                        ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a unique object instance identifier.
@@ -178,6 +180,22 @@ namespace openpeer
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     #pragma mark
+    #pragma mark ILocationDatabaseDataReadyDelegate
+    #pragma mark
+
+    interaction ILocationDatabaseDataReadyDelegate
+    {
+      //-----------------------------------------------------------------------
+      // PURPOSE: Notification event when the all the requested data is now
+      //          available for the location.
+      virtual void onLocationDatabaseDataReady(ILocationDatabasePtr inDatabase) = 0;
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
     #pragma mark ILocationDatabaseSubscription
     #pragma mark
 
@@ -188,22 +206,6 @@ namespace openpeer
       virtual void cancel() = 0;
 
       virtual void background() = 0;
-    };
-    
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    #pragma mark
-    #pragma mark ILocationDatabaseDataReadyDelegate
-    #pragma mark
-
-    interaction ILocationDatabaseDataReadyDelegate
-    {
-      //-----------------------------------------------------------------------
-      // PURPOSE: Notification event when the all the requested data is now
-      //          available for the location.
-      virtual void onLocationDatabaseDataReady(ILocationDatabasePtr inDatabase) = 0;
     };
 
   }

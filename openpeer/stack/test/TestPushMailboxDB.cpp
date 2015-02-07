@@ -80,16 +80,16 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark OverrideAbstractionFactory
+      #pragma mark OverridePushMailboxAbstractionFactory
       #pragma mark
 
-      interaction OverrideAbstractionFactory : public IUseAbstractionFactory
+      interaction OverridePushMailboxAbstractionFactory : public IUseAbstractionFactory
       {
         ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ServicePushMailboxSessionDatabaseAbstraction, UseAbstraction)
 
-        static OverrideAbstractionFactoryPtr create()
+        static OverridePushMailboxAbstractionFactoryPtr create()
         {
-          return OverrideAbstractionFactoryPtr(new OverrideAbstractionFactory);
+          return OverridePushMailboxAbstractionFactoryPtr(new OverridePushMailboxAbstractionFactory);
         }
 
         virtual UseAbstractionPtr create(
@@ -164,7 +164,7 @@ namespace openpeer
       TestPushMailboxDB::TestPushMailboxDB() :
         mUserHash(UseServicesHelper::randomString(8))
       {
-        mFactory = OverrideAbstractionFactory::create();
+        mFactory = OverridePushMailboxAbstractionFactory::create();
 
         UseAbstractionFactory::override(mFactory);
       }

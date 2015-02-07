@@ -14,9 +14,10 @@
 		0063CA3516CAB85000E6DB4D /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97A16CAB85000E6DB4D /* main.cpp */; };
 		0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0063C97B16CAB85000E6DB4D /* TestStack.cpp */; };
 		0063CA6A16CABA3400E6DB4D /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA6916CABA3400E6DB4D /* CoreFoundation.framework */; };
-		0063CA7216CABA6100E6DB4D /* libcurl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA7116CABA6100E6DB4D /* libcurl.dylib */; };
 		0063D33516CB255600E6DB4D /* libhfservices.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D32116CB247E00E6DB4D /* libhfservices.a */; };
 		0063D33616CB255C00E6DB4D /* libhfstack.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D32716CB248A00E6DB4D /* libhfstack.a */; };
+		008C9C991A814912002ADD3B /* libcurl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA7116CABA6100E6DB4D /* libcurl.dylib */; };
+		008C9C9B1A814B38002ADD3B /* TestLocationDB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */; };
 		00CB25AD177C84D600A12B5A /* libcryptopp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A6177C846700A12B5A /* libcryptopp.a */; };
 		00CB25AE177C84DD00A12B5A /* libudns.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A1177C846700A12B5A /* libudns.a */; };
 		00CB25AF177C84E400A12B5A /* libzsLib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB259C177C846700A12B5A /* libzsLib.a */; };
@@ -177,6 +178,8 @@
 		0063D31616CB244F00E6DB4D /* cryptopp.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp.xcodeproj; path = "../../../../ortc-lib/libs/cryptopp/projects/xcode/cryptopp/cryptopp.xcodeproj"; sourceTree = "<group>"; };
 		0063D31C16CB247E00E6DB4D /* hfservices.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfservices.xcodeproj; path = "../../../../ortc-lib/libs/op-services-cpp/projects/xcode/hfservices/hfservices.xcodeproj"; sourceTree = "<group>"; };
 		0063D32216CB248A00E6DB4D /* hfstack.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack.xcodeproj; path = ../hfstack/hfstack.xcodeproj; sourceTree = "<group>"; };
+		008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestLocationDB.cpp; sourceTree = "<group>"; };
+		008C9C9C1A814B47002ADD3B /* TestLocationDB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestLocationDB.h; sourceTree = "<group>"; };
 		00CF4B9A1A15BDBB00573A34 /* idnkit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit.xcodeproj; path = "../../../../ortc-lib/libs/idnkit/projects/xcode/idnkit.xcodeproj"; sourceTree = "<group>"; };
 		00CF4C191A15C60D00573A34 /* ortclib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib.xcodeproj; path = "../../../../ortc-lib/projects/xcode/ortclib/ortclib.xcodeproj"; sourceTree = "<group>"; };
 		00CF4CAB1A15C85300573A34 /* easysqlite.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite.xcodeproj; path = ../../../../easysqlite/projects/xcode/easysqlite.xcodeproj; sourceTree = "<group>"; };
@@ -193,6 +196,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				008C9C991A814912002ADD3B /* libcurl.dylib in Frameworks */,
 				0063D33616CB255C00E6DB4D /* libhfstack.a in Frameworks */,
 				00CF4CB61A15C87600573A34 /* libeasysqlite.a in Frameworks */,
 				00CF4CD11A15C9F200573A34 /* libortclib.a in Frameworks */,
@@ -201,7 +205,6 @@
 				00CF4BA01A15BDD500573A34 /* libidnkit.a in Frameworks */,
 				00CB25AE177C84DD00A12B5A /* libudns.a in Frameworks */,
 				00CB25AF177C84E400A12B5A /* libzsLib.a in Frameworks */,
-				0063CA7216CABA6100E6DB4D /* libcurl.dylib in Frameworks */,
 				0063CA6A16CABA3400E6DB4D /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -258,6 +261,8 @@
 				002638401A2FC39E008EC96E /* TestSetup.cpp */,
 				0026383F1A2FC144008EC96E /* TestCache.h */,
 				0026383D1A2FC139008EC96E /* TestCache.cpp */,
+				008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */,
+				008C9C9C1A814B47002ADD3B /* TestLocationDB.h */,
 				002DF47E1A38B2AA0046DE49 /* TestPushMailboxDB.cpp */,
 				002DF4801A38B2B90046DE49 /* TestPushMailboxDB.h */,
 				0063C97B16CAB85000E6DB4D /* TestStack.cpp */,
@@ -526,6 +531,7 @@
 				58E68C8316D7877F0098B4E3 /* TestServiceLockboxSession.cpp in Sources */,
 				581C0E1916E8A71B001AA7D3 /* TestAccount.cpp in Sources */,
 				581C0E1B16EF4C2D001AA7D3 /* helpers.cpp in Sources */,
+				008C9C9B1A814B38002ADD3B /* TestLocationDB.cpp in Sources */,
 				002638411A2FC39E008EC96E /* TestSetup.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -188,10 +188,8 @@ namespace openpeer
                                                 FolderVersionedMessageRecord &output
                                                 )
       {
-        FolderVersionedMessageRecordPtr result(new FolderVersionedMessageRecord);
-        
-        output.mIndex = static_cast<decltype(result->mIndex)>(record->getValue(SqlField::id)->asInteger());
-        output.mIndexFolderRecord = static_cast<decltype(result->mIndexFolderRecord)>(record->getValue(UseTables::indexFolderRecord)->asInteger());
+        output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
+        output.mIndexFolderRecord = static_cast<decltype(output.mIndexFolderRecord)>(record->getValue(UseTables::indexFolderRecord)->asInteger());
         output.mMessageID = record->getValue(UseTables::messageID)->asString();
         output.mRemovedFlag = record->getValue(UseTables::removedFlag)->asBool();
       }
@@ -665,6 +663,10 @@ namespace openpeer
         ServicePushMailboxSessionDatabaseAbstractionPtr pThis(new ServicePushMailboxSessionDatabaseAbstraction(inHashRepresentingUser, inUserTemporaryFilePath, inUserStorageFilePath));
         pThis->mThisWeak = pThis;
         pThis->init();
+        if (!pThis->mDB) {
+          ZS_LOG_ERROR(Basic, pThis->log("unable to create database"))
+          return ServicePushMailboxSessionDatabaseAbstractionPtr();
+        }
         return pThis;
       }
 
@@ -3441,10 +3443,23 @@ namespace openpeer
 
         bool alreadyDeleted = false;
 
-        String postFix = UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE_POSTFIX);
+        String postFix = UseSettings::getString(OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE);
 
-        String path = UseStackHelper::appendPath(mStoragePath, (mUserHash + postFix).c_str());
+        if (!UseStackHelper::mkdir(mStoragePath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+          ZS_LOG_ERROR(Detail, log("unable to create storage path") + ZS_PARAMIZE(mStoragePath))
+          return;
+        }
 
+        String userPath = UseStackHelper::appendPath(mStoragePath, mUserHash);
+
+        ZS_THROW_BAD_STATE_IF(userPath.isEmpty())
+
+        if (!UseStackHelper::mkdir(userPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+          ZS_LOG_ERROR(Detail, log("unable to create storage path") + ZS_PARAMIZE(userPath))
+          return;
+        }
+
+        String path = UseStackHelper::appendPath(userPath, postFix);
         ZS_THROW_BAD_STATE_IF(path.isEmpty())
 
         try {

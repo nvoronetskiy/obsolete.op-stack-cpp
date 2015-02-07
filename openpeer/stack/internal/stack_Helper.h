@@ -100,6 +100,11 @@ namespace openpeer
 
         static zsLib::Log::Severity toSeverity(SqlDatabase::Trace::Severity severity);
 
+        static bool mkdir(
+                          const char *path,
+                          mode_t modes
+                          );
+
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark Helper => (friends)

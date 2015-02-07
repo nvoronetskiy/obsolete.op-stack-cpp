@@ -34,9 +34,9 @@
 #include <zsLib/types.h>
 #include <zsLib/MessageQueueAssociator.h>
 
-#include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstraction.h>
-#include <openpeer/stack/internal/stack_ServicePushMailboxSessionDatabaseAbstraction.h>
-#include <openpeer/stack/internal/stack_IServicePushMailboxSessionDatabaseAbstractionTables.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
+#include <openpeer/stack/internal/stack_LocationDatabaseAbstraction.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstractionTables.h>
 
 namespace openpeer
 {
@@ -46,42 +46,54 @@ namespace openpeer
     {
       using zsLib::ULONG;
 
-      ZS_DECLARE_CLASS_PTR(OverridePushMailboxAbstractionFactory)
+      ZS_DECLARE_CLASS_PTR(OverrideLocationAbstractionFactory)
 
-      ZS_DECLARE_CLASS_PTR(OverridePushMailboxAbstraction)
+      ZS_DECLARE_CLASS_PTR(OverrideLocationAbstraction)
 
-      ZS_DECLARE_CLASS_PTR(TestPushMailboxDB)
+      ZS_DECLARE_CLASS_PTR(TestLocationDB)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark OverridePushMailboxAbstraction
+      #pragma mark OverrideLocationAbstraction
       #pragma mark
 
-      class OverridePushMailboxAbstraction : public openpeer::stack::internal::ServicePushMailboxSessionDatabaseAbstraction
+      class OverrideLocationAbstraction : public openpeer::stack::internal::LocationDatabaseAbstraction
       {
       public:
         ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
 
-        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::IServicePushMailboxSessionDatabaseAbstraction, IUseAbstraction)
-        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ServicePushMailboxSessionDatabaseAbstraction, UseAbstraction)
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ILocationDatabaseAbstraction, IUseAbstraction)
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::LocationDatabaseAbstraction, UseAbstraction)
 
       public:
-        OverridePushMailboxAbstraction(
-                                       const char *inHashRepresentingUser,
-                                       const char *inUserTemporaryFilePath,
-                                       const char *inUserStorageFilePath
-                                       );
+        OverrideLocationAbstraction(
+                                    const char *inHashRepresentingUser,
+                                    const char *inUserStorageFilePath
+                                    );
 
-        static OverridePushMailboxAbstractionPtr convert(IUseAbstractionPtr abstraction);
+        OverrideLocationAbstraction(
+                                    IUseAbstractionPtr masterDatabase,
+                                    const char *peerURI,
+                                    const char *locationID,
+                                    const char *databaseID
+                                    );
 
-        static OverridePushMailboxAbstractionPtr create(
-                                                        const char *inHashRepresentingUser,
-                                                        const char *inUserTemporaryFilePath,
-                                                        const char *inUserStorageFilePath
-                                                        );
+        static OverrideLocationAbstractionPtr convert(IUseAbstractionPtr abstraction);
+
+        static OverrideLocationAbstractionPtr createMaster(
+                                                           const char *inHashRepresentingUser,
+                                                           const char *inUserStorageFilePath
+                                                           );
+
+        static OverrideLocationAbstractionPtr openDatabase(
+                                                           IUseAbstractionPtr masterDatabase,
+                                                           const char *peerURI,
+                                                           const char *locationID,
+                                                           const char *databaseID
+                                                           );
 
         void init();
 
@@ -93,16 +105,16 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark TestPushMailboxDB
+      #pragma mark TestLocationDB
       #pragma mark
 
-      class TestPushMailboxDB
+      class TestLocationDB
       {
       public:
         ZS_DECLARE_TYPEDEF_PTR(zsLib::RecursiveLock, RecursiveLock)
 
-        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::IServicePushMailboxSessionDatabaseAbstraction, IUseAbstraction)
-        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::IServicePushMailboxSessionDatabaseAbstractionTables, UseTables)
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ILocationDatabaseAbstraction, IUseAbstraction)
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ILocationDatabaseAbstractionTables, UseTables)
         
         ZS_DECLARE_TYPEDEF_PTR(sql::Field, SqlField)
         ZS_DECLARE_TYPEDEF_PTR(sql::Record, SqlRecord)
@@ -111,29 +123,24 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(sql::Database, SqlDatabase)
 
       private:
-        TestPushMailboxDB();
+        TestLocationDB();
+        TestLocationDB(TestLocationDBPtr master);
 
         void init();
 
       public:
-        ~TestPushMailboxDB();
+        ~TestLocationDB();
 
-        static TestPushMailboxDBPtr create();
+        static TestLocationDBPtr create();
+        static TestLocationDBPtr create(TestLocationDBPtr master);
 
         void testCreate();
-        void testSettings();
-        void testFolder();
-        void testFolderMessage();
-        void testFolderVersionedMessage();
-        void testMessage();
-        void testDeliveryState();
-        void testPendingDelivery();
-        void testList();
-        void testListURI();
-        void testKeyDomain();
-        void testSendingKey();
-        void testReceivingKey();
-        void testStorage();
+        void testPeerLocation();
+        void testDatabase();
+        void testDatabaseChange();
+        void testPermission();
+        void testEntry();
+        void testEntryChange();
 
       protected:
         void tableDump(
@@ -141,6 +148,12 @@ namespace openpeer
                        const char *tableName
                        );
 
+        void checkCount(
+                        OverrideLocationAbstractionPtr abstraction,
+                        SqlField *definition,
+                        const char *tableName,
+                        int total
+                        );
         void checkCount(
                         SqlField *definition,
                         const char *tableName,
@@ -196,7 +209,7 @@ namespace openpeer
 
       public:
         mutable RecursiveLock mLock;
-        TestPushMailboxDBWeakPtr mThisWeak;
+        TestLocationDBWeakPtr mThisWeak;
 
         ULONG mCount {};
 
@@ -204,9 +217,11 @@ namespace openpeer
 
         IUseAbstractionPtr mAbstraction;
 
-        OverridePushMailboxAbstractionPtr mOverride;
+        OverrideLocationAbstractionPtr mOverride;
 
-        OverridePushMailboxAbstractionFactoryPtr mFactory;
+        OverrideLocationAbstractionFactoryPtr mFactory;
+
+        TestLocationDBPtr mMaster;
       };
       
     }

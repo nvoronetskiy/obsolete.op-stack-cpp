@@ -359,6 +359,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxRegisterQueryDelegate)
 
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IKeyGeneratorSubscription, IKeyGeneratorDelegate)
+    ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(ILocationDatabasesSubscription, ILocationDatabasesDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(ILocationDatabaseSubscription, ILocationDatabaseDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServerMessagingSubscription, IServerMessagingDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServicePushMailboxSessionSubscription, IServicePushMailboxSessionDelegate)

@@ -43,14 +43,53 @@ namespace openpeer
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     #pragma mark
+    #pragma mark ILocationDatabasesTypes
+    #pragma mark
+
+    interaction ILocationDatabasesTypes
+    {
+      struct LocationDatabase
+      {
+        typedef String DatabaseID;
+
+        enum Dispositions
+        {
+          Disposition_Add,
+          Disposition_Update,
+          Disposition_Remove,
+        };
+
+        static const char *toString(Dispositions disposition);
+
+        Dispositions mDisposition;
+        DatabaseID mDatabaseID;
+        UINT mVersion;
+        ElementPtr mMetaData;
+        ElementPtr mData;
+
+        Time mCreation;
+        Time mLastUpdated;
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+      };
+
+      ZS_DECLARE_PTR(LocationDatabase)
+
+      typedef std::list<LocationDatabase> LocationDatabaseList;
+      ZS_DECLARE_PTR(LocationDatabaseList)
+    };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
     #pragma mark ILocationDatabases
     #pragma mark
 
-    interaction ILocationDatabases
+    interaction ILocationDatabases : public ILocationDatabasesTypes
     {
-      typedef std::list<ILocationDatabasesPtr> LocationDatabaseList;
-      ZS_DECLARE_PTR(LocationDatabaseList)
-
       //-----------------------------------------------------------------------
       // PURPOSE: Get debug information about the location databases object.
       static ElementPtr toDebug(ILocationDatabasesPtr databases);
@@ -73,9 +112,17 @@ namespace openpeer
       virtual ILocationPtr getLocation() const = 0;
 
       //-----------------------------------------------------------------------
-      // PURPOSE: Get a list of all available databases known to exist at this
-      //          location at this time.
-      virtual LocationDatabaseListPtr getAvailableDatabases() const = 0;
+      // PURPOSE: Get latest batch of databases available for a location.
+      // RETURNS: If a NULL LocationDatabaseListPtr() is returned then a
+      //          conflict has occured and the entire list of databases must
+      //          be obtained from scratch.
+      //
+      //          An empty return result indicates there are no more databases
+      //          available at this time.
+      virtual LocationDatabaseListPtr getUpdates(
+                                                 const String &inExistingVersion,  // pass in String() when no data has been fetched before
+                                                 String &outNewVersion             // the version to which the database has now been updated
+                                                 ) const = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -90,19 +137,35 @@ namespace openpeer
     {
       //-----------------------------------------------------------------------
       // PURPOSE: Notify that a new database is available.
-      virtual void onLocationDatabasesNew(ILocationDatabasePtr inDatabase) = 0;
-
-      //-----------------------------------------------------------------------
-      // PURPOSE: Notify that a database within a location is now gone.
-      virtual void onLocationDatabasesGone(ILocationDatabasePtr inDatabase) = 0;
+      virtual void onLocationDatabasesChanged(ILocationDatabasePtr inDatabase) = 0;
     };
 
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark ILocationDatabasesSubscription
+    #pragma mark
+
+    interaction ILocationDatabasesSubscription
+    {
+      virtual PUID getID() const = 0;
+
+      virtual void cancel() = 0;
+
+      virtual void background() = 0;
+    };
   }
 }
 
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabasesDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesNew, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesGone, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesChanged, ILocationDatabasePtr)
 ZS_DECLARE_PROXY_END()
+
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::ILocationDatabasesDelegate, openpeer::stack::ILocationDatabasesSubscription)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
