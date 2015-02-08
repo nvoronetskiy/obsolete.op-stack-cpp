@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2015, Hookflash Inc.
+ Copyright (c) 2014, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -31,29 +31,31 @@
 
 #pragma once
 
-#include <openpeer/stack/types.h>
+#include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/ILocationDatabases.h>
+
+#include <zsLib/TearAway.h>
 
 namespace openpeer
 {
   namespace stack
   {
-
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    interaction ILocationDatabasesLocal : public ILocationDatabases
+    namespace internal
     {
-      //-----------------------------------------------------------------------
-      // PURPOSE: Open information about databases contained within the
-      //          databases contained within the local location
-      static ILocationDatabasesLocalPtr open(
-                                             IAccountPtr account,
-                                             ILocationDatabasesDelegatePtr inDelegate
-                                             );
-    };
+      ZS_DECLARE_STRUCT_PTR(LocationDatabaseTearAwayData)
 
+      struct LocationDatabaseTearAwayData
+      {
+        ILocationDatabasesSubscriptionPtr mSubscription;
+      };
+
+    }
   }
 }
 
+ZS_DECLARE_TEAR_AWAY_BEGIN(openpeer::stack::ILocationDatabases, openpeer::stack::internal::LocationDatabaseTearAwayData)
+ZS_DECLARE_TEAR_AWAY_TYPEDEF(openpeer::stack::ILocationPtr, ILocationPtr)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getID, PUID)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getLocation, ILocationPtr)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_2(getUpdates, LocationDatabaseListPtr, const String &, String &)
+ZS_DECLARE_TEAR_AWAY_END()

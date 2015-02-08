@@ -68,6 +68,7 @@ namespace openpeer
     namespace internal
     {
       interaction ILocationForAccount;
+      interaction ILocationSubscriptionForAccount;
       interaction IPeerForAccount;
       interaction IPeerSubscriptionForAccount;
       interaction IAccountFinderForAccount;
@@ -172,6 +173,22 @@ namespace openpeer
                           ) const = 0;
 
         virtual void hintNowAvailable(LocationPtr location) = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IAccountForLocationSubscription
+      #pragma mark
+
+      interaction IAccountForLocationSubscription
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForLocationSubscription, ForLocationSubscription)
+
+        virtual void subscribe(LocationSubscriptionPtr subscription) = 0;
+        virtual void notifyDestroyed(LocationSubscription &subscription) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -313,6 +330,7 @@ namespace openpeer
                       public IAccountForFinderRelayChannel,
                       public IAccountForAccountPeerLocation,
                       public IAccountForLocation,
+                      public IAccountForLocationSubscription,
                       public IAccountForMessageIncoming,
                       public IAccountForMessages,
                       public IAccountForPeer,
@@ -336,6 +354,7 @@ namespace openpeer
         friend interaction IAccount;
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationSubscriptionForAccount, UseLocationSubscription)
         ZS_DECLARE_TYPEDEF_PTR(IPeerForAccount, UsePeer)
         ZS_DECLARE_TYPEDEF_PTR(IPeerSubscriptionForAccount, UsePeerSubscription)
         ZS_DECLARE_TYPEDEF_PTR(IAccountFinderForAccount, UseAccountFinder)
@@ -355,13 +374,16 @@ namespace openpeer
 
         typedef String PeerURI;
         typedef String LocationID;
-        typedef PUID PeerSubscriptionID;
         typedef std::pair<PeerURI, LocationID> PeerLocationIDPair;
 
         typedef std::map<PeerURI, UsePeerWeakPtr> PeerMap;
         typedef std::map<PeerURI, PeerInfoPtr> PeerInfoMap;
 
+        typedef PUID PeerSubscriptionID;
         typedef std::map<PeerSubscriptionID, UsePeerSubscriptionWeakPtr> PeerSubscriptionMap;
+
+        typedef PUID LocationSubscriptionID;
+        typedef std::map<LocationSubscriptionID, UseLocationSubscriptionWeakPtr> LocationSubscriptionMap;
 
         typedef std::map<PeerLocationIDPair, UseLocationWeakPtr> LocationMap;
 
@@ -393,8 +415,10 @@ namespace openpeer
         static AccountPtr convert(ForRelayChannelPtr account);
         static AccountPtr convert(ForAccountPeerLocationPtr account);
         static AccountPtr convert(ForLocationPtr account);
+        static AccountPtr convert(ForLocationSubscriptionPtr account);
         static AccountPtr convert(ForMessagesPtr account);
         static AccountPtr convert(ForPeerPtr account);
+        static AccountPtr convert(ForPeerSubscriptionPtr account);
         static AccountPtr convert(ForPublicationRepositoryPtr account);
         static AccountPtr convert(ForPushMailboxPtr account);
 
@@ -488,6 +512,14 @@ namespace openpeer
                           ) const;
 
         virtual void hintNowAvailable(LocationPtr location);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Account => IAccountForLocationSubscription
+        #pragma mark
+
+        virtual void subscribe(LocationSubscriptionPtr subscription);
+        virtual void notifyDestroyed(LocationSubscription &subscription);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -872,6 +904,7 @@ namespace openpeer
         PeerInfoMap mPeerInfos;
 
         PeerSubscriptionMap mPeerSubscriptions;
+        LocationSubscriptionMap mLocationSubscriptions;
 
         class PeersDB : public SharedRecursiveLock
         {

@@ -95,6 +95,34 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationForLocationDatabases
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationForLocationDatabases::toDebug(ForLocationDatabasesPtr location)
+      {
+        return Location::toDebug(Location::convert(location));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ILocationForLocationSubscription
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationForLocationSubscription::toDebug(ForLocationSubscriptionPtr location)
+      {
+        return Location::toDebug(Location::convert(location));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ILocationForMessages
       #pragma mark
 
@@ -293,6 +321,18 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForLocationDatabasesPtr location)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForLocationSubscriptionPtr location)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
+      }
+
+      //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForMessagesPtr location)
       {
         return ZS_DYNAMIC_PTR_CAST(Location, location);
@@ -483,6 +523,14 @@ namespace openpeer
       //---------------------------------------------------------------------
       #pragma mark
       #pragma mark Location => ILocationForAccount
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Location => ILocationForLocationSubscription
       #pragma mark
 
       //-----------------------------------------------------------------------

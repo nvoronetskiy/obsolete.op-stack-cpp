@@ -35,6 +35,8 @@
 #include <openpeer/stack/message/types.h>
 #include <openpeer/services/IFactory.h>
 
+#include <zsLib/TearAway.h>
+
 #define OPENPEER_STACK_CANDIDATE_NAMESPACE_ICE_CANDIDATES "https://meta.openpeer.org/candidate/ice"
 #define OPENPEER_STACK_CANDIDATE_NAMESPACE_FINDER_RELAY   "https://meta.openpeer.org/candidate/finder-relay"
 
@@ -117,6 +119,8 @@ namespace openpeer
 
       using namespace message;
 
+      ZS_DECLARE_STRUCT_PTR(LocationDatabaseTearAwayData)
+
       ZS_DECLARE_CLASS_PTR(Account)
       ZS_DECLARE_CLASS_PTR(AccountFinder)
       ZS_DECLARE_CLASS_PTR(AccountPeerLocation)
@@ -132,9 +136,13 @@ namespace openpeer
       ZS_DECLARE_CLASS_PTR(KeyGenerator)
       ZS_DECLARE_CLASS_PTR(MessageIncoming)
       ZS_DECLARE_CLASS_PTR(Location)
+      ZS_DECLARE_CLASS_PTR(LocationDatabase)
+      ZS_DECLARE_CLASS_PTR(LocationDatabases)
+      ZS_DECLARE_CLASS_PTR(LocationDatabasesManager)
       ZS_DECLARE_CLASS_PTR(ILocationDatabaseAbstraction)
       ZS_DECLARE_CLASS_PTR(LocationDatabaseAbstraction)
       ZS_DECLARE_CLASS_PTR(ILocationDatabaseAbstractionTables)
+      ZS_DECLARE_CLASS_PTR(LocationSubscription)
       ZS_DECLARE_CLASS_PTR(Peer)
       ZS_DECLARE_CLASS_PTR(Publication)
       ZS_DECLARE_CLASS_PTR(PublicationMetaData)
@@ -180,6 +188,8 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderRelayChannelSubscription, IFinderRelayChannelDelegate)
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderConnectionSubscription, IFinderConnectionDelegate)
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServiceLockboxSessionForInternalSubscription, IServiceLockboxSessionForInternalDelegate)
+
+      ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabases, ILocationDatabases, LocationDatabaseTearAwayData)
     }
   }
 }

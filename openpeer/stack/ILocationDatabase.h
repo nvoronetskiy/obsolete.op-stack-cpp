@@ -102,7 +102,7 @@ namespace openpeer
       //          a particular peer's location.
       virtual ILocationDatabasePtr open(
                                         ILocationDatabaseDelegatePtr inDelegate,
-                                        ILocationDatabasesPtr locationDatabases,
+                                        ILocationPtr location,
                                         const char *databaseID,
                                         bool inAutomaticallyDownloadDatabaseData
                                         ) = 0;
@@ -143,8 +143,7 @@ namespace openpeer
                                       ) const = 0;
 
       //-----------------------------------------------------------------------
-      // PURPOSE: Get the the available database entry data based on a unique
-      //          entry identifier.
+      // PURPOSE: Get a database entry data based on a unique entry identifier.
       virtual EntryPtr getEntry(const char *inUniqueID) const = 0;
 
       //-----------------------------------------------------------------------

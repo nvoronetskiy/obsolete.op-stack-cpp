@@ -35,6 +35,7 @@
 #include <openpeer/stack/internal/stack_BootstrappedNetwork.h>
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_Location.h>
+#include <openpeer/stack/internal/stack_LocationSubscription.h>
 #include <openpeer/stack/internal/stack_MessageMonitor.h>
 #include <openpeer/stack/internal/stack_MessageIncoming.h>
 #include <openpeer/stack/internal/stack_Peer.h>
@@ -232,6 +233,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      AccountPtr Account::convert(ForLocationSubscriptionPtr account)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
+      }
+
+      //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForMessagesPtr account)
       {
         return ZS_DYNAMIC_PTR_CAST(Account, account);
@@ -239,6 +246,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForPeerPtr account)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
+      }
+
+      //-----------------------------------------------------------------------
+      AccountPtr Account::convert(ForPeerSubscriptionPtr account)
       {
         return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
@@ -874,6 +887,73 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark Account => IAccountForLocaitonSubscription
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Account::subscribe(LocationSubscriptionPtr inSubscription)
+      {
+        UseLocationSubscriptionPtr subscription = inSubscription;
+
+        AutoRecursiveLock lock(*this);
+
+        if ((isShuttingDown()) ||
+            (isShutdown())) {
+          ZS_LOG_WARNING(Debug, log("location subscription happened during shutdown") + ZS_PARAM("subscription", UseLocationSubscription::toDebug(subscription)))
+          // during the graceful shutdown or post shutdown process, new subscriptions must not be created...
+          subscription->notifyShutdown();
+          return;
+        }
+
+        mLocationSubscriptions[subscription->getID()] = subscription;
+
+        UseLocationPtr localLocation = mLocationsDB.getLocal();
+        if (localLocation) {
+          subscription->notifyLocationConnectionStateChanged(Location::convert(localLocation), toLocationConnectionState(mCurrentState));
+        }
+
+        UseLocationPtr finderLocation = mLocationsDB.getFinder();
+
+        if ((mFinder) &&
+            (finderLocation)) {
+          subscription->notifyLocationConnectionStateChanged(Location::convert(finderLocation), toLocationConnectionState(mFinder->getState()));
+        }
+
+        for (PeerInfoMap::iterator iter = mPeerInfos.begin(); iter != mPeerInfos.end(); ++iter) {
+          PeerInfoPtr &peer = (*iter).second;
+
+          for (PeerInfo::PeerLocationMap::iterator iterLocation = peer->mLocations.begin(); iterLocation != peer->mLocations.end(); ++iterLocation) {
+            UseAccountPeerLocationPtr &peerLocation = (*iterLocation).second;
+            LocationPtr location = peerLocation->getLocation();
+
+            if (location) {
+              subscription->notifyLocationConnectionStateChanged((location), toLocationConnectionState(peerLocation->getState()));
+            }
+          }
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::notifyDestroyed(LocationSubscription &inSubscription)
+      {
+        UseLocationSubscription &subscription = inSubscription;
+
+        LocationSubscriptionMap::iterator found = mLocationSubscriptions.find(subscription.getID());
+        if (found == mLocationSubscriptions.end()) {
+          ZS_LOG_WARNING(Detail, log("notification of destruction of unknown subscription (probably okay)") + subscription.toDebug())
+          return;
+        }
+
+        ZS_LOG_DEBUG(log("notification of destruction of location subscription") + subscription.toDebug())
+
+        mLocationSubscriptions.erase(found);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark Account => IAccountForPeerSubscription
       #pragma mark
 
@@ -886,7 +966,7 @@ namespace openpeer
 
         if ((isShuttingDown()) ||
             (isShutdown())) {
-          ZS_LOG_WARNING(Debug, log("subscription happened during shutdown") + ZS_PARAM("subscription", UsePeerSubscription::toDebug(subscription)))
+          ZS_LOG_WARNING(Debug, log("peer subscription happened during shutdown") + ZS_PARAM("subscription", UsePeerSubscription::toDebug(subscription)))
           // during the graceful shutdown or post shutdown process, new subscriptions must not be created...
           subscription->notifyShutdown();
           return;
@@ -957,6 +1037,8 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("notification of destruction of subscription") + subscription.toDebug())
 
+        mPeerSubscriptions.erase(found);
+
         UsePeerPtr subscribingToPeer = Peer::convert(subscription.getSubscribedToPeer());
         if (!subscribingToPeer) {
           ZS_LOG_DEBUG(log("subscription was for all peers and not a specific peer"))
@@ -975,8 +1057,6 @@ namespace openpeer
 
           --(peerInfo->mTotalSubscribers);
         }
-
-        mPeerSubscriptions.erase(found);
 
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -1761,7 +1841,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "peer infos", mPeerInfos.size());
 
-        IHelper::debugAppend(resultEl, "subscribers", mPeerSubscriptions.size());
+        IHelper::debugAppend(resultEl, "peer subscribers", mPeerSubscriptions.size());
+        IHelper::debugAppend(resultEl, "location subscribers", mLocationSubscriptions.size());
 
         IHelper::debugAppend(resultEl, "peer infos", mPeersDB.size());
 
@@ -1798,7 +1879,7 @@ namespace openpeer
           mFinderDNSLookup.reset();
         }
 
-        // scope: kill all the connection subscriptions
+        // scope: kill all the peer subscriptions
         {
           for (PeerSubscriptionMap::iterator iter_doNotUse = mPeerSubscriptions.begin(); iter_doNotUse != mPeerSubscriptions.end(); )
           {
@@ -1811,6 +1892,25 @@ namespace openpeer
             if (!subscriber) {
               ZS_LOG_WARNING(Trace, log("peer subscription already gone thus removing (likely okay)") + ZS_PARAM("subscriber", subscriptionID))
               mPeerSubscriptions.erase(current);
+              continue;
+            }
+            subscriber->notifyShutdown();
+          }
+        }
+
+        // scope: kill all the location subscriptions
+        {
+          for (auto iter_doNotUse = mLocationSubscriptions.begin(); iter_doNotUse != mLocationSubscriptions.end(); )
+          {
+            auto current = iter_doNotUse;
+            ++iter_doNotUse;
+
+            PUID subscriptionID = (*current).first;
+            UseLocationSubscriptionPtr subscriber = (*current).second.lock();
+
+            if (!subscriber) {
+              ZS_LOG_WARNING(Trace, log("location subscription already gone thus removing (likely okay)") + ZS_PARAM("subscriber", subscriptionID))
+              mLocationSubscriptions.erase(current);
               continue;
             }
             subscriber->notifyShutdown();
@@ -3006,9 +3106,26 @@ namespace openpeer
           return;
         }
 
-        for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+        for (auto iter = mLocationSubscriptions.begin(); iter != mLocationSubscriptions.end(); )
         {
-          PeerSubscriptionMap::iterator current = iter;
+          auto current = iter;
+          ++iter;
+
+          PUID subscriptionID = (*current).first;
+          UseLocationSubscriptionPtr subscription = (*current).second.lock();
+          if (!subscription) {
+            ZS_LOG_WARNING(Detail, log("location subscription is gone") + ZS_PARAM("subscription ID", subscriptionID))
+            mLocationSubscriptions.erase(current);
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("notifying location subscription of locations changed") + UseLocationSubscription::toDebug(subscription) + ZS_PARAM("state", ILocation::toString(state)) + UseLocation::toDebug(location))
+          subscription->notifyLocationConnectionStateChanged(Location::convert(location), state);
+        }
+
+        for (auto iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+        {
+          auto current = iter;
           ++iter;
 
           PUID subscriptionID = (*current).first;
@@ -3019,7 +3136,7 @@ namespace openpeer
             continue;
           }
 
-          ZS_LOG_DEBUG(log("notifying subscription peer locations changed") + UsePeerSubscription::toDebug(subscription) + ZS_PARAM("state", ILocation::toString(state)) + UseLocation::toDebug(location))
+          ZS_LOG_DEBUG(log("notifying peer subscription of locations changed") + UsePeerSubscription::toDebug(subscription) + ZS_PARAM("state", ILocation::toString(state)) + UseLocation::toDebug(location))
           subscription->notifyLocationConnectionStateChanged(Location::convert(location), state);
         }
       }
@@ -3051,9 +3168,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void Account::notifySubscriptions(UseMessageIncomingPtr messageIncoming)
       {
-        for (PeerSubscriptionMap::iterator iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+        for (auto iter = mLocationSubscriptions.begin(); iter != mLocationSubscriptions.end(); )
         {
-          PeerSubscriptionMap::iterator current = iter;
+          auto current = iter;
+          ++iter;
+
+          PUID subscriptionID = (*current).first;
+          UseLocationSubscriptionPtr subscription = (*current).second.lock();
+          if (!subscription) {
+            ZS_LOG_WARNING(Detail, log("location subscription is gone") + ZS_PARAM("subscription ID", subscriptionID))
+            mLocationSubscriptions.erase(current);
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("notifying subscription of incoming message") + UseLocationSubscription::toDebug(subscription) + UseMessageIncoming::toDebug(messageIncoming))
+          subscription->notifyMessageIncoming(MessageIncoming::convert(messageIncoming));
+        }
+
+        for (auto iter = mPeerSubscriptions.begin(); iter != mPeerSubscriptions.end(); )
+        {
+          auto current = iter;
           ++iter;
 
           PUID subscriptionID = (*current).first;

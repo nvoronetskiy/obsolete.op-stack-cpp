@@ -42,7 +42,7 @@
 #include <openpeer/stack/ILocationDatabase.h>
 #include <openpeer/stack/ILocationDatabases.h>
 #include <openpeer/stack/ILocationDatabaseLocal.h>
-#include <openpeer/stack/ILocationDatabasesLocal.h>
+#include <openpeer/stack/ILocationSubscription.h>
 #include <openpeer/stack/IMessageIncoming.h>
 #include <openpeer/stack/IMessageMonitor.h>
 #include <openpeer/stack/IMessageSource.h>

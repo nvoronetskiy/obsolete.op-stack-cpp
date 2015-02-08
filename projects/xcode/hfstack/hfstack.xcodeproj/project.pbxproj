@@ -177,6 +177,9 @@
 		00D561531948A8C400CA65A6 /* ServersGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00D5614D1948A8C400CA65A6 /* ServersGetRequest.cpp */; };
 		00D561541948A8C400CA65A6 /* ServersGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00D5614E1948A8C400CA65A6 /* ServersGetResult.cpp */; };
 		00FA3FA11A85697700C7C32B /* stack_LocationDatabaseAbstraction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA01A85697700C7C32B /* stack_LocationDatabaseAbstraction.cpp */; };
+		00FA3FA61A8701E900C7C32B /* stack_LocationDatabases.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA51A8701E900C7C32B /* stack_LocationDatabases.cpp */; };
+		00FA3FAA1A87058A00C7C32B /* stack_LocationSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA91A87058A00C7C32B /* stack_LocationSubscription.cpp */; };
+		00FA3FAE1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */; };
 		00FF147717A9DC1D00F5DEB8 /* stack_FinderConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */; };
 /* End PBXBuildFile section */
 
@@ -439,7 +442,6 @@
 		0096C58E1A65753300D6272D /* ILocationDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabase.h; sourceTree = "<group>"; };
 		0096C5911A66C27F00D6272D /* ILocationDatabaseLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabaseLocal.h; sourceTree = "<group>"; };
 		0096C5921A66C27F00D6272D /* ILocationDatabases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabases.h; sourceTree = "<group>"; };
-		0096C5931A66C30E00D6272D /* ILocationDatabasesLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabasesLocal.h; sourceTree = "<group>"; };
 		009B5EF618D5F03D00314F02 /* stack_PublicationRepository_Fetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_Fetcher.h; sourceTree = "<group>"; };
 		009B5EF718D5F03D00314F02 /* stack_PublicationRepository_PeerCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerCache.h; sourceTree = "<group>"; };
 		009B5EF818D5F03D00314F02 /* stack_PublicationRepository_PeerSubscriptionIncoming.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_PublicationRepository_PeerSubscriptionIncoming.h; sourceTree = "<group>"; };
@@ -567,6 +569,14 @@
 		00D561511948A8C400CA65A6 /* ServersGetResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServersGetResult.h; sourceTree = "<group>"; };
 		00FA3F9F1A85696C00C7C32B /* stack_LocationDatabaseAbstraction.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabaseAbstraction.h; sourceTree = "<group>"; };
 		00FA3FA01A85697700C7C32B /* stack_LocationDatabaseAbstraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabaseAbstraction.cpp; sourceTree = "<group>"; };
+		00FA3FA51A8701E900C7C32B /* stack_LocationDatabases.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabases.cpp; sourceTree = "<group>"; };
+		00FA3FA71A8701F700C7C32B /* stack_LocationDatabases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabases.h; sourceTree = "<group>"; };
+		00FA3FA81A8703E300C7C32B /* ILocationSubscription.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationSubscription.h; sourceTree = "<group>"; };
+		00FA3FA91A87058A00C7C32B /* stack_LocationSubscription.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationSubscription.cpp; sourceTree = "<group>"; };
+		00FA3FAB1A87059600C7C32B /* stack_LocationSubscription.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationSubscription.h; sourceTree = "<group>"; };
+		00FA3FAC1A87C1EC00C7C32B /* stack_LocationDatabasesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabasesManager.h; sourceTree = "<group>"; };
+		00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabasesManager.cpp; sourceTree = "<group>"; };
+		00FA3FB81A88066A00C7C32B /* stack_LocationDatabasesTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabasesTearAway.h; sourceTree = "<group>"; };
 		00FF147517A9DB6400F5DEB8 /* stack_FinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderConnection.h; sourceTree = "<group>"; };
 		00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderConnection.cpp; sourceTree = "<group>"; };
 		00FF147A17AAD3ED00F5DEB8 /* stack_IFinderConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnection.h; sourceTree = "<group>"; };
@@ -664,7 +674,7 @@
 				0096C58E1A65753300D6272D /* ILocationDatabase.h */,
 				0096C5921A66C27F00D6272D /* ILocationDatabases.h */,
 				0096C5911A66C27F00D6272D /* ILocationDatabaseLocal.h */,
-				0096C5931A66C30E00D6272D /* ILocationDatabasesLocal.h */,
+				00FA3FA81A8703E300C7C32B /* ILocationSubscription.h */,
 				0063B6C016CA8E8A00E6DB4D /* IMessageIncoming.h */,
 				0063B6C116CA8E8A00E6DB4D /* IMessageMonitor.h */,
 				0063B6C216CA8E8A00E6DB4D /* IMessageSource.h */,
@@ -707,8 +717,11 @@
 				0063B6A716CA8E8A00E6DB4D /* stack_Helper.cpp */,
 				0084000C185006B2009F6934 /* stack_KeyGenerator.cpp */,
 				0063B6A816CA8E8A00E6DB4D /* stack_Location.cpp */,
+				00FA3FA51A8701E900C7C32B /* stack_LocationDatabases.cpp */,
+				00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */,
 				00218BCB1A6827E900002D79 /* stack_ILocationDatabaseAbstractionTables.cpp */,
 				00FA3FA01A85697700C7C32B /* stack_LocationDatabaseAbstraction.cpp */,
+				00FA3FA91A87058A00C7C32B /* stack_LocationSubscription.cpp */,
 				0063B6A916CA8E8A00E6DB4D /* stack_MessageIncoming.cpp */,
 				0063B6AA16CA8E8A00E6DB4D /* stack_MessageMonitor.cpp */,
 				0063B6AB16CA8E8A00E6DB4D /* stack_MessageMonitorManager.cpp */,
@@ -768,9 +781,13 @@
 				0084000B1850069C009F6934 /* stack_KeyGenerator.h */,
 				0063B6CC16CA8E8A00E6DB4D /* stack_Helper.h */,
 				0063B6CD16CA8E8A00E6DB4D /* stack_Location.h */,
+				00FA3FA71A8701F700C7C32B /* stack_LocationDatabases.h */,
+				00FA3FAC1A87C1EC00C7C32B /* stack_LocationDatabasesManager.h */,
+				00FA3FB81A88066A00C7C32B /* stack_LocationDatabasesTearAway.h */,
 				0093F98D1A6AC50F00C8F691 /* stack_ILocationDatabaseAbstraction.h */,
 				00FA3F9F1A85696C00C7C32B /* stack_LocationDatabaseAbstraction.h */,
 				00218BCA1A68279E00002D79 /* stack_ILocationDatabaseAbstractionTables.h */,
+				00FA3FAB1A87059600C7C32B /* stack_LocationSubscription.h */,
 				0063B6CE16CA8E8A00E6DB4D /* stack_MessageIncoming.h */,
 				0063B6CF16CA8E8A00E6DB4D /* stack_MessageMonitor.h */,
 				0063B6D016CA8E8A00E6DB4D /* stack_MessageMonitorManager.h */,
@@ -1344,6 +1361,7 @@
 				0063B85316CA8E8B00E6DB4D /* stack_Location.cpp in Sources */,
 				009E5522185FD80D009ABCA6 /* PeerPublishNotify.cpp in Sources */,
 				00D5610B1948A7F200CA65A6 /* AccessRequest.cpp in Sources */,
+				00FA3FAE1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp in Sources */,
 				00D561541948A8C400CA65A6 /* ServersGetResult.cpp in Sources */,
 				00D561171948A7F200CA65A6 /* MessagesDataGetRequest.cpp in Sources */,
 				0063B85416CA8E8B00E6DB4D /* stack_MessageIncoming.cpp in Sources */,
@@ -1427,9 +1445,11 @@
 				0063B91916CA8E8B00E6DB4D /* SessionDeleteRequest.cpp in Sources */,
 				00D561461948A87700CA65A6 /* IdentityAccessNamespaceGrantChallengeValidateRequest.cpp in Sources */,
 				0063B91A16CA8E8B00E6DB4D /* SessionDeleteResult.cpp in Sources */,
+				00FA3FAA1A87058A00C7C32B /* stack_LocationSubscription.cpp in Sources */,
 				001BBA01183B996600F14A64 /* stack_javascript.cpp in Sources */,
 				00D561201948A7F200CA65A6 /* PeerValidateResult.cpp in Sources */,
 				002FCF5A19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp in Sources */,
+				00FA3FA61A8701E900C7C32B /* stack_LocationDatabases.cpp in Sources */,
 				0063B91B16CA8E8B00E6DB4D /* SessionKeepAliveRequest.cpp in Sources */,
 				0063B91C16CA8E8B00E6DB4D /* SessionKeepAliveResult.cpp in Sources */,
 				0063B92716CA8E8B00E6DB4D /* MessageFactoryPeerSalt.cpp in Sources */,

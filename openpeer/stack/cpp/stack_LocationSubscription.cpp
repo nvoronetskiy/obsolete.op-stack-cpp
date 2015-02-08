@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2014, Hookflash Inc.
+ Copyright (c) 2015, Hookflash Inc.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/internal/stack_PeerSubscription.h>
+#include <openpeer/stack/internal/stack_LocationSubscription.h>
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Peer.h>
 #include <openpeer/stack/internal/stack_Location.h>
@@ -65,39 +65,39 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IPeerSubscriptionForAccount
+      #pragma mark ILocationSubscriptionForAccount
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ElementPtr IPeerSubscriptionForAccount::toDebug(ForAccountPtr subscription)
+      ElementPtr ILocationSubscriptionForAccount::toDebug(ForAccountPtr subscription)
       {
-        return IPeerSubscription::toDebug(PeerSubscription::convert(subscription));
+        return ILocationSubscription::toDebug(LocationSubscription::convert(subscription));
       }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
-      PeerSubscription::PeerSubscription(
-                                         AccountPtr account,
-                                         IPeerSubscriptionDelegatePtr delegate
-                                         ) :
+      LocationSubscription::LocationSubscription(
+                                                 AccountPtr account,
+                                                 ILocationSubscriptionDelegatePtr delegate
+                                                 ) :
         SharedRecursiveLock(account ? (*account) : SharedRecursiveLock::create()),
         mAccount(account),
-        mDelegate(IPeerSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
+        mDelegate(ILocationSubscriptionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate))
       {
         ZS_LOG_DEBUG(log("constructed"))
       }
 
       //-----------------------------------------------------------------------
-      void PeerSubscription::init()
+      void LocationSubscription::init()
       {
         UseAccountPtr account = mAccount.lock();
         if (!account) {
-          ZS_LOG_WARNING(Detail, log("subscribing to a peer attached to a dead account"))
+          ZS_LOG_WARNING(Detail, log("subscribing to a location attached to a dead account"))
           try {
-            mDelegate->onPeerSubscriptionShutdown(mThisWeak.lock());
-          } catch (IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+            mDelegate->onLocationSubscriptionShutdown(mThisWeak.lock());
+          } catch (ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           }
           mDelegate.reset();
           return;
@@ -106,7 +106,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscription::~PeerSubscription()
+      LocationSubscription::~LocationSubscription()
       {
         if(isNoop()) return;
         
@@ -117,15 +117,15 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscriptionPtr PeerSubscription::convert(IPeerSubscriptionPtr subscription)
+      LocationSubscriptionPtr LocationSubscription::convert(ILocationSubscriptionPtr subscription)
       {
-        return ZS_DYNAMIC_PTR_CAST(PeerSubscription, subscription);
+        return ZS_DYNAMIC_PTR_CAST(LocationSubscription, subscription);
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscriptionPtr PeerSubscription::convert(ForAccountPtr subscription)
+      LocationSubscriptionPtr LocationSubscription::convert(ForAccountPtr subscription)
       {
-        return ZS_DYNAMIC_PTR_CAST(PeerSubscription, subscription);
+        return ZS_DYNAMIC_PTR_CAST(LocationSubscription, subscription);
       }
 
       //-----------------------------------------------------------------------
@@ -133,66 +133,66 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark PeerSubscription => IPeerSubscription
+      #pragma mark LocationSubscription => ILocationSubscription
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ElementPtr PeerSubscription::toDebug(IPeerSubscriptionPtr subscription)
+      ElementPtr LocationSubscription::toDebug(ILocationSubscriptionPtr subscription)
       {
         if (!subscription) return ElementPtr();
-        return PeerSubscription::convert(subscription)->toDebug();
+        return LocationSubscription::convert(subscription)->toDebug();
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscriptionPtr PeerSubscription::subscribeAll(
-                                                         AccountPtr account,
-                                                         IPeerSubscriptionDelegatePtr delegate
-                                                         )
+      LocationSubscriptionPtr LocationSubscription::subscribeAll(
+                                                                 AccountPtr account,
+                                                                 ILocationSubscriptionDelegatePtr delegate
+                                                                 )
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!account)
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        PeerSubscriptionPtr pThis(new PeerSubscription(account, delegate));
+        LocationSubscriptionPtr pThis(new LocationSubscription(account, delegate));
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscriptionPtr PeerSubscription::subscribe(
-                                                      IPeerPtr inPeer,
-                                                      IPeerSubscriptionDelegatePtr delegate
-                                                      )
+      LocationSubscriptionPtr LocationSubscription::subscribe(
+                                                              ILocationPtr inLocation,
+                                                              ILocationSubscriptionDelegatePtr delegate
+                                                              )
       {
-        ZS_THROW_INVALID_ARGUMENT_IF(!inPeer)
+        ZS_THROW_INVALID_ARGUMENT_IF(!inLocation)
         ZS_THROW_INVALID_ARGUMENT_IF(!delegate)
 
-        UsePeerPtr peer = Peer::convert(inPeer);
-        AccountPtr account = peer->getAccount();
+        UseLocationPtr location = Location::convert(inLocation);
+        AccountPtr account = location->getAccount();
 
-        PeerSubscriptionPtr pThis(new PeerSubscription(account, delegate));
-        pThis->mPeer = peer;
+        LocationSubscriptionPtr pThis(new LocationSubscription(account, delegate));
+        pThis->mLocation = location;
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
       }
 
       //-----------------------------------------------------------------------
-      IPeerPtr PeerSubscription::getSubscribedToPeer() const
+      ILocationPtr LocationSubscription::getSubscribedToLocation() const
       {
         AutoRecursiveLock lock(*this);
-        return Peer::convert(mPeer);
+        return Location::convert(mLocation);
       }
 
       //-----------------------------------------------------------------------
-      bool PeerSubscription::PeerSubscription::isShutdown() const
+      bool LocationSubscription::LocationSubscription::isShutdown() const
       {
         AutoRecursiveLock lock(*this);
         return !mDelegate;
       }
 
       //-----------------------------------------------------------------------
-      void PeerSubscription::cancel()
+      void LocationSubscription::cancel()
       {
         AutoRecursiveLock lock(*this);
 
@@ -201,13 +201,13 @@ namespace openpeer
           return;
         }
 
-        PeerSubscriptionPtr subscription = mThisWeak.lock();
+        LocationSubscriptionPtr subscription = mThisWeak.lock();
 
         if ((mDelegate) &&
             (subscription)) {
           try {
-            mDelegate->onPeerSubscriptionShutdown(subscription);
-          } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+            mDelegate->onLocationSubscriptionShutdown(subscription);
+          } catch(ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
             ZS_LOG_WARNING(Detail, log("delegate already gone"))
           }
         }
@@ -228,42 +228,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark PeerSubscription => IPeerSubscriptionForAccount
+      #pragma mark LocationSubscription => ILocationSubscriptionForAccount
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void PeerSubscription::notifyFindStateChanged(
-                                                    PeerPtr inPeer,
-                                                    PeerFindStates state
-                                                    )
-      {
-        UsePeerPtr peer = inPeer;
-
-        AutoRecursiveLock lock(*this);
-        if (!mDelegate) {
-          ZS_LOG_WARNING(Detail, log("notify of find state changed after shutdown"))
-          return;
-        }
-
-        if (mPeer) {
-          if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_DEBUG(log("ignoring find state for peer") + ZS_PARAM("notified peer", UsePeer::toDebug(peer)) + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)))
-            return;
-          }
-        }
-
-        try {
-          mDelegate->onPeerSubscriptionFindStateChanged(mThisWeak.lock(), Peer::convert(peer), state);
-        } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
-          ZS_LOG_WARNING(Detail, log("delegate gone"))
-        }
-      }
-
-      //-----------------------------------------------------------------------
-      void PeerSubscription::notifyLocationConnectionStateChanged(
-                                                                  LocationPtr inLocation,
-                                                                  LocationConnectionStates state
-                                                                  )
+      void LocationSubscription::notifyLocationConnectionStateChanged(
+                                                                      LocationPtr inLocation,
+                                                                      LocationConnectionStates state
+                                                                      )
       {
         UseLocationPtr location = inLocation;
 
@@ -274,28 +246,23 @@ namespace openpeer
           return;
         }
 
-        if (mPeer) {
-          UsePeerPtr peer = location->getPeer();
-          if (!peer) {
-            ZS_LOG_TRACE(log("ignoring location connection state change from non-peer") + ZS_PARAM("subscribing", UsePeer::toDebug(mPeer)))
-            return;
-          }
-          if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_TRACE(log("ignoring location connection state change") + ZS_PARAM("notified peer", UsePeer::toDebug(peer)) + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)))
+        if (mLocation) {
+          if (mLocation->getID() != location->getID()) {
+            ZS_LOG_TRACE(log("ignoring location connection state change from unrelated location") + ZS_PARAM("subscribing", mLocation->toDebug()) + ZS_PARAM("notified", location->toDebug()))
             return;
           }
         }
 
         try {
-          ZS_LOG_DEBUG(log("notify location connection state change") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("state", ILocation::toString(state)) + ZS_PARAM("location", location->toDebug()))
-          mDelegate->onPeerSubscriptionLocationConnectionStateChanged(mThisWeak.lock(), Location::convert(location), state);
-        } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+          ZS_LOG_DEBUG(log("notifying location subscription of state change") + ZS_PARAM("subscribing", UseLocation::toDebug(mLocation)) + ZS_PARAM("notified location", location->toDebug()) + ZS_PARAM("state", ILocation::toString(state)))
+          mDelegate->onLocationSubscriptionLocationConnectionStateChanged(mThisWeak.lock(), Location::convert(location), state);
+        } catch(ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
       }
 
       //-----------------------------------------------------------------------
-      void PeerSubscription::notifyMessageIncoming(IMessageIncomingPtr message)
+      void LocationSubscription::notifyMessageIncoming(IMessageIncomingPtr message)
       {
         AutoRecursiveLock lock(*this);
 
@@ -309,28 +276,24 @@ namespace openpeer
           ZS_LOG_DEBUG(log("ignoring incoming message missing location"))
           return;
         }
-        if (mPeer) {
-          UsePeerPtr peer = location->getPeer();
-          if (!peer) {
-            ZS_LOG_DEBUG(log("ignoring incoming message from non-peer") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
-            return;
-          }
-          if (mPeer->getPeerURI() != peer->getPeerURI()) {
-            ZS_LOG_TRACE(log("ignoring incoming message for peer") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+
+        if (mLocation) {
+          if (mLocation->getID() != location->getID()) {
+            ZS_LOG_TRACE(log("ignoring incoming message from wrong location") + ZS_PARAM("subscribing", mLocation->toDebug()) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
             return;
           }
         }
 
         try {
-          ZS_LOG_DEBUG(log("notifying peer subscription of messaging incoming") + ZS_PARAM("subscribing peer", UsePeer::toDebug(mPeer)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
-          mDelegate->onPeerSubscriptionMessageIncoming(mThisWeak.lock(), message);
-        } catch(IPeerSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+          ZS_LOG_DEBUG(log("notifying peer subscription of messaging incoming") + ZS_PARAM("subscribing", UseLocation::toDebug(mLocation)) + ZS_PARAM("incoming", IMessageIncoming::toDebug(message)))
+          mDelegate->onLocationSubscriptionMessageIncoming(mThisWeak.lock(), message);
+        } catch(ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
           ZS_LOG_WARNING(Detail, log("delegate gone"))
         }
       }
 
       //-----------------------------------------------------------------------
-      void PeerSubscription::notifyShutdown()
+      void LocationSubscription::notifyShutdown()
       {
         AutoRecursiveLock lock(*this);
         cancel();
@@ -341,26 +304,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark PeerSubscription => (internal)
+      #pragma mark LocationSubscription => (internal)
       #pragma mark
 
       //-----------------------------------------------------------------------
-      Log::Params PeerSubscription::log(const char *message) const
+      Log::Params LocationSubscription::log(const char *message) const
       {
-        ElementPtr objectEl = Element::create("PeerSubscription");
+        ElementPtr objectEl = Element::create("LocationSubscription");
         IHelper::debugAppend(objectEl, "id", mID);
         return Log::Params(message, objectEl);
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr PeerSubscription::toDebug() const
+      ElementPtr LocationSubscription::toDebug() const
       {
         AutoRecursiveLock lock(*this);
-        ElementPtr resultEl = Element::create("PeerSubscription");
+        ElementPtr resultEl = Element::create("LocationSubscription");
 
         IHelper::debugAppend(resultEl, "id", mID);
-        IHelper::debugAppend(resultEl, "subscribing", mPeer ? "peer" : "all");
-        IHelper::debugAppend(resultEl, UsePeer::toDebug(mPeer));
+        IHelper::debugAppend(resultEl, "subscribing", mLocation ? "peer" : "all");
+        IHelper::debugAppend(resultEl, UseLocation::toDebug(mLocation));
 
         return resultEl;
       }
@@ -370,67 +333,67 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IPeerSubscriptionFactory
+      #pragma mark ILocationSubscriptionFactory
       #pragma mark
 
       //-----------------------------------------------------------------------
-      IPeerSubscriptionFactory &IPeerSubscriptionFactory::singleton()
+      ILocationSubscriptionFactory &ILocationSubscriptionFactory::singleton()
       {
-        return PeerSubscriptionFactory::singleton();
+        return LocationSubscriptionFactory::singleton();
       }
 
       //-----------------------------------------------------------------------
-      PeerSubscriptionPtr IPeerSubscriptionFactory::subscribeAll(
-                                                                 AccountPtr account,
-                                                                 IPeerSubscriptionDelegatePtr delegate
+      LocationSubscriptionPtr ILocationSubscriptionFactory::subscribeAll(
+                                                                         AccountPtr account,
+                                                                         ILocationSubscriptionDelegatePtr delegate
+                                                                         )
+      {
+        if (this) {}
+        return LocationSubscription::subscribeAll(account, delegate);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationSubscriptionPtr ILocationSubscriptionFactory::subscribe(
+                                                                      ILocationPtr location,
+                                                                      ILocationSubscriptionDelegatePtr delegate
+                                                                      )
+      {
+        if (this) {}
+        return LocationSubscription::subscribe(location, delegate);
+      }
+
+    }
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark ILocationSubscription
+    #pragma mark
+
+    //-------------------------------------------------------------------------
+    ElementPtr ILocationSubscription::toDebug(ILocationSubscriptionPtr subscription)
+    {
+      return internal::LocationSubscription::toDebug(subscription);
+    }
+
+    //-------------------------------------------------------------------------
+    ILocationSubscriptionPtr ILocationSubscription::subscribeAll(
+                                                                 IAccountPtr account,
+                                                                 ILocationSubscriptionDelegatePtr delegate
                                                                  )
-      {
-        if (this) {}
-        return PeerSubscription::subscribeAll(account, delegate);
-      }
+    {
+      return internal::ILocationSubscriptionFactory::singleton().subscribeAll(internal::Account::convert(account), delegate);
+    }
 
-      //-----------------------------------------------------------------------
-      PeerSubscriptionPtr IPeerSubscriptionFactory::subscribe(
-                                                              IPeerPtr peer,
-                                                              IPeerSubscriptionDelegatePtr delegate
+    //-------------------------------------------------------------------------
+    ILocationSubscriptionPtr ILocationSubscription::subscribe(
+                                                              ILocationPtr peer,
+                                                              ILocationSubscriptionDelegatePtr delegate
                                                               )
-      {
-        if (this) {}
-        return PeerSubscription::subscribe(peer, delegate);
-      }
-
-    }
-
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    #pragma mark
-    #pragma mark IPeerSubscription
-    #pragma mark
-
-    //-------------------------------------------------------------------------
-    ElementPtr IPeerSubscription::toDebug(IPeerSubscriptionPtr subscription)
     {
-      return internal::PeerSubscription::toDebug(subscription);
-    }
-
-    //-------------------------------------------------------------------------
-    IPeerSubscriptionPtr IPeerSubscription::subscribeAll(
-                                                         IAccountPtr account,
-                                                         IPeerSubscriptionDelegatePtr delegate
-                                                         )
-    {
-      return internal::IPeerSubscriptionFactory::singleton().subscribeAll(internal::Account::convert(account), delegate);
-    }
-
-    //-------------------------------------------------------------------------
-    IPeerSubscriptionPtr IPeerSubscription::subscribe(
-                                                      IPeerPtr peer,
-                                                      IPeerSubscriptionDelegatePtr delegate
-                                                      )
-    {
-      return internal::IPeerSubscriptionFactory::singleton().subscribe(peer, delegate);
+      return internal::ILocationSubscriptionFactory::singleton().subscribe(peer, delegate);
     }
   }
 }

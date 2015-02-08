@@ -217,7 +217,6 @@
 		0020FC43193654630065C965 /* stack_ServicePushMailboxSession.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_ServicePushMailboxSession.h; sourceTree = "<group>"; };
 		00218BD91A6AB81600002D79 /* ILocationDatabaseLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabaseLocal.h; sourceTree = "<group>"; };
 		00218BDA1A6AB81600002D79 /* ILocationDatabases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabases.h; sourceTree = "<group>"; };
-		00218BDB1A6AB81600002D79 /* ILocationDatabasesLocal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ILocationDatabasesLocal.h; sourceTree = "<group>"; };
 		00218BDC1A6AB83E00002D79 /* stack_ILocationDatabaseAbstractionTables.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_ILocationDatabaseAbstractionTables.cpp; sourceTree = "<group>"; };
 		00218BDD1A6AB83E00002D79 /* stack_LocationDatabaseAbstraction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabaseAbstraction.cpp; sourceTree = "<group>"; };
 		002DF47B1A356DC70046DE49 /* stack_IServicePushMailboxSessionDatabaseAbstractionTables.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_IServicePushMailboxSessionDatabaseAbstractionTables.h; sourceTree = "<group>"; };
@@ -713,7 +712,6 @@
 				0096C5901A65765A00D6272D /* ILocationDatabase.h */,
 				00218BDA1A6AB81600002D79 /* ILocationDatabases.h */,
 				00218BD91A6AB81600002D79 /* ILocationDatabaseLocal.h */,
-				00218BDB1A6AB81600002D79 /* ILocationDatabasesLocal.h */,
 				0063BA2E16CA92CF00E6DB4D /* IMessageIncoming.h */,
 				0063BA2F16CA92CF00E6DB4D /* IMessageMonitor.h */,
 				0063BA3016CA92CF00E6DB4D /* IMessageSource.h */,

@@ -71,14 +71,14 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       // PURPOSE: Creates a local database given a database identifier.
-      static ILocationDatabaseLocalPtr open(
-                                            ILocationDatabaseLocalDelegatePtr inDelegate,
-                                            ILocationDatabasesLocalPtr localDatabases,
-                                            const char *inDatabaseID,
-                                            ElementPtr inMetaData,
-                                            const PeerList &inPeerAccessList,
-                                            Time expires = Time()  // Time() means the database should never expire
-                                            );
+      static ILocationDatabaseLocalPtr create(
+                                              ILocationDatabaseLocalDelegatePtr inDelegate,
+                                              IAccountPtr account,
+                                              const char *inDatabaseID,
+                                              ElementPtr inMetaData,
+                                              const PeerList &inPeerAccessList,
+                                              Time expires = Time()  // Time() means the database should never expire
+                                              );
 
       //-----------------------------------------------------------------------
       // PURPOSE: Obtain list of peers that have access to this database.
