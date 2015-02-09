@@ -180,6 +180,7 @@
 		00FA3FA61A8701E900C7C32B /* stack_LocationDatabases.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA51A8701E900C7C32B /* stack_LocationDatabases.cpp */; };
 		00FA3FAA1A87058A00C7C32B /* stack_LocationSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA91A87058A00C7C32B /* stack_LocationSubscription.cpp */; };
 		00FA3FAE1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */; };
+		00FA3FBA1A8837F700C7C32B /* stack_LocationDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FB91A8837F700C7C32B /* stack_LocationDatabase.cpp */; };
 		00FF147717A9DC1D00F5DEB8 /* stack_FinderConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */; };
 /* End PBXBuildFile section */
 
@@ -577,6 +578,10 @@
 		00FA3FAC1A87C1EC00C7C32B /* stack_LocationDatabasesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabasesManager.h; sourceTree = "<group>"; };
 		00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabasesManager.cpp; sourceTree = "<group>"; };
 		00FA3FB81A88066A00C7C32B /* stack_LocationDatabasesTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabasesTearAway.h; sourceTree = "<group>"; };
+		00FA3FB91A8837F700C7C32B /* stack_LocationDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_LocationDatabase.cpp; sourceTree = "<group>"; };
+		00FA3FBB1A88380700C7C32B /* stack_LocationDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabase.h; sourceTree = "<group>"; };
+		00FA3FBC1A883E3900C7C32B /* stack_LocationDatabaseTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabaseTearAway.h; sourceTree = "<group>"; };
+		00FA3FBD1A8847FB00C7C32B /* stack_LocationDatabaseLocalTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabaseLocalTearAway.h; sourceTree = "<group>"; };
 		00FF147517A9DB6400F5DEB8 /* stack_FinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderConnection.h; sourceTree = "<group>"; };
 		00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderConnection.cpp; sourceTree = "<group>"; };
 		00FF147A17AAD3ED00F5DEB8 /* stack_IFinderConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnection.h; sourceTree = "<group>"; };
@@ -717,6 +722,7 @@
 				0063B6A716CA8E8A00E6DB4D /* stack_Helper.cpp */,
 				0084000C185006B2009F6934 /* stack_KeyGenerator.cpp */,
 				0063B6A816CA8E8A00E6DB4D /* stack_Location.cpp */,
+				00FA3FB91A8837F700C7C32B /* stack_LocationDatabase.cpp */,
 				00FA3FA51A8701E900C7C32B /* stack_LocationDatabases.cpp */,
 				00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */,
 				00218BCB1A6827E900002D79 /* stack_ILocationDatabaseAbstractionTables.cpp */,
@@ -781,6 +787,9 @@
 				0084000B1850069C009F6934 /* stack_KeyGenerator.h */,
 				0063B6CC16CA8E8A00E6DB4D /* stack_Helper.h */,
 				0063B6CD16CA8E8A00E6DB4D /* stack_Location.h */,
+				00FA3FBB1A88380700C7C32B /* stack_LocationDatabase.h */,
+				00FA3FBD1A8847FB00C7C32B /* stack_LocationDatabaseLocalTearAway.h */,
+				00FA3FBC1A883E3900C7C32B /* stack_LocationDatabaseTearAway.h */,
 				00FA3FA71A8701F700C7C32B /* stack_LocationDatabases.h */,
 				00FA3FAC1A87C1EC00C7C32B /* stack_LocationDatabasesManager.h */,
 				00FA3FB81A88066A00C7C32B /* stack_LocationDatabasesTearAway.h */,
@@ -1473,6 +1482,7 @@
 				00AF4CB2171CA83C00DCA0A8 /* IdentityLookupUpdateRequest.cpp in Sources */,
 				00AF4CB3171CA83C00DCA0A8 /* IdentityLookupUpdateResult.cpp in Sources */,
 				00AF4CB8171CCA2300DCA0A8 /* LockboxAccessRequest.cpp in Sources */,
+				00FA3FBA1A8837F700C7C32B /* stack_LocationDatabase.cpp in Sources */,
 				00AF4CB9171CCA2300DCA0A8 /* LockboxAccessResult.cpp in Sources */,
 				00AF4CBD171CE3D700DCA0A8 /* LockboxIdentitiesUpdateRequest.cpp in Sources */,
 				009B5F0418D5F06600314F02 /* stack_PublicationRepository_Fetcher.cpp in Sources */,

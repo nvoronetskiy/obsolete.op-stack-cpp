@@ -100,12 +100,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       // PURPOSE: Subscribe to database changes for a particular database from
       //          a particular peer's location.
-      virtual ILocationDatabasePtr open(
-                                        ILocationDatabaseDelegatePtr inDelegate,
-                                        ILocationPtr location,
-                                        const char *databaseID,
-                                        bool inAutomaticallyDownloadDatabaseData
-                                        ) = 0;
+      static ILocationDatabasePtr open(
+                                       ILocationDatabaseDelegatePtr inDelegate,
+                                       ILocationPtr location,
+                                       const char *databaseID,
+                                       bool inAutomaticallyDownloadDatabaseData
+                                       );
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a unique object instance identifier.
@@ -153,10 +153,6 @@ namespace openpeer
                                        const UniqueIDList &needingEntryData,
                                        ILocationDatabaseDataReadyDelegatePtr inDelegate
                                        ) = 0;
-
-      //-----------------------------------------------------------------------
-      // PURPOSE: Flag this database to have all the content removed.
-      virtual void remove() = 0;
     };
     
     //-------------------------------------------------------------------------

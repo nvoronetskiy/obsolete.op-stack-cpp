@@ -62,6 +62,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationDatabasesForLocationDatabase
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationDatabasesForLocationDatabase::toDebug(ForLocationDatabasePtr object)
+      {
+        if (!object) return ElementPtr();
+        return LocationDatabases::convert(object)->toDebug();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ILocationDatabasesForLocationDatabasesManager
       #pragma mark
 
@@ -108,6 +123,8 @@ namespace openpeer
         
         mThisWeak.reset();
         ZS_LOG_DEBUG(log("destroyed"))
+
+        UseLocationDatabasesManager::notifyDestroyed(*this);
       }
 
       //-----------------------------------------------------------------------
@@ -119,6 +136,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       LocationDatabasesPtr LocationDatabases::convert(ForLocationDatabasesManagerPtr object)
+      {
+        return ZS_DYNAMIC_PTR_CAST(LocationDatabases, object);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationDatabasesPtr LocationDatabases::convert(ForLocationDatabasePtr object)
       {
         return ZS_DYNAMIC_PTR_CAST(LocationDatabases, object);
       }
@@ -149,7 +172,7 @@ namespace openpeer
 
         auto subscription = pThis->subscribe(inDelegate);
 
-        LocationDatabaseTearAwayDataPtr data(new LocationDatabaseTearAwayData);
+        LocationDatabasesTearAwayDataPtr data(new LocationDatabasesTearAwayData);
         data->mSubscription = subscription;
 
         return ILocationDatabasesTearAway::create(pThis, data);
@@ -185,6 +208,19 @@ namespace openpeer
         pThis->mThisWeak = pThis;
         pThis->init();
         return pThis;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark LocationDatabases => ILocationDatabasesForLocationDatabase
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void LocationDatabases::notifyDestroyed(UseLocationDatabase &databases)
+      {
       }
 
       //-----------------------------------------------------------------------

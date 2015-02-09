@@ -42,7 +42,19 @@ namespace openpeer
     {
       ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabasesManagerForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(ILocationDatabaseForLocationDatabases)
 
+      //-----------------------------------------------------------------------
+      interaction ILocationDatabasesForLocationDatabase
+      {
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesForLocationDatabase, ForLocationDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
+
+        static ElementPtr toDebug(ForLocationDatabasePtr object);
+
+        virtual void notifyDestroyed(UseLocationDatabase &database) = 0;
+      };
+      
       //-----------------------------------------------------------------------
       interaction ILocationDatabasesForLocationDatabasesManager
       {
@@ -68,12 +80,14 @@ namespace openpeer
       class LocationDatabases : public SharedRecursiveLock,
                                 public Noop,
                                 public ILocationDatabases,
+                                public ILocationDatabasesForLocationDatabase,
                                 public ILocationDatabasesForLocationDatabasesManager
       {
       public:
         friend interaction ILocationDatabasesFactory;
         friend interaction ILocationDatabases;
         friend interaction ILocationDatabasesForLocationDatabasesManager;
+        friend interaction ILocationDatabasesForLocationDatabase;
 
       protected:
         LocationDatabases(ILocationPtr location);
@@ -89,9 +103,11 @@ namespace openpeer
 
         static LocationDatabasesPtr convert(ILocationDatabasesPtr object);
         static LocationDatabasesPtr convert(ForLocationDatabasesManagerPtr object);
+        static LocationDatabasesPtr convert(ForLocationDatabasePtr object);
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, UseLocationDatabasesManager)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
 
       protected:
         //---------------------------------------------------------------------
@@ -126,6 +142,15 @@ namespace openpeer
 
         // (duplicate) virtual PUID getID() const = 0;
         // (duplicate) virtual ILocationPtr getLocation() const = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => ILocationDatabasesForLocationDatabase
+        #pragma mark
+
+        // (duplicate) virtual ElementPtr toDebug() const;
+
+        virtual void notifyDestroyed(UseLocationDatabase &database);
 
       protected:
         //---------------------------------------------------------------------

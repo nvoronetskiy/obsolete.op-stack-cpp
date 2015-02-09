@@ -45,6 +45,9 @@
 #include <openpeer/stack/internal/stack_Helper.h>
 #include <openpeer/stack/internal/stack_KeyGenerator.h>
 #include <openpeer/stack/internal/stack_Location.h>
+#include <openpeer/stack/internal/stack_LocationDatabase.h>
+#include <openpeer/stack/internal/stack_LocationDatabaseLocalTearAway.h>
+#include <openpeer/stack/internal/stack_LocationDatabaseTearAway.h>
 #include <openpeer/stack/internal/stack_LocationDatabases.h>
 #include <openpeer/stack/internal/stack_LocationDatabasesManager.h>
 #include <openpeer/stack/internal/stack_LocationDatabasesTearAway.h>

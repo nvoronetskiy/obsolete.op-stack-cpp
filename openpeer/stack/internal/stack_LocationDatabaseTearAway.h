@@ -32,7 +32,7 @@
 #pragma once
 
 #include <openpeer/stack/internal/types.h>
-#include <openpeer/stack/ILocationDatabases.h>
+#include <openpeer/stack/ILocationDatabase.h>
 
 #include <zsLib/TearAway.h>
 
@@ -42,20 +42,27 @@ namespace openpeer
   {
     namespace internal
     {
-      ZS_DECLARE_STRUCT_PTR(LocationDatabasesTearAwayData)
+      ZS_DECLARE_STRUCT_PTR(LocationDatabaseTearAwayData)
 
-      struct LocationDatabasesTearAwayData
+      struct LocationDatabaseTearAwayData
       {
-        ILocationDatabasesSubscriptionPtr mSubscription;
+        ILocationDatabaseSubscriptionPtr mSubscription;
       };
 
     }
   }
 }
 
-ZS_DECLARE_TEAR_AWAY_BEGIN(openpeer::stack::ILocationDatabases, openpeer::stack::internal::LocationDatabasesTearAwayData)
+ZS_DECLARE_TEAR_AWAY_BEGIN(openpeer::stack::ILocationDatabase, openpeer::stack::internal::LocationDatabaseTearAwayData)
 ZS_DECLARE_TEAR_AWAY_TYPEDEF(openpeer::stack::ILocationPtr, ILocationPtr)
+ZS_DECLARE_TEAR_AWAY_TYPEDEF(openpeer::stack::ILocationDatabaseDataReadyDelegatePtr, ILocationDatabaseDataReadyDelegatePtr)
+ZS_DECLARE_TEAR_AWAY_TYPEDEF(zsLib::XML::ElementPtr, ElementPtr)
 ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getID, PUID)
 ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getLocation, ILocationPtr)
-ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_2(getUpdates, LocationDatabaseListPtr, const String &, String &)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getDatabaseID, String)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getMetaData, ElementPtr)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getExpires, Time)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_2(getUpdates, EntryListPtr, const String &, String &)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_1(getEntry, EntryPtr, const char *)
+ZS_DECLARE_TEAR_AWAY_METHOD_2(notifyWhenDataReady, const UniqueIDList &, ILocationDatabaseDataReadyDelegatePtr)
 ZS_DECLARE_TEAR_AWAY_END()

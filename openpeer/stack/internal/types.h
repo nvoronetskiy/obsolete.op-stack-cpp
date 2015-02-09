@@ -120,6 +120,8 @@ namespace openpeer
       using namespace message;
 
       ZS_DECLARE_STRUCT_PTR(LocationDatabaseTearAwayData)
+      ZS_DECLARE_STRUCT_PTR(LocationDatabaseLocalTearAwayData)
+      ZS_DECLARE_STRUCT_PTR(LocationDatabasesTearAwayData)
 
       ZS_DECLARE_CLASS_PTR(Account)
       ZS_DECLARE_CLASS_PTR(AccountFinder)
@@ -189,7 +191,9 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderConnectionSubscription, IFinderConnectionDelegate)
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServiceLockboxSessionForInternalSubscription, IServiceLockboxSessionForInternalDelegate)
 
-      ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabases, ILocationDatabases, LocationDatabaseTearAwayData)
+      ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabase, ILocationDatabase, LocationDatabaseTearAwayData)
+      ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabaseLocal, ILocationDatabaseLocal, LocationDatabaseLocalTearAwayData)
+      ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabases, ILocationDatabases, LocationDatabasesTearAwayData)
     }
   }
 }
