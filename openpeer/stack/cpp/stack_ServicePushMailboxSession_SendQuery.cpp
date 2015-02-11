@@ -273,7 +273,7 @@ namespace openpeer
 
         ServicePushMailboxSessionPtr outer = mOuter.lock();
         if (!outer) {
-          ZS_LOG_WARNING(Detail, log("push messaging service is gone (thus cannot return send udpates)"))
+          ZS_LOG_WARNING(Detail, log("push messaging service is gone (thus cannot return send updates)"))
           return PushMessagePtr();
         }
 

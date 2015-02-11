@@ -29,10 +29,10 @@
 
  */
 
-#include <openpeer/stack/message/peer-finder/SessionDeleteRequest.h>
-#include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+#pragma once
 
-#include <zsLib/XML.h>
+#include <openpeer/stack/message/IMessageFactory.h>
+
 
 namespace openpeer
 {
@@ -40,58 +40,52 @@ namespace openpeer
   {
     namespace message
     {
-      namespace peer_finder
+      namespace p2p_database
       {
         //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::convert(MessagePtr message)
-        {
-          return ZS_DYNAMIC_PTR_CAST(SessionDeleteRequest, message);
-        }
-
         //---------------------------------------------------------------------
-        SessionDeleteRequest::SessionDeleteRequest()
-        {
-        }
-
         //---------------------------------------------------------------------
-        bool SessionDeleteRequest::hasAttribute(AttributeTypes type) const
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageFactoryP2PDatabase
+        #pragma mark
+
+        class MessageFactoryP2PDatabase : public IMessageFactory
         {
-          switch (type)
+        public:
+        public:
+          enum Methods
           {
-            case AttributeType_Locations:   return (mLocations.size() > 0);
-            default:                        break;
-          }
-          return false;
-        }
+            Method_Invalid = Message::Method_Invalid,
 
-        //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::create()
-        {
-          SessionDeleteRequestPtr pThis(new SessionDeleteRequest);
-          return pThis;
-        }
+            Method_ListSubscribe,
+            Method_Subscribe,
+            Method_DataGet,
 
-        //---------------------------------------------------------------------
-        DocumentPtr SessionDeleteRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
+            Method_Last = Method_DataGet,
+          };
 
-          if (hasAttribute(AttributeType_Locations))
-          {
-            ElementPtr locationsEl = IMessageHelper::createElement("locations");
-            root->adoptAsLastChild(locationsEl);
+        protected:
+          static MessageFactoryP2PDatabasePtr create();
 
-            for(StringList::const_iterator it = mLocations.begin(); it != mLocations.end(); ++it)
-            {
-              const String &loc = (*it);
-              locationsEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("location", loc));
-            }
-          }
+        public:
+          static MessageFactoryP2PDatabasePtr singleton();
 
-          return ret;
-        }
+          //-------------------------------------------------------------------
+          #pragma mark
+          #pragma mark MessageFactoryP2PDatabase => IMessageFactory
+          #pragma mark
 
+          virtual const char *getHandler() const;
+
+          virtual Message::Methods toMethod(const char *method) const;
+          virtual const char *toString(Message::Methods method) const;
+
+          virtual MessagePtr create(
+                                    ElementPtr rootEl,
+                                    IMessageSourcePtr messageSource
+                                    );
+        };
       }
     }
   }

@@ -107,7 +107,7 @@ namespace openpeer
             const NamespaceURL &namespaceURL = (*iter).first;
             const NameValueMap &values = (*iter).second;
 
-            ElementPtr namespaceEl = IMessageHelper::createElementWithID("namespace", namespaceURL);
+            ElementPtr namespaceEl = IMessageHelper::createElementWithTextID("namespace", namespaceURL);
 
             for (NameValueMap::const_iterator valuesIter = values.begin(); valuesIter != values.end(); ++valuesIter)
             {

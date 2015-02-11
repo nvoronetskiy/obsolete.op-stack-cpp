@@ -389,6 +389,286 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark DatabaseInfo
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      const char *DatabaseInfo::toString(Dispositions disposition)
+      {
+        switch (disposition) {
+          case Disposition_None:    return "none";
+          case Disposition_Add:     return "add";
+          case Disposition_Update:  return "update";
+          case Disposition_Remove:  return "remove";
+        }
+        return "unknown";
+      }
+
+      //-----------------------------------------------------------------------
+      DatabaseInfo::Dispositions DatabaseInfo::toDisposition(const char *inStr)
+      {
+        String str(inStr);
+
+        static Dispositions dispositions[] = {
+          Disposition_Add,
+          Disposition_Update,
+          Disposition_Remove,
+          Disposition_None,
+        };
+
+        for (int index = 0; Disposition_None != dispositions[index]; ++index) {
+          if (str != toString(dispositions[index])) continue;
+          return dispositions[index];
+        }
+        return Disposition_None;
+      }
+
+      //-----------------------------------------------------------------------
+      bool DatabaseInfo::hasData() const
+      {
+        return ((Disposition_None != mDisposition) ||
+                (mDatabaseID.hasData()) ||
+                (mVersion.hasData()) ||
+                ((bool)mMetaData) ||
+                (Time() != mCreated) ||
+                (Time() != mExpires));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr DatabaseInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::DatabaseInfo");
+
+        UseServicesHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
+        UseServicesHelper::debugAppend(resultEl, "database id", mDatabaseID);
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "meta data", UseServicesHelper::toString(mMetaData));
+        UseServicesHelper::debugAppend(resultEl, "created", mCreated);
+        UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      DatabaseInfo DatabaseInfo::create(ElementPtr elem)
+      {
+        DatabaseInfo info;
+
+        if (!elem) return info;
+
+        info.mDisposition = DatabaseInfo::toDisposition(elem->getAttributeValue("disposition"));
+        info.mDatabaseID = IMessageHelper::getAttributeID(elem);
+        info.mVersion = IMessageHelper::getAttribute(elem, "version");
+
+        info.mMetaData = elem->findFirstChildElement("metaData");
+        if (info.mMetaData) {
+          info.mMetaData = info.mMetaData->clone()->toElement();
+        }
+
+        info.mCreated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
+        info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
+
+        return info;
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr DatabaseInfo::createElement() const
+      {
+        ElementPtr databaseEl = IMessageHelper::createElementWithTextID("database", mDatabaseID);
+
+        if (Disposition_None != mDisposition) {
+          IMessageHelper::setAttributeWithText(databaseEl, "disposition", toString(mDisposition));
+        }
+        if (mVersion.hasData()) {
+          IMessageHelper::setAttributeWithText(databaseEl, "version", mVersion);
+        }
+
+        if (mMetaData) {
+          if (mMetaData->getValue() != "metaData") {
+            ElementPtr metaDataEl = Element::create("metaData");
+            metaDataEl->adoptAsLastChild(mMetaData->clone());
+            databaseEl->adoptAsLastChild(metaDataEl);
+          } else {
+            databaseEl->adoptAsLastChild(mMetaData->clone());
+          }
+        }
+
+        if (Time() != mCreated) {
+          databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", UseServicesHelper::timeToString(mCreated)));
+        }
+        if (Time() != mExpires) {
+          databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
+        }
+
+        return databaseEl;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark DatabaseEntryInfo
+      #pragma mark
+
+      //---------------------------------------------------------------------
+      static Log::Params slog_DatabaseEntryInfo(const char *message)
+      {
+        return Log::Params(message, "DatabaseEntryInfo");
+      }
+
+      //-----------------------------------------------------------------------
+      const char *DatabaseEntryInfo::toString(Dispositions disposition)
+      {
+        switch (disposition) {
+          case Disposition_None:    return "none";
+          case Disposition_Add:     return "add";
+          case Disposition_Update:  return "update";
+          case Disposition_Remove:  return "remove";
+        }
+        return "unknown";
+      }
+
+      //-----------------------------------------------------------------------
+      DatabaseEntryInfo::Dispositions DatabaseEntryInfo::toDisposition(const char *inStr)
+      {
+        String str(inStr);
+
+        static Dispositions dispositions[] = {
+          Disposition_Add,
+          Disposition_Update,
+          Disposition_Remove,
+          Disposition_None,
+        };
+
+        for (int index = 0; Disposition_None != dispositions[index]; ++index) {
+          if (str != toString(dispositions[index])) continue;
+          return dispositions[index];
+        }
+        return Disposition_None;
+      }
+
+      //-----------------------------------------------------------------------
+      bool DatabaseEntryInfo::hasData() const
+      {
+        return ((Disposition_None != mDisposition) ||
+                (mEntryID.hasData()) ||
+                (0 != mVersion) ||
+                ((bool)mMetaData) ||
+                ((bool)mData) ||
+                (0 != mDataSize) ||
+                (Time() != mCreated) ||
+                (Time() != mUpdated));
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr DatabaseEntryInfo::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("message::DatabaseInfo");
+
+        UseServicesHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
+        UseServicesHelper::debugAppend(resultEl, "entry id", mEntryID);
+        UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+        UseServicesHelper::debugAppend(resultEl, "meta data", UseServicesHelper::toString(mMetaData));
+        UseServicesHelper::debugAppend(resultEl, "data", (bool)mData);
+        UseServicesHelper::debugAppend(resultEl, "size", mDataSize);
+        UseServicesHelper::debugAppend(resultEl, "created", mCreated);
+        UseServicesHelper::debugAppend(resultEl, "updated", mUpdated);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      DatabaseEntryInfo DatabaseEntryInfo::create(ElementPtr elem)
+      {
+        DatabaseEntryInfo info;
+
+        if (!elem) return info;
+
+        info.mDisposition = DatabaseEntryInfo::toDisposition(elem->getAttributeValue("disposition"));
+        info.mEntryID = IMessageHelper::getAttributeID(elem);
+
+        String versionStr = IMessageHelper::getAttribute(elem, "version");
+        try {
+          info.mVersion = Numeric<decltype(info.mVersion)>(versionStr);
+        } catch(Numeric<decltype(info.mVersion)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_DatabaseEntryInfo("failed to convert") + ZS_PARAMIZE(versionStr))
+        }
+
+        info.mMetaData = elem->findFirstChildElement("metaData");
+        if (info.mMetaData) {
+          info.mMetaData = info.mMetaData->clone()->toElement();
+        }
+
+        info.mData = elem->findFirstChildElement("data");
+        if (info.mData) {
+          info.mData = info.mData->clone()->toElement();
+        }
+
+        String dataSizeStr = IMessageHelper::getElementText(elem->findFirstChildElement("size"));
+        try {
+          info.mDataSize = Numeric<decltype(info.mDataSize)>(dataSizeStr);
+        } catch(Numeric<decltype(info.mDataSize)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_DatabaseEntryInfo("failed to convert") + ZS_PARAMIZE(dataSizeStr))
+        }
+
+        info.mCreated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
+        info.mUpdated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updated")));
+
+        return info;
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr DatabaseEntryInfo::createElement() const
+      {
+        ElementPtr entryEl = IMessageHelper::createElementWithTextID("entry", mEntryID);
+
+        if (Disposition_None != mDisposition) {
+          IMessageHelper::setAttributeWithText(entryEl, "disposition", toString(mDisposition));
+        }
+
+        if (0 != mVersion) {
+          IMessageHelper::setAttributeWithNumber(entryEl, "version", string(mVersion));
+        }
+
+        if (mMetaData) {
+          if (mMetaData->getValue() != "metaData") {
+            ElementPtr metaDataEl = Element::create("metaData");
+            metaDataEl->adoptAsLastChild(mMetaData->clone());
+            entryEl->adoptAsLastChild(metaDataEl);
+          } else {
+            entryEl->adoptAsLastChild(mMetaData->clone());
+          }
+        }
+        if (mData) {
+          if (mData->getValue() != "data") {
+            ElementPtr dataEl = Element::create("data");
+            dataEl->adoptAsLastChild(mData->clone());
+            entryEl->adoptAsLastChild(dataEl);
+          } else {
+            entryEl->adoptAsLastChild(mData->clone());
+          }
+        }
+
+        if (0 != mDataSize) {
+          entryEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("size", string(mDataSize)));
+        }
+
+        if (Time() != mCreated) {
+          entryEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("created", UseServicesHelper::timeToString(mCreated)));
+        }
+        if (Time() != mUpdated) {
+          entryEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("updated", UseServicesHelper::timeToString(mUpdated)));
+        }
+
+        return entryEl;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark message::IdentityInfo::Avatar
       #pragma mark
 
@@ -421,6 +701,12 @@ namespace openpeer
       #pragma mark
       #pragma mark message::IdentityInfo
       #pragma mark
+
+      //---------------------------------------------------------------------
+      static Log::Params slog_IdentityInfo(const char *message)
+      {
+        return Log::Params(message, "IdentityInfo");
+      }
 
       //-----------------------------------------------------------------------
       const char *IdentityInfo::toString(Dispositions disposition)
@@ -567,13 +853,18 @@ namespace openpeer
           info.mPeerFilePublic = IPeerFilePublic::loadFromElement(peerEl);
         }
 
+        String priorityStr = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("priority"));
         try {
-          info.mPriority = Numeric<WORD>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("priority")));
-        } catch(Numeric<WORD>::ValueOutOfRange &) {
+          info.mPriority = Numeric<decltype(info.mPriority)>(priorityStr);
+        } catch(Numeric<decltype(info.mPriority)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_IdentityInfo("failed to convert") + ZS_PARAMIZE(priorityStr))
         }
+
+        String weightStr = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("weight"));
         try {
-          info.mWeight = Numeric<WORD>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("weight")));
-        } catch(Numeric<WORD>::ValueOutOfRange &) {
+          info.mWeight = Numeric<decltype(info.mWeight)>(weightStr);
+        } catch(Numeric<decltype(info.mWeight)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_IdentityInfo("failed to convert") + ZS_PARAMIZE(weightStr))
         }
 
         info.mUpdated = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
@@ -591,13 +882,19 @@ namespace openpeer
             IdentityInfo::Avatar avatar;
             avatar.mName = IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("name"));
             avatar.mURL = IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("url"));
+
+            String widthStr = IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("width"));
             try {
-              avatar.mWidth = Numeric<int>(IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("width")));
-            } catch(Numeric<int>::ValueOutOfRange &) {
+              avatar.mWidth = Numeric<decltype(avatar.mWidth)>(widthStr);
+            } catch(Numeric<decltype(avatar.mWidth)>::ValueOutOfRange &) {
+              ZS_LOG_WARNING(Detail, slog_IdentityInfo("failed to convert") + ZS_PARAMIZE(widthStr))
             }
+
+            String heightStr = IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("height"));
             try {
-              avatar.mHeight = Numeric<int>(IMessageHelper::getElementTextAndDecode(avatarEl->findFirstChildElement("height")));
-            } catch(Numeric<int>::ValueOutOfRange &) {
+              avatar.mHeight = Numeric<decltype(avatar.mHeight)>(heightStr);
+            } catch(Numeric<decltype(avatar.mHeight)>::ValueOutOfRange &) {
+              ZS_LOG_WARNING(Detail, slog_IdentityInfo("failed to convert") + ZS_PARAMIZE(heightStr))
             }
 
             if (avatar.hasData()) {
@@ -729,6 +1026,12 @@ namespace openpeer
       #pragma mark message::LockboxInfo
       #pragma mark
 
+      //---------------------------------------------------------------------
+      static Log::Params slog_LockboxInfo(const char *message)
+      {
+        return Log::Params(message, "LockboxInfo");
+      }
+
       //-----------------------------------------------------------------------
       bool LockboxInfo::hasData() const
       {
@@ -832,9 +1135,11 @@ namespace openpeer
         info.mKeyHash = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("keyHash"));
         info.mToken = Token::create(elem->findFirstChildElement("token"));
 
+        String resetStr = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reset"));
         try {
-          info.mResetFlag = Numeric<bool>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("reset")));
-        } catch(Numeric<bool>::ValueOutOfRange &) {
+          info.mResetFlag = Numeric<decltype(info.mResetFlag)>();
+        } catch(Numeric<decltype(info.mResetFlag)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_LockboxInfo("failed to convert") + ZS_PARAMIZE(resetStr))
         }
 
         return info;
@@ -848,6 +1153,12 @@ namespace openpeer
       #pragma mark
       #pragma mark message::PushMessageInfo
       #pragma mark
+
+      //---------------------------------------------------------------------
+      static Log::Params slog_PushMessageInfo(const char *message)
+      {
+        return Log::Params(message, "PushMessageInfo");
+      }
 
       //-----------------------------------------------------------------------
       PushMessageInfo::Dispositions PushMessageInfo::toDisposition(const char *disposition)
@@ -1168,7 +1479,7 @@ namespace openpeer
                   ElementPtr errorEl = uriInfo.mErrorReason.hasData() ? IMessageHelper::createElementWithTextAndJSONEncode("error", uriInfo.mErrorReason) : Element::create("error");
 
                   if (0 != uriInfo.mErrorCode) {
-                    errorEl->setAttribute("id", string(uriInfo.mErrorCode));
+                    errorEl->setAttribute("id", string(uriInfo.mErrorCode), false);
                   }
 
                   detailEl->adoptAsLastChild(errorEl);
@@ -1210,9 +1521,11 @@ namespace openpeer
 
         info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
 
+        String channelIDStr = IMessageHelper::getElementText(elem->findFirstChildElement("channel"));
         try {
-          info.mChannelID = Numeric<decltype(info.mChannelID)>(IMessageHelper::getElementText(elem->findFirstChildElement("channel")));
+          info.mChannelID = Numeric<decltype(info.mChannelID)>(channelIDStr);
         } catch(Numeric<decltype(info.mChannelID)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushMessageInfo("failed to convert") + ZS_PARAMIZE(channelIDStr))
         }
 
         info.mTo = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("to"));
@@ -1263,13 +1576,18 @@ namespace openpeer
         info.mSent = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sent")));
         info.mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
 
+        String lengthStr = IMessageHelper::getElementText(elem->findFirstChildElement("length"));
         try {
-          info.mLength = Numeric<decltype(info.mLength)>(IMessageHelper::getElementText(elem->findFirstChildElement("length")));
+          info.mLength = Numeric<decltype(info.mLength)>();
         } catch(Numeric<decltype(info.mLength)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushMessageInfo("failed to convert") + ZS_PARAMIZE(lengthStr))
         }
+
+        String remainingStr = IMessageHelper::getElementText(elem->findFirstChildElement("remaining"));
         try {
-          info.mRemaining = Numeric<decltype(info.mRemaining)>(IMessageHelper::getElementText(elem->findFirstChildElement("remaining")));
+          info.mRemaining = Numeric<decltype(info.mRemaining)>();
         } catch(Numeric<decltype(info.mRemaining)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushMessageInfo("failed to convert") + ZS_PARAMIZE(remainingStr))
         }
 
         ElementPtr foldersEl = elem->findFirstChildElement("folders");
@@ -1313,9 +1631,11 @@ namespace openpeer
                 ElementPtr errorEl = detailEl->findFirstChildElement("error");
 
                 if (errorEl) {
+                  String errorCodeStr = IMessageHelper::getAttributeID(errorEl);
                   try {
-                    uriInfo.mErrorCode = Numeric<decltype(uriInfo.mErrorCode)>(IMessageHelper::getAttributeID(errorEl));
+                    uriInfo.mErrorCode = Numeric<decltype(uriInfo.mErrorCode)>(errorCodeStr);
                   } catch(Numeric<decltype(uriInfo.mErrorCode)>::ValueOutOfRange &) {
+                    ZS_LOG_WARNING(Detail, slog_PushMessageInfo("failed to convert") + ZS_PARAMIZE(errorCodeStr))
                   }
                   uriInfo.mErrorReason = IMessageHelper::getElementTextAndDecode(errorEl);
                 }
@@ -1560,6 +1880,12 @@ namespace openpeer
       #pragma mark message::PushMessageFolderInfo
       #pragma mark
 
+      //---------------------------------------------------------------------
+      static Log::Params slog_PushMessageFolderInfo(const char *message)
+      {
+        return Log::Params(message, "PushMessageFolderInfo");
+      }
+
       //-----------------------------------------------------------------------
       const char *PushMessageFolderInfo::toString(Dispositions disposition)
       {
@@ -1642,13 +1968,18 @@ namespace openpeer
         info.mRenamed = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("rename"));
         info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
 
+        String unreadStr = IMessageHelper::getElementText(elem->findFirstChildElement("unread"));
         try {
-          info.mUnread = Numeric<decltype(info.mUnread)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
+          info.mUnread = Numeric<decltype(info.mUnread)>(unreadStr);
         } catch (Numeric<decltype(info.mUnread)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushMessageFolderInfo("failed to convert") + ZS_PARAMIZE(unreadStr))
         }
+
+        String totalStr = IMessageHelper::getElementText(elem->findFirstChildElement("unread"));
         try {
-          info.mTotal = Numeric<decltype(info.mTotal)>(IMessageHelper::getElementText(elem->findFirstChildElement("unread")));
+          info.mTotal = Numeric<decltype(info.mTotal)>(totalStr);
         } catch (Numeric<decltype(info.mTotal)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushMessageFolderInfo("failed to convert") + ZS_PARAMIZE(totalStr))
         }
 
         info.mUpdateNext = UseServicesHelper::stringToTime(IMessageHelper::getElementText(elem->findFirstChildElement("updateNext")));
@@ -1696,6 +2027,12 @@ namespace openpeer
       #pragma mark
       #pragma mark message::PushSubscriptionInfo
       #pragma mark
+
+      //---------------------------------------------------------------------
+      static Log::Params slog_PushSubscriptionInfo(const char *message)
+      {
+        return Log::Params(message, "PushSubscriptionInfo");
+      }
 
       //-----------------------------------------------------------------------
       bool PushSubscriptionInfo::hasData() const
@@ -1847,9 +2184,11 @@ namespace openpeer
 
         info.mMapped = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("mapped"));
 
+        String unreadBadgeStr = IMessageHelper::getElementText(elem->findFirstChildElement("unreadBadge"));
         try {
-          info.mUnreadBadge = Numeric<decltype(info.mUnreadBadge)>(IMessageHelper::getElementText(elem->findFirstChildElement("unreadBadge")));
+          info.mUnreadBadge = Numeric<decltype(info.mUnreadBadge)>(unreadBadgeStr);
         } catch(Numeric<decltype(info.mUnreadBadge)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushSubscriptionInfo("failed to convert") + ZS_PARAMIZE(unreadBadgeStr))
         }
 
         info.mSound = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("sound"));
@@ -1858,9 +2197,11 @@ namespace openpeer
 
         info.mLaunchImage = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("launchImage"));
 
+        String priorityStr = IMessageHelper::getElementText(elem->findFirstChildElement("priority"));
         try {
-          info.mPriority = Numeric<decltype(info.mPriority)>(IMessageHelper::getElementText(elem->findFirstChildElement("priority")));
+          info.mPriority = Numeric<decltype(info.mPriority)>(priorityStr);
         } catch(Numeric<decltype(info.mPriority)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_PushSubscriptionInfo("failed to convert") + ZS_PARAMIZE(priorityStr))
         }
 
         ElementPtr valuesEl = elem->findFirstChildElement("values");
@@ -1936,7 +2277,7 @@ namespace openpeer
           namespaceEl->setAttribute("id", mURL);
         }
         if (Time() != mLastUpdated) {
-          namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(mLastUpdated));
+          namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(mLastUpdated), false);
         }
 
         return namespaceEl;
@@ -2028,7 +2369,7 @@ namespace openpeer
       {
         ElementPtr namespaceGrantChallengeEl = Element::create("namespaceGrantChallenge");
 
-        IMessageHelper::setAttributeID(namespaceGrantChallengeEl, mID);
+        IMessageHelper::setAttributeIDWithText(namespaceGrantChallengeEl, mID);
         if (mName.hasData()) {
           namespaceGrantChallengeEl->adoptAsLastChild(IMessageHelper::createElementWithText("name", mName));
         }
@@ -2055,9 +2396,9 @@ namespace openpeer
             if (!namespaceInfo.hasData()) {
               continue;
             }
-            ElementPtr namespaceEl = IMessageHelper::createElementWithID("namespace", url);
+            ElementPtr namespaceEl = IMessageHelper::createElementWithTextID("namespace", url);
             if (namespaceInfo.mLastUpdated != Time()) {
-              namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(namespaceInfo.mLastUpdated));
+              namespaceEl->setAttribute("updated", UseServicesHelper::timeToString(namespaceInfo.mLastUpdated), false);
             }
 
             namespacesEl->adoptAsLastChild(namespaceEl);
@@ -2166,6 +2507,12 @@ namespace openpeer
       #pragma mark message::RolodexInfo
       #pragma mark
 
+      //---------------------------------------------------------------------
+      static Log::Params slog_RolodexInfo(const char *message)
+      {
+        return Log::Params(message, "RolodexInfo");
+      }
+
       //-----------------------------------------------------------------------
       bool RolodexInfo::hasData() const
       {
@@ -2223,9 +2570,11 @@ namespace openpeer
         info.mVersion = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("version"));
         info.mUpdateNext = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("updateNext")));
 
+        String refreshFlagStr = IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("refresh"));
         try {
-          info.mRefreshFlag = Numeric<bool>(IMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("refresh")));
-        } catch(Numeric<bool>::ValueOutOfRange &) {
+          info.mRefreshFlag = Numeric<decltype(info.mRefreshFlag)>(refreshFlagStr);
+        } catch(Numeric<decltype(info.mRefreshFlag)>::ValueOutOfRange &) {
+          ZS_LOG_WARNING(Detail, slog_RolodexInfo("failed to convert") + ZS_PARAMIZE(refreshFlagStr))
         }
 
         return info;

@@ -121,7 +121,7 @@ namespace openpeer
           ElementPtr sessionProofEl = Element::create("sessionProof");
 
           if (hasAttribute(AttributeType_FinderID)) {
-            sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithID("finder", mFinderID));
+            sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("finder", mFinderID));
           }
 
           sessionProofEl->adoptAsLastChild(IMessageHelper::createElementWithText("nonce", IHelper::convertToHex(*IHelper::random(16))));

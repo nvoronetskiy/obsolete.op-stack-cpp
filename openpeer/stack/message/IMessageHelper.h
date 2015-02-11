@@ -47,7 +47,8 @@ namespace openpeer
         static Message::MessageTypes getMessageType(ElementPtr root);
 
         static String getAttributeID(ElementPtr node);
-        static void setAttributeID(ElementPtr node, const String &value);
+        static void setAttributeIDWithText(ElementPtr node, const String &value);
+        static void setAttributeIDWithNumber(ElementPtr node, const String &value);
 
         static Time getAttributeEpoch(ElementPtr node);
         static void setAttributeTimestamp(ElementPtr node, const Time &value);
@@ -57,11 +58,17 @@ namespace openpeer
                                    const String &attributeName
                                    );
 
-        static void setAttribute(
-                                 ElementPtr node,
-                                 const String &attrName,
-                                 const String &value
-                                 );
+        static void setAttributeWithText(
+                                         ElementPtr node,
+                                         const String &attrName,
+                                         const String &value
+                                         );
+
+        static void setAttributeWithNumber(
+                                           ElementPtr node,
+                                           const String &attrName,
+                                           const String &value
+                                           );
 
         static ElementPtr createElement(const String &elName);
 
@@ -81,10 +88,14 @@ namespace openpeer
                                                              const String &elName,
                                                              const String &textVal
                                                              );
-        static ElementPtr createElementWithID(
-                                              const String &elName,
-                                              const String &idValue
-                                              );
+        static ElementPtr createElementWithTextID(
+                                                  const String &elName,
+                                                  const String &idValue
+                                                  );
+        static ElementPtr createElementWithNumberID(
+                                                     const String &elName,
+                                                     const String &idValue
+                                                     );
 
         static TextPtr createText(const String &textVal);
 

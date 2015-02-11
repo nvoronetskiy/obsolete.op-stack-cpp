@@ -137,6 +137,85 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark DatabaseInfo
+      #pragma mark
+
+      struct DatabaseInfo
+      {
+        enum Dispositions
+        {
+          Disposition_None = 0,
+          Disposition_Add = 1,
+          Disposition_Update = 2,
+          Disposition_Remove = 3,
+        };
+
+        static const char *toString(Dispositions disposition);
+        static Dispositions toDisposition(const char *str);
+
+        Dispositions mDisposition {Disposition_None};
+        String mDatabaseID;
+        String mVersion;
+        ElementPtr mMetaData;
+        Time mCreated;
+        Time mExpires;
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        static DatabaseInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<DatabaseInfo>, DatabaseInfoList)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark DatabaseEntryInfo
+      #pragma mark
+
+      struct DatabaseEntryInfo
+      {
+        enum Dispositions
+        {
+          Disposition_None = 0,
+          Disposition_Add = 1,
+          Disposition_Update = 2,
+          Disposition_Remove = 3,
+        };
+
+        static const char *toString(Dispositions disposition);
+        static Dispositions toDisposition(const char *str);
+
+        Dispositions mDisposition {Disposition_None};
+        String mEntryID;
+        UINT mVersion {};
+
+        ElementPtr mMetaData;
+
+        ElementPtr mData;
+        size_t mDataSize {};
+
+        Time mCreated;
+        Time mUpdated;
+
+        bool hasData() const;
+        ElementPtr toDebug() const;
+
+        static DatabaseEntryInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
+      };
+
+      ZS_DECLARE_TYPEDEF_PTR(std::list<DatabaseEntryInfo>, DatabaseEntryInfoList)
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IdentityInfo
       #pragma mark
 
@@ -769,6 +848,19 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(RolodexNamespaceGrantChallengeValidateResult)
         ZS_DECLARE_CLASS_PTR(RolodexContactsGetRequest)
         ZS_DECLARE_CLASS_PTR(RolodexContactsGetResult)
+      }
+
+      namespace p2p_database
+      {
+        ZS_DECLARE_CLASS_PTR(MessageFactoryP2PDatabase)
+        ZS_DECLARE_CLASS_PTR(ListSubscribeRequest)
+        ZS_DECLARE_CLASS_PTR(ListSubscribeResult)
+        ZS_DECLARE_CLASS_PTR(ListSubscribeNotify)
+        ZS_DECLARE_CLASS_PTR(SubscribeRequest)
+        ZS_DECLARE_CLASS_PTR(SubscribeResult)
+        ZS_DECLARE_CLASS_PTR(SubscribeNotify)
+        ZS_DECLARE_CLASS_PTR(DataGetRequest)
+        ZS_DECLARE_CLASS_PTR(DataGetResult)
       }
 
       namespace peer

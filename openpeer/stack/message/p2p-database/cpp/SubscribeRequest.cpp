@@ -29,20 +29,12 @@
 
  */
 
-#include <openpeer/stack/message/push-mailbox/AccessRequest.h>
+#include <openpeer/stack/message/p2p-database/SubscribeRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
-#include <openpeer/stack/internal/stack_Stack.h>
-#include <openpeer/stack/IPeerFiles.h>
-#include <openpeer/stack/IPeerFilePublic.h>
-
-#include <openpeer/services/IHelper.h>
-
-//#include <zsLib/Stringize.h>
-//#include <zsLib/helpers.h>
+#include <zsLib/Log.h>
 #include <zsLib/XML.h>
-
-#define OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS ((60*60)*24)
+#include <zsLib/Numeric.h>
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -52,81 +44,97 @@ namespace openpeer
   {
     namespace message
     {
-      using services::IHelper;
-
-      namespace push_mailbox
+      namespace p2p_database
       {
-        using internal::MessageHelper;
-
-        typedef stack::internal::IStackForInternal UseStack;
-
-        using zsLib::Seconds;
+        using zsLib::Numeric;
 
         //---------------------------------------------------------------------
         static Log::Params slog(const char *message)
         {
-          return Log::Params(message, "AccessRequest");
+          return Log::Params(message, "SubscribeRequest");
         }
 
         //---------------------------------------------------------------------
-        AccessRequestPtr AccessRequest::convert(MessagePtr message)
+        SubscribeRequestPtr SubscribeRequest::convert(MessagePtr message)
         {
-          return ZS_DYNAMIC_PTR_CAST(AccessRequest, message);
+          return ZS_DYNAMIC_PTR_CAST(SubscribeRequest, message);
         }
 
         //---------------------------------------------------------------------
-        AccessRequest::AccessRequest()
+        SubscribeRequest::SubscribeRequest()
         {
+          mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        AccessRequestPtr AccessRequest::create()
+        SubscribeRequestPtr SubscribeRequest::create()
         {
-          AccessRequestPtr ret(new AccessRequest);
+          SubscribeRequestPtr ret(new SubscribeRequest);
           return ret;
         }
 
         //---------------------------------------------------------------------
-        bool AccessRequest::hasAttribute(AttributeTypes type) const
+        SubscribeRequestPtr SubscribeRequest::create(
+                                                     ElementPtr rootEl,
+                                                     IMessageSourcePtr messageSource
+                                                     )
         {
-          switch (type)
-          {
-            case AttributeType_LockboxInfo:       return mLockboxInfo.hasData();
-            case AttributeType_AgentInfo:         return mAgentInfo.hasData();
-            case AttributeType_GrantID:           return mGrantID.hasData();
-            default:                              break;
+          SubscribeRequestPtr ret(new SubscribeRequest);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
+
+          ElementPtr databaseEl = rootEl->findFirstChildElement("database");
+          if (databaseEl) {
+            ret->mDatabaseID = IMessageHelper::getAttribute(databaseEl, "id");
+            ret->mVersion = IMessageHelper::getAttribute(databaseEl, "version");
+
+            String dataStr = IMessageHelper::getElementText(databaseEl->findFirstChildElement("data"));
+
+            try {
+              ret->mData = Numeric<decltype(ret->mData)>(dataStr);
+            } catch(Numeric<decltype(ret->mData)>::ValueOutOfRange &) {
+              ZS_LOG_WARNING(Detail, slog("failed to convert") + ZS_PARAMIZE(dataStr))
+            }
           }
-          return false;
+
+          return ret;
         }
 
         //---------------------------------------------------------------------
-        DocumentPtr AccessRequest::encode()
+        DocumentPtr SubscribeRequest::encode()
         {
           DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
           ElementPtr rootEl = ret->getFirstChildElement();
 
-          LockboxInfo lockboxInfo;
+          ElementPtr databaseEl = Element::create("database");
 
-          lockboxInfo.mToken = mLockboxInfo.mToken.createProof("push-mailbox-access", Seconds(OPENPEER_STACK_MESSAGE_PUSH_MAILBOX_ACCESS_REQUEST_EXPIRES_TIME_IN_SECONDS));
-
-          if (lockboxInfo.hasData()) {
-            rootEl->adoptAsLastChild(lockboxInfo.createElement());
+          if (hasAttribute(AttributeType_DatabaseID)) {
+            databaseEl->setAttribute("id", mDatabaseID);
+          }
+          if (hasAttribute(AttributeType_DatabaseVersion)) {
+            databaseEl->setAttribute("version", mVersion);
+          }
+          if (hasAttribute(AttributeType_DatabaseData)) {
+            databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("data", "true"));
           }
 
-          AgentInfo agentInfo = UseStack::agentInfo();
-          agentInfo.mergeFrom(mAgentInfo, true);
-
-          if (agentInfo.hasData()) {
-            rootEl->adoptAsLastChild(agentInfo.createElement());
-          }
-          
-          if (mGrantID.hasData()) {
-            rootEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("grant", mGrantID));
+          if ((databaseEl->hasChildren()) ||
+              (databaseEl->hasAttributes())) {
+            rootEl->adoptAsLastChild(databaseEl);
           }
 
           return ret;
         }
 
+        //---------------------------------------------------------------------
+        bool SubscribeRequest::hasAttribute(AttributeTypes type) const
+        {
+          switch (type) {
+            case AttributeType_DatabaseID:        return mDatabaseID.hasData();
+            case AttributeType_DatabaseVersion:   return mVersion.hasData();
+            case AttributeType_DatabaseData:      return mData;
+          }
+          return false;
+        }
 
       }
     }

@@ -43,6 +43,7 @@ typedef openpeer::services::ILogger ILogger;
 void doTestSetup();
 void doTestCache();
 void doTestLocationDB();
+void doTestP2PDatabaseMessage();
 void doTestPushMailboxDB();
 void doTestStack();
 void doTestLockboxSession();
@@ -127,6 +128,7 @@ namespace Testing
     doTestSetup();
     doTestCache();
     doTestLocationDB();
+    doTestP2PDatabaseMessage();
     doTestPushMailboxDB();
     doTestStack();
 //    doTestLockboxSession();

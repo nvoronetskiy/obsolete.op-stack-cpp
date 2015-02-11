@@ -1950,7 +1950,7 @@ namespace openpeer
           UseServiceIdentitySessionPtr &pendingRemovalIdentity = (*pendingRemovalCurrentIter).second;
           IdentityInfo pendingRemovalIdentityInfo = pendingRemovalIdentity->getIdentityInfo();
 
-          ZS_LOG_DEBUG(log("checking if identity to be removed is in the udpate list") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
+          ZS_LOG_DEBUG(log("checking if identity to be removed is in the update list") + UseServiceIdentitySession::toDebug(pendingRemovalIdentity))
 
           for (ServiceIdentitySessionMap::iterator pendingUpdateIter = mPendingUpdateIdentities.begin(); pendingUpdateIter != mPendingUpdateIdentities.end(); )
           {

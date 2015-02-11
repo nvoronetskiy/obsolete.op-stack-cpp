@@ -464,7 +464,7 @@ namespace openpeer
             for (ExcludedLocationList::const_iterator it = mExcludedLocations.begin(); it != mExcludedLocations.end(); ++it)
             {
               const String &location = (*it);
-              locationsEl->adoptAsLastChild(IMessageHelper::createElementWithID("location", location));
+              locationsEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("location", location));
             }
           }
 

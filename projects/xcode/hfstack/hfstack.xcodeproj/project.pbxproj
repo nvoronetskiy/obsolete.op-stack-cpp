@@ -181,6 +181,19 @@
 		00FA3FAA1A87058A00C7C32B /* stack_LocationSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FA91A87058A00C7C32B /* stack_LocationSubscription.cpp */; };
 		00FA3FAE1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FAD1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp */; };
 		00FA3FBA1A8837F700C7C32B /* stack_LocationDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FB91A8837F700C7C32B /* stack_LocationDatabase.cpp */; };
+		00FA3FD41A88F81A00C7C32B /* MessageFactoryP2PDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FC01A88F81A00C7C32B /* MessageFactoryP2PDatabase.cpp */; };
+		00FA3FD71A88F81A00C7C32B /* ListSubscribeRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FC31A88F81A00C7C32B /* ListSubscribeRequest.cpp */; };
+		00FA3FD81A88F81A00C7C32B /* ListSubscribeResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FC41A88F81A00C7C32B /* ListSubscribeResult.cpp */; };
+		00FA3FD91A88F81A00C7C32B /* ListSubscribeNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FC51A88F81A00C7C32B /* ListSubscribeNotify.cpp */; };
+		00FA3FDE1A88F81A00C7C32B /* MessageFactoryP2PDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = 00FA3FCA1A88F81A00C7C32B /* MessageFactoryP2PDatabase.h */; };
+		00FA3FE11A88F81A00C7C32B /* ListSubscribeRequest.h in Headers */ = {isa = PBXBuildFile; fileRef = 00FA3FCD1A88F81A00C7C32B /* ListSubscribeRequest.h */; };
+		00FA3FE21A88F81A00C7C32B /* ListSubscribeResult.h in Headers */ = {isa = PBXBuildFile; fileRef = 00FA3FCE1A88F81A00C7C32B /* ListSubscribeResult.h */; };
+		00FA3FE31A88F81A00C7C32B /* ListSubscribeNotify.h in Headers */ = {isa = PBXBuildFile; fileRef = 00FA3FCF1A88F81A00C7C32B /* ListSubscribeNotify.h */; };
+		00FA3FE91A89850700C7C32B /* SubscribeNotify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FE81A89850700C7C32B /* SubscribeNotify.cpp */; };
+		00FA3FEC1A8986E200C7C32B /* SubscribeRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FEB1A8986E200C7C32B /* SubscribeRequest.cpp */; };
+		00FA3FEF1A8992CD00C7C32B /* SubscribeResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FEE1A8992CD00C7C32B /* SubscribeResult.cpp */; };
+		00FA3FF21A89937300C7C32B /* DataGetRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FF11A89937300C7C32B /* DataGetRequest.cpp */; };
+		00FA3FF51A8996AF00C7C32B /* DataGetResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FF41A8996AF00C7C32B /* DataGetResult.cpp */; };
 		00FF147717A9DC1D00F5DEB8 /* stack_FinderConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */; };
 /* End PBXBuildFile section */
 
@@ -582,6 +595,24 @@
 		00FA3FBB1A88380700C7C32B /* stack_LocationDatabase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabase.h; sourceTree = "<group>"; };
 		00FA3FBC1A883E3900C7C32B /* stack_LocationDatabaseTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabaseTearAway.h; sourceTree = "<group>"; };
 		00FA3FBD1A8847FB00C7C32B /* stack_LocationDatabaseLocalTearAway.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_LocationDatabaseLocalTearAway.h; sourceTree = "<group>"; };
+		00FA3FC01A88F81A00C7C32B /* MessageFactoryP2PDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MessageFactoryP2PDatabase.cpp; sourceTree = "<group>"; };
+		00FA3FC31A88F81A00C7C32B /* ListSubscribeRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListSubscribeRequest.cpp; sourceTree = "<group>"; };
+		00FA3FC41A88F81A00C7C32B /* ListSubscribeResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListSubscribeResult.cpp; sourceTree = "<group>"; };
+		00FA3FC51A88F81A00C7C32B /* ListSubscribeNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ListSubscribeNotify.cpp; sourceTree = "<group>"; };
+		00FA3FCA1A88F81A00C7C32B /* MessageFactoryP2PDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageFactoryP2PDatabase.h; sourceTree = "<group>"; };
+		00FA3FCD1A88F81A00C7C32B /* ListSubscribeRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListSubscribeRequest.h; sourceTree = "<group>"; };
+		00FA3FCE1A88F81A00C7C32B /* ListSubscribeResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListSubscribeResult.h; sourceTree = "<group>"; };
+		00FA3FCF1A88F81A00C7C32B /* ListSubscribeNotify.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListSubscribeNotify.h; sourceTree = "<group>"; };
+		00FA3FE81A89850700C7C32B /* SubscribeNotify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SubscribeNotify.cpp; sourceTree = "<group>"; };
+		00FA3FEA1A89851500C7C32B /* SubscribeNotify.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SubscribeNotify.h; sourceTree = "<group>"; };
+		00FA3FEB1A8986E200C7C32B /* SubscribeRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SubscribeRequest.cpp; sourceTree = "<group>"; };
+		00FA3FED1A8986ED00C7C32B /* SubscribeRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SubscribeRequest.h; sourceTree = "<group>"; };
+		00FA3FEE1A8992CD00C7C32B /* SubscribeResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SubscribeResult.cpp; sourceTree = "<group>"; };
+		00FA3FF01A8992DC00C7C32B /* SubscribeResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SubscribeResult.h; sourceTree = "<group>"; };
+		00FA3FF11A89937300C7C32B /* DataGetRequest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataGetRequest.cpp; sourceTree = "<group>"; };
+		00FA3FF31A89938F00C7C32B /* DataGetRequest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DataGetRequest.h; sourceTree = "<group>"; };
+		00FA3FF41A8996AF00C7C32B /* DataGetResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataGetResult.cpp; sourceTree = "<group>"; };
+		00FA3FF61A8996BE00C7C32B /* DataGetResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DataGetResult.h; sourceTree = "<group>"; };
 		00FF147517A9DB6400F5DEB8 /* stack_FinderConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack_FinderConnection.h; sourceTree = "<group>"; };
 		00FF147617A9DC1D00F5DEB8 /* stack_FinderConnection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stack_FinderConnection.cpp; sourceTree = "<group>"; };
 		00FF147A17AAD3ED00F5DEB8 /* stack_IFinderConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stack_IFinderConnection.h; sourceTree = "<group>"; };
@@ -850,6 +881,7 @@
 				00AF4C9617179C9200DCA0A8 /* identity-lockbox */,
 				0063B72D16CA8E8A00E6DB4D /* identity-lookup */,
 				00384BF517596D8800113845 /* namespace-grant */,
+				00FA3FBE1A88F81A00C7C32B /* p2p-database */,
 				00AF4C9A17179C9200DCA0A8 /* peer */,
 				0063B74616CA8E8B00E6DB4D /* peer-common */,
 				0063B77A16CA8E8B00E6DB4D /* peer-finder */,
@@ -1293,6 +1325,39 @@
 			path = cpp;
 			sourceTree = "<group>";
 		};
+		00FA3FBE1A88F81A00C7C32B /* p2p-database */ = {
+			isa = PBXGroup;
+			children = (
+				00FA3FBF1A88F81A00C7C32B /* cpp */,
+				00FA3FCA1A88F81A00C7C32B /* MessageFactoryP2PDatabase.h */,
+				00FA3FCD1A88F81A00C7C32B /* ListSubscribeRequest.h */,
+				00FA3FCE1A88F81A00C7C32B /* ListSubscribeResult.h */,
+				00FA3FCF1A88F81A00C7C32B /* ListSubscribeNotify.h */,
+				00FA3FED1A8986ED00C7C32B /* SubscribeRequest.h */,
+				00FA3FF01A8992DC00C7C32B /* SubscribeResult.h */,
+				00FA3FEA1A89851500C7C32B /* SubscribeNotify.h */,
+				00FA3FF31A89938F00C7C32B /* DataGetRequest.h */,
+				00FA3FF61A8996BE00C7C32B /* DataGetResult.h */,
+			);
+			path = "p2p-database";
+			sourceTree = "<group>";
+		};
+		00FA3FBF1A88F81A00C7C32B /* cpp */ = {
+			isa = PBXGroup;
+			children = (
+				00FA3FC01A88F81A00C7C32B /* MessageFactoryP2PDatabase.cpp */,
+				00FA3FC31A88F81A00C7C32B /* ListSubscribeRequest.cpp */,
+				00FA3FC41A88F81A00C7C32B /* ListSubscribeResult.cpp */,
+				00FA3FC51A88F81A00C7C32B /* ListSubscribeNotify.cpp */,
+				00FA3FEB1A8986E200C7C32B /* SubscribeRequest.cpp */,
+				00FA3FEE1A8992CD00C7C32B /* SubscribeResult.cpp */,
+				00FA3FE81A89850700C7C32B /* SubscribeNotify.cpp */,
+				00FA3FF11A89937300C7C32B /* DataGetRequest.cpp */,
+				00FA3FF41A8996AF00C7C32B /* DataGetResult.cpp */,
+			);
+			path = cpp;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -1300,6 +1365,10 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00FA3FDE1A88F81A00C7C32B /* MessageFactoryP2PDatabase.h in Headers */,
+				00FA3FE31A88F81A00C7C32B /* ListSubscribeNotify.h in Headers */,
+				00FA3FE21A88F81A00C7C32B /* ListSubscribeResult.h in Headers */,
+				00FA3FE11A88F81A00C7C32B /* ListSubscribeRequest.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1373,6 +1442,7 @@
 				00FA3FAE1A87C20400C7C32B /* stack_LocationDatabasesManager.cpp in Sources */,
 				00D561541948A8C400CA65A6 /* ServersGetResult.cpp in Sources */,
 				00D561171948A7F200CA65A6 /* MessagesDataGetRequest.cpp in Sources */,
+				00FA3FEC1A8986E200C7C32B /* SubscribeRequest.cpp in Sources */,
 				0063B85416CA8E8B00E6DB4D /* stack_MessageIncoming.cpp in Sources */,
 				0063B85516CA8E8B00E6DB4D /* stack_MessageMonitor.cpp in Sources */,
 				0063B85616CA8E8B00E6DB4D /* stack_MessageMonitorManager.cpp in Sources */,
@@ -1385,6 +1455,7 @@
 				0063B85816CA8E8B00E6DB4D /* stack_PeerFilePrivate.cpp in Sources */,
 				009B5F0818D5F06600314F02 /* stack_PublicationRepository_Publisher.cpp in Sources */,
 				0063B85916CA8E8B00E6DB4D /* stack_PeerFilePublic.cpp in Sources */,
+				00FA3FD91A88F81A00C7C32B /* ListSubscribeNotify.cpp in Sources */,
 				0063B85A16CA8E8B00E6DB4D /* stack_PeerFiles.cpp in Sources */,
 				00D561181948A7F200CA65A6 /* MessagesDataGetResult.cpp in Sources */,
 				00D561531948A8C400CA65A6 /* ServersGetRequest.cpp in Sources */,
@@ -1423,6 +1494,7 @@
 				0063B8B416CA8E8B00E6DB4D /* stack_message_MessageRequestUnknown.cpp in Sources */,
 				002FCF5C19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncNotifier.cpp in Sources */,
 				0063B8B516CA8E8B00E6DB4D /* stack_message_MessageResult.cpp in Sources */,
+				00FA3FEF1A8992CD00C7C32B /* SubscribeResult.cpp in Sources */,
 				0063B8B616CA8E8B00E6DB4D /* stack_message_messages.cpp in Sources */,
 				0063B8B916CA8E8B00E6DB4D /* IdentityAccessWindowRequest.cpp in Sources */,
 				0063B8BA16CA8E8B00E6DB4D /* IdentityAccessCompleteNotify.cpp in Sources */,
@@ -1454,17 +1526,21 @@
 				0063B91916CA8E8B00E6DB4D /* SessionDeleteRequest.cpp in Sources */,
 				00D561461948A87700CA65A6 /* IdentityAccessNamespaceGrantChallengeValidateRequest.cpp in Sources */,
 				0063B91A16CA8E8B00E6DB4D /* SessionDeleteResult.cpp in Sources */,
+				00FA3FD71A88F81A00C7C32B /* ListSubscribeRequest.cpp in Sources */,
 				00FA3FAA1A87058A00C7C32B /* stack_LocationSubscription.cpp in Sources */,
 				001BBA01183B996600F14A64 /* stack_javascript.cpp in Sources */,
 				00D561201948A7F200CA65A6 /* PeerValidateResult.cpp in Sources */,
 				002FCF5A19A9162800F360CE /* stack_ServicePushMailboxSession_AsyncDecrypt.cpp in Sources */,
+				00FA3FF21A89937300C7C32B /* DataGetRequest.cpp in Sources */,
 				00FA3FA61A8701E900C7C32B /* stack_LocationDatabases.cpp in Sources */,
 				0063B91B16CA8E8B00E6DB4D /* SessionKeepAliveRequest.cpp in Sources */,
 				0063B91C16CA8E8B00E6DB4D /* SessionKeepAliveResult.cpp in Sources */,
+				00FA3FF51A8996AF00C7C32B /* DataGetResult.cpp in Sources */,
 				0063B92716CA8E8B00E6DB4D /* MessageFactoryPeerSalt.cpp in Sources */,
 				00D5613E1948A81800CA65A6 /* PeerFilesGetRequest.cpp in Sources */,
 				00D561221948A7F200CA65A6 /* RegisterPushResult.cpp in Sources */,
 				0063B92816CA8E8B00E6DB4D /* SignedSaltGetRequest.cpp in Sources */,
+				00FA3FD41A88F81A00C7C32B /* MessageFactoryP2PDatabase.cpp in Sources */,
 				0063B92916CA8E8B00E6DB4D /* SignedSaltGetResult.cpp in Sources */,
 				0063B92D16CA8E8B00E6DB4D /* MessageFactoryPeerToPeer.cpp in Sources */,
 				0063B92E16CA8E8B00E6DB4D /* PeerIdentifyRequest.cpp in Sources */,
@@ -1483,6 +1559,7 @@
 				00AF4CB3171CA83C00DCA0A8 /* IdentityLookupUpdateResult.cpp in Sources */,
 				00AF4CB8171CCA2300DCA0A8 /* LockboxAccessRequest.cpp in Sources */,
 				00FA3FBA1A8837F700C7C32B /* stack_LocationDatabase.cpp in Sources */,
+				00FA3FD81A88F81A00C7C32B /* ListSubscribeResult.cpp in Sources */,
 				00AF4CB9171CCA2300DCA0A8 /* LockboxAccessResult.cpp in Sources */,
 				00AF4CBD171CE3D700DCA0A8 /* LockboxIdentitiesUpdateRequest.cpp in Sources */,
 				009B5F0418D5F06600314F02 /* stack_PublicationRepository_Fetcher.cpp in Sources */,
@@ -1492,6 +1569,7 @@
 				00D561211948A7F200CA65A6 /* RegisterPushRequest.cpp in Sources */,
 				00AF4DDF171DFACB00DCA0A8 /* LockboxContentGetResult.cpp in Sources */,
 				00AF4DE4171E2EE500DCA0A8 /* LockboxContentSetRequest.cpp in Sources */,
+				00FA3FE91A89850700C7C32B /* SubscribeNotify.cpp in Sources */,
 				00D5610E1948A7F200CA65A6 /* FolderGetRequest.cpp in Sources */,
 				00AF4DE5171E2EE500DCA0A8 /* LockboxContentSetResult.cpp in Sources */,
 				0051C45B1745B9970095FD98 /* IdentityAccessWindowResult.cpp in Sources */,

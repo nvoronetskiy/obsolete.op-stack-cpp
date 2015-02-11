@@ -24,6 +24,7 @@
 		00CF4BA01A15BDD500573A34 /* libidnkit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CF4B9F1A15BDBB00573A34 /* libidnkit.a */; };
 		00CF4CB61A15C87600573A34 /* libeasysqlite.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CF4CB01A15C85300573A34 /* libeasysqlite.a */; };
 		00CF4CD11A15C9F200573A34 /* libortclib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CF4C1E1A15C60E00573A34 /* libortclib.a */; };
+		00FA3FF81A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 00FA3FF71A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp */; };
 		581C0E1916E8A71B001AA7D3 /* TestAccount.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 581C0E1716E8A71B001AA7D3 /* TestAccount.cpp */; };
 		581C0E1B16EF4C2D001AA7D3 /* helpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 581C0E1A16EF4C2D001AA7D3 /* helpers.cpp */; };
 		58E68C8316D7877F0098B4E3 /* TestServiceLockboxSession.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 58E68C8216D7877F0098B4E3 /* TestServiceLockboxSession.cpp */; };
@@ -183,6 +184,8 @@
 		00CF4B9A1A15BDBB00573A34 /* idnkit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit.xcodeproj; path = "../../../../ortc-lib/libs/idnkit/projects/xcode/idnkit.xcodeproj"; sourceTree = "<group>"; };
 		00CF4C191A15C60D00573A34 /* ortclib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib.xcodeproj; path = "../../../../ortc-lib/projects/xcode/ortclib/ortclib.xcodeproj"; sourceTree = "<group>"; };
 		00CF4CAB1A15C85300573A34 /* easysqlite.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite.xcodeproj; path = ../../../../easysqlite/projects/xcode/easysqlite.xcodeproj; sourceTree = "<group>"; };
+		00FA3FF71A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestP2PDatabaseMessage.cpp; sourceTree = "<group>"; };
+		00FA3FF91A8A4DD500C7C32B /* TestP2PDatabaseMessage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestP2PDatabaseMessage.h; sourceTree = "<group>"; };
 		581C0E1716E8A71B001AA7D3 /* TestAccount.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestAccount.cpp; sourceTree = "<group>"; };
 		581C0E1816E8A71B001AA7D3 /* TestAccount.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestAccount.h; sourceTree = "<group>"; };
 		581C0E1A16EF4C2D001AA7D3 /* helpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpers.cpp; sourceTree = "<group>"; };
@@ -263,6 +266,8 @@
 				0026383D1A2FC139008EC96E /* TestCache.cpp */,
 				008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */,
 				008C9C9C1A814B47002ADD3B /* TestLocationDB.h */,
+				00FA3FF71A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp */,
+				00FA3FF91A8A4DD500C7C32B /* TestP2PDatabaseMessage.h */,
 				002DF47E1A38B2AA0046DE49 /* TestPushMailboxDB.cpp */,
 				002DF4801A38B2B90046DE49 /* TestPushMailboxDB.h */,
 				0063C97B16CAB85000E6DB4D /* TestStack.cpp */,
@@ -524,6 +529,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0026383E1A2FC139008EC96E /* TestCache.cpp in Sources */,
+				00FA3FF81A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp in Sources */,
 				0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */,
 				002DF47F1A38B2AA0046DE49 /* TestPushMailboxDB.cpp in Sources */,
 				0063CA3516CAB85000E6DB4D /* main.cpp in Sources */,

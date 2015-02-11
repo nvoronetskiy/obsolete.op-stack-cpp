@@ -550,13 +550,13 @@ namespace openpeer
           DocumentPtr document = Document::create();
 
           ElementPtr peerEl = Element::create("peer");
-          peerEl->setAttribute("version", "1");
+          peerEl->setAttribute("version", "1", false);
 
           // public peer section "A"
           {
             ElementPtr sectionBundleEl = Element::create("sectionBundle");
 
-            ElementPtr sectionEl = message::IMessageHelper::createElementWithID("section", "A");
+            ElementPtr sectionEl = message::IMessageHelper::createElementWithTextID("section", "A");
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("algorithm", OPENPEER_STACK_PEER_FILE_CIPHER));
 
             Time created = zsLib::now();
@@ -617,7 +617,7 @@ namespace openpeer
           {
             ElementPtr sectionBundleEl = Element::create("sectionBundle");
 
-            ElementPtr sectionEl = message::IMessageHelper::createElementWithID("section", "B");
+            ElementPtr sectionEl = message::IMessageHelper::createElementWithTextID("section", "B");
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithTextAndJSONEncode("contact", mPeerURI));
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithTextAndJSONEncode("findSecret", IHelper::randomString((32*8)/5+1)));
 
@@ -631,7 +631,7 @@ namespace openpeer
           {
             ElementPtr sectionBundleEl = Element::create("sectionBundle");
 
-            ElementPtr sectionEl = message::IMessageHelper::createElementWithID("section", "C");
+            ElementPtr sectionEl = message::IMessageHelper::createElementWithTextID("section", "C");
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithTextAndJSONEncode("contact", mPeerURI));
 
             sectionBundleEl->adoptAsLastChild(sectionEl);
@@ -648,7 +648,7 @@ namespace openpeer
           mDocument = Document::create();
 
           ElementPtr privatePeerEl = Element::create("privatePeer");
-          privatePeerEl->setAttribute("version", "1");
+          privatePeerEl->setAttribute("version", "1", false);
 
           SecureByteBlockPtr salt = IHelper::random(32);
           String saltAsString = IHelper::convertToBase64(*salt);
@@ -657,7 +657,7 @@ namespace openpeer
           {
             ElementPtr sectionBundleEl = Element::create("sectionBundle");
 
-            ElementPtr sectionEl = message::IMessageHelper::createElementWithID("section", "A");
+            ElementPtr sectionEl = message::IMessageHelper::createElementWithTextID("section", "A");
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("contact", mPeerURI));
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("algorithm", OPENPEER_STACK_PEER_FILE_CIPHER));
             sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("salt", saltAsString));
@@ -677,7 +677,7 @@ namespace openpeer
           {
             ElementPtr sectionBundleEl = Element::create("sectionBundle");
 
-            ElementPtr sectionEl = message::IMessageHelper::createElementWithID("section", "B");
+            ElementPtr sectionEl = message::IMessageHelper::createElementWithTextID("section", "B");
             //sectionEl->adoptAsLastChild(message::IMessageHelper::createElementWithText("contact", mPeerURI));
 
             SecureByteBlockPtr privateKey = mPrivateKey->save();

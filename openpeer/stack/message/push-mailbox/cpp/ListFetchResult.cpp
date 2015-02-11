@@ -125,7 +125,7 @@ namespace openpeer
               const URIList &uriList = (*iter).second;
 
               if (listID.hasData()) {
-                ElementPtr listEl = IMessageHelper::createElementWithID("list", listID);
+                ElementPtr listEl = IMessageHelper::createElementWithTextID("list", listID);
 
                 ElementPtr peersEl = IMessageHelper::createElement("peers");
 

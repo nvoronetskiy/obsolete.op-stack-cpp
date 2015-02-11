@@ -112,12 +112,12 @@ namespace openpeer
         String domain = message.domain();
 
         if (domain.hasData()) {
-          IMessageHelper::setAttribute(rootEl, "domain", domain);
+          IMessageHelper::setAttributeWithText(rootEl, "domain", domain);
         }
 
         String appID = message.appID();
         if (appID.hasData()) {
-          IMessageHelper::setAttribute(rootEl, "appid", appID);
+          IMessageHelper::setAttributeWithText(rootEl, "appid", appID);
         }
 
         Time time = message.time();
@@ -125,9 +125,9 @@ namespace openpeer
           IMessageHelper::setAttributeTimestamp(rootEl, time);
         }
 
-        IMessageHelper::setAttribute(rootEl, "handler", factory->getHandler());
-        IMessageHelper::setAttributeID(rootEl, message.messageID());
-        IMessageHelper::setAttribute(rootEl, "method", factory->toString(message.method()));
+        IMessageHelper::setAttributeWithText(rootEl, "handler", factory->getHandler());
+        IMessageHelper::setAttributeIDWithText(rootEl, message.messageID());
+        IMessageHelper::setAttributeWithText(rootEl, "method", factory->toString(message.method()));
 
         if (message.isResult()) {
           const message::MessageResult *msgResult = (dynamic_cast<const message::MessageResult *>(&message));
@@ -141,7 +141,7 @@ namespace openpeer
               errorEl = IMessageHelper::createElement("error");
             }
             if (msgResult->hasAttribute(MessageResult::AttributeType_ErrorCode)) {
-              IMessageHelper:setAttributeID(errorEl, string(msgResult->errorCode()));
+              IMessageHelper:setAttributeIDWithNumber(errorEl, string(msgResult->errorCode()));
             }
 
             rootEl->adoptAsLastChild(errorEl);
@@ -165,10 +165,17 @@ namespace openpeer
       }
 
       //---------------------------------------------------------------------
-      void IMessageHelper::setAttributeID(ElementPtr elem, const String &value)
+      void IMessageHelper::setAttributeIDWithText(ElementPtr elem, const String &value)
       {
         if (value.isEmpty()) return;
-        IMessageHelper::setAttribute(elem, "id", value);
+        IMessageHelper::setAttributeWithText(elem, "id", value);
+      }
+
+      //---------------------------------------------------------------------
+      void IMessageHelper::setAttributeIDWithNumber(ElementPtr elem, const String &value)
+      {
+        if (value.isEmpty()) return;
+        IMessageHelper::setAttributeWithNumber(elem, "id", value);
       }
 
       //---------------------------------------------------------------------
@@ -200,11 +207,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void IMessageHelper::setAttribute(
-                                        ElementPtr elem,
-                                        const String &attrName,
-                                        const String &value
-                                        )
+      void IMessageHelper::setAttributeWithText(
+                                                ElementPtr elem,
+                                                const String &attrName,
+                                                const String &value
+                                                )
       {
         if (!elem) return;
         if (value.isEmpty()) return;
@@ -212,6 +219,24 @@ namespace openpeer
         AttributePtr attr = Attribute::create();
         attr->setName(attrName);
         attr->setValue(value);
+
+        elem->setAttribute(attr);
+      }
+
+      //-----------------------------------------------------------------------
+      void IMessageHelper::setAttributeWithNumber(
+                                                  ElementPtr elem,
+                                                  const String &attrName,
+                                                  const String &value
+                                                  )
+      {
+        if (!elem) return;
+        if (value.isEmpty()) return;
+
+        AttributePtr attr = Attribute::create();
+        attr->setName(attrName);
+        attr->setValue(value);
+        attr->setQuoted(false);
 
         elem->setAttribute(attr);
       }
@@ -284,19 +309,33 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      ElementPtr IMessageHelper::createElementWithID(
-                                                     const String &elName,
-                                                     const String &idValue
-                                                     )
+      ElementPtr IMessageHelper::createElementWithTextID(
+                                                         const String &elName,
+                                                         const String &idValue
+                                                         )
       {
         ElementPtr tmp = createElement(elName);
 
         if (idValue.isEmpty()) return tmp;
 
-        setAttributeID(tmp, idValue);
+        setAttributeIDWithText(tmp, idValue);
         return tmp;
       }
 
+      //-----------------------------------------------------------------------
+      ElementPtr IMessageHelper::createElementWithNumberID(
+                                                            const String &elName,
+                                                            const String &idValue
+                                                            )
+      {
+        ElementPtr tmp = createElement(elName);
+
+        if (idValue.isEmpty()) return tmp;
+
+        setAttributeIDWithNumber(tmp, idValue);
+        return tmp;
+      }
+      
       //-----------------------------------------------------------------------
       TextPtr IMessageHelper::createText(const String &textVal)
       {

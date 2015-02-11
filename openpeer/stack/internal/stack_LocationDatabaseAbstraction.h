@@ -43,11 +43,6 @@
 
 #define OPENPEER_STACK_SETTING_LOCATION_ANALYZE_DATABASE_RANDOMLY_EVERY "openpeer/stack/location-analyze-database-randomly-every"
 
-//#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_DATABASE_FILE "openpeer/stack/push-mailbox-database-filename"
-
-//#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MAX_MESSAGE_DOWNLOAD_SIZE_IN_BYTES "openpeer/stack/push-mailbox-max-message-download-size-in-bytes"
-//#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_MESSAGE_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-message-download-failure-retry-pattern-in-seconds"
-//#define OPENPEER_STACK_SETTING_PUSH_MAILBOX_LIST_DOWNLOAD_FAILURE_RETRY_PATTERN_IN_SECONDS "openpeer/stack/push-mailbox-list-download-failure-retry-pattern-in-seconds"
 
 namespace openpeer
 {

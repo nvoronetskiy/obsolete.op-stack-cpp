@@ -29,7 +29,7 @@
 
  */
 
-#include <openpeer/stack/message/peer-finder/SessionDeleteRequest.h>
+#include <openpeer/stack/message/p2p-database/ListSubscribeRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
 #include <zsLib/XML.h>
@@ -40,56 +40,66 @@ namespace openpeer
   {
     namespace message
     {
-      namespace peer_finder
+      namespace p2p_database
       {
         //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::convert(MessagePtr message)
+        ListSubscribeRequestPtr ListSubscribeRequest::convert(MessagePtr message)
         {
-          return ZS_DYNAMIC_PTR_CAST(SessionDeleteRequest, message);
+          return ZS_DYNAMIC_PTR_CAST(ListSubscribeRequest, message);
         }
 
         //---------------------------------------------------------------------
-        SessionDeleteRequest::SessionDeleteRequest()
+        ListSubscribeRequest::ListSubscribeRequest()
         {
+          mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        bool SessionDeleteRequest::hasAttribute(AttributeTypes type) const
+        ListSubscribeRequestPtr ListSubscribeRequest::create()
         {
-          switch (type)
-          {
-            case AttributeType_Locations:   return (mLocations.size() > 0);
-            default:                        break;
-          }
-          return false;
+          ListSubscribeRequestPtr ret(new ListSubscribeRequest);
+          return ret;
         }
 
         //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::create()
+        ListSubscribeRequestPtr ListSubscribeRequest::create(
+                                                             ElementPtr rootEl,
+                                                             IMessageSourcePtr messageSource
+                                                             )
         {
-          SessionDeleteRequestPtr pThis(new SessionDeleteRequest);
-          return pThis;
-        }
+          ListSubscribeRequestPtr ret(new ListSubscribeRequest);
+          IMessageHelper::fill(*ret, rootEl, messageSource);
 
-        //---------------------------------------------------------------------
-        DocumentPtr SessionDeleteRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
-
-          if (hasAttribute(AttributeType_Locations))
-          {
-            ElementPtr locationsEl = IMessageHelper::createElement("locations");
-            root->adoptAsLastChild(locationsEl);
-
-            for(StringList::const_iterator it = mLocations.begin(); it != mLocations.end(); ++it)
-            {
-              const String &loc = (*it);
-              locationsEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("location", loc));
-            }
+          ElementPtr databasesEl = rootEl->findFirstChildElement("databases");
+          if (databasesEl) {
+            ret->mVersion = IMessageHelper::getAttribute(databasesEl, "version");
           }
 
           return ret;
+        }
+
+        //---------------------------------------------------------------------
+        DocumentPtr ListSubscribeRequest::encode()
+        {
+          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
+          ElementPtr rootEl = ret->getFirstChildElement();
+
+          if (hasAttribute(AttributeType_DatabasesVersion)) {
+            ElementPtr databasesEl = Element::create("databases");
+            databasesEl->setAttribute("version", mVersion);
+            rootEl->adoptAsLastChild(databasesEl);
+          }
+
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        bool ListSubscribeRequest::hasAttribute(AttributeTypes type) const
+        {
+          switch (type) {
+            case AttributeType_DatabasesVersion: return mVersion.hasData();
+          }
+          return false;
         }
 
       }

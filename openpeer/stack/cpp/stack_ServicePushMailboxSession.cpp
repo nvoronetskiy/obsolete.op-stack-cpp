@@ -6092,7 +6092,7 @@ namespace openpeer
       ElementPtr ServicePushMailboxSession::createKeyingBundle(const KeyingBundle &inBundle)
       {
         ElementPtr keyingBundleEl = Element::create("keyingBundle");
-        ElementPtr keyingEl = IMessageHelper::createElementWithID("keying", inBundle.mReferencedKeyID);
+        ElementPtr keyingEl = IMessageHelper::createElementWithTextID("keying", inBundle.mReferencedKeyID);
 
         if (Time() != inBundle.mExpires) {
           keyingEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(inBundle.mExpires)));

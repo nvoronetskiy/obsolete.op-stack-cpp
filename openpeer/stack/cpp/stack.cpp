@@ -588,11 +588,11 @@ namespace openpeer
 
       UseLocationPtr location = Location::convert(mLocation);
 
-      ElementPtr locationEl = IMessageHelper::createElementWithID("location", location->getLocationID());
+      ElementPtr locationEl = IMessageHelper::createElementWithTextID("location", location->getLocationID());
       ElementPtr detailEl = IMessageHelper::createElement("details");
 
       if (!mDeviceID.isEmpty()) {
-        detailEl->adoptAsLastChild(IMessageHelper::createElementWithID("device", mDeviceID));
+        detailEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("device", mDeviceID));
       }
 
       if (!mIPAddress.isAddressEmpty())
@@ -833,7 +833,7 @@ namespace openpeer
     //-----------------------------------------------------------------------
     ElementPtr Token::createElement() const
     {
-      ElementPtr tokenEl = IMessageHelper::createElementWithID("token", mID);
+      ElementPtr tokenEl = IMessageHelper::createElementWithTextID("token", mID);
 
       if (mSecret.hasData()) {
         tokenEl->adoptAsLastChild(IMessageHelper::createElementWithTextAndJSONEncode("secret", mSecret));

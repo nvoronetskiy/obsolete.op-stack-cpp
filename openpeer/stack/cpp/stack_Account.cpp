@@ -1181,6 +1181,7 @@ namespace openpeer
             UseAccountPeerLocationPtr peerLocation = (*foundLocation).second;
             if (!peerLocation->handleIncomingChannelMapNotify(channelMapNotify, relayToken)) {
               ZS_LOG_WARNING(Detail, log("this location did not handle this channel map notification") + ZS_PARAM("location", channelMapNotify->remoteContext()))
+              return;
             }
 
             ZS_LOG_DEBUG(log("successfully handled channel map notification"))

@@ -1319,7 +1319,7 @@ namespace openpeer
               // the returned message might not contain the message ID. Thus
               // force the message to have the same message ID as the request.
               if (originalMessage) {
-                IMessageHelper::setAttributeID(rootEl, originalMessage->messageID());
+                IMessageHelper::setAttributeIDWithText(rootEl, originalMessage->messageID());
               }
               IMessageHelper::setAttributeTimestamp(rootEl, zsLib::now());
             }

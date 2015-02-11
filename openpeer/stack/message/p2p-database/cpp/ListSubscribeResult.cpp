@@ -29,10 +29,11 @@
 
  */
 
-#include <openpeer/stack/message/peer-finder/SessionDeleteRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
+#include <openpeer/stack/message/p2p-database/ListSubscribeRequest.h>
+#include <openpeer/stack/message/p2p-database/ListSubscribeResult.h>
 
-#include <zsLib/XML.h>
+#include <openpeer/stack/IPublication.h>
 
 namespace openpeer
 {
@@ -40,56 +41,54 @@ namespace openpeer
   {
     namespace message
     {
-      namespace peer_finder
+      namespace p2p_database
       {
         //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::convert(MessagePtr message)
+        ListSubscribeResultPtr ListSubscribeResult::convert(MessagePtr message)
         {
-          return ZS_DYNAMIC_PTR_CAST(SessionDeleteRequest, message);
+          return ZS_DYNAMIC_PTR_CAST(ListSubscribeResult, message);
         }
 
         //---------------------------------------------------------------------
-        SessionDeleteRequest::SessionDeleteRequest()
+        ListSubscribeResult::ListSubscribeResult()
         {
+          mAppID.clear();
         }
 
         //---------------------------------------------------------------------
-        bool SessionDeleteRequest::hasAttribute(AttributeTypes type) const
+        ListSubscribeResultPtr ListSubscribeResult::create(ListSubscribeRequestPtr request)
+        {
+          ListSubscribeResultPtr ret(new ListSubscribeResult);
+          ret->fillFrom(request);
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        ListSubscribeResultPtr ListSubscribeResult::create(
+                                                           ElementPtr root,
+                                                           IMessageSourcePtr messageSource
+                                                           )
+        {
+          ListSubscribeResultPtr ret(new ListSubscribeResult);
+          IMessageHelper::fill(*ret, root, messageSource);
+
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        DocumentPtr ListSubscribeResult::encode()
+        {
+          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
+          return ret;
+        }
+
+        //---------------------------------------------------------------------
+        bool ListSubscribeResult::hasAttribute(ListSubscribeResult::AttributeTypes type) const
         {
           switch (type)
           {
-            case AttributeType_Locations:   return (mLocations.size() > 0);
-            default:                        break;
           }
-          return false;
-        }
-
-        //---------------------------------------------------------------------
-        SessionDeleteRequestPtr SessionDeleteRequest::create()
-        {
-          SessionDeleteRequestPtr pThis(new SessionDeleteRequest);
-          return pThis;
-        }
-
-        //---------------------------------------------------------------------
-        DocumentPtr SessionDeleteRequest::encode()
-        {
-          DocumentPtr ret = IMessageHelper::createDocumentWithRoot(*this);
-          ElementPtr root = ret->getFirstChildElement();
-
-          if (hasAttribute(AttributeType_Locations))
-          {
-            ElementPtr locationsEl = IMessageHelper::createElement("locations");
-            root->adoptAsLastChild(locationsEl);
-
-            for(StringList::const_iterator it = mLocations.begin(); it != mLocations.end(); ++it)
-            {
-              const String &loc = (*it);
-              locationsEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("location", loc));
-            }
-          }
-
-          return ret;
+          return MessageResult::hasAttribute((MessageResult::AttributeTypes)type);
         }
 
       }

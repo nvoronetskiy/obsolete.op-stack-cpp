@@ -145,7 +145,7 @@ namespace openpeer
           }
 
           if (mGrantID.hasData()) {
-            rootEl->adoptAsLastChild(IMessageHelper::createElementWithID("grant", mGrantID));
+            rootEl->adoptAsLastChild(IMessageHelper::createElementWithTextID("grant", mGrantID));
           }
 
           if (hasAttribute(AttributeType_NamespaceInfos)) {
