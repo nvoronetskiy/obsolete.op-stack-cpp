@@ -30,20 +30,15 @@
  */
 
 #include <openpeer/stack/internal/stack_LocationDatabasesManager.h>
+#include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_LocationDatabases.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
 
-//#include <openpeer/stack/internal/stack_Location.h>
-//#include <openpeer/stack/internal/stack_Peer.h>
-//#include <openpeer/stack/internal/stack_Account.h>
-//#include <openpeer/stack/internal/stack_Peer.h>
-//#include <openpeer/stack/internal/stack_Helper.h>
-//
 #include <openpeer/services/IHelper.h>
-//
+#include <openpeer/services/ISettings.h>
+
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
-//#include <zsLib/helpers.h>
-//#include <zsLib/Stringize.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -54,6 +49,7 @@ namespace openpeer
     namespace internal
     {
       ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+      ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -85,6 +81,18 @@ namespace openpeer
         if (!singleton) return;
 
         return singleton->notifyDestroyed(databases);
+      }
+
+      //-----------------------------------------------------------------------
+      ILocationDatabaseAbstractionPtr ILocationDatabasesManagerForLocationDatabases::getOrCreateForUserHash(
+                                                                                                            ILocationPtr location,
+                                                                                                            const String &userHash
+                                                                                                            )
+      {
+        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        if (!singleton) return ILocationDatabaseAbstractionPtr();
+
+        return singleton->getOrCreateForUserHash(location, userHash);
       }
 
       //-----------------------------------------------------------------------
@@ -185,15 +193,119 @@ namespace openpeer
         ILocationPtr location = databases.getLocation();
 
         AutoRecursiveLock lock(*this);
-        auto found = mDatabases.find(location->getID());
-        if (found == mDatabases.end()) {
-          ZS_LOG_WARNING(Debug, log("location databases was not found in manager (probably okay)") + ZS_PARAM("databases", databases.getID()))
-          return;
+
+        // scope clear out location databases
+        {
+          auto found = mDatabases.find(location->getID());
+          if (found == mDatabases.end()) {
+            ZS_LOG_WARNING(Debug, log("location databases was not found in manager (probably okay)") + ZS_PARAM("databases", databases.getID()))
+            return;
+          }
+
+          ZS_LOG_TRACE(log("removed location databases from manager") + ZS_PARAM("databases", databases.getID()))
+
+          mDatabases.erase(found);
         }
 
-        ZS_LOG_TRACE(log("removed location databases from manager") + ZS_PARAM("databases", databases.getID()))
+        // scope: clear out master database if not in use
+        {
+          for (auto iter_doNotUse = mMasterDatabases.begin(); iter_doNotUse != mMasterDatabases.end(); )
+          {
+            auto current = iter_doNotUse;
+            ++iter_doNotUse;
 
-        mDatabases.erase(found);
+            UserHashInfoPtr info = current->second;
+
+            auto found = info->mAttachedLocations.find(location->getID());
+            if (found == info->mAttachedLocations.end()) continue;
+
+            ZS_LOG_DEBUG(log("detaching associated database"))
+
+            info->mAttachedLocations.erase(found);
+
+            if (info->mAttachedLocations.size() > 0) {
+              ZS_LOG_TRACE(log("other locations still using master database"))
+              break;
+            }
+
+            ZS_LOG_DEBUG(log("shutting down master database (as it is not in use)") + ZS_PARAM("master", info->mMasterDatabase->getID()))
+            mMasterDatabases.erase(current);
+          }
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      ILocationDatabaseAbstractionPtr LocationDatabasesManager::getOrCreateForUserHash(
+                                                                                       ILocationPtr inLocation,
+                                                                                       const String &userHash
+                                                                                       )
+      {
+        UseLocationPtr location = Location::convert(inLocation);
+        ZS_THROW_INVALID_ARGUMENT_IF(!location)
+
+        AutoRecursiveLock lock(*this);
+
+        UserHashInfoPtr info;
+        auto found = mMasterDatabases.find(userHash);
+        if (found == mMasterDatabases.end()) {
+
+          ZS_LOG_DEBUG(log("creating new master database") + ZS_PARAMIZE(userHash))
+          info = UserHashInfoPtr(new UserHashInfo);
+          info->mUserHash = userHash;
+          info->mMasterDatabase = ILocationDatabaseAbstraction::createMaster(userHash, UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_PATH));
+
+          if (!info->mMasterDatabase) {
+            ZS_LOG_WARNING(Detail, log("unable to create database abstraction"))
+            return ILocationDatabaseAbstractionPtr();
+          }
+
+          mMasterDatabases[userHash] = info;
+
+          Time now = zsLib::now();
+
+          Seconds sinceEpoch = zsLib::timeSinceEpoch<Seconds>(now);
+          Seconds unusedTimeout(UseSettings::getUInt(OPENPEER_STACK_SETTING_LOCATION_DATABASE_EXPIRE_UNUSED_LOCATIONS_IN_SECONDS));
+
+          if (sinceEpoch > unusedTimeout) {
+            Time expires = now - unusedTimeout;
+            auto batch = info->mMasterDatabase->peerLocationTable()->getUnusedLocationsBatch(expires);
+
+            while (batch) {
+              for (auto iter = batch->begin(); iter != batch->end(); ++iter) {
+                auto record = (*iter);
+
+                ILocationDatabaseAbstraction::index afterDatabaseIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
+                auto databaseBatch = info->mMasterDatabase->databaseTable()->getBatchByPeerLocationIndex(record.mIndex);
+                while (databaseBatch) {
+                  for (auto dbIter = databaseBatch->begin(); dbIter != databaseBatch->end(); ++dbIter) {
+                    auto databaseRecord = (*dbIter);
+
+                    afterDatabaseIndex = databaseRecord.mIndex;
+
+                    auto removed = ILocationDatabaseAbstraction::deleteDatabase(info->mMasterDatabase, location->getPeerURI(), location->getLocationID(), databaseRecord.mDatabaseID);
+                    if (!removed) {
+                      ZS_LOG_WARNING(Detail, log("failed to remove database associated with location") + location->toDebug())
+                    }
+                  }
+                  auto databaseBatch = info->mMasterDatabase->databaseTable()->getBatchByPeerLocationIndex(record.mIndex, afterDatabaseIndex);
+                }
+
+                ZS_LOG_DETAIL(log("pruning database records associated with location") + location->toDebug())
+
+                info->mMasterDatabase->databaseTable()->flushAllForPeerLocation(record.mIndex);
+                info->mMasterDatabase->databaseChangeTable()->flushAllForPeerLocation(record.mIndex);
+                info->mMasterDatabase->permissionTable()->flushAllForPeerLocation(record.mIndex);
+                info->mMasterDatabase->peerLocationTable()->remove(record.mIndex);
+              }
+              batch = info->mMasterDatabase->peerLocationTable()->getUnusedLocationsBatch(expires);
+            }
+          }
+        }
+
+        ZS_LOG_DEBUG(log("associating location to master database") + ZS_PARAMIZE(userHash) + location->toDebug())
+
+        info->mAttachedLocations[location->getID()] = UseLocationDatabasesPtr();
+        return info->mMasterDatabase;
       }
 
       //-----------------------------------------------------------------------

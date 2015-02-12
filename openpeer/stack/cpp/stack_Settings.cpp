@@ -191,6 +191,8 @@ namespace openpeer
         setString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_FILE_POSTFIX, ".db");
         setUInt(OPENPEER_STACK_SETTING_LOCATION_ANALYZE_DATABASE_RANDOMLY_EVERY, 50);
 
+        setUInt(OPENPEER_STACK_SETTING_LOCATION_DATABASE_EXPIRE_UNUSED_LOCATIONS_IN_SECONDS, (60*60*24)*90);
+
         {
           AutoRecursiveLock lock(mLock);
           mAppliedDefaults = true;

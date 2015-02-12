@@ -157,7 +157,7 @@ namespace openpeer
                                         public IBackgroundingDelegate,
                                         public IReachabilityDelegate,
                                         public IBootstrappedNetworkDelegate,
-                                        public IServiceLockboxSessionForInternalDelegate,
+                                        public IServiceLockboxSessionDelegate,
                                         public IServiceNamespaceGrantSessionWaitDelegate,
                                         public IServiceNamespaceGrantSessionQueryDelegate,
                                         public IMessageMonitorResultDelegate<message::bootstrapped_servers::ServersGetResult>,
@@ -559,10 +559,14 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServicePushMailboxSession => IServiceLockboxSessionForInternalDelegate
+        #pragma mark ServicePushMailboxSession => IServiceLockboxSessionDelegate
         #pragma mark
 
-        virtual void onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr session);
+        virtual void onServiceLockboxSessionStateChanged(
+                                                         IServiceLockboxSessionPtr session,
+                                                         IServiceLockboxSession::SessionStates state
+                                                         );
+        virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -1088,7 +1092,7 @@ namespace openpeer
 
         IReachabilitySubscriptionPtr mReachabilitySubscription;
 
-        IServiceLockboxSessionForInternalSubscriptionPtr mLockboxSubscription;
+        IServiceLockboxSessionSubscriptionPtr mLockboxSubscription;
 
         PUID mSentViaObjectID;
 

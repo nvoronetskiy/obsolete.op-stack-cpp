@@ -136,8 +136,8 @@ namespace openpeer
     interaction ILocationDatabasesDelegate
     {
       //-----------------------------------------------------------------------
-      // PURPOSE: Notify that a new database is available.
-      virtual void onLocationDatabasesChanged(ILocationDatabasePtr inDatabase) = 0;
+      // PURPOSE: Notify that the available list of datbases has changed
+      virtual void onLocationDatabasesChanged(ILocationDatabasesPtr inDatabases) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -161,11 +161,11 @@ namespace openpeer
 
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabasesDelegate)
-ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::ILocationDatabasesDelegate, openpeer::stack::ILocationDatabasesSubscription)
-ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()

@@ -90,13 +90,13 @@ namespace openpeer
         //---------------------------------------------------------------------
         struct PeerLocationRecord
         {
-          index   mIndex {-1};              // [auto, unique]
-          String  mPeerURI;
-          String  mLocationID;
-          String  mLastDownloadedVersion;
-          bool    mDownloadComplete {false};
-          bool    mNotified {false};
-          Time    mLastAccessed;
+          index     mIndex {-1};              // [auto, unique]
+          String    mPeerURI;
+          String    mLocationID;
+          String    mLastDownloadedVersion;
+          bool      mDownloadComplete {false};
+          Time      mLastAccessed;
+          String    mUpdateVersion;
 
           ElementPtr toDebug() const;
         };
@@ -119,7 +119,7 @@ namespace openpeer
           ElementPtr mMetaData;
           Time    mExpires;
           bool    mDownloadComplete {false};
-          bool    mNotified {false};
+          String  mUpdateVersion;
 
           ElementPtr toDebug() const;
         };
@@ -238,6 +238,13 @@ namespace openpeer
                                                             const char *databaseID
                                                             );
 
+        static bool deleteDatabase(
+                                   ILocationDatabaseAbstractionPtr masterDatabase,
+                                   const char *peerURI,
+                                   const char *locationID,
+                                   const char *databaseID
+                                   );
+
         virtual PUID getID() const = 0;
 
         virtual IPeerLocationTablePtr peerLocationTable() const = 0;
@@ -266,15 +273,13 @@ namespace openpeer
                                       PeerLocationRecord &outRecord
                                       ) = 0;
 
+          virtual void updateVersion(index indexPeerLocationRecord) = 0;
+
           virtual void notifyDownloaded(
                                         index indexPeerLocationRecord,
                                         const char *downloadedToVersion,
                                         bool downloadComplete
                                         ) = 0;
-
-          virtual PeerLocationRecordListPtr getDownloadedButNotNotifiedBatch() const = 0;
-
-          virtual void notifyNotified(index indexPeerLocationRecord) const = 0;
 
           virtual PeerLocationRecordListPtr getUnusedLocationsBatch(const Time &lastAccessedBefore) const = 0;
 
@@ -302,6 +307,11 @@ namespace openpeer
                                    DatabaseRecord &ioRecord,
                                    DatabaseChangeRecord &outChangeRecord
                                    ) = 0;
+
+          //-------------------------------------------------------------------
+          // PURPOSE: update a database record to indicate it has changed
+          //          since last checked
+          virtual void updateVersion(index indexDatabase) = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: remove a database from the database table
@@ -344,15 +354,6 @@ namespace openpeer
                                         const char *downloadedToVersion,
                                         bool downloadComplete
                                         ) = 0;
-
-          //-------------------------------------------------------------------
-          // PURPOSE: Get a datbase batch which have been downloaded but not
-          //          yet notified.
-          virtual DatabaseRecordListPtr getDownloadedButNotNotifiedBatch() const = 0;
-
-          //-------------------------------------------------------------------
-          // PURPOSE: Notify a database has notified about the update
-          virtual void notifyNotified(index indexDatabaseRecord) const = 0;
         };
 
         //---------------------------------------------------------------------

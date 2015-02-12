@@ -1072,11 +1072,20 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void ServiceIdentitySession::onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr inSession)
+      void ServiceIdentitySession::onServiceLockboxSessionStateChanged(
+                                                                       IServiceLockboxSessionPtr session,
+                                                                       IServiceLockboxSession::SessionStates state
+                                                                       )
       {
-        ZS_LOG_DEBUG(log("on service lockbox session state changed"))
+        ZS_LOG_DEBUG(log("on service lockbox session state changed") + ZS_PARAM("session", session->getID()) + ZS_PARAM("state", IServiceLockboxSession::toString(state)))
         AutoRecursiveLock lock(*this);
         step();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServiceIdentitySession::onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session)
+      {
+        // ignored
       }
 
       //-----------------------------------------------------------------------

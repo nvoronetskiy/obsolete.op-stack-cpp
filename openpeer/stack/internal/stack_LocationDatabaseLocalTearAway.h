@@ -71,25 +71,3 @@ ZS_DECLARE_TEAR_AWAY_METHOD_3(add, const char *, ElementPtr, ElementPtr)
 ZS_DECLARE_TEAR_AWAY_METHOD_2(update, const char *, ElementPtr)
 ZS_DECLARE_TEAR_AWAY_METHOD_1(remove, const char *)
 ZS_DECLARE_TEAR_AWAY_END()
-
-#if 0
-//-----------------------------------------------------------------------
-// PURPOSE: Add a unique entry into the database.
-virtual void add(
-                 const char *uniqueID,
-                 ElementPtr inMetaData,
-                 ElementPtr inData
-                 ) = 0;
-
-//-----------------------------------------------------------------------
-// PURPOSE: Updates an existing entry in the database.
-virtual void update(
-                    const char *uniqueID,
-                    ElementPtr inData
-                    ) = 0;
-
-//-----------------------------------------------------------------------
-// PURPOSE: Remove an entry from the database.
-virtual void remove(const char *uniqueID) = 0;
-
-#endif //0

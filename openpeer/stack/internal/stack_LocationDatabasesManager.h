@@ -34,6 +34,9 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/ILocation.h>
 
+#define OPENPEER_STACK_SETTING_LOCATION_DATABASE_PATH "openpeer/stack/location-database-path"
+#define OPENPEER_STACK_SETTING_LOCATION_DATABASE_EXPIRE_UNUSED_LOCATIONS_IN_SECONDS "openpeer/stack/location-database-expire-unused-locations-in-seconds"
+
 
 namespace openpeer
 {
@@ -42,6 +45,7 @@ namespace openpeer
     namespace internal
     {
       interaction ILocationDatabasesForLocationDatabasesManager;
+      interaction ILocationForLocationDatabases;
 
       interaction ILocationDatabasesManagerForLocationDatabases
       {
@@ -50,6 +54,10 @@ namespace openpeer
         static ForLocationDatabasesPtr singleton();
 
         static LocationDatabasesPtr getOrCreateForLocation(ILocationPtr location);
+        static ILocationDatabaseAbstractionPtr getOrCreateForUserHash(
+                                                                      ILocationPtr location,
+                                                                      const String &userHash
+                                                                      );
 
         static void notifyDestroyed(LocationDatabases &databases);
 
@@ -73,7 +81,24 @@ namespace openpeer
         friend interaction ILocationDatabasesManagerForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesForLocationDatabasesManager, UseLocationDatabases)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
 
+        ZS_DECLARE_STRUCT_PTR(UserHashInfo)
+
+        typedef PUID LocationID;
+        typedef std::map<LocationID, UseLocationDatabasesWeakPtr> LocationDatabasesMap;
+
+        struct UserHashInfo
+        {
+          String mUserHash;
+          ILocationDatabaseAbstractionPtr mMasterDatabase;
+
+          LocationDatabasesMap mAttachedLocations;
+        };
+
+        typedef String UserHash;
+        typedef std::map<UserHash, UserHashInfoPtr> MasterDatabaseMap;
+        
       protected:
         LocationDatabasesManager();
         
@@ -85,9 +110,6 @@ namespace openpeer
 
         static LocationDatabasesManagerPtr create();
         static LocationDatabasesManagerPtr singleton();
-
-        typedef PUID LocationID;
-        typedef std::map<LocationID, UseLocationDatabasesWeakPtr> LocationDatabasesMap;
 
       public:
         ~LocationDatabasesManager();
@@ -102,6 +124,11 @@ namespace openpeer
 
         virtual LocationDatabasesPtr getOrCreateForLocation(ILocationPtr location);
         virtual void notifyDestroyed(LocationDatabases &databases);
+
+        virtual ILocationDatabaseAbstractionPtr getOrCreateForUserHash(
+                                                                      ILocationPtr location,
+                                                                      const String &userHash
+                                                                      );
 
       protected:
         //---------------------------------------------------------------------
@@ -125,6 +152,8 @@ namespace openpeer
         LocationDatabasesManagerWeakPtr mThisWeak;
 
         LocationDatabasesMap mDatabases;
+
+        MasterDatabaseMap mMasterDatabases;
       };
 
       //-----------------------------------------------------------------------

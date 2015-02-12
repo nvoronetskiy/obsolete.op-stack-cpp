@@ -142,6 +142,8 @@ namespace openpeer
         void testEntry();
         void testEntryChange();
 
+        void testDelete();
+
       protected:
         void tableDump(
                        SqlField *definition,

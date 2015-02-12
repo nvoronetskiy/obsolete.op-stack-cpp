@@ -124,6 +124,20 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IServiceLockboxSessionForLocationDatabases
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IServiceLockboxSessionForLocationDatabases::toDebug(ForLocationDatabasesPtr session)
+      {
+        return ServiceLockboxSession::toDebug(ServiceLockboxSession::convert(session));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ServiceLockboxSession
       #pragma mark
 
@@ -136,12 +150,15 @@ namespace openpeer
                                                    ) :
         zsLib::MessageQueueAssociator(queue),
         SharedRecursiveLock(SharedRecursiveLock::create()),
-        mDelegate(delegate ? IServiceLockboxSessionDelegateProxy::createWeak(UseStack::queueDelegate(), delegate) : IServiceLockboxSessionDelegatePtr()),
         mBootstrappedNetwork(network),
         mGrantSession(grantSession),
         mCurrentState(SessionState_Pending)
       {
         ZS_LOG_BASIC(log("created"))
+
+        if (delegate) {
+          mDefaultSubscription = mLockboxSubscriptions.subscribe(delegate);
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -172,6 +189,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForAccountPtr session)
+      {
+        return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
+      }
+
+      //-----------------------------------------------------------------------
+      ServiceLockboxSessionPtr ServiceLockboxSession::convert(ForLocationDatabasesPtr session)
       {
         return ZS_DYNAMIC_PTR_CAST(ServiceLockboxSession, session);
       }
@@ -419,18 +442,13 @@ namespace openpeer
 
         mAccount.reset();
 
-        ServiceLockboxSessionPtr pThis = mThisWeak.lock();
-        if (pThis) {
-          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(pThis);
-        }
-
         mLoginIdentity.reset();
 
         mAssociatedIdentities.clear();
         mPendingUpdateIdentities.clear();
         mPendingRemoveIdentities.clear();
 
-        mDelegate.reset();
+        mDefaultSubscription.reset();
       }
 
       //-----------------------------------------------------------------------
@@ -576,19 +594,29 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      IServiceLockboxSessionForInternalSubscriptionPtr ServiceLockboxSession::subscribe(IServiceLockboxSessionForInternalDelegatePtr originalDelegate)
+      IServiceLockboxSessionSubscriptionPtr ServiceLockboxSession::subscribe(IServiceLockboxSessionDelegatePtr originalDelegate)
       {
         ZS_LOG_DETAIL(log("subscribing to lockbox session"))
 
         AutoRecursiveLock lock(*this);
-        if (!originalDelegate) return IServiceLockboxSessionForInternalSubscriptionPtr();
+        if (!originalDelegate) {
+          return mDefaultSubscription;
+        }
 
-        IServiceLockboxSessionForInternalSubscriptionPtr subscription = mLockboxSubscriptions.subscribe(originalDelegate);
+        IServiceLockboxSessionSubscriptionPtr subscription = mLockboxSubscriptions.subscribe(originalDelegate);
 
-        IServiceLockboxSessionForInternalDelegatePtr delegate = mLockboxSubscriptions.delegate(subscription);
+        IServiceLockboxSessionDelegatePtr delegate = mLockboxSubscriptions.delegate(subscription, true);
 
         if (delegate) {
-          // ServiceLockboxSessionPtr pThis = mThisWeak.lock();
+          auto pThis = mThisWeak.lock();
+          if (pThis) {
+            if (SessionState_Pending != mCurrentState) {
+              delegate->onServiceLockboxSessionStateChanged(pThis, mCurrentState);
+            }
+            if ((bool)mLastNotificationHash) {
+              delegate->onServiceLockboxSessionAssociatedIdentitiesChanged(pThis);
+            }
+          }
         }
 
         if (isShutdown()) {
@@ -740,9 +768,6 @@ namespace openpeer
         }
 
         step();
-
-        ServiceLockboxSessionPtr pThis = mThisWeak.lock();
-        mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(pThis);
 
         return true;
       }
@@ -1116,8 +1141,10 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "id", mID);
 
-        IHelper::debugAppend(resultEl, "delegate", (bool)mDelegate);
         IHelper::debugAppend(resultEl, "account", (bool)mAccount.lock());
+
+        IHelper::debugAppend(resultEl, "subscriptions", mLockboxSubscriptions.size());
+        IHelper::debugAppend(resultEl, "default subscription", (bool)mDefaultSubscription);
 
         IHelper::debugAppend(resultEl, "state", toString(mCurrentState));
 
@@ -1555,7 +1582,6 @@ namespace openpeer
 
           mPeerFilesGenerated = true;
 
-          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
           return true;
         }
 
@@ -1581,8 +1607,6 @@ namespace openpeer
 
         if (mPeerFiles) {
           ZS_LOG_DEBUG(log("peer files successfully loaded"))
-
-          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(mThisWeak.lock());
 
           IPeerFilePublicPtr peerFilePublic = mPeerFiles->getPeerFilePublic();
           ZS_THROW_BAD_STATE_IF(!peerFilePublic)
@@ -2120,22 +2144,8 @@ namespace openpeer
 
         ServiceLockboxSessionPtr pThis = mThisWeak.lock();
         if (pThis) {
-          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(pThis);
-        }
-
-        UseAccountPtr account = mAccount.lock();
-        if (account) {
-          account->notifyServiceLockboxSessionStateChanged();
-        }
-
-        if ((pThis) &&
-            (mDelegate)) {
-          try {
-            ZS_LOG_DEBUG(debug("attempting to report state to delegate"))
-            mDelegate->onServiceLockboxSessionStateChanged(pThis, mCurrentState);
-          } catch (IServiceLockboxSessionDelegateProxy::Exceptions::DelegateGone &) {
-            ZS_LOG_WARNING(Detail, log("delegate gone"))
-          }
+          ZS_LOG_DEBUG(debug("attempting to report state to delegate(s)"))
+          mLockboxSubscriptions.delegate()->onServiceLockboxSessionStateChanged(pThis, mCurrentState);
         }
       }
 
@@ -2184,12 +2194,9 @@ namespace openpeer
 
         mLastNotificationHash = output;
 
-        if (mDelegate) {
-          try {
-            mDelegate->onServiceLockboxSessionAssociatedIdentitiesChanged(mThisWeak.lock());
-          } catch(IServiceLockboxSessionDelegateProxy::Exceptions::DelegateGone &) {
-            ZS_LOG_WARNING(Detail, log("delegate gone"))
-          }
+        auto pThis = mThisWeak.lock();
+        if (pThis) {
+          mLockboxSubscriptions.delegate()->onServiceLockboxSessionAssociatedIdentitiesChanged(mThisWeak.lock());
         }
       }
 

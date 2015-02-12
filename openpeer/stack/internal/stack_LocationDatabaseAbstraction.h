@@ -94,7 +94,8 @@ namespace openpeer
                                     ILocationDatabaseAbstractionPtr masterDatabase,
                                     const char *peerURI,
                                     const char *locationID,
-                                    const char *databaseID
+                                    const char *databaseID,
+                                    bool deleteSelf
                                     );
 
         LocationDatabaseAbstraction(Noop) :
@@ -127,6 +128,13 @@ namespace openpeer
                                                            const char *locationID,
                                                            const char *databaseID
                                                            );
+
+        static bool deleteDatabase(
+                                   ILocationDatabaseAbstractionPtr masterDatabase,
+                                   const char *peerURI,
+                                   const char *locationID,
+                                   const char *databaseID
+                                   );
 
         virtual PUID getID() const;
 
@@ -164,15 +172,13 @@ namespace openpeer
                                       PeerLocationRecord &outRecord
                                       )                                           {mOuter->IPeerLocationTable_createOrObtain(peerURI, locationID, outRecord);}
 
+          virtual void updateVersion(index indexPeerLocationRecord)               {mOuter->IPeerLocationTable_updateVersion(indexPeerLocationRecord);}
+
           virtual void notifyDownloaded(
                                         index indexPeerLocationRecord,
                                         const char *downloadedToVersion,
                                         bool downloadComplete
                                         )                                         {mOuter->IPeerLocationTable_notifyDownloaded(indexPeerLocationRecord, downloadedToVersion, downloadComplete);}
-
-          virtual PeerLocationRecordListPtr getDownloadedButNotNotifiedBatch() const {return mOuter->IPeerLocationTable_getDownloadedButNotNotifiedBatch();}
-
-          virtual void notifyNotified(index indexPeerLocationRecord) const           {mOuter->IPeerLocationTable_notifyNotified(indexPeerLocationRecord);}
 
           virtual PeerLocationRecordListPtr getUnusedLocationsBatch(const Time &lastAccessedBefore) const  {return mOuter->IPeerLocationTable_getUnusedLocationsBatch(lastAccessedBefore);}
 
@@ -202,6 +208,8 @@ namespace openpeer
                                    DatabaseChangeRecord &outChangeRecord
                                    )                                            {mOuter->IDatabaseTable_addOrUpdate(ioRecord, outChangeRecord);}
 
+          virtual void updateVersion(index indexDatabase)                       {mOuter->IDatabaseTable_updateVersion(indexDatabase);}
+
           virtual bool remove(
                               const DatabaseRecord &inRecord,
                               DatabaseChangeRecord &outChangeRecord
@@ -228,10 +236,6 @@ namespace openpeer
                                         const char *downloadedToVersion,
                                         bool downloadComplete
                                         )                                       {return mOuter->IDatabaseTable_notifyDownloaded(indexDatabaseRecord, downloadedToVersion, downloadComplete);}
-
-          virtual DatabaseRecordListPtr getDownloadedButNotNotifiedBatch() const {return mOuter->IDatabaseTable_getDownloadedButNotNotifiedBatch();}
-
-          virtual void notifyNotified(index indexDatabaseRecord) const          {return mOuter->IDatabaseTable_notifyNotified(indexDatabaseRecord);}
 
         protected:
           LocationDatabaseAbstractionPtr mOuter;
@@ -373,20 +377,18 @@ namespace openpeer
         #pragma mark
 
         void IPeerLocationTable_createOrObtain(
-                                            const char *peerURI,
-                                            const char *locationID,
-                                            PeerLocationRecord &outRecord
-                                            );
+                                               const char *peerURI,
+                                               const char *locationID,
+                                               PeerLocationRecord &outRecord
+                                               );
+
+        void IPeerLocationTable_updateVersion(index indexPeerLocationRecord);
 
         void IPeerLocationTable_notifyDownloaded(
-                                              index indexPeerLocationRecord,
-                                              const char *downloadedToVersion,
-                                              bool downloadComplete
-                                              );
-
-        PeerLocationRecordListPtr IPeerLocationTable_getDownloadedButNotNotifiedBatch() const;
-
-        void IPeerLocationTable_notifyNotified(index indexPeerLocationRecord) const;
+                                                 index indexPeerLocationRecord,
+                                                 const char *downloadedToVersion,
+                                                 bool downloadComplete
+                                                 );
 
         PeerLocationRecordListPtr IPeerLocationTable_getUnusedLocationsBatch(const Time &lastAccessedBefore) const;
 
@@ -403,6 +405,8 @@ namespace openpeer
                                         DatabaseRecord &ioRecord,
                                         DatabaseChangeRecord &outChangeRecord
                                         );
+
+        void IDatabaseTable_updateVersion(index indexDatabase);
 
         bool IDatabaseTable_remove(
                                    const DatabaseRecord &inRecord,
@@ -430,10 +434,6 @@ namespace openpeer
                                              const char *downloadedToVersion,
                                              bool downloadComplete
                                              );
-
-        DatabaseRecordListPtr IDatabaseTable_getDownloadedButNotNotifiedBatch() const;
-
-        void IDatabaseTable_notifyNotified(index indexDatabaseRecord) const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -544,6 +544,8 @@ namespace openpeer
         void prepareDB();
         void constructDBTables();
 
+        bool deleteDatabase();
+
         static String SqlEscape(const String &input);
         static String SqlQuote(const String &input);
 
@@ -557,8 +559,12 @@ namespace openpeer
 
         AutoPUID mID;
 
+        bool mDeleteSelf {false};
+
         String mUserHash;
         String mStoragePath;
+        String mDBFileName;
+        String mDBFilePath;
 
         mutable SqlDatabasePtr mDB;
 
@@ -591,6 +597,12 @@ namespace openpeer
                                                             const char *locationID,
                                                             const char *databaseID
                                                             );
+        virtual bool deleteDatabase(
+                                    ILocationDatabaseAbstractionPtr masterDatabase,
+                                    const char *peerURI,
+                                    const char *locationID,
+                                    const char *databaseID
+                                    );
       };
 
       class LocationDatabaseAbstractionFactory : public IFactory<ILocationDatabaseAbstractionFactory> {};

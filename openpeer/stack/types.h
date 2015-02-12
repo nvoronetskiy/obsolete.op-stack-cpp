@@ -363,6 +363,7 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(ILocationDatabasesSubscription, ILocationDatabasesDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(ILocationDatabaseSubscription, ILocationDatabaseDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServerMessagingSubscription, IServerMessagingDelegate)
+    ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServiceLockboxSessionSubscription, IServiceLockboxSessionDelegate)
     ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServicePushMailboxSessionSubscription, IServicePushMailboxSessionDelegate)
 
     ZS_DECLARE_TYPEDEF_PTR(std::list<ILocationPtr>, LocationList)

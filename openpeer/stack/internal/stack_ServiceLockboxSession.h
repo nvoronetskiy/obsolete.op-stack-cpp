@@ -33,7 +33,6 @@
 
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
-#include <openpeer/stack/internal/stack_IServiceLockboxSessionForInternal.h>
 
 #include <openpeer/stack/message/identity-lockbox/LockboxAccessResult.h>
 #include <openpeer/stack/message/identity-lockbox/LockboxNamespaceGrantChallengeValidateResult.h>
@@ -105,6 +104,36 @@ namespace openpeer
                                                           ) const = 0;
 
         virtual BootstrappedNetworkPtr getBootstrappedNetwork() const = 0;
+
+        virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IServiceLockboxSessionForLocationDatabases
+      #pragma mark
+
+      interaction IServiceLockboxSessionForLocationDatabases
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForLocationDatabases, ForLocationDatabases)
+
+        static ElementPtr toDebug(ForLocationDatabasesPtr session);
+
+        virtual PUID getID() const = 0;
+
+        virtual IServiceLockboxSession::SessionStates getState(
+                                                               WORD *lastErrorCode = NULL,
+                                                               String *lastErrorReason = NULL
+                                                               ) const = 0;
+
+        virtual LockboxInfo getLockboxInfo() const = 0;
+
+        virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
+
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -136,7 +165,7 @@ namespace openpeer
 
         virtual const SharedRecursiveLock &getLock() const = 0;
 
-        virtual IServiceLockboxSessionForInternalSubscriptionPtr subscribe(IServiceLockboxSessionForInternalDelegatePtr delegate) = 0;
+        virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -162,7 +191,7 @@ namespace openpeer
 
         virtual LockboxInfo getLockboxInfo() const = 0;
 
-        virtual IServiceLockboxSessionForInternalSubscriptionPtr subscribe(IServiceLockboxSessionForInternalDelegatePtr delegate) = 0;
+        virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -179,6 +208,7 @@ namespace openpeer
                                     public IServiceLockboxSession,
                                     public IMessageSource,
                                     public IServiceLockboxSessionForAccount,
+                                    public IServiceLockboxSessionForLocationDatabases,
                                     public IServiceLockboxSessionForServiceIdentity,
                                     public IServiceLockboxSessionForServicePushMailbox,
                                     public IWakeDelegate,
@@ -198,6 +228,7 @@ namespace openpeer
       public:
         friend interaction IServiceLockboxSessionFactory;
         friend interaction IServiceLockboxSession;
+        friend interaction IServiceLockboxSessionForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(RecursiveLock, UseRecursiveLock)
 
@@ -236,6 +267,7 @@ namespace openpeer
         static ServiceLockboxSessionPtr convert(IServiceLockboxSessionPtr session);
         static ServiceLockboxSessionPtr convert(ForAccountPtr session);
         static ServiceLockboxSessionPtr convert(ForServiceIdentityPtr session);
+        static ServiceLockboxSessionPtr convert(ForLocationDatabasesPtr session);
         static ServiceLockboxSessionPtr convert(ForServicePushMailboxPtr session);
 
       protected:
@@ -318,6 +350,26 @@ namespace openpeer
 
         virtual BootstrappedNetworkPtr getBootstrappedNetwork() const;
 
+        // (duplicate) virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceLockboxSession => IServiceLockboxSessionForLocationDatabases
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const = 0;
+
+        // (duplicate) virtual SessionStates getState(
+        //                                            WORD *lastErrorCode,
+        //                                            String *lastErrorReason
+        //                                            ) const;
+
+        // (duplicate) virtual LockboxInfo getLockboxInfo() const = 0;
+
+        // (duplicate) virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
+
+        // (duplicate) virtual ElementPtr toDebug() const = 0;
+
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark ServiceLockboxSession => IServiceLockboxSessionForServiceIdentity
@@ -340,7 +392,7 @@ namespace openpeer
 
         virtual const SharedRecursiveLock &getLock() const {return *this;}
 
-        // (duplicate) virtual IServiceLockboxSessionForInternalSubscriptionPtr subscribe(IServiceLockboxSessionForInternalDelegatePtr delegate);
+        // (duplicate) virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate) = 0;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -358,7 +410,7 @@ namespace openpeer
 
         // (duplicate) virtual LockboxInfo getLockboxInfo() const;
 
-        virtual IServiceLockboxSessionForInternalSubscriptionPtr subscribe(IServiceLockboxSessionForInternalDelegatePtr delegate);
+        virtual IServiceLockboxSessionSubscriptionPtr subscribe(IServiceLockboxSessionDelegatePtr delegate);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -588,10 +640,10 @@ namespace openpeer
         AutoPUID mID;
         ServiceLockboxSessionWeakPtr mThisWeak;
 
-        IServiceLockboxSessionDelegatePtr mDelegate;
         UseAccountWeakPtr mAccount;
 
-        IServiceLockboxSessionForInternalDelegateSubscriptions mLockboxSubscriptions;
+        IServiceLockboxSessionDelegateSubscriptions mLockboxSubscriptions;
+        IServiceLockboxSessionSubscriptionPtr mDefaultSubscription;
 
         SessionStates mCurrentState;
 

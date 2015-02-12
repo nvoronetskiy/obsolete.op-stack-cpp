@@ -183,13 +183,11 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PROXY(IMessageMonitorAsyncDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionQueryDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServiceNamespaceGrantSessionWaitDelegate)
-      ZS_DECLARE_INTERACTION_PROXY(IServiceLockboxSessionForInternalDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionAsyncDatabaseDelegate)
       ZS_DECLARE_INTERACTION_PROXY(IServicePushMailboxSessionAsyncDelegate)
 
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderRelayChannelSubscription, IFinderRelayChannelDelegate)
       ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IFinderConnectionSubscription, IFinderConnectionDelegate)
-      ZS_DECLARE_INTERACTION_PROXY_SUBSCRIPTION(IServiceLockboxSessionForInternalSubscription, IServiceLockboxSessionForInternalDelegate)
 
       ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabase, ILocationDatabase, LocationDatabaseTearAwayData)
       ZS_DECLARE_TYPEDEF_TEAR_AWAY(stack::ILocationDatabaseLocal, ILocationDatabaseLocal, LocationDatabaseLocalTearAwayData)

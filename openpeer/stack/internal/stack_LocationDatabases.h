@@ -32,7 +32,15 @@
 #pragma once
 
 #include <openpeer/stack/internal/types.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
+
 #include <openpeer/stack/ILocationDatabases.h>
+#include <openpeer/stack/IServiceLockbox.h>
+
+#include <openpeer/services/IWakeDelegate.h>
+
+
+#include <map>
 
 namespace openpeer
 {
@@ -40,9 +48,11 @@ namespace openpeer
   {
     namespace internal
     {
+      ZS_DECLARE_INTERACTION_PTR(IAccountForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabasesManagerForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabaseForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSessionForLocationDatabases)
 
       //-----------------------------------------------------------------------
       interaction ILocationDatabasesForLocationDatabase
@@ -78,10 +88,13 @@ namespace openpeer
       #pragma mark
 
       class LocationDatabases : public SharedRecursiveLock,
+                                public MessageQueueAssociator,
                                 public Noop,
                                 public ILocationDatabases,
                                 public ILocationDatabasesForLocationDatabase,
-                                public ILocationDatabasesForLocationDatabasesManager
+                                public ILocationDatabasesForLocationDatabasesManager,
+                                public IWakeDelegate,
+                                public IServiceLockboxSessionDelegate
       {
       public:
         friend interaction ILocationDatabasesFactory;
@@ -89,10 +102,23 @@ namespace openpeer
         friend interaction ILocationDatabasesForLocationDatabasesManager;
         friend interaction ILocationDatabasesForLocationDatabase;
 
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForLocationDatabases, UseAccount)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, UseLocationDatabasesManager)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForLocationDatabases, UseLockbox)
+
+        typedef String DatabaseID;
+        typedef std::map<DatabaseID, UseLocationDatabasePtr> LocationDatabaseMap;
+
       protected:
         LocationDatabases(ILocationPtr location);
-        
-        LocationDatabases(Noop) :
+
+        LocationDatabases(
+                          Noop,
+                          IMessageQueuePtr queue = IMessageQueuePtr()
+                          ) :
+          MessageQueueAssociator(queue),
           SharedRecursiveLock(SharedRecursiveLock::create()),
           Noop(true) {}
 
@@ -104,10 +130,6 @@ namespace openpeer
         static LocationDatabasesPtr convert(ILocationDatabasesPtr object);
         static LocationDatabasesPtr convert(ForLocationDatabasesManagerPtr object);
         static LocationDatabasesPtr convert(ForLocationDatabasePtr object);
-
-        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
-        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, UseLocationDatabasesManager)
-        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
 
       protected:
         //---------------------------------------------------------------------
@@ -152,6 +174,25 @@ namespace openpeer
 
         virtual void notifyDestroyed(UseLocationDatabase &database);
 
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IWakeDelegate
+        #pragma mark
+
+        virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IServiceLockboxSessionDelegate
+        #pragma mark
+
+        virtual void onServiceLockboxSessionStateChanged(
+                                                         IServiceLockboxSessionPtr session,
+                                                         IServiceLockboxSession::SessionStates state
+                                                         );
+
+        virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session);
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -166,6 +207,17 @@ namespace openpeer
 
         ILocationDatabasesSubscriptionPtr subscribe(ILocationDatabasesDelegatePtr originalDelegate);
 
+        bool isLocal() const {return mIsLocal;}
+        bool isReady() const {return mReady;}
+        bool isShutdown() const {return mShutdown;}
+
+        void cancel();
+
+        void step();
+
+        bool stepPrepareMasterDatabase();
+        bool stepOpenLocal();
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -175,9 +227,23 @@ namespace openpeer
         AutoPUID mID;
         LocationDatabasesWeakPtr mThisWeak;
 
+        bool mReady {false};
+        bool mShutdown {false};
+
+        bool mIsLocal {false};
+
         UseLocationPtr mLocation;
 
         ILocationDatabasesDelegateSubscriptions mSubscriptions;
+
+        ILocationDatabaseAbstractionPtr mMasterDatase;
+
+        IServiceLockboxSessionSubscriptionPtr mLockboxSubscription;
+        UseLockboxPtr mLockbox;
+
+        ILocationDatabaseAbstraction::PeerLocationRecord mPeerLocationRecord;
+
+        LocationDatabaseMap mLocationDatabases;
       };
 
       //-----------------------------------------------------------------------

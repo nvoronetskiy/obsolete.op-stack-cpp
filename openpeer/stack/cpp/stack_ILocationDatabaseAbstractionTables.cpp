@@ -56,7 +56,6 @@ namespace openpeer
       const char *ILocationDatabaseAbstractionTables::databaseID = "databaseID";
       const char *ILocationDatabaseAbstractionTables::lastDownloadedVersion = "lastDownloadedVersion";
       const char *ILocationDatabaseAbstractionTables::downloadComplete = "downloadComplete";
-      const char *ILocationDatabaseAbstractionTables::notified = "notified";
       const char *ILocationDatabaseAbstractionTables::metaData = "metaData";
       const char *ILocationDatabaseAbstractionTables::expires = "expires";
       const char *ILocationDatabaseAbstractionTables::entryID = "entryID";
@@ -67,7 +66,7 @@ namespace openpeer
       const char *ILocationDatabaseAbstractionTables::created = "created";
       const char *ILocationDatabaseAbstractionTables::updated = "updated";
       const char *ILocationDatabaseAbstractionTables::lastAccessed = "lastAccessed";
-
+      const char *ILocationDatabaseAbstractionTables::updateVersion = "updateVersion";
     }
   }
 }

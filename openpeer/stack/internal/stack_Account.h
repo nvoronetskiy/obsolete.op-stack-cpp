@@ -180,6 +180,21 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IAccountForLocation
+      #pragma mark
+
+      interaction IAccountForLocationDatabases
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IAccountForLocationDatabases, ForLocationDatabases)
+
+        virtual IServiceLockboxSessionPtr getLockboxSession() const = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IAccountForLocationSubscription
       #pragma mark
 
@@ -309,8 +324,6 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForServiceLockboxSession, ForServiceLockboxSession)
 
-        virtual void notifyServiceLockboxSessionStateChanged() = 0;
-
         virtual IKeyGeneratorPtr takeOverRSAGeyGeneration() = 0;
       };
 
@@ -330,6 +343,7 @@ namespace openpeer
                       public IAccountForFinderRelayChannel,
                       public IAccountForAccountPeerLocation,
                       public IAccountForLocation,
+                      public IAccountForLocationDatabases,
                       public IAccountForLocationSubscription,
                       public IAccountForMessageIncoming,
                       public IAccountForMessages,
@@ -346,6 +360,7 @@ namespace openpeer
                       public ITimerDelegate,
                       public IBackgroundingDelegate,
                       public IKeyGeneratorDelegate,
+                      public IServiceLockboxSessionDelegate,
                       public IMessageMonitorResultDelegate<PeerLocationFindResult>,
                       public IMessageMonitorResultDelegate<ServersGetResult>
       {
@@ -415,6 +430,7 @@ namespace openpeer
         static AccountPtr convert(ForRelayChannelPtr account);
         static AccountPtr convert(ForAccountPeerLocationPtr account);
         static AccountPtr convert(ForLocationPtr account);
+        static AccountPtr convert(ForLocationDatabasesPtr account);
         static AccountPtr convert(ForLocationSubscriptionPtr account);
         static AccountPtr convert(ForMessagesPtr account);
         static AccountPtr convert(ForPeerPtr account);
@@ -515,6 +531,13 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
+        #pragma mark Account => IAccountForLocationDatabases
+        #pragma mark
+
+        // (duplicate) virtual IServiceLockboxSessionPtr getLockboxSession() const = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
         #pragma mark Account => IAccountForLocationSubscription
         #pragma mark
 
@@ -583,8 +606,6 @@ namespace openpeer
         #pragma mark
         #pragma mark Account => IAccountForServiceLockboxSession
         #pragma mark
-
-        virtual void notifyServiceLockboxSessionStateChanged();
 
         virtual IKeyGeneratorPtr takeOverRSAGeyGeneration();
 
@@ -713,6 +734,18 @@ namespace openpeer
         #pragma mark
 
         virtual void onKeyGenerated(IKeyGeneratorPtr generator);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Account => IServiceLockboxSessionDelegate
+        #pragma mark
+
+        virtual void onServiceLockboxSessionStateChanged(
+                                                         IServiceLockboxSessionPtr session,
+                                                         IServiceLockboxSession::SessionStates state
+                                                         );
+
+        virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session);
 
       private:
         //---------------------------------------------------------------------
@@ -875,6 +908,8 @@ namespace openpeer
         TimerPtr mTimer;
 
         UseServiceLockboxSessionPtr mLockboxSession;
+        IServiceLockboxSessionSubscriptionPtr mLockboxSubscription;
+
         Service::MethodListPtr mTURN;
         Service::MethodListPtr mSTUN;
 

@@ -36,6 +36,7 @@
 #include <openpeer/stack/IMessageMonitor.h>
 #include <openpeer/stack/IMessageSource.h>
 #include <openpeer/stack/IServiceIdentity.h>
+#include <openpeer/stack/IServiceLockbox.h>
 
 #include <openpeer/stack/message/identity/IdentityAccessNamespaceGrantChallengeValidateResult.h>
 #include <openpeer/stack/message/identity/IdentityLookupUpdateResult.h>
@@ -46,7 +47,6 @@
 #include <openpeer/stack/message/rolodex/RolodexContactsGetResult.h>
 
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
-#include <openpeer/stack/internal/stack_IServiceLockboxSessionForInternal.h>
 
 #include <openpeer/services/IWakeDelegate.h>
 
@@ -131,7 +131,7 @@ namespace openpeer
                                      public IServiceIdentitySession,
                                      public IMessageSource,
                                      public IServiceIdentitySessionForServiceLockbox,
-                                     public IServiceLockboxSessionForInternalDelegate,
+                                     public IServiceLockboxSessionDelegate,
                                      public IWakeDelegate,
                                      public IBootstrappedNetworkDelegate,
                                      public zsLib::ITimerDelegate,
@@ -295,10 +295,14 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServiceIdentitySession => IServiceLockboxSessionForInternalDelegate
+        #pragma mark ServiceIdentitySession => IServiceLockboxSessionDelegate
         #pragma mark
 
-        virtual void onServiceLockboxSessionStateChanged(ServiceLockboxSessionPtr session);
+        virtual void onServiceLockboxSessionStateChanged(
+                                                         IServiceLockboxSessionPtr session,
+                                                         IServiceLockboxSession::SessionStates state
+                                                         );
+        virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -508,7 +512,7 @@ namespace openpeer
         IServiceIdentitySessionDelegatePtr mDelegate;
 
         UseServiceLockboxSessionWeakPtr mAssociatedLockbox;
-        IServiceLockboxSessionForInternalSubscriptionPtr mAssociatedLockboxSubscription;
+        IServiceLockboxSessionSubscriptionPtr mAssociatedLockboxSubscription;
         bool mKillAssociation {};
 
         IdentityInfo mIdentityInfo;

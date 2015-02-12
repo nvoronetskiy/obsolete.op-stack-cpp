@@ -94,7 +94,14 @@ namespace openpeer
 
         static ElementPtr toDebug(ForLocationDatabasesPtr location);
 
-        virtual ~ILocationForLocationDatabases() {}
+        virtual PUID getID() const = 0;
+
+        virtual AccountPtr getAccount() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual String getPeerURI() const = 0;
+        virtual String getLocationID() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -340,6 +347,20 @@ namespace openpeer
         // (duplicate) virtual String getPeerURI() const;
 
         // (duplicate) virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Location => ILocationForLocationDatabases
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const = 0;
+
+        // (dupicate) virtual AccountPtr getAccount() const = 0;
+
+        // (duplicate) virtual ElementPtr toDebug() const = 0;
+
+        // (duplicate) virtual String getPeerURI() const = 0;
+        // (duplicate) virtual String getLocationID() const = 0;
 
         //---------------------------------------------------------------------
         #pragma mark

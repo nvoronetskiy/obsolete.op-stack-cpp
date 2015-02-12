@@ -163,13 +163,13 @@ namespace openpeer
         output.mLocationID = record->getValue(UseTables::locationID)->asString();
         output.mLastDownloadedVersion = record->getValue(UseTables::lastDownloadedVersion)->asString();
         output.mDownloadComplete = record->getValue(UseTables::downloadComplete)->asBool();
-        output.mNotified = record->getValue(UseTables::notified)->asBool();
         auto lastAccessed = record->getValue(UseTables::lastAccessed)->asInteger();
         if (0 != lastAccessed) {
           output.mLastAccessed = zsLib::timeSinceEpoch(Seconds(lastAccessed));
         } else {
           output.mLastAccessed = Time();
         }
+        output.mUpdateVersion = record->getValue(UseTables::updateVersion)->asString();
       }
 
       //-----------------------------------------------------------------------
@@ -193,7 +193,7 @@ namespace openpeer
           output.mExpires = Time();
         }
         output.mDownloadComplete = record->getValue(UseTables::downloadComplete)->asBool();
-        output.mNotified = record->getValue(UseTables::notified)->asBool();
+        output.mUpdateVersion = record->getValue(UseTables::updateVersion)->asString();
       }
 
       //-----------------------------------------------------------------------
@@ -276,8 +276,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "location id", mLocationID);
         UseServicesHelper::debugAppend(resultEl, "last downloaded version", mLastDownloadedVersion);
         UseServicesHelper::debugAppend(resultEl, "download complete", mDownloadComplete);
-        UseServicesHelper::debugAppend(resultEl, "notified", mNotified);
         UseServicesHelper::debugAppend(resultEl, "last accessed", mLastAccessed);
+        UseServicesHelper::debugAppend(resultEl, "update version", mUpdateVersion);
 
         return resultEl;
       }
@@ -302,7 +302,7 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "metadata", mMetaData ? UseServicesHelper::toString(mMetaData) : String());
         UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
         UseServicesHelper::debugAppend(resultEl, "download complete", mDownloadComplete);
-        UseServicesHelper::debugAppend(resultEl, "notified", mNotified);
+        UseServicesHelper::debugAppend(resultEl, "update version", mUpdateVersion);
 
         return resultEl;
       }
@@ -423,12 +423,14 @@ namespace openpeer
                                                                ILocationDatabaseAbstractionPtr inMasterDatabase,
                                                                const char *peerURI,
                                                                const char *locationID,
-                                                               const char *databaseID
+                                                               const char *databaseID,
+                                                               bool deleteSelf
                                                                ) :
         SharedRecursiveLock(SharedRecursiveLock::create()),
         mPeerURI(peerURI),
         mLocationID(locationID),
-        mDatabaseID(databaseID)
+        mDatabaseID(databaseID),
+        mDeleteSelf(deleteSelf)
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!inMasterDatabase)
 
@@ -507,7 +509,7 @@ namespace openpeer
                                                                                const char *databaseID
                                                                                )
       {
-        LocationDatabaseAbstractionPtr pThis(new LocationDatabaseAbstraction(masterDatabase, peerURI, locationID, databaseID));
+        LocationDatabaseAbstractionPtr pThis(new LocationDatabaseAbstraction(masterDatabase, peerURI, locationID, databaseID, false));
         pThis->mThisWeak = pThis;
         pThis->init();
         if (!pThis->mDB) {
@@ -515,6 +517,20 @@ namespace openpeer
           return LocationDatabaseAbstractionPtr();
         }
         return pThis;
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::deleteDatabase(
+                                                       ILocationDatabaseAbstractionPtr masterDatabase,
+                                                       const char *peerURI,
+                                                       const char *locationID,
+                                                       const char *databaseID
+                                                       )
+      {
+        LocationDatabaseAbstractionPtr pThis(new LocationDatabaseAbstraction(masterDatabase, peerURI, locationID, databaseID, true));
+        pThis->mThisWeak = pThis;
+        pThis->init();
+        return pThis->deleteDatabase();
       }
 
       //-----------------------------------------------------------------------
@@ -589,10 +605,10 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IPeerLocationTable_createOrObtain(
-                                                                       const char *peerURI,
-                                                                       const char *locationID,
-                                                                       PeerLocationRecord &outRecord
-                                                                       )
+                                                                          const char *peerURI,
+                                                                          const char *locationID,
+                                                                          PeerLocationRecord &outRecord
+                                                                          )
       {
         AutoRecursiveLock lock(*this);
 
@@ -607,6 +623,17 @@ namespace openpeer
 
           if (found) {
             internal::convert(found, outRecord);
+
+            ignoreAllFieldsInTable(table);
+
+            table.fields()->getByName(SqlField::id)->setIgnored(false);
+            table.fields()->getByName(UseTables::lastAccessed)->setIgnored(false);
+
+            Time now = zsLib::now();
+            found->setInteger(UseTables::lastAccessed, zsLib::timeSinceEpoch<Seconds>(now).count());
+
+            table.updateRecord(found);
+
             ZS_LOG_TRACE(log("found peer location record") + outRecord.toDebug())
             return;
           }
@@ -618,7 +645,7 @@ namespace openpeer
           addRecord.setString(UseTables::locationID, locationID);
           addRecord.setString(UseTables::lastDownloadedVersion, String());
           addRecord.setBool(UseTables::downloadComplete, false);
-          addRecord.setBool(UseTables::notified, false);
+          addRecord.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
 
           Time now = zsLib::now();
           addRecord.setInteger(UseTables::lastAccessed, zsLib::timeSinceEpoch<Seconds>(now).count());
@@ -645,11 +672,39 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void LocationDatabaseAbstraction::IPeerLocationTable_updateVersion(index indexPeerLocationRecord)
+      {
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_TRACE(log("updating peer location version") + ZS_PARAMIZE(indexPeerLocationRecord))
+
+        try {
+
+          SqlTable table(*mDB, UseTables::PeerLocation_name(), UseTables::PeerLocation());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::updateVersion)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexPeerLocationRecord);
+          record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
+
+          table.updateRecord(&record);
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+      }
+
+      //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IPeerLocationTable_notifyDownloaded(
-                                                                         index indexPeerLocationRecord,
-                                                                         const char *downloadedToVersion,
-                                                                         bool downloadComplete
-                                                                         )
+                                                                            index indexPeerLocationRecord,
+                                                                            const char *downloadedToVersion,
+                                                                            bool downloadComplete
+                                                                            )
       {
         AutoRecursiveLock lock(*this);
 
@@ -670,77 +725,6 @@ namespace openpeer
           record.setInteger(SqlField::id, indexPeerLocationRecord);
           record.setString(UseTables::lastDownloadedVersion, downloadedToVersion);
           record.setBool(UseTables::downloadComplete, downloadComplete);
-
-          table.updateRecord(&record);
-
-        } catch (SqlException &e) {
-          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
-        }
-      }
-
-      //-----------------------------------------------------------------------
-      PeerLocationRecordListPtr LocationDatabaseAbstraction::IPeerLocationTable_getDownloadedButNotNotifiedBatch() const
-      {
-        AutoRecursiveLock lock(*this);
-
-        PeerLocationRecordListPtr result(new PeerLocationRecordList);
-
-        try {
-
-          SqlTable table(*mDB, UseTables::PeerLocation_name(), UseTables::PeerLocation());
-
-          table.open(String(UseTables::downloadComplete) + " = 1 AND " + UseTables::notified + " = 0 LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_PEER_LOCATION_DOWNLOADED_BUT_NOT_NOTIFIED_BATCH_LIMIT));
-
-          if (table.recordCount() < 1) {
-            ZS_LOG_TRACE(log("no peer location needing notification"))
-            return result;
-          }
-
-          for (int loop = 0; loop < table.recordCount(); ++loop)
-          {
-            SqlRecord *record = table.getRecord(loop);
-            if (!record) {
-              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing update"))
-              continue;
-            }
-
-            PeerLocationRecord peerLocationRecord;
-
-            internal::convert(record, peerLocationRecord);
-
-            ZS_LOG_TRACE(log("found downloaded peer location but not notified") + peerLocationRecord.toDebug())
-
-            result->push_back(peerLocationRecord);
-          }
-
-          return  result;
-        } catch (SqlException &e) {
-          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
-        }
-        
-        return PeerLocationRecordListPtr();
-      }
-
-      //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IPeerLocationTable_notifyNotified(index indexPeerLocationRecord) const
-      {
-        AutoRecursiveLock lock(*this);
-
-        ZS_LOG_TRACE(log("updating peer location notified") + ZS_PARAMIZE(indexPeerLocationRecord))
-
-        try {
-
-          SqlTable table(*mDB, UseTables::PeerLocation_name(), UseTables::PeerLocation());
-
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::notified)->setIgnored(false);
-
-          SqlRecord record(table.fields());
-
-          record.setInteger(SqlField::id, indexPeerLocationRecord);
-          record.setBool(UseTables::notified, true);
 
           table.updateRecord(&record);
 
@@ -915,12 +899,14 @@ namespace openpeer
               found->setBool(UseTables::downloadComplete, ioRecord.mDownloadComplete);
             }
 
+            ioRecord.mUpdateVersion = previousRecord.mUpdateVersion;
+
             if (changed) {
               outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_Update;
 
-              table.fields()->getByName(UseTables::notified)->setIgnored(false);
-              found->setBool(UseTables::notified, false);
-              ioRecord.mNotified = false;
+              ioRecord.mUpdateVersion = UseServicesHelper::randomString(20);
+              table.fields()->getByName(UseTables::updateVersion)->setIgnored(false);
+              found->setString(UseTables::updateVersion, ioRecord.mUpdateVersion);
 
               ZS_LOG_TRACE(log("updating existing record") + previousRecord.toDebug() + ioRecord.toDebug())
               table.updateRecord(found);
@@ -941,9 +927,7 @@ namespace openpeer
             addRecord.setInteger(UseTables::expires, 0);
           }
           addRecord.setBool(UseTables::downloadComplete, ioRecord.mDownloadComplete);
-          addRecord.setBool(UseTables::notified, false);
-
-          ioRecord.mNotified = false;
+          addRecord.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
 
           ZS_LOG_TRACE(log("adding new peer location record") + UseStackHelper::toDebug(&table, &addRecord))
           table.addRecord(&addRecord);
@@ -970,6 +954,34 @@ namespace openpeer
         }
       }
 
+      //-----------------------------------------------------------------------
+      void LocationDatabaseAbstraction::IDatabaseTable_updateVersion(index indexDatabase)
+      {
+        AutoRecursiveLock lock(*this);
+
+        ZS_LOG_TRACE(log("updating database version") + ZS_PARAMIZE(indexDatabase))
+
+        try {
+
+          SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
+
+          ignoreAllFieldsInTable(table);
+
+          table.fields()->getByName(SqlField::id)->setIgnored(false);
+          table.fields()->getByName(UseTables::updateVersion)->setIgnored(false);
+
+          SqlRecord record(table.fields());
+
+          record.setInteger(SqlField::id, indexDatabase);
+          record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
+
+          table.updateRecord(&record);
+
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+      }
+      
       //-----------------------------------------------------------------------
       bool LocationDatabaseAbstraction::IDatabaseTable_remove(
                                                               const DatabaseRecord &inRecord,
@@ -1162,76 +1174,7 @@ namespace openpeer
           record.setInteger(SqlField::id, indexDatabaseRecord);
           record.setString(UseTables::lastDownloadedVersion, downloadedToVersion);
           record.setBool(UseTables::downloadComplete, downloadComplete);
-
-          table.updateRecord(&record);
-
-        } catch (SqlException &e) {
-          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
-        }
-      }
-
-      //-----------------------------------------------------------------------
-      DatabaseRecordListPtr LocationDatabaseAbstraction::IDatabaseTable_getDownloadedButNotNotifiedBatch() const
-      {
-        AutoRecursiveLock lock(*this);
-
-        DatabaseRecordListPtr result(new DatabaseRecordList);
-
-        try {
-
-          SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
-
-          table.open(String(UseTables::downloadComplete) + " = 1 AND " + UseTables::notified + " = 0 LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_DOWNLOADED_BUT_NOT_NOTIFIED_BATCH_LIMIT));
-
-          if (table.recordCount() < 1) {
-            ZS_LOG_TRACE(log("no database needing notification"))
-            return result;
-          }
-
-          for (int loop = 0; loop < table.recordCount(); ++loop)
-          {
-            SqlRecord *record = table.getRecord(loop);
-            if (!record) {
-              ZS_LOG_WARNING(Detail, log("record is null from batch of messages needing update"))
-              continue;
-            }
-
-            DatabaseRecord databaseRecord;
-
-            internal::convert(record, databaseRecord);
-
-            ZS_LOG_TRACE(log("found downloaded database but not notified") + databaseRecord.toDebug())
-
-            result->push_back(databaseRecord);
-          }
-
-          return  result;
-        } catch (SqlException &e) {
-          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
-        }
-        return DatabaseRecordListPtr();
-      }
-
-      //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IDatabaseTable_notifyNotified(index indexDatabaseRecord) const
-      {
-        AutoRecursiveLock lock(*this);
-
-        ZS_LOG_TRACE(log("updating database notified") + ZS_PARAMIZE(indexDatabaseRecord))
-
-        try {
-
-          SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
-
-          ignoreAllFieldsInTable(table);
-
-          table.fields()->getByName(SqlField::id)->setIgnored(false);
-          table.fields()->getByName(UseTables::notified)->setIgnored(false);
-
-          SqlRecord record(table.fields());
-
-          record.setInteger(SqlField::id, indexDatabaseRecord);
-          record.setBool(UseTables::notified, true);
+          record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
 
           table.updateRecord(&record);
 
@@ -1952,8 +1895,12 @@ namespace openpeer
 
         UseServicesHelper::debugAppend(resultEl, "id", mID);
 
+        UseServicesHelper::debugAppend(resultEl, "delete self", mDeleteSelf);
+
         UseServicesHelper::debugAppend(resultEl, "user hash", mUserHash);
         UseServicesHelper::debugAppend(resultEl, "storage path", mStoragePath);
+        UseServicesHelper::debugAppend(resultEl, "db file name", mDBFileName);
+        UseServicesHelper::debugAppend(resultEl, "db file path", mDBFilePath);
 
         UseServicesHelper::debugAppend(resultEl, "database", (bool)mDB);
 
@@ -1991,25 +1938,30 @@ namespace openpeer
           return;
         }
 
-        String dbFileName;
         if (mMaster) {
           String locationHash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(mPeerURI + ":" + mLocationID));
           String dbHash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(mLocationID));
-          dbFileName = UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_FILE_PREFIX) +locationHash + "_" + dbHash + UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_FILE_POSTFIX);
+          mDBFileName = UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_FILE_PREFIX) +locationHash + "_" + dbHash + UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_FILE_POSTFIX);
         } else {
-          dbFileName = UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_MASTER_DATABASE_FILE);
+          mDBFileName = UseSettings::getString(OPENPEER_STACK_SETTING_LOCATION_MASTER_DATABASE_FILE);
         }
 
-        String path = UseStackHelper::appendPath(userPath, dbFileName);
-        ZS_THROW_BAD_STATE_IF(path.isEmpty())
+        mDBFilePath = UseStackHelper::appendPath(userPath, mDBFileName);
+        ZS_THROW_BAD_STATE_IF(mDBFilePath.isEmpty())
 
         try {
+
+          if (mDeleteSelf) {
+            ZS_LOG_WARNING(Debug, log("will delete location database") + ZS_PARAMIZE(mDBFilePath))
+            return;
+          }
+
           while (true) {
-            ZS_LOG_DETAIL(log("loading location database") + ZS_PARAM("path", path))
+            ZS_LOG_DETAIL(log("loading location database") + ZS_PARAM("path", mDBFilePath))
 
             mDB = SqlDatabasePtr(new SqlDatabase(ZS_IS_LOGGING(Trace) ? this : NULL));
 
-            mDB->open(path);
+            mDB->open(mDBFilePath);
 
             SqlTable versionTable(*mDB, UseTables::Version_name(), UseTables::Version());
 
@@ -2055,9 +2007,9 @@ namespace openpeer
                   goto database_open_complete;
                 }
 
-                auto status = remove(path);
+                auto status = remove(mDBFilePath);
                 if (0 != status) {
-                  ZS_LOG_ERROR(Detail, log("attempt to remove incompatible location database file failed") + ZS_PARAM("path", path) + ZS_PARAM("result", status) + ZS_PARAM("errno", errno))
+                  ZS_LOG_ERROR(Detail, log("attempt to remove incompatible location database file failed") + ZS_PARAM("path", mDBFilePath) + ZS_PARAM("result", status) + ZS_PARAM("errno", errno))
                 }
                 alreadyDeleted = true;
                 break;
@@ -2087,7 +2039,6 @@ namespace openpeer
 
             SqlRecordSet query(*mDB);
             query.query(String("CREATE INDEX ") + UseTables::PeerLocation_name() + "i" + UseTables::downloadComplete + " ON " + UseTables::PeerLocation_name() + "(" + UseTables::downloadComplete + ")");
-            query.query(String("CREATE INDEX ") + UseTables::PeerLocation_name() + "i" + UseTables::notified + " ON " + UseTables::PeerLocation_name() + "(" + UseTables::notified + ")");
             query.query(String("CREATE INDEX ") + UseTables::PeerLocation_name() + "i" + UseTables::lastAccessed + " ON " + UseTables::PeerLocation_name() + "(" + UseTables::lastAccessed + ")");
           }
           {
@@ -2128,6 +2079,24 @@ namespace openpeer
             table.create();
           }
         }
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::deleteDatabase()
+      {
+        ZS_THROW_INVALID_ASSUMPTION_IF(!mDeleteSelf)
+
+        if (mDBFilePath.isEmpty()) return false;
+
+        auto result = remove(mDBFilePath);
+        if (0 != result) {
+          auto error = errno;
+          ZS_LOG_WARNING(Detail, log("failued to delete") + ZS_PARAMIZE(mDBFilePath) + ZS_PARAMIZE(error))
+          return false;
+        }
+
+        ZS_LOG_DETAIL(log("deleted database") + ZS_PARAMIZE(mDBFilePath))
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -2183,6 +2152,18 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool ILocationDatabaseAbstractionFactory::deleteDatabase(
+                                                               ILocationDatabaseAbstractionPtr masterDatabase,
+                                                               const char *peerURI,
+                                                               const char *locationID,
+                                                               const char *databaseID
+                                                               )
+      {
+        if (this) {}
+        return LocationDatabaseAbstraction::deleteDatabase(masterDatabase, peerURI, locationID, databaseID);
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -2214,6 +2195,17 @@ namespace openpeer
                                                                                  )
       {
         return ILocationDatabaseAbstractionFactory::singleton().openDatabase(masterDatabase, peerURI, locationID, databaseID);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ILocationDatabaseAbstraction::deleteDatabase(
+                                                        ILocationDatabaseAbstractionPtr masterDatabase,
+                                                        const char *peerURI,
+                                                        const char *locationID,
+                                                        const char *databaseID
+                                                        )
+      {
+        return ILocationDatabaseAbstractionFactory::singleton().deleteDatabase(masterDatabase, peerURI, locationID, databaseID);
       }
 
     }

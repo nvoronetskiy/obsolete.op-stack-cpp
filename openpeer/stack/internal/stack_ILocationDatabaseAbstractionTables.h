@@ -68,7 +68,6 @@ namespace openpeer
         static const char *databaseID;
         static const char *lastDownloadedVersion;
         static const char *downloadComplete;
-        static const char *notified;
         static const char *metaData;
         static const char *expires;
         static const char *entryID;
@@ -79,6 +78,7 @@ namespace openpeer
         static const char *created;
         static const char *updated;
         static const char *lastAccessed;
+        static const char *updateVersion;
 
 
         //---------------------------------------------------------------------
@@ -105,8 +105,8 @@ namespace openpeer
             SqlField(locationID, sql::type_text, sql::flag_not_null),
             SqlField(lastDownloadedVersion, sql::type_text, sql::flag_not_null),
             SqlField(downloadComplete, sql::type_bool, sql::flag_not_null),
-            SqlField(notified, sql::type_bool, sql::flag_not_null),
             SqlField(lastAccessed, sql::type_int, sql::flag_not_null),
+            SqlField(updateVersion, sql::type_text, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };
           return table;
@@ -126,7 +126,7 @@ namespace openpeer
             SqlField(metaData, sql::type_text, sql::flag_not_null),
             SqlField(expires, sql::type_int, sql::flag_not_null),
             SqlField(downloadComplete, sql::type_bool, sql::flag_not_null),
-            SqlField(notified, sql::type_bool, sql::flag_not_null),
+            SqlField(updateVersion, sql::type_text, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };
           return table;

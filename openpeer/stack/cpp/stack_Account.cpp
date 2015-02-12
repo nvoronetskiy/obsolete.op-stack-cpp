@@ -189,6 +189,7 @@ namespace openpeer
         mBackgroundingSubscription = IBackgrounding::subscribe(mThisWeak.lock(), UseSettings::getUInt(OPENPEER_STACK_SETTING_BACKGROUNDING_ACCOUNT_PHASE));
 
         mLockboxSession->attach(mThisWeak.lock());
+        mLockboxSubscription = mLockboxSession->subscribe(mThisWeak.lock());
 
         step();
       }
@@ -228,6 +229,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       AccountPtr Account::convert(ForLocationPtr account)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Account, account);
+      }
+
+      //-----------------------------------------------------------------------
+      AccountPtr Account::convert(ForLocationDatabasesPtr account)
       {
         return ZS_DYNAMIC_PTR_CAST(Account, account);
       }
@@ -1375,13 +1382,6 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void Account::notifyServiceLockboxSessionStateChanged()
-      {
-        // WARNING: DO NOT LOCK HERE
-        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
-      }
-
-      //-----------------------------------------------------------------------
       IKeyGeneratorPtr Account::takeOverRSAGeyGeneration()
       {
         AutoRecursiveLock lock(*this);
@@ -1766,6 +1766,32 @@ namespace openpeer
         step();
       }
       
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark Account => IServiceLockboxSessionDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void Account::onServiceLockboxSessionStateChanged(
+                                                        IServiceLockboxSessionPtr session,
+                                                        IServiceLockboxSession::SessionStates state
+                                                        )
+      {
+        ZS_LOG_DEBUG(log("lockbox state changed") + ZS_PARAM("session", session->getID()) + ZS_PARAM("state", IServiceLockboxSession::toString(state)))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      void Account::onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session)
+      {
+        // ignored
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

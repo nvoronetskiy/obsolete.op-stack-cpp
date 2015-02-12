@@ -67,7 +67,6 @@
 #include <openpeer/stack/internal/stack_ServerMessaging.h>
 #include <openpeer/stack/internal/stack_ServiceCertificatesValidateQuery.h>
 #include <openpeer/stack/internal/stack_ServiceIdentitySession.h>
-#include <openpeer/stack/internal/stack_IServiceLockboxSessionForInternal.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_ServiceNamespaceGrantSession.h>
 #include <openpeer/stack/internal/stack_ServicePeerFileLookup.h>

@@ -136,7 +136,7 @@ namespace openpeer
                                                                const char *locationID,
                                                                const char *databaseID
                                                                ) :
-        UseAbstraction(masterDatabase, peerURI, locationID, databaseID)
+        UseAbstraction(masterDatabase, peerURI, locationID, databaseID, false)
       {
       }
 
@@ -273,6 +273,8 @@ namespace openpeer
         auto peerLocation = mAbstraction->peerLocationTable();
         TESTING_CHECK(peerLocation)
 
+        String originalA;
+
         checkCount(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0);
 
         {
@@ -287,7 +289,9 @@ namespace openpeer
           TESTING_EQUAL(record.mLocationID, "location-a")
           TESTING_EQUAL(record.mLastDownloadedVersion, String())
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
+
+          originalA = record.mUpdateVersion;
 
           String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash("peer://domain.com/7837b3ed27d15ff56af48f772e735175de29b9b7fe5d0e83e74140a212045706" ":" "location-a"));
 
@@ -299,8 +303,8 @@ namespace openpeer
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::locationID, "location-a");
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::lastDownloadedVersion, String());
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::downloadComplete, 0);
-          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::notified, 0);
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::lastAccessed, (int) now.count(), (int) end.count());
+          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -315,7 +319,7 @@ namespace openpeer
           TESTING_EQUAL(record.mLocationID, "location-b")
           TESTING_EQUAL(record.mLastDownloadedVersion, String())
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash("peer://domain.com/8947b93fbdae8997d380d189d28743fd0b8dccf27acf65c48b4920cac9f1e47a" ":" "location-b"));
 
@@ -327,8 +331,8 @@ namespace openpeer
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::locationID, "location-b");
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::lastDownloadedVersion, String());
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::downloadComplete, 0);
-          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::notified, 0);
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::lastAccessed, (int) now.count(), (int) end.count());
+          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -343,7 +347,8 @@ namespace openpeer
           TESTING_EQUAL(record.mLocationID, "location-a")
           TESTING_EQUAL(record.mLastDownloadedVersion, String())
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
+          TESTING_EQUAL(record.mUpdateVersion, originalA)
 
           String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash("peer://domain.com/7837b3ed27d15ff56af48f772e735175de29b9b7fe5d0e83e74140a212045706" ":" "location-a"));
 
@@ -355,8 +360,8 @@ namespace openpeer
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::locationID, "location-a");
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::lastDownloadedVersion, String());
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::downloadComplete, 0);
-          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::notified, 0);
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::lastAccessed, (int) now.count(), (int) end.count());
+          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -375,40 +380,11 @@ namespace openpeer
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::locationID, "location-b");
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::lastDownloadedVersion, "b-version");
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::notified, 0);
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 1, UseTables::lastAccessed, (int) now.count(), (int) end.count());
 
           // verify no other record changed
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::lastDownloadedVersion, String());
           checkIndexValue(UseTables::PeerLocation(), UseTables::PeerLocation_name(), 0, UseTables::downloadComplete, 0);
-        }
-
-        {
-          auto result = peerLocation->getDownloadedButNotNotifiedBatch();
-
-          int loop = 0;
-          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
-          {
-            auto value = (*iter);
-            switch (loop) {
-              case 0: {
-                TESTING_EQUAL(value.mIndex, 2)
-                TESTING_EQUAL(value.mPeerURI, "peer://domain.com/8947b93fbdae8997d380d189d28743fd0b8dccf27acf65c48b4920cac9f1e47a")
-                TESTING_EQUAL(value.mLocationID, "location-b")
-                TESTING_EQUAL(value.mLastDownloadedVersion, "b-version")
-                TESTING_CHECK(value.mDownloadComplete)
-                TESTING_CHECK(!value.mNotified)
-
-                Time now = zsLib::now() - Seconds(2);
-                Time end = now + Seconds(4);
-
-                TESTING_CHECK((value.mLastAccessed > now) && (value.mLastAccessed < end))
-                break;
-              }
-              default: TESTING_CHECK(false); break;
-            }
-          }
-          TESTING_EQUAL(1, loop)
         }
 
         {
@@ -430,8 +406,8 @@ namespace openpeer
                 TESTING_EQUAL(value.mLocationID, "location-a")
                 TESTING_EQUAL(value.mLastDownloadedVersion, String())
                 TESTING_CHECK(!value.mDownloadComplete)
-                TESTING_CHECK(!value.mNotified)
                 TESTING_CHECK(Time() != value.mLastAccessed)
+                TESTING_CHECK(value.mUpdateVersion.hasData())
 
                 TESTING_CHECK((value.mLastAccessed > before) && (value.mLastAccessed < end))
                 TESTING_CHECK(value.mLastAccessed < now)
@@ -443,7 +419,7 @@ namespace openpeer
                 TESTING_EQUAL(value.mLocationID, "location-b")
                 TESTING_EQUAL(value.mLastDownloadedVersion, "b-version")
                 TESTING_CHECK(value.mDownloadComplete)
-                TESTING_CHECK(!value.mNotified)
+                TESTING_CHECK(value.mUpdateVersion.hasData())
 
                 TESTING_CHECK((value.mLastAccessed > before) && (value.mLastAccessed < end))
                 TESTING_CHECK(value.mLastAccessed < now)
@@ -483,7 +459,7 @@ namespace openpeer
                 TESTING_EQUAL(value.mLocationID, "location-b")
                 TESTING_EQUAL(value.mLastDownloadedVersion, "b-version")
                 TESTING_CHECK(value.mDownloadComplete)
-                TESTING_CHECK(!value.mNotified)
+                TESTING_CHECK(value.mUpdateVersion.hasData())
 
                 TESTING_CHECK((value.mLastAccessed > before) && (value.mLastAccessed < end))
                 TESTING_CHECK(value.mLastAccessed < now)
@@ -522,7 +498,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value1a\",\"value1b\" ] } }");
           record.mExpires = now;
           record.mDownloadComplete = false;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -533,7 +508,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}")
           TESTING_EQUAL(zsLib::timeSinceEpoch<Seconds>(now).count(), zsLib::timeSinceEpoch<Seconds>(record.mExpires).count())
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 2)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 1)
@@ -548,7 +523,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::metaData, "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(now).count(), (int) zsLib::timeSinceEpoch<Seconds>(end).count());
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::downloadComplete, 0);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -566,7 +541,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2a\",\"value2b\" ] } }");
           record.mExpires = now;
           record.mDownloadComplete = true;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -577,7 +551,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}")
           TESTING_EQUAL(zsLib::timeSinceEpoch<Seconds>(now).count(), zsLib::timeSinceEpoch<Seconds>(record.mExpires).count())
           TESTING_EQUAL(record.mDownloadComplete, true)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
@@ -592,7 +566,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::metaData, "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(now).count(), (int) zsLib::timeSinceEpoch<Seconds>(end).count());
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -608,7 +582,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value3a\",\"value3b\" ] } }");
           record.mExpires = now;
           record.mDownloadComplete = false;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -619,7 +592,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value3a\",\"value3b\"]}}")
           TESTING_EQUAL(zsLib::timeSinceEpoch<Seconds>(now).count(), zsLib::timeSinceEpoch<Seconds>(record.mExpires).count())
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 2)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 3)
@@ -634,7 +607,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::metaData, "{\"values\":{\"value\":[\"value3a\",\"value3b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(now).count(), (int) zsLib::timeSinceEpoch<Seconds>(end).count());
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::downloadComplete, 0);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -650,7 +623,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2a\",\"value2b\" ] } }");
           record.mExpires = now;
           record.mDownloadComplete = true;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -661,7 +633,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}")
           TESTING_EQUAL(zsLib::timeSinceEpoch<Seconds>(now).count(), zsLib::timeSinceEpoch<Seconds>(record.mExpires).count())
           TESTING_EQUAL(record.mDownloadComplete, true)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
@@ -676,7 +648,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::metaData, "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::expires, (int) zsLib::timeSinceEpoch<Seconds>(now).count(), (int) zsLib::timeSinceEpoch<Seconds>(end).count());
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -689,7 +661,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2a\",\"value2b\" ] } }");
           record.mExpires = Time();
           record.mDownloadComplete = true;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -700,7 +671,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}")
           TESTING_CHECK(Time() == record.mExpires)
           TESTING_EQUAL(record.mDownloadComplete, true)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
@@ -715,7 +686,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::metaData, "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::expires, 0);
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -746,7 +717,6 @@ namespace openpeer
           record.mMetaData = UseServicesHelper::toJSON("{ \"values\": { \"value\": [\"value2a\",\"value2b\" ] } }");
           record.mExpires = Time();
           record.mDownloadComplete = true;
-          record.mNotified = false;
 
           database->addOrUpdate(record, changeRecord);
 
@@ -757,7 +727,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}")
           TESTING_CHECK(Time() == record.mExpires)
           TESTING_EQUAL(record.mDownloadComplete, true)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
           TESTING_EQUAL(changeRecord.mIndexDatabase, 4)
@@ -772,7 +742,7 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::metaData, "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::expires, 0);
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::notified, 0);
+          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 2, UseTables::updateVersion, record.mUpdateVersion);
         }
 
         {
@@ -803,7 +773,7 @@ namespace openpeer
                   TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value2a\",\"value2b\"]}}")
                   TESTING_CHECK(Time() == record.mExpires)
                   TESTING_EQUAL(record.mDownloadComplete, true)
-                  TESTING_EQUAL(record.mNotified, false)
+                  TESTING_CHECK(record.mUpdateVersion.hasData())
                   break;
                 }
                 default: TESTING_CHECK(false); break;
@@ -876,7 +846,7 @@ namespace openpeer
           TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}")
           TESTING_CHECK((record.mExpires > now) && (record.mExpires < end))
           TESTING_EQUAL(record.mDownloadComplete, false)
-          TESTING_EQUAL(record.mNotified, false)
+          TESTING_CHECK(record.mUpdateVersion.hasData())
         }
 
         {
@@ -901,7 +871,7 @@ namespace openpeer
                 TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}")
                 TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
                 TESTING_EQUAL(record.mDownloadComplete, false)
-                TESTING_EQUAL(record.mNotified, false)
+                TESTING_CHECK(record.mUpdateVersion.hasData())
                 break;
               }
               case 1: {
@@ -912,7 +882,7 @@ namespace openpeer
                 TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value3a\",\"value3b\"]}}")
                 TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
                 TESTING_EQUAL(record.mDownloadComplete, false)
-                TESTING_EQUAL(record.mNotified, false)
+                TESTING_CHECK(record.mUpdateVersion.hasData())
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -943,7 +913,7 @@ namespace openpeer
                 TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value3a\",\"value3b\"]}}")
                 TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
                 TESTING_EQUAL(record.mDownloadComplete, false)
-                TESTING_EQUAL(record.mNotified, false)
+                TESTING_CHECK(record.mUpdateVersion.hasData())
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -984,7 +954,7 @@ namespace openpeer
                   TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}")
                   TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
                   TESTING_EQUAL(record.mDownloadComplete, false)
-                  TESTING_EQUAL(record.mNotified, false)
+                  TESTING_CHECK(record.mUpdateVersion.hasData())
                   break;
                 }
                 case 1: {
@@ -995,7 +965,7 @@ namespace openpeer
                   TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value3a\",\"value3b\"]}}")
                   TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
                   TESTING_EQUAL(record.mDownloadComplete, false)
-                  TESTING_EQUAL(record.mNotified, false)
+                  TESTING_CHECK(record.mUpdateVersion.hasData())
                   break;
                 }
                 default: TESTING_CHECK(false); break;
@@ -1029,71 +999,9 @@ namespace openpeer
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::lastDownloadedVersion, "ver-1b");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::metaData, "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}");
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::notified, 0);
 
           // check nothing else was changed
           checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::lastDownloadedVersion, "ver-3");
-        }
-
-        {
-          Time now = zsLib::now() + Seconds(1);
-
-          Time before = now - Seconds(3);
-          Time end = now + Seconds(1);
-
-          auto result = database->getDownloadedButNotNotifiedBatch();
-          TESTING_CHECK(result)
-
-          int loop = 0;
-          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
-          {
-            auto record = (*iter);
-            switch (loop) {
-              case 0: {
-                TESTING_EQUAL(record.mIndex, 1)
-                TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mDatabaseID, "foo1")
-                TESTING_EQUAL(record.mLastDownloadedVersion, "ver-1b")
-                TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}")
-                TESTING_CHECK((record.mExpires > before) && (record.mExpires < end))
-                TESTING_EQUAL(record.mDownloadComplete, true)
-                TESTING_EQUAL(record.mNotified, false)
-                break;
-              }
-              default: TESTING_CHECK(false); break;
-            }
-          }
-          TESTING_EQUAL(1, loop)
-        }
-
-        {
-          database->notifyNotified(1);
-
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, SqlField::id, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::databaseID, "foo1");
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::lastDownloadedVersion, "ver-1b");
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::metaData, "{\"values\":{\"value\":[\"value1a\",\"value1b\"]}}");
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::downloadComplete, 1);
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 0, UseTables::notified, 1);
-
-          // check nothing else was changed
-          checkIndexValue(UseTables::Database(), UseTables::Database_name(), 1, UseTables::notified, 0);
-        }
-
-        {
-          auto result = database->getDownloadedButNotNotifiedBatch();
-          TESTING_CHECK(result)
-
-          int loop = 0;
-          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
-          {
-            auto record = (*iter);
-            switch (loop) {
-              default: TESTING_CHECK(false); break;
-            }
-          }
-          TESTING_EQUAL(0, loop)
         }
 
         {
@@ -2479,6 +2387,14 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      void TestLocationDB::testDelete()
+      {
+        auto result = IUseAbstraction::deleteDatabase(mMaster->mAbstraction, "peer://foo.com/abcdef", "bogus-location-a", "db1");
+
+        TESTING_CHECK(result)
+      }
+      
+      //-----------------------------------------------------------------------
       void TestLocationDB::tableDump(
                                      SqlField *definition,
                                      const char *tableName
@@ -2701,10 +2617,17 @@ void doTestLocationDB()
   testObject->testDatabaseChange();
   testObject->testPermission();
 
-  TestLocationDBPtr testObject2 = TestLocationDB::create(testObject);
-  testObject2->testCreate();
-  testObject2->testEntry();
-  testObject2->testEntryChange();
+  {
+    TestLocationDBPtr testObject2 = TestLocationDB::create(testObject);
+    testObject2->testCreate();
+    testObject2->testEntry();
+    testObject2->testEntryChange();
+  }
+
+  {
+    TestLocationDBPtr testObject3 = TestLocationDB::create(testObject);
+    testObject3->testDelete();
+  }
 
   std::cout << "COMPLETE:     Location db complete.\n";
 

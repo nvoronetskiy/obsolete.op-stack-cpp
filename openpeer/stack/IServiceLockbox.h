@@ -136,6 +136,23 @@ namespace openpeer
                                                        ) = 0;
       virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session) = 0;
     };
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    #pragma mark
+    #pragma mark IServiceLockboxSessionSubscription
+    #pragma mark
+
+    interaction IServiceLockboxSessionSubscription
+    {
+      virtual PUID getID() const = 0;
+
+      virtual void cancel() = 0;
+
+      virtual void background() = 0;
+    };
   }
 }
 
@@ -145,3 +162,10 @@ ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::IServiceLockboxSessionDelegate::Sessio
 ZS_DECLARE_PROXY_METHOD_2(onServiceLockboxSessionStateChanged, IServiceLockboxSessionPtr, SessionStates)
 ZS_DECLARE_PROXY_METHOD_1(onServiceLockboxSessionAssociatedIdentitiesChanged, IServiceLockboxSessionPtr)
 ZS_DECLARE_PROXY_END()
+
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::IServiceLockboxSessionDelegate, openpeer::stack::IServiceLockboxSessionSubscription)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServiceLockboxSessionPtr, IServiceLockboxSessionPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::IServiceLockboxSessionDelegate::SessionStates, SessionStates)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onServiceLockboxSessionStateChanged, IServiceLockboxSessionPtr, SessionStates)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onServiceLockboxSessionAssociatedIdentitiesChanged, IServiceLockboxSessionPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
