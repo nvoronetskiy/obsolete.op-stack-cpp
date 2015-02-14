@@ -45,6 +45,7 @@
 #include <openpeer/services/IBackOffTimer.h>
 #include <openpeer/services/IWakeDelegate.h>
 
+#include <zsLib/Promise.h>
 #include <zsLib/Timer.h>
 
 #define OPENPEER_STACK_P2P_DATABASE_TYPE_FULL_LIST_VERSION "flv"
@@ -108,7 +109,8 @@ namespace openpeer
                                 public ILocationDatabasesForLocationDatabase,
                                 public ILocationDatabasesForLocationDatabasesManager,
                                 public IWakeDelegate,
-                                public zsLib::ITimerDelegate,
+                                public IPromiseSettledDelegate,
+                                public ITimerDelegate,
                                 public IBackOffTimerDelegate,
                                 public IServiceLockboxSessionDelegate,
                                 public ILocationSubscriptionDelegate,
@@ -145,25 +147,31 @@ namespace openpeer
         typedef String DatabaseID;
         typedef std::map<DatabaseID, UseLocationDatabaseWeakPtr> LocationDatabaseMap;
 
-        struct IncomingListSubscription
+        struct VersionedData
         {
-          enum SubscriptionTypes
+          enum VersionTypes
           {
-            SubscriptionType_FullList,
-            SubscriptionType_ChangeList,
+            VersionType_FullList,
+            VersionType_ChangeList,
           };
-          static const char *toString(SubscriptionTypes type);
+          static const char *toString(VersionTypes type);
 
+          VersionTypes mType {VersionType_FullList};
+          UseDatabase::index mAfterIndex {OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN};
+
+          ElementPtr toDebug() const;
+        };
+
+        struct IncomingListSubscription : public VersionedData
+        {
           UseLocationPtr mLocation;
-
-          SubscriptionTypes mType {SubscriptionType_FullList};
-          UseDatabase::index mAfterIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
 
           String mLastVersion;
 
           Time mExpires;
 
           bool mNotified {false};
+          PromisePtr mPendingSendPromise;
 
           ElementPtr toDebug() const;
         };
@@ -208,10 +216,10 @@ namespace openpeer
 
         virtual ILocationPtr getLocation() const;
 
-        virtual LocationDatabaseListPtr getUpdates(
-                                                   const String &inExistingVersion,
-                                                   String &outNewVersion
-                                                   ) const;
+        virtual DatabaseInfoListPtr getUpdates(
+                                               const String &inExistingVersion,
+                                               String &outNewVersion
+                                               ) const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -240,6 +248,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IPromiseSettledDelegate
+        #pragma mark
+
+        virtual void onPromiseSettled(PromisePtr promise);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -338,6 +353,18 @@ namespace openpeer
         bool stepLocalIncomingSubscriptionsNotify();
 
         bool stepChangeNotify();
+
+        static DatabaseInfo::Dispositions toDisposition(UseDatabase::DatabaseChangeRecord::Dispositions disposition);
+
+        DatabaseInfoListPtr getUpdates(
+                                       const String &peerURI,
+                                       VersionedData &ioVersionData,
+                                       String &outLastVersion
+                                       ) const;
+        bool validateVersionInfo(
+                                 const String &version,
+                                 VersionedData &outVersionData
+                                 ) const;
 
         void notifyIncoming(ListSubscribeNotifyPtr notify);
         void notifyIncoming(

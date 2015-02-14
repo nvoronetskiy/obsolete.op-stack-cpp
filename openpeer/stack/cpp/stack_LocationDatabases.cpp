@@ -44,6 +44,7 @@
 #include <openpeer/stack/message/p2p-database/SubscribeRequest.h>
 #include <openpeer/stack/message/p2p-database/SubscribeNotify.h>
 #include <openpeer/stack/message/p2p-database/DataGetRequest.h>
+#include <openpeer/stack/message/IMessageHelper.h>
 
 #include <openpeer/stack/IMessageIncoming.h>
 
@@ -61,14 +62,16 @@ namespace openpeer
 {
   namespace stack
   {
+    ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+    ZS_DECLARE_TYPEDEF_PTR(stack::message::IMessageHelper, UseMessageHelper)
+
     namespace internal
     {
       using zsLib::Numeric;
 
       ZS_DECLARE_TYPEDEF_PTR(stack::internal::IStackForInternal, UseStack)
       ZS_DECLARE_TYPEDEF_PTR(services::ISettings, UseSettings)
-      ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
-      ZS_DECLARE_TYPEDEF_PTR(ILocationDatabases::LocationDatabaseList, LocationDatabaseList)
+      ZS_DECLARE_TYPEDEF_PTR(ILocationDatabases::DatabaseInfoList, DatabaseInfoList)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -200,12 +203,24 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      LocationDatabaseListPtr LocationDatabases::getUpdates(
-                                                            const String &inExistingVersion,
-                                                            String &outNewVersion
-                                                            ) const
+      DatabaseInfoListPtr LocationDatabases::getUpdates(
+                                                        const String &inExistingVersion,
+                                                        String &outNewVersion
+                                                        ) const
       {
-        return LocationDatabaseListPtr();
+        AutoRecursiveLock lock(*this);
+
+        if (isShutdown()) {
+          outNewVersion = inExistingVersion;
+        }
+
+        VersionedData versionData;
+        if (!validateVersionInfo(inExistingVersion, versionData)) {
+          ZS_LOG_WARNING(Detail, log("version information failed to resolve") + ZS_PARAMIZE(inExistingVersion))
+          return DatabaseInfoListPtr();
+        }
+
+        return getUpdates(String(), versionData, outNewVersion);
       }
 
       //-----------------------------------------------------------------------
@@ -267,6 +282,31 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
         step();
       }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark LocationDatabases => IPromiseSettledDelegate
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      void LocationDatabases::onPromiseSettled(PromisePtr promise)
+      {
+        ZS_LOG_TRACE(log("on promise settled") + ZS_PARAM("promise id", promise->getID()))
+
+        AutoRecursiveLock lock(*this);
+        step();
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark LocationDatabases => ITimerDelegate
+      #pragma mark
 
       //-----------------------------------------------------------------------
       void LocationDatabases::onTimer(TimerPtr timer)
@@ -878,7 +918,120 @@ namespace openpeer
         mIncomingListSubscriptionTimer = Timer::create(mThisWeak.lock(), Seconds(60));
         return true;
       }
-      
+
+      //-----------------------------------------------------------------------
+      DatabaseInfoListPtr LocationDatabases::getUpdates(
+                                                        const String &peerURI,
+                                                        VersionedData &ioVersionData,
+                                                        String &outLastVersion
+                                                        ) const
+      {
+        DatabaseInfoListPtr result(new DatabaseInfoList);
+
+        switch (ioVersionData.mType) {
+          case VersionedData::VersionType_FullList: {
+            UseDatabase::DatabaseRecordListPtr batch;
+            if (peerURI.hasData()) {
+              batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndexForPeerURI(peerURI, mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
+            } else {
+              batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndex(mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
+            }
+            if (!batch) batch = UseDatabase::DatabaseRecordListPtr(new UseDatabase::DatabaseRecordList);
+
+            ZS_LOG_TRACE(log("getting batch of databases to notify") + ZS_PARAM("size", batch->size()))
+
+            for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
+              auto databaseRecord = (*batchIter);
+
+              DatabaseInfo info;
+              info.mDisposition = DatabaseInfo::Disposition_Add;
+              info.mDatabaseID = databaseRecord.mDatabaseID;
+              info.mCreated = databaseRecord.mCreated;
+              info.mExpires = databaseRecord.mExpires;
+              info.mMetaData = databaseRecord.mMetaData;
+              info.mVersion = databaseRecord.mUpdateVersion;
+
+              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
+
+              result->push_back(info);
+
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(databaseRecord.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion));
+              outLastVersion = String(VersionedData::toString(VersionedData::VersionType_FullList)) + "-" + hash + "-" + string(databaseRecord.mIndex);
+            }
+
+            if (batch->size() < 1) {
+              ZS_LOG_DEBUG(log("no additional database records found"))
+              // nothing more to notify
+
+              if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioVersionData.mAfterIndex) {
+                ZS_LOG_TRACE(log("switching to change list subscription type"))
+                UseDatabase::DatabaseChangeRecord changeRecord;
+                auto result = mMasterDatase->databaseChangeTable()->getLast(changeRecord);
+                if (!result) {
+                  ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
+                  return DatabaseInfoListPtr();
+                }
+
+                ioVersionData.mType = VersionedData::VersionType_ChangeList;
+                ioVersionData.mAfterIndex = changeRecord.mIndex;
+
+                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID));
+                outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+              } else {
+                outLastVersion = String();
+              }
+            }
+            break;
+          }
+          case VersionedData::VersionType_ChangeList: {
+            UseDatabase::DatabaseChangeRecordListPtr batch;
+            if (peerURI.hasData()) {
+              batch = mMasterDatase->databaseChangeTable()->getChangeBatchForPeerURI(peerURI, mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
+            } else {
+              batch = mMasterDatase->databaseChangeTable()->getChangeBatch(mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
+            }
+            if (!batch) batch = UseDatabase::DatabaseChangeRecordListPtr(new UseDatabase::DatabaseChangeRecordList);
+
+            ZS_LOG_TRACE(log("getting batch of database changes to notify") + ZS_PARAM("size", batch->size()))
+
+            for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
+              auto changeRecord = (*batchIter);
+
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID));
+              outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+
+              DatabaseInfo info;
+              info.mDisposition = toDisposition(changeRecord.mDisposition);
+              info.mDatabaseID = changeRecord.mDatabaseID;
+
+              if (DatabaseInfo::Disposition_Remove != info.mDisposition) {
+                UseDatabase::DatabaseRecord databaseRecord;
+                auto result = mMasterDatase->databaseTable()->getByDatabaseID(changeRecord.mDatabaseID, databaseRecord);
+                if (result) {
+                  if (DatabaseInfo::Disposition_Update == info.mDisposition) {
+                  } else {
+                    info.mMetaData = databaseRecord.mMetaData;
+                    info.mCreated = databaseRecord.mCreated;
+                  }
+                  info.mExpires = databaseRecord.mExpires;
+                  info.mVersion = databaseRecord.mUpdateVersion;
+                } else {
+                  ZS_LOG_WARNING(Detail, log("did not find any related database record (thus must have been removed later)"))
+                  info.mDisposition = DatabaseInfo::Disposition_Remove;
+                }
+              }
+
+              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
+              result->push_back(info);
+            }
+            break;
+          }
+        }
+
+        ZS_LOG_TRACE(log("found changes") + ZS_PARAMIZE(peerURI) + ioVersionData.toDebug() + ZS_PARAMIZE(outLastVersion) + ZS_PARAM("size", result->size()))
+        return result;
+      }
+
       //-----------------------------------------------------------------------
       bool LocationDatabases::stepLocalIncomingSubscriptionsNotify()
       {
@@ -887,47 +1040,53 @@ namespace openpeer
           return true;
         }
 
-
-        for (auto iter = mIncomingListSubscription.begin(); iter != mIncomingListSubscription.end(); ++iter)
-        {
+        for (auto iter = mIncomingListSubscription.begin(); iter != mIncomingListSubscription.end(); ++iter) {
           auto subscription = (*iter).second;
+
+          if (subscription->mPendingSendPromise) {
+            if (!subscription->mPendingSendPromise->isSettled()) {
+              ZS_LOG_TRACE(log("waiting for pending send promise to complete for location") + subscription->mLocation->toDebug() + ZS_PARAM("promise id", subscription->mPendingSendPromise->getID()))
+              continue;
+            }
+            subscription->mPendingSendPromise.reset();
+          }
 
           if (subscription->mNotified) continue;
 
           ZS_LOG_DEBUG(log("need to send out subscription notification"))
 
-          DatabaseInfoListPtr notifyList(new DatabaseInfoList);
+          ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
 
-          switch (subscription->mType) {
-            case IncomingListSubscription::SubscriptionType_FullList: {
-              auto batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndexForPeerURI(subscription->mLocation->getPeerURI(), mPeerLocationRecord.mIndex, subscription->mAfterIndex);
-              if (!batch) batch = UseDatabase::DatabaseRecordListPtr(new UseDatabase::DatabaseRecordList);
+          notify->before(subscription->mLastVersion);
 
-              if (batch->size() < 1) {
-                ZS_LOG_DEBUG(log("no additional database records found"))
-                // nothing more to notify
-                subscription->mNotified = true;
-              }
+          DatabaseInfoListPtr notifyList = getUpdates(subscription->mLocation->getPeerURI(), *subscription, subscription->mLastVersion);
+          if (!notifyList) {
+            ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
+            goto notify_failure;
+          }
 
-              for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter)
-              {
-                auto databaseRecord = (*batchIter);
+          if (notifyList->size() > 0) {
+            notify->databases(notifyList);
+          } else {
+            subscription->mNotified = true;
+          }
 
-                DatabaseInfo info;
-                info.mDisposition = DatabaseInfo::Disposition_Add;
-                info.mDatabaseID = databaseRecord.mDatabaseID;
-                info.mCreated = databaseRecord.mCreated;
-                info.mExpires = databaseRecord.mExpires;
-                info.mMetaData = databaseRecord.mMetaData;
-                info.mVersion = databaseRecord.mUpdateVersion;
+          notify->version(subscription->mLastVersion);
 
-                notifyList->push_back(info);
-              }
-              break;
-            }
-            case IncomingListSubscription::SubscriptionType_ChangeList: {
-              break;
-            }
+          if (notify->version() == notify->before()) {
+            ZS_LOG_DEBUG(log("nothing more to notify for subscription") + subscription->toDebug())
+            subscription->mNotified = true;
+            continue;
+          }
+
+          ZS_LOG_DEBUG(log("sending list subscribe notifiction") + Message::toDebug(notify))
+
+          subscription->mPendingSendPromise = subscription->mLocation->send(notify);
+          subscription->mPendingSendPromise->then(mThisWeak.lock());
+
+        notify_failure:
+          {
+            ZS_LOG_ERROR(Detail, log("subscription notification failure") + subscription->toDebug())
           }
         }
 
@@ -971,6 +1130,7 @@ namespace openpeer
           return;
         }
 
+        bool added = false;
         bool changed = false;
 
         for (auto iter = databases->begin(); iter != databases->end(); ++iter) {
@@ -1005,7 +1165,8 @@ namespace openpeer
                 ZS_LOG_TRACE(log("add or updated database record") + record.toDebug() + changeRecord.toDebug())
 
                 mMasterDatase->databaseChangeTable()->insert(changeRecord);
-                changed = true;
+                added = added || (UseDatabase::DatabaseChangeRecord::Disposition_Add == changeRecord.mDisposition);
+                changed = changed || (UseDatabase::DatabaseChangeRecord::Disposition_Add != changeRecord.mDisposition);
               }
 
               if (database) {
@@ -1040,9 +1201,124 @@ namespace openpeer
         if (changed) {
           mPeerLocationRecord.mUpdateVersion = mMasterDatase->peerLocationTable()->updateVersion(mPeerLocationRecord.mIndex);
           ZS_LOG_DEBUG(log("registered peer location databases has changed") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion))
+        } else if (added) {
+          ZS_LOG_DEBUG(log("registered peer location databases has additions") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion) + ZS_PARAMIZE(mLastChangeUpdateNotified))
+          mLastChangeUpdateNotified = "added";  // by setting to added it will notify delegates (but doesn't actually cause a version update change)
         } else {
           ZS_LOG_DEBUG(log("no changes to database were found"))
         }
+      }
+
+      //-----------------------------------------------------------------------
+      LocationDatabases::DatabaseInfo::Dispositions LocationDatabases::toDisposition(UseDatabase::DatabaseChangeRecord::Dispositions disposition)
+      {
+        switch (disposition) {
+          case UseDatabase::DatabaseChangeRecord::Disposition_None:   break;
+          case UseDatabase::DatabaseChangeRecord::Disposition_Add:    return DatabaseInfo::Disposition_Add;
+          case UseDatabase::DatabaseChangeRecord::Disposition_Update: return DatabaseInfo::Disposition_Update;
+          case UseDatabase::DatabaseChangeRecord::Disposition_Remove: return DatabaseInfo::Disposition_Remove;
+        }
+        return DatabaseInfo::Disposition_None;
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabases::validateVersionInfo(
+                                                  const String &version,
+                                                  VersionedData &outVersionData
+                                                  ) const
+      {
+        UseServicesHelper::SplitMap split;
+        UseServicesHelper::split(version, split, '-');
+
+        if ((0 != split.size()) ||
+            (3 != split.size())) {
+          ZS_LOG_WARNING(Detail, log("version is not understood") + ZS_PARAMIZE(version))
+          return false;
+        }
+
+        String type;
+        String updateVersion;
+        String versionNumberStr;
+        if (3 == split.size()) {
+          type = split[0];
+          updateVersion = split[1];
+          versionNumberStr = split[2];
+        }
+
+        if ((type.hasData()) ||
+            (updateVersion.hasData()) ||
+            (versionNumberStr.hasData())) {
+
+          if ((type.isEmpty()) ||
+              (updateVersion.isEmpty()) ||
+              (versionNumberStr.isEmpty())) {
+            ZS_LOG_WARNING(Detail, log("version is not understood") + ZS_PARAMIZE(version) + ZS_PARAMIZE(type) + ZS_PARAMIZE(updateVersion) + ZS_PARAMIZE(versionNumberStr))
+            return false;
+          }
+        }
+
+        if (VersionedData::toString(VersionedData::VersionType_FullList) == type) {
+          outVersionData.mType = VersionedData::VersionType_FullList;
+        } else if (VersionedData::toString(VersionedData::VersionType_ChangeList) == type) {
+          outVersionData.mType = VersionedData::VersionType_ChangeList;
+        } else if (String() != type) {
+          ZS_LOG_WARNING(Detail, log("version type not understood") + ZS_PARAMIZE(version) + ZS_PARAMIZE(type))
+          return false;
+        }
+
+        if (versionNumberStr.hasData()) {
+          try {
+            outVersionData.mAfterIndex = Numeric<decltype(outVersionData.mAfterIndex)>(versionNumberStr);
+          } catch(Numeric<decltype(outVersionData.mAfterIndex)>::ValueOutOfRange &) {
+            ZS_LOG_WARNING(Detail, log("failed to convert database version (thus must be conflict)") + ZS_PARAMIZE(versionNumberStr) + ZS_PARAMIZE(version))
+            return false;
+          }
+        } else {
+          outVersionData.mAfterIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
+        }
+
+        switch (outVersionData.mType) {
+          case VersionedData::VersionType_FullList: {
+            UseDatabase::DatabaseRecord record;
+
+            if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != outVersionData.mAfterIndex) {
+              auto result = mMasterDatase->databaseTable()->getByIndex(outVersionData.mAfterIndex, record);
+              if (!result) {
+                ZS_LOG_WARNING(Detail, log("database entry record was not found (thus must be conflict)") + outVersionData.toDebug())
+                return false;
+              }
+            }
+
+            if (updateVersion.hasData()) {
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(record.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion));
+
+              if (hash != updateVersion) {
+                ZS_LOG_WARNING(Detail, log("version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + mPeerLocationRecord.toDebug() + ZS_PARAMIZE(hash))
+                return false;
+              }
+            }
+
+            break;
+          }
+          case VersionedData::VersionType_ChangeList: {
+            UseDatabase::DatabaseChangeRecord record;
+            auto result = mMasterDatase->databaseChangeTable()->getByIndex(outVersionData.mAfterIndex, record);
+            if (!result) {
+              ZS_LOG_WARNING(Detail, log("database entry record was not found (thus must be conflict)"))
+              return false;
+            }
+
+            String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(record.mDisposition) + ":" + string(record.mIndexPeerLocation) + ":" + record.mDatabaseID));
+            if (hash != updateVersion) {
+              ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + ZS_PARAMIZE(hash))
+              return false;
+            }
+            break;
+          }
+        }
+
+        ZS_LOG_TRACE(log("version information validated") + ZS_PARAMIZE(version) + outVersionData.toDebug())
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -1087,99 +1363,16 @@ namespace openpeer
           subscription->mExpires = request->expires();
           subscription->mLastVersion = request->version();
 
-          UseServicesHelper::SplitMap split;
-          UseServicesHelper::split(request->version(), split, '-');
-
           if (!mMasterDatase) {
             ZS_LOG_WARNING(Detail, log("master database is gone"))
             errorCode = IHTTP::HTTPStatusCode_Gone;
-            errorReason = "Database is not currently availabl.e";
+            errorReason = "Database is not currently available.";
             goto fail_incoming_subscribe;
           }
 
-          if ((0 != split.size()) ||
-              (3 != split.size())) {
-            ZS_LOG_WARNING(Detail, log("request version is not understood") + ZS_PARAM("version", request->version()))
+          if (!validateVersionInfo(request->version(), *subscription)) {
+            ZS_LOG_WARNING(Detail, log("request version mismatch") + ZS_PARAM("version", request->version()))
             goto fail_incoming_subscribe;
-          }
-
-          String type;
-          String updateVersion;
-          String versionNumberStr;
-          if (3 == split.size()) {
-            type = split[0];
-            updateVersion = split[1];
-            versionNumberStr = split[2];
-          }
-
-          if ((type.hasData()) ||
-              (updateVersion.hasData()) ||
-              (versionNumberStr.hasData())) {
-
-            if ((type.isEmpty()) ||
-                (updateVersion.isEmpty()) ||
-                (versionNumberStr.isEmpty())) {
-              ZS_LOG_WARNING(Detail, log("request version is not understood") + ZS_PARAM("version", request->version()) + ZS_PARAMIZE(type) + ZS_PARAMIZE(updateVersion) + ZS_PARAMIZE(versionNumberStr))
-              goto fail_incoming_subscribe;
-            }
-          }
-
-          if (OPENPEER_STACK_P2P_DATABASE_TYPE_FULL_LIST_VERSION == type) {
-            subscription->mType = IncomingListSubscription::SubscriptionType_FullList;
-          } else if (OPENPEER_STACK_P2P_DATABASE_TYPE_CHANGE_LIST_VERSION == type) {
-            subscription->mType = IncomingListSubscription::SubscriptionType_ChangeList;
-          } else if (String() != type) {
-            ZS_LOG_WARNING(Detail, log("request version type not understood") + ZS_PARAM("version", request->version()) + ZS_PARAMIZE(type))
-            goto fail_incoming_subscribe;
-          }
-
-          if (versionNumberStr.hasData()) {
-            try {
-              subscription->mAfterIndex = Numeric<decltype(subscription->mAfterIndex)>(versionNumberStr);
-            } catch(Numeric<decltype(subscription->mAfterIndex)>::ValueOutOfRange &) {
-              ZS_LOG_WARNING(Detail, log("failed to convert database version (thus must be conflict)") + ZS_PARAMIZE(versionNumberStr) + ZS_PARAM("version", request->version()))
-              goto fail_incoming_subscribe;
-            }
-          }
-
-          switch (subscription->mType) {
-            case IncomingListSubscription::SubscriptionType_FullList: {
-              UseDatabase::DatabaseRecord record;
-
-              if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != subscription->mAfterIndex) {
-                auto result = mMasterDatase->databaseTable()->getByIndex(subscription->mAfterIndex, record);
-                if (!result) {
-                  ZS_LOG_WARNING(Detail, log("database entry record was not found (thus must be conflict)"))
-                  goto fail_incoming_subscribe;
-                }
-              }
-
-              if (updateVersion.hasData()) {
-                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(record.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion));
-
-                if (hash != updateVersion) {
-                  ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAM("version", request->version()) + record.toDebug() + mPeerLocationRecord.toDebug() + ZS_PARAMIZE(hash))
-                  goto fail_incoming_subscribe;
-                }
-              }
-
-              break;
-            }
-            case IncomingListSubscription::SubscriptionType_ChangeList: {
-              UseDatabase::DatabaseChangeRecord record;
-              auto result = mMasterDatase->databaseChangeTable()->getByIndex(subscription->mAfterIndex, record);
-              if (!result) {
-                ZS_LOG_WARNING(Detail, log("database entry record was not found (thus must be conflict)"))
-                goto fail_incoming_subscribe;
-              }
-
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(record.mDisposition) + ":" + string(record.mIndexPeerLocation) + ":" + string(record.mIndexDatabase)));
-              if (hash != updateVersion) {
-                ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAM("version", request->version()) + record.toDebug() + ZS_PARAMIZE(hash))
-                goto fail_incoming_subscribe;
-              }
-              break;
-            }
           }
 
           ZS_LOG_DEBUG(log("accepting incoming list subscription") + subscription->toDebug())
@@ -1188,6 +1381,7 @@ namespace openpeer
           message->sendResponse(result);
 
           IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+          return;
         }
 
       fail_incoming_subscribe:
@@ -1208,18 +1402,37 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark LocationDatabases::IncomingListSubscription
+      #pragma mark LocationDatabases::VersionedData
       #pragma mark
 
       //-----------------------------------------------------------------------
-      const char *LocationDatabases::IncomingListSubscription::toString(SubscriptionTypes type)
+      const char *LocationDatabases::VersionedData::toString(VersionTypes type)
       {
         switch (type) {
-          case SubscriptionType_FullList:   return "full";
-          case SubscriptionType_ChangeList: return "change";
+          case VersionType_FullList:   return OPENPEER_STACK_P2P_DATABASE_TYPE_FULL_LIST_VERSION;
+          case VersionType_ChangeList: return OPENPEER_STACK_P2P_DATABASE_TYPE_CHANGE_LIST_VERSION;
         }
         return "unknown";
       }
+
+      //-----------------------------------------------------------------------
+      ElementPtr LocationDatabases::VersionedData::toDebug() const
+      {
+        ElementPtr resultEl = Element::create("LocationDatabases::VersionedData");
+
+        UseServicesHelper::debugAppend(resultEl, "type", toString(mType));
+        UseServicesHelper::debugAppend(resultEl, "after index", mAfterIndex);
+
+        return resultEl;
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark LocationDatabases::IncomingListSubscription
+      #pragma mark
 
       //-----------------------------------------------------------------------
       ElementPtr LocationDatabases::IncomingListSubscription::toDebug() const
@@ -1229,7 +1442,6 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "location", UseLocation::toDebug(mLocation));
 
         UseServicesHelper::debugAppend(resultEl, "type", toString(mType));
-
         UseServicesHelper::debugAppend(resultEl, "after index", mAfterIndex);
 
         UseServicesHelper::debugAppend(resultEl, "lst version", mLastVersion);
@@ -1237,6 +1449,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
 
         UseServicesHelper::debugAppend(resultEl, "notified", mNotified);
+
+        UseServicesHelper::debugAppend(resultEl, "pending send promise", mPendingSendPromise ? mPendingSendPromise->getID() : 0);
 
         return resultEl;
       }
@@ -1265,6 +1479,125 @@ namespace openpeer
         return LocationDatabases::open(inLocation, inDelegate);
       }
 
+    }
+
+    //-------------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark ILocationDatabasesTypes::DatabaseInfo
+    #pragma mark
+
+    //-----------------------------------------------------------------------
+    const char *ILocationDatabasesTypes::DatabaseInfo::toString(Dispositions disposition)
+    {
+      switch (disposition) {
+        case Disposition_None:    return "none";
+        case Disposition_Add:     return "add";
+        case Disposition_Update:  return "update";
+        case Disposition_Remove:  return "remove";
+      }
+      return "unknown";
+    }
+
+    //-----------------------------------------------------------------------
+    ILocationDatabasesTypes::DatabaseInfo::Dispositions ILocationDatabasesTypes::DatabaseInfo::toDisposition(const char *inStr)
+    {
+      String str(inStr);
+
+      static Dispositions dispositions[] = {
+        Disposition_Add,
+        Disposition_Update,
+        Disposition_Remove,
+        Disposition_None,
+      };
+
+      for (int index = 0; Disposition_None != dispositions[index]; ++index) {
+        if (str != toString(dispositions[index])) continue;
+        return dispositions[index];
+      }
+      return Disposition_None;
+    }
+
+    //-----------------------------------------------------------------------
+    bool ILocationDatabasesTypes::DatabaseInfo::hasData() const
+    {
+      return ((Disposition_None != mDisposition) ||
+              (mDatabaseID.hasData()) ||
+              (mVersion.hasData()) ||
+              ((bool)mMetaData) ||
+              (Time() != mCreated) ||
+              (Time() != mExpires));
+    }
+
+    //-----------------------------------------------------------------------
+    ElementPtr ILocationDatabasesTypes::DatabaseInfo::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("ILocationDatabases::::DatabaseInfo");
+
+      UseServicesHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
+      UseServicesHelper::debugAppend(resultEl, "database id", mDatabaseID);
+      UseServicesHelper::debugAppend(resultEl, "version", mVersion);
+      UseServicesHelper::debugAppend(resultEl, "meta data", UseServicesHelper::toString(mMetaData));
+      UseServicesHelper::debugAppend(resultEl, "created", mCreated);
+      UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
+
+      return resultEl;
+    }
+
+    //-----------------------------------------------------------------------
+    ILocationDatabasesTypes::DatabaseInfo ILocationDatabasesTypes::DatabaseInfo::create(ElementPtr elem)
+    {
+      DatabaseInfo info;
+
+      if (!elem) return info;
+
+      info.mDisposition = DatabaseInfo::toDisposition(elem->getAttributeValue("disposition"));
+      info.mDatabaseID = UseMessageHelper::getAttributeID(elem);
+      info.mVersion = UseMessageHelper::getAttribute(elem, "version");
+
+      info.mMetaData = elem->findFirstChildElement("metaData");
+      if (info.mMetaData) {
+        info.mMetaData = info.mMetaData->clone()->toElement();
+      }
+
+      info.mCreated = UseServicesHelper::stringToTime(UseMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("created")));
+      info.mExpires = UseServicesHelper::stringToTime(UseMessageHelper::getElementTextAndDecode(elem->findFirstChildElement("expires")));
+
+      return info;
+    }
+
+    //-----------------------------------------------------------------------
+    ElementPtr ILocationDatabasesTypes::DatabaseInfo::createElement() const
+    {
+      ElementPtr databaseEl = UseMessageHelper::createElementWithTextID("database", mDatabaseID);
+
+      if (Disposition_None != mDisposition) {
+        UseMessageHelper::setAttributeWithText(databaseEl, "disposition", toString(mDisposition));
+      }
+      if (mVersion.hasData()) {
+        UseMessageHelper::setAttributeWithText(databaseEl, "version", mVersion);
+      }
+
+      if (mMetaData) {
+        if (mMetaData->getValue() != "metaData") {
+          ElementPtr metaDataEl = Element::create("metaData");
+          metaDataEl->adoptAsLastChild(mMetaData->clone());
+          databaseEl->adoptAsLastChild(metaDataEl);
+        } else {
+          databaseEl->adoptAsLastChild(mMetaData->clone());
+        }
+      }
+
+      if (Time() != mCreated) {
+        databaseEl->adoptAsLastChild(UseMessageHelper::createElementWithNumber("created", UseServicesHelper::timeToString(mCreated)));
+      }
+      if (Time() != mExpires) {
+        databaseEl->adoptAsLastChild(UseMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
+      }
+
+      return databaseEl;
     }
 
     //-------------------------------------------------------------------------

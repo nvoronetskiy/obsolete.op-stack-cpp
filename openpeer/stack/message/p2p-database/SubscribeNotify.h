@@ -34,6 +34,8 @@
 #include <openpeer/stack/message/MessageNotify.h>
 #include <openpeer/stack/message/p2p-database/MessageFactoryP2PDatabase.h>
 
+#include <openpeer/stack/ILocationDatabase.h>
+
 namespace openpeer
 {
   namespace stack
@@ -53,6 +55,9 @@ namespace openpeer
             AttributeType_DatabaseVersion,
             AttributeType_DatabaseEntries,
           };
+
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabase::EntryInfo, EntryInfo)
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabase::EntryInfoList, EntryInfoList)
 
         public:
           static SubscribeNotifyPtr convert(MessagePtr message);
@@ -78,8 +83,8 @@ namespace openpeer
           const String &version() const                             {return mVersion;}
           void version(const String &value)                         {mVersion = value;}
 
-          DatabaseEntryInfoListPtr entries() const                  {return mEntries;}
-          void entries(DatabaseEntryInfoListPtr value)              {mEntries = value;}
+          EntryInfoListPtr entries() const                          {return mEntries;}
+          void entries(EntryInfoListPtr value)                      {mEntries = value;}
 
         protected:
           SubscribeNotify();
@@ -88,7 +93,7 @@ namespace openpeer
           String mVersion;
           bool mCompleted {false};
 
-          DatabaseEntryInfoListPtr mEntries;
+          EntryInfoListPtr mEntries;
         };
       }
     }

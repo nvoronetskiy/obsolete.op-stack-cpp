@@ -209,9 +209,9 @@ namespace openpeer
                           )
       {
         output.mIndex = static_cast<decltype(output.mIndex)>(record->getValue(SqlField::id)->asInteger());
-        output.mIndexPeerLocation = static_cast<decltype(output.mIndexPeerLocation)>(record->getValue(UseTables::indexPeerLocation)->asInteger());
         output.mDisposition = static_cast<decltype(output.mDisposition)>(record->getValue(UseTables::disposition)->asInteger());
-        output.mIndexDatabase = static_cast<decltype(output.mIndexPeerLocation)>(record->getValue(UseTables::indexDatabase)->asInteger());
+        output.mIndexPeerLocation = static_cast<decltype(output.mIndexPeerLocation)>(record->getValue(UseTables::indexPeerLocation)->asInteger());
+        output.mDatabaseID = record->getValue(UseTables::databaseID)->asString();
       }
 
       //-----------------------------------------------------------------------
@@ -340,7 +340,7 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "index", mIndex);
         UseServicesHelper::debugAppend(resultEl, "index peer location", mIndexPeerLocation);
         UseServicesHelper::debugAppend(resultEl, "disposition", toString(mDisposition));
-        UseServicesHelper::debugAppend(resultEl, "index database", mIndexDatabase);
+        UseServicesHelper::debugAppend(resultEl, "database id", mDatabaseID);
 
         return resultEl;
       }
@@ -760,7 +760,7 @@ namespace openpeer
 
           Seconds accessedBefore = zsLib::timeSinceEpoch<Seconds>(lastAccessedBefore);
 
-          table.open(String(UseTables::lastAccessed) + " < " + string(accessedBefore.count()) + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_PEER_LOCATION_UNUSED_BATCH_LIMIT));
+          table.open(String(UseTables::lastAccessed) + " < " + string(accessedBefore.count()) + " ORDER BY " + SqlField::id + " ASC LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_PEER_LOCATION_UNUSED_BATCH_LIMIT));
 
           if (table.recordCount() < 1) {
             ZS_LOG_TRACE(log("no unused locations found"))
@@ -842,13 +842,18 @@ namespace openpeer
         AutoRecursiveLock lock(*this);
 
         outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_None;
+        outChangeRecord.mDatabaseID = ioRecord.mDatabaseID;
 
         try {
           SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
 
           outChangeRecord.mIndexPeerLocation = ioRecord.mIndexPeerLocation;
 
-          table.open(String(UseTables::indexPeerLocation) + " = " + string(ioRecord.mIndexPeerLocation) + " AND " + UseTables::databaseID + " = " + SqlQuote(ioRecord.mDatabaseID));
+          if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioRecord.mIndex) {
+            table.open(String(SqlField::id) + " = " + string(ioRecord.mIndex));
+          } else {
+            table.open(String(UseTables::indexPeerLocation) + " = " + string(ioRecord.mIndexPeerLocation) + " AND " + UseTables::databaseID + " = " + SqlQuote(ioRecord.mDatabaseID));
+          }
 
           SqlRecord *found = table.getTopRecord();
 
@@ -860,6 +865,7 @@ namespace openpeer
 
             bool changed = false;
 
+            outChangeRecord.mDatabaseID = ioRecord.mDatabaseID = previousRecord.mDatabaseID;
             ioRecord.mIndex = previousRecord.mIndex;
             ioRecord.mIndexPeerLocation = previousRecord.mIndexPeerLocation;
 
@@ -946,7 +952,6 @@ namespace openpeer
               ZS_LOG_TRACE(log("updating existing record") + previousRecord.toDebug() + ioRecord.toDebug())
               table.updateRecord(found);
             }
-            outChangeRecord.mIndexDatabase = previousRecord.mIndex;
             return;
           }
 
@@ -983,7 +988,6 @@ namespace openpeer
               internal::convert(found, ioRecord);
 
               outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_Add;
-              outChangeRecord.mIndexDatabase = ioRecord.mIndex;
 
               ZS_LOG_TRACE(log("found newly inserted database record") + ioRecord.toDebug())
               return;
@@ -1054,7 +1058,7 @@ namespace openpeer
           SqlRecord *found = table.getTopRecord();
 
           if (!found) {
-            ZS_LOG_WARNING(Trace, log("did not fine existing database record") + inRecord.toDebug())
+            ZS_LOG_WARNING(Trace, log("did not find existing database record") + inRecord.toDebug())
             return false;
           }
 
@@ -1062,8 +1066,8 @@ namespace openpeer
           internal::convert(found, previousRecord);
 
           outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_Remove;
-          outChangeRecord.mIndexDatabase = previousRecord.mIndex;
           outChangeRecord.mIndexPeerLocation = previousRecord.mIndexPeerLocation;
+          outChangeRecord.mDatabaseID = previousRecord.mDatabaseID;
 
           ZS_LOG_TRACE(log("removing previous database record") + previousRecord.toDebug())
 
@@ -1091,7 +1095,38 @@ namespace openpeer
           SqlRecord *found = table.getTopRecord();
 
           if (!found) {
-            ZS_LOG_WARNING(Trace, log("did not fine existing database record") + ZS_PARAMIZE(indexDatabaseRecord))
+            ZS_LOG_WARNING(Trace, log("did not find existing database record") + ZS_PARAMIZE(indexDatabaseRecord))
+            return false;
+          }
+
+          internal::convert(found, outRecord);
+
+          ZS_LOG_TRACE(log("found previous database record") + outRecord.toDebug())
+
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IDatabaseTable_getByDatabaseID(
+                                                                       const char *databaseID,
+                                                                       DatabaseRecord &outRecord
+                                                                       ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
+
+          table.open(String(UseTables::databaseID) + " = " + SqlQuote(databaseID));
+
+          SqlRecord *found = table.getTopRecord();
+
+          if (!found) {
+            ZS_LOG_WARNING(Trace, log("did not find existing database record") + ZS_PARAMIZE(databaseID))
             return false;
           }
 
@@ -1169,7 +1204,7 @@ namespace openpeer
           String whereID = table.name() + "." + UseTables::indexPeerLocation + " = " + string(indexPeerLocationRecord);
           String whereURI = " AND " + String(UseTables::Permission_name()) + "." + UseTables::peerURI + " = " + SqlQuote(String(peerURIWithPermission));
 
-          String queryStr = "SELECT " + table.getSelectFields(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::Permission_name() + " ON " + table.name() + "." + SqlField::id + " = " + UseTables::Permission_name() + "." + UseTables::indexDatabase + " WHERE ";
+          String queryStr = "SELECT " + table.getSelectFields(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::Permission_name() + " ON " + table.name() + "." + UseTables::databaseID + " = " + UseTables::Permission_name() + "." + UseTables::databaseID + " WHERE ";
           String whereClause = whereID + whereURI + afterClause;
 
           queryStr += whereClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_WITH_PEER_URI_PERMISSION_BATCH_LIMIT);
@@ -1297,22 +1332,6 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IDatabaseChangeTable_flushAllForDatabase(index indexDatabase)
-      {
-        AutoRecursiveLock lock(*this);
-
-        try {
-          SqlTable table(*mDB, UseTables::DatabaseChange_name(), UseTables::DatabaseChange());
-
-          ZS_LOG_TRACE(log("removing all database change records for database") + ZS_PARAMIZE(indexDatabase))
-
-          table.deleteRecords(String(UseTables::indexDatabase) + " = " + string(indexDatabase));
-        } catch (SqlException &e) {
-          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
-        }
-      }
-
-      //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IDatabaseChangeTable_insert(const DatabaseChangeRecord &record)
       {
         AutoRecursiveLock lock(*this);
@@ -1323,8 +1342,8 @@ namespace openpeer
           SqlRecord addRecord(table.fields());
 
           addRecord.setInteger(UseTables::indexPeerLocation, record.mIndexPeerLocation);
-          addRecord.setInteger(UseTables::indexDatabase, record.mIndexDatabase);
           addRecord.setInteger(UseTables::disposition, (int) record.mDisposition);
+          addRecord.setString(UseTables::databaseID, record.mDatabaseID);
 
           ZS_LOG_TRACE(log("adding new database change record") + UseStackHelper::toDebug(&table, &addRecord))
           table.addRecord(&addRecord);
@@ -1350,7 +1369,38 @@ namespace openpeer
           SqlRecord *found = table.getTopRecord();
 
           if (!found) {
-            ZS_LOG_WARNING(Trace, log("did not fine existing database change record") + ZS_PARAMIZE(indexDatabaseChangeRecord))
+            ZS_LOG_WARNING(Trace, log("did not find existing database change record") + ZS_PARAMIZE(indexDatabaseChangeRecord))
+            return false;
+          }
+
+          internal::convert(found, outRecord);
+
+          ZS_LOG_TRACE(log("found previous database change record") + outRecord.toDebug())
+
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IDatabaseChangeTable_getLast(DatabaseChangeRecord &outRecord) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::DatabaseChange_name(), UseTables::DatabaseChange());
+
+          SqlRecordSet recordSet(*mDB, table.fields());
+
+          String queryStr = "SELECT " + table.getSelectFields() + " FROM " + table.name() + " ORDER BY " + String(SqlField::id) + " DESC LIMIT 1";
+          recordSet.query(queryStr);
+
+          SqlRecord *found = recordSet.getTopRecord();
+
+          if (!found) {
+            ZS_LOG_WARNING(Trace, log("did not find existing database change record"))
             return false;
           }
 
@@ -1428,7 +1478,7 @@ namespace openpeer
           String whereID = table.name() + "." + UseTables::indexPeerLocation + " = " + string(indexPeerLocationRecord);
           String whereURI = " AND " + String(UseTables::Permission_name()) + "." + UseTables::peerURI + " = " + SqlQuote(String(peerURIWithPermission));
 
-          String queryStr = "SELECT " + table.getSelectFields(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::Permission_name() + " ON (" + table.name() + "." + UseTables::indexPeerLocation + " = " + UseTables::Permission_name() + "." + UseTables::indexPeerLocation + " AND " + table.name() + "." + UseTables::indexDatabase + " = " + UseTables::Permission_name() + "." + UseTables::indexDatabase + ") WHERE ";
+          String queryStr = "SELECT " + table.getSelectFields(true) + " FROM " + table.name() + " INNER JOIN " + UseTables::Permission_name() + " ON (" + table.name() + "." + UseTables::indexPeerLocation + " = " + UseTables::Permission_name() + "." + UseTables::indexPeerLocation + " AND " + table.name() + "." + UseTables::databaseID + " = " + UseTables::Permission_name() + "." + UseTables::databaseID + ") WHERE ";
           String whereClause = whereID + whereURI + afterClause;
 
           queryStr += whereClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_CHANGE_WITH_PEER_URI_PERMISSION_BATCH_LIMIT);
@@ -1483,16 +1533,19 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IPermissionTable_flushAllForDatabase(index indexDatabaseRecord)
+      void LocationDatabaseAbstraction::IPermissionTable_flushAllForDatabase(
+                                                                             index indexPeerLocationRecord,
+                                                                             const char *databaseID
+                                                                             )
       {
         AutoRecursiveLock lock(*this);
 
         try {
-          ZS_LOG_TRACE(log("deleting database permission records") + ZS_PARAMIZE(indexDatabaseRecord))
+          ZS_LOG_TRACE(log("deleting database permission records") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(databaseID))
 
           SqlTable table(*mDB, UseTables::Permission_name(), UseTables::Permission());
 
-          table.deleteRecords(String(UseTables::indexDatabase) + " = " + string(indexDatabaseRecord));
+          table.deleteRecords(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + " AND " + UseTables::databaseID + " = " + SqlQuote(databaseID));
 
         } catch (SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
@@ -1502,7 +1555,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IPermissionTable_insert(
                                                                 index indexPeerLocation,
-                                                                index indexDatabaseRecord,
+                                                                const char *databaseID,
                                                                 const PeerURIList &uris
                                                                 )
       {
@@ -1523,7 +1576,7 @@ namespace openpeer
             SqlRecord addRecord(table.fields());
 
             addRecord.setInteger(UseTables::indexPeerLocation, indexPeerLocation);
-            addRecord.setInteger(UseTables::indexDatabase, indexDatabaseRecord);
+            addRecord.setString(UseTables::databaseID, databaseID);
             addRecord.setString(UseTables::peerURI, uri);
 
             ZS_LOG_TRACE(log("adding new database permission record") + UseStackHelper::toDebug(&table, &addRecord))
@@ -1535,10 +1588,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IPermissionTable_getByDatabaseIndex(
-                                                                            index indexDatabaseRecord,
-                                                                            PeerURIList &outURIs
-                                                                            ) const
+      void LocationDatabaseAbstraction::IPermissionTable_getByDatabaseID(
+                                                                         index indexPeerLocationRecord,
+                                                                         const char *databaseID,
+                                                                         PeerURIList &outURIs
+                                                                         ) const
       {
         outURIs.clear();
 
@@ -1547,7 +1601,7 @@ namespace openpeer
         try {
           SqlTable table(*mDB, UseTables::Permission_name(), UseTables::Permission());
 
-          table.open(String(UseTables::indexDatabase) + " = " + string(indexDatabaseRecord));
+          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + " AND " + UseTables::databaseID + " = " + SqlQuote(databaseID));
 
           for (int row = 0; row < table.recordCount(); ++row) {
             SqlRecord *record = table.getRecord(row);
@@ -2176,7 +2230,6 @@ namespace openpeer
 
             SqlRecordSet query(*mDB);
             query.query(String("CREATE INDEX ") + UseTables::DatabaseChange_name() + "i" + UseTables::indexPeerLocation + " ON " + UseTables::DatabaseChange_name() + "(" + UseTables::indexPeerLocation + ")");
-            query.query(String("CREATE INDEX ") + UseTables::DatabaseChange_name() + "i" + UseTables::indexDatabase + " ON " + UseTables::DatabaseChange_name() + "(" + UseTables::indexDatabase + ")");
           }
           {
             SqlTable table(*mDB, UseTables::Permission_name(), UseTables::Permission());
@@ -2185,7 +2238,7 @@ namespace openpeer
             SqlRecordSet query(*mDB);
             query.query(String("CREATE INDEX ") + UseTables::Permission_name() + "i" + UseTables::peerURI + " ON " + UseTables::Permission_name() + "(" + UseTables::peerURI + ")");
             query.query(String("CREATE INDEX ") + UseTables::Permission_name() + "i" + UseTables::indexPeerLocation + " ON " + UseTables::Permission_name() + "(" + UseTables::indexPeerLocation + ")");
-            query.query(String("CREATE INDEX ") + UseTables::Permission_name() + "i" + UseTables::indexDatabase + " ON " + UseTables::Permission_name() + "(" + UseTables::indexDatabase + ")");
+            query.query(String("CREATE INDEX ") + UseTables::Permission_name() + "i" + UseTables::databaseID + " ON " + UseTables::Permission_name() + "(" + UseTables::databaseID + ")");
           }
         }
         else

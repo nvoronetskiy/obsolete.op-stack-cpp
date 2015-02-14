@@ -34,6 +34,8 @@
 #include <openpeer/stack/message/MessageResult.h>
 #include <openpeer/stack/message/p2p-database/MessageFactoryP2PDatabase.h>
 
+#include <openpeer/stack/ILocationDatabase.h>
+
 namespace openpeer
 {
   namespace stack
@@ -49,6 +51,9 @@ namespace openpeer
           {
             AttributeType_DatabaseEntries = AttributeType_Last + 1,
           };
+
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabase::EntryInfo, EntryInfo)
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabase::EntryInfoList, EntryInfoList)
 
         public:
           static DataGetResultPtr convert(MessagePtr message);
@@ -67,13 +72,13 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
-          DatabaseEntryInfoListPtr entries() const        {return mEntries;}
-          void entries(DatabaseEntryInfoListPtr value)    {mEntries = value;}
+          EntryInfoListPtr entries() const        {return mEntries;}
+          void entries(EntryInfoListPtr value)    {mEntries = value;}
 
         protected:
           DataGetResult();
 
-          DatabaseEntryInfoListPtr mEntries;
+          EntryInfoListPtr mEntries;
         };
       }
     }

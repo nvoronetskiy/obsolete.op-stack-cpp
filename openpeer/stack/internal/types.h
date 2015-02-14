@@ -73,6 +73,8 @@ namespace openpeer
 
       ZS_DECLARE_USING_PTR(zsLib, Promise)
 
+      ZS_DECLARE_USING_PTR(zsLib, IPromiseSettledDelegate)
+      ZS_DECLARE_USING_PTR(zsLib, IPromiseResolutionDelegate)
       ZS_DECLARE_USING_PTR(zsLib, IPromiseCatchDelegate)
 
       ZS_DECLARE_USING_PTR(zsLib::XML, Element)

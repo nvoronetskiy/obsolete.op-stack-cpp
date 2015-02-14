@@ -48,36 +48,37 @@ namespace openpeer
 
     interaction ILocationDatabasesTypes
     {
-      struct LocationDatabase
-      {
-        typedef String DatabaseID;
+      ZS_DECLARE_STRUCT_PTR(DatabaseInfo)
 
+      struct DatabaseInfo
+      {
         enum Dispositions
         {
+          Disposition_None,
           Disposition_Add,
           Disposition_Update,
           Disposition_Remove,
         };
 
         static const char *toString(Dispositions disposition);
+        static Dispositions toDisposition(const char *str);
 
-        Dispositions mDisposition;
-        DatabaseID mDatabaseID;
+        Dispositions mDisposition {Disposition_None};
+        String mDatabaseID;
+        String mVersion;
         ElementPtr mMetaData;
-
-        Time mCreation;
-        Time mLastUpdated;
-
-        String mLastUpdateVersion;
+        Time mCreated;
+        Time mExpires;
 
         bool hasData() const;
         ElementPtr toDebug() const;
+
+        static DatabaseInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
-      ZS_DECLARE_PTR(LocationDatabase)
-
-      typedef std::list<LocationDatabase> LocationDatabaseList;
-      ZS_DECLARE_PTR(LocationDatabaseList)
+      typedef std::list<DatabaseInfo> DatabaseInfoList;
+      ZS_DECLARE_PTR(DatabaseInfoList)
     };
 
     //-------------------------------------------------------------------------
@@ -119,10 +120,10 @@ namespace openpeer
       //
       //          An empty return result indicates there are no more databases
       //          available at this time.
-      virtual LocationDatabaseListPtr getUpdates(
-                                                 const String &inExistingVersion,  // pass in String() when no data has been fetched before
-                                                 String &outNewVersion             // the version to which the database has now been updated
-                                                 ) const = 0;
+      virtual DatabaseInfoListPtr getUpdates(
+                                             const String &inExistingVersion,  // pass in String() when no data has been fetched before
+                                             String &outNewVersion             // the version to which the database has now been updated
+                                             ) const = 0;
     };
 
     //-------------------------------------------------------------------------

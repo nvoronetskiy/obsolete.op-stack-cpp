@@ -495,8 +495,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 2)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 1)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo1")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 1);
 
@@ -533,8 +533,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 2);
 
@@ -571,8 +571,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 2)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 3)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo3")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 3);
 
@@ -609,8 +609,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_None);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 3);
 
@@ -647,8 +647,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 3);
 
@@ -671,8 +671,8 @@ namespace openpeer
           database->remove(record, changeRecord);
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 2)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 2);
 
@@ -703,8 +703,8 @@ namespace openpeer
           TESTING_CHECK(record.mUpdateVersion.hasData())
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 4)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 3);
 
@@ -727,7 +727,7 @@ namespace openpeer
           uris.push_back("peer://domain.com/b/");
           uris.push_back("peer://domain.com/c/");
 
-          permission->insert(3, 4, uris);
+          permission->insert(3, "foo2", uris);
 
           {
             auto result = database->getBatchByPeerLocationIndexForPeerURI("peer://domain.com/a/", 3);
@@ -796,8 +796,8 @@ namespace openpeer
           database->remove(record, changeRecord);
 
           TESTING_EQUAL(changeRecord.mIndexPeerLocation, 3)
-          TESTING_EQUAL(changeRecord.mIndexDatabase, 4)
           TESTING_EQUAL(changeRecord.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove);
+          TESTING_EQUAL(changeRecord.mDatabaseID, "foo2")
 
           checkCount(UseTables::Database(), UseTables::Database_name(), 2);
 
@@ -916,8 +916,8 @@ namespace openpeer
           uris.push_back("peer://domain.com/e/");
           uris.push_back("peer://domain.com/f/");
 
-          permission->insert(2, 1, uris);
-          permission->insert(2, 3, uris);
+          permission->insert(2, "foo1", uris);
+          permission->insert(2, "foo3", uris);
 
           {
             auto result = database->getBatchByPeerLocationIndexForPeerURI("peer://domain.com/f/", 2);
@@ -1020,7 +1020,7 @@ namespace openpeer
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Add;
           record.mIndexPeerLocation = 2;
-          record.mIndexDatabase = 10;
+          record.mDatabaseID = "10";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1);
@@ -1028,7 +1028,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 0, SqlField::id, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 0, UseTables::disposition, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 0, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 0, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 0, UseTables::databaseID, "10");
         }
 
         {
@@ -1039,14 +1039,14 @@ namespace openpeer
 
           TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
           TESTING_EQUAL(record.mIndexPeerLocation, 2)
-          TESTING_EQUAL(record.mIndexDatabase, 10)
+          TESTING_EQUAL(record.mDatabaseID, "10")
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Add;
           record.mIndexPeerLocation = 2;
-          record.mIndexDatabase = 11;
+          record.mDatabaseID = "11";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2);
@@ -1054,7 +1054,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1, SqlField::id, 2);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1, UseTables::disposition, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1, UseTables::indexDatabase, 11);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 1, UseTables::databaseID, "11");
         }
 
         {
@@ -1065,14 +1065,14 @@ namespace openpeer
 
           TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
           TESTING_EQUAL(record.mIndexPeerLocation, 2)
-          TESTING_EQUAL(record.mIndexDatabase, 11)
+          TESTING_EQUAL(record.mDatabaseID, "11")
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Update;
           record.mIndexPeerLocation = 2;
-          record.mIndexDatabase = 10;
+          record.mDatabaseID = "10";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3);
@@ -1080,7 +1080,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2, SqlField::id, 3);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2, UseTables::disposition, 2);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 2, UseTables::databaseID, "10");
         }
 
         {
@@ -1091,14 +1091,14 @@ namespace openpeer
 
           TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update)
           TESTING_EQUAL(record.mIndexPeerLocation, 2)
-          TESTING_EQUAL(record.mIndexDatabase, 10)
+          TESTING_EQUAL(record.mDatabaseID, "10")
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Remove;
           record.mIndexPeerLocation = 2;
-          record.mIndexDatabase = 10;
+          record.mDatabaseID = "10";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4);
@@ -1106,7 +1106,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3, SqlField::id, 4);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3, UseTables::disposition, 3);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 3, UseTables::databaseID, "10");
         }
 
         {
@@ -1117,14 +1117,14 @@ namespace openpeer
 
           TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
           TESTING_EQUAL(record.mIndexPeerLocation, 2)
-          TESTING_EQUAL(record.mIndexDatabase, 10)
+          TESTING_EQUAL(record.mDatabaseID, "10")
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Add;
           record.mIndexPeerLocation = 3;
-          record.mIndexDatabase = 12;
+          record.mDatabaseID = "12";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5);
@@ -1132,7 +1132,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4, SqlField::id, 5);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4, UseTables::disposition, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4, UseTables::indexDatabase, 12);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 4, UseTables::databaseID, "12");
         }
 
         {
@@ -1143,14 +1143,25 @@ namespace openpeer
 
           TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
           TESTING_EQUAL(record.mIndexPeerLocation, 3)
-          TESTING_EQUAL(record.mIndexDatabase, 12)
+          TESTING_EQUAL(record.mDatabaseID, "12")
+        }
+
+        {
+          IUseAbstraction::DatabaseChangeRecord record;
+          auto result = databaseChange->getLast(record);
+
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
+          TESTING_EQUAL(record.mIndexPeerLocation, 3)
+          TESTING_EQUAL(record.mDatabaseID, "12")
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Add;
           record.mIndexPeerLocation = 3;
-          record.mIndexDatabase = 13;
+          record.mDatabaseID = "13";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6);
@@ -1158,14 +1169,14 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5, SqlField::id, 6);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5, UseTables::disposition, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5, UseTables::indexDatabase, 13);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 5, UseTables::databaseID, "13");
         }
 
         {
           IUseAbstraction::DatabaseChangeRecord record;
           record.mDisposition = IUseAbstraction::DatabaseChangeRecord::Disposition_Add;
           record.mIndexPeerLocation = 3;
-          record.mIndexDatabase = 14;
+          record.mDatabaseID = "14";
           databaseChange->insert(record);
 
           checkCount(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 7);
@@ -1173,7 +1184,7 @@ namespace openpeer
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6, SqlField::id, 7);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6, UseTables::disposition, 1);
           checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6, UseTables::indexDatabase, 14);
+          checkIndexValue(UseTables::DatabaseChange(), UseTables::DatabaseChange_name(), 6, UseTables::databaseID, "14");
         }
 
         {
@@ -1189,28 +1200,28 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 1)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 1: {
                 TESTING_EQUAL(record.mIndex, 2)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 11)
+                TESTING_EQUAL(record.mDatabaseID, "11")
                 break;
               }
               case 2: {
                 TESTING_EQUAL(record.mIndex, 3)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 3: {
                 TESTING_EQUAL(record.mIndex, 4)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1231,7 +1242,7 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 4)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1252,21 +1263,21 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 5)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 3)
-                TESTING_EQUAL(record.mIndexDatabase, 12)
+                TESTING_EQUAL(record.mDatabaseID, "12")
                 break;
               }
               case 1: {
                 TESTING_EQUAL(record.mIndex, 6)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 3)
-                TESTING_EQUAL(record.mIndexDatabase, 13)
+                TESTING_EQUAL(record.mDatabaseID, "13")
                 break;
               }
               case 2: {
                 TESTING_EQUAL(record.mIndex, 7)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 3)
-                TESTING_EQUAL(record.mIndexDatabase, 14)
+                TESTING_EQUAL(record.mDatabaseID, "14")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1294,7 +1305,7 @@ namespace openpeer
           uris.push_back("peer://domain.com/a");
           uris.push_back("peer://domain.com/b");
           uris.push_back("peer://domain.com/c");
-          permission->insert(2, 10, uris);
+          permission->insert(2, "10", uris);
 
           auto result = databaseChange->getChangeBatchForPeerURI("peer://domain.com/a", 2);
           TESTING_CHECK(result)
@@ -1308,21 +1319,21 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 1)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 1: {
                 TESTING_EQUAL(record.mIndex, 3)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 2: {
                 TESTING_EQUAL(record.mIndex, 4)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1333,7 +1344,7 @@ namespace openpeer
         {
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/c");
-          permission->insert(2, 11, uris);
+          permission->insert(2, "11", uris);
 
           auto result = databaseChange->getChangeBatchForPeerURI("peer://domain.com/c", 2);
           TESTING_CHECK(result)
@@ -1347,28 +1358,28 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 1)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 1: {
                 TESTING_EQUAL(record.mIndex, 2)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Add)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 11)
+                TESTING_EQUAL(record.mDatabaseID, "11")
                 break;
               }
               case 2: {
                 TESTING_EQUAL(record.mIndex, 3)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 3: {
                 TESTING_EQUAL(record.mIndex, 4)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1389,14 +1400,14 @@ namespace openpeer
                 TESTING_EQUAL(record.mIndex, 3)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Update)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               case 1: {
                 TESTING_EQUAL(record.mIndex, 4)
                 TESTING_EQUAL(record.mDisposition, IUseAbstraction::DatabaseChangeRecord::Disposition_Remove)
                 TESTING_EQUAL(record.mIndexPeerLocation, 2)
-                TESTING_EQUAL(record.mIndexDatabase, 10)
+                TESTING_EQUAL(record.mDatabaseID, "10")
                 break;
               }
               default: TESTING_CHECK(false); break;
@@ -1422,23 +1433,23 @@ namespace openpeer
           uris.push_back("peer://domain.com/a");
           uris.push_back("peer://domain.com/b");
           uris.push_back("peer://domain.com/c");
-          permission->insert(2, 10, uris);
+          permission->insert(2, "10", uris);
 
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 3);
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 0, SqlField::id, 1);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 0, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 0, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 0, UseTables::databaseID, "10");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 0, UseTables::peerURI, "peer://domain.com/a");
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 1, SqlField::id, 2);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 1, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 1, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 1, UseTables::databaseID, "10");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 1, UseTables::peerURI, "peer://domain.com/b");
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 2, SqlField::id, 3);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 2, UseTables::indexPeerLocation, 2);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 2, UseTables::indexDatabase, 10);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 2, UseTables::databaseID, "10");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 2, UseTables::peerURI, "peer://domain.com/c");
         }
 
@@ -1446,18 +1457,18 @@ namespace openpeer
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/e");
           uris.push_back("peer://domain.com/a");
-          permission->insert(3, 11, uris);
+          permission->insert(3, "11", uris);
 
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 5);
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 3, SqlField::id, 4);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 3, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 3, UseTables::indexDatabase, 11);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 3, UseTables::databaseID, "11");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 3, UseTables::peerURI, "peer://domain.com/e");
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, SqlField::id, 5);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::indexDatabase, 11);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::databaseID, "11");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::peerURI, "peer://domain.com/a");
         }
 
@@ -1465,18 +1476,18 @@ namespace openpeer
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/f");
           uris.push_back("peer://domain.com/g");
-          permission->insert(3, 12, uris);
+          permission->insert(3, "12", uris);
 
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 7);
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 5, SqlField::id, 6);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 5, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 5, UseTables::indexDatabase, 12);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 5, UseTables::databaseID, "12");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 5, UseTables::peerURI, "peer://domain.com/f");
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 6, SqlField::id, 7);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 6, UseTables::indexPeerLocation, 3);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 6, UseTables::indexDatabase, 12);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 6, UseTables::databaseID, "12");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 6, UseTables::peerURI, "peer://domain.com/g");
         }
 
@@ -1484,38 +1495,38 @@ namespace openpeer
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/h");
           uris.push_back("peer://domain.com/i");
-          permission->insert(4, 13, uris);
+          permission->insert(4, "13", uris);
 
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 9);
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 7, SqlField::id, 8);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 7, UseTables::indexPeerLocation, 4);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 7, UseTables::indexDatabase, 13);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 7, UseTables::databaseID, "13");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 7, UseTables::peerURI, "peer://domain.com/h");
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 8, SqlField::id, 9);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 8, UseTables::indexPeerLocation, 4);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 8, UseTables::indexDatabase, 13);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 8, UseTables::databaseID, "13");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 8, UseTables::peerURI, "peer://domain.com/i");
         }
 
         {
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/h");
-          permission->insert(4, 14, uris);
+          permission->insert(4, "14", uris);
 
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 10);
 
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 9, SqlField::id, 10);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 9, UseTables::indexPeerLocation, 4);
-          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 9, UseTables::indexDatabase, 14);
+          checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 9, UseTables::databaseID, "14");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 9, UseTables::peerURI, "peer://domain.com/h");
         }
 
         {
           {
             IUseAbstraction::PeerURIList result;
-            permission->getByDatabaseIndex(12, result);
+            permission->getByDatabaseID(3, "12", result);
 
             int loop = 0;
             for (auto iter = result.begin(); iter != result.end(); ++loop, ++iter)
@@ -1538,13 +1549,13 @@ namespace openpeer
         }
 
         {
-          permission->flushAllForDatabase(12);
+          permission->flushAllForDatabase(3, "12");
           checkCount(UseTables::Permission(), UseTables::Permission_name(), 8);
 
           {
 
             IUseAbstraction::PeerURIList result;
-            permission->getByDatabaseIndex(12, result);
+            permission->getByDatabaseID(3, "12", result);
 
             int loop = 0;
             for (auto iter = result.begin(); iter != result.end(); ++loop, ++iter)
@@ -1560,7 +1571,7 @@ namespace openpeer
 
         {
           IUseAbstraction::PeerURIList result;
-          permission->getByDatabaseIndex(10, result);
+          permission->getByDatabaseID(2, "10", result);
 
           int loop = 0;
           for (auto iter = result.begin(); iter != result.end(); ++loop, ++iter)
@@ -1586,7 +1597,7 @@ namespace openpeer
         }
         {
           IUseAbstraction::PeerURIList result;
-          permission->getByDatabaseIndex(11, result);
+          permission->getByDatabaseID(3, "11", result);
 
           int loop = 0;
           for (auto iter = result.begin(); iter != result.end(); ++loop, ++iter)
@@ -1613,7 +1624,7 @@ namespace openpeer
 
           {
             IUseAbstraction::PeerURIList result;
-            permission->getByDatabaseIndex(11, result);
+            permission->getByDatabaseID(3, "11", result);
 
             int loop = 0;
             for (auto iter = result.begin(); iter != result.end(); ++loop, ++iter)

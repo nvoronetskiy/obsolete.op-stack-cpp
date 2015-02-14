@@ -119,12 +119,12 @@ namespace openpeer
 
         virtual Time getExpires() const;
 
-        virtual EntryListPtr getUpdates(
-                                        const String &inExistingVersion,
-                                        String &outNewVersion
-                                        ) const;
+        virtual EntryInfoListPtr getUpdates(
+                                            const String &inExistingVersion,
+                                            String &outNewVersion
+                                            ) const;
 
-        virtual EntryPtr getEntry(const char *inUniqueID) const;
+        virtual EntryInfoPtr getEntry(const char *inUniqueID) const;
 
         virtual void notifyWhenDataReady(
                                          const UniqueIDList &needingEntryData,

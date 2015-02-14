@@ -55,7 +55,8 @@ namespace openpeer
 
 ZS_DECLARE_TEAR_AWAY_BEGIN(openpeer::stack::ILocationDatabases, openpeer::stack::internal::LocationDatabasesTearAwayData)
 ZS_DECLARE_TEAR_AWAY_TYPEDEF(openpeer::stack::ILocationPtr, ILocationPtr)
+ZS_DECLARE_TEAR_AWAY_TYPEDEF(openpeer::stack::ILocationDatabases::DatabaseInfoListPtr, DatabaseInfoListPtr)
 ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getID, PUID)
 ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_0(getLocation, ILocationPtr)
-ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_2(getUpdates, LocationDatabaseListPtr, const String &, String &)
+ZS_DECLARE_TEAR_AWAY_METHOD_CONST_RETURN_2(getUpdates, DatabaseInfoListPtr, const String &, String &)
 ZS_DECLARE_TEAR_AWAY_END()

@@ -93,10 +93,10 @@ namespace openpeer
       ZS_DECLARE_TYPEDEF_PTR(openpeer::services::IHelper, UseServicesHelper)
 
       ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::Message, Message)
-      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::DatabaseInfo, DatabaseInfo)
-      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::DatabaseInfoList, DatabaseInfoList)
-      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::DatabaseEntryInfo, DatabaseEntryInfo)
-      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::DatabaseEntryInfoList, DatabaseEntryInfoList)
+      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::ILocationDatabases::DatabaseInfo, DatabaseInfo)
+      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::ILocationDatabases::DatabaseInfoList, DatabaseInfoList)
+      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::ILocationDatabase::EntryInfo, EntryInfo)
+      ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::ILocationDatabase::EntryInfoList, EntryInfoList)
 
       //-----------------------------------------------------------------------
       TestP2PDatabaseMessage::TestP2PDatabaseMessage()
@@ -989,11 +989,11 @@ namespace openpeer
           notify->messageID("test-id");
           notify->version("test-version");
 
-          DatabaseEntryInfoListPtr entries = DatabaseEntryInfoListPtr(new DatabaseEntryInfoList);
+          EntryInfoListPtr entries = EntryInfoListPtr(new EntryInfoList);
 
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Add;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Add;
             info.mEntryID = "foo-a";
             info.mVersion = 1;
             info.mMetaData = UseServicesHelper::toJSON("{\"meta\":\"data-a\"}");
@@ -1004,8 +1004,8 @@ namespace openpeer
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Update;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Update;
             info.mEntryID = "foo-b";
             info.mVersion = 2;
             info.mMetaData = UseServicesHelper::toJSON("{\"metaData\":\"data-b\"}");
@@ -1016,12 +1016,12 @@ namespace openpeer
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
+            EntryInfo info;
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Remove;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Remove;
             info.mEntryID = "foo-c";
             entries->push_back(info);
           }
@@ -1165,7 +1165,7 @@ namespace openpeer
             switch (loop) {
               case 0:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Add)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Add)
                 TESTING_EQUAL(info.mEntryID, "foo-a")
                 TESTING_EQUAL(info.mVersion, 1)
                 TESTING_EQUAL(UseServicesHelper::toString(info.mMetaData), "{\"metaData\":{\"meta\":\"data-a\"}}")
@@ -1177,7 +1177,7 @@ namespace openpeer
               }
               case 1:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Update)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Update)
                 TESTING_EQUAL(info.mEntryID, "foo-b")
                 TESTING_EQUAL(info.mVersion, 2)
                 TESTING_EQUAL(UseServicesHelper::toString(info.mMetaData), "{\"metaData\":\"data-b\"}")
@@ -1189,7 +1189,7 @@ namespace openpeer
               }
               case 2:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Remove)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Remove)
                 TESTING_EQUAL(info.mEntryID, "foo-c")
                 TESTING_EQUAL(info.mVersion, 0)
                 TESTING_CHECK(! ((bool)info.mMetaData))
@@ -1439,11 +1439,11 @@ namespace openpeer
           result->time(now);
           result->messageID("test-id");
 
-          DatabaseEntryInfoListPtr entries = DatabaseEntryInfoListPtr(new DatabaseEntryInfoList);
+          EntryInfoListPtr entries = EntryInfoListPtr(new EntryInfoList);
 
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Add;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Add;
             info.mEntryID = "foo-a";
             info.mVersion = 1;
             info.mMetaData = UseServicesHelper::toJSON("{\"meta\":\"data-a\"}");
@@ -1454,8 +1454,8 @@ namespace openpeer
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Update;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Update;
             info.mEntryID = "foo-b";
             info.mVersion = 2;
             info.mMetaData = UseServicesHelper::toJSON("{\"metaData\":\"data-b\"}");
@@ -1466,12 +1466,12 @@ namespace openpeer
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
+            EntryInfo info;
             entries->push_back(info);
           }
           {
-            DatabaseEntryInfo info;
-            info.mDisposition = DatabaseEntryInfo::Disposition_Remove;
+            EntryInfo info;
+            info.mDisposition = EntryInfo::Disposition_Remove;
             info.mEntryID = "foo-c";
             entries->push_back(info);
           }
@@ -1540,7 +1540,7 @@ namespace openpeer
             switch (loop) {
               case 0:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Add)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Add)
                 TESTING_EQUAL(info.mEntryID, "foo-a")
                 TESTING_EQUAL(info.mVersion, 1)
                 TESTING_EQUAL(UseServicesHelper::toString(info.mMetaData), "{\"metaData\":{\"meta\":\"data-a\"}}")
@@ -1552,7 +1552,7 @@ namespace openpeer
               }
               case 1:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Update)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Update)
                 TESTING_EQUAL(info.mEntryID, "foo-b")
                 TESTING_EQUAL(info.mVersion, 2)
                 TESTING_EQUAL(UseServicesHelper::toString(info.mMetaData), "{\"metaData\":\"data-b\"}")
@@ -1564,7 +1564,7 @@ namespace openpeer
               }
               case 2:
               {
-                TESTING_EQUAL(info.mDisposition, DatabaseEntryInfo::Disposition_Remove)
+                TESTING_EQUAL(info.mDisposition, EntryInfo::Disposition_Remove)
                 TESTING_EQUAL(info.mEntryID, "foo-c")
                 TESTING_EQUAL(info.mVersion, 0)
                 TESTING_CHECK(! ((bool)info.mMetaData))

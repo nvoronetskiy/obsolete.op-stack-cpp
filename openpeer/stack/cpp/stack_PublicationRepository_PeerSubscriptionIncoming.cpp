@@ -201,7 +201,7 @@ namespace openpeer
 
         UseLocationPtr sendToLocation = mSubscriptionInfo->getCreatorLocation();
 
-        sendToLocation->sendMessage(request);
+        sendToLocation->send(request);
       }
 
       //-----------------------------------------------------------------------
@@ -271,7 +271,7 @@ namespace openpeer
 
         UseLocationPtr sendToLocation = mSubscriptionInfo->getCreatorLocation();
 
-        sendToLocation->sendMessage(request);
+        sendToLocation->send(request);
       }
 
       //-----------------------------------------------------------------------

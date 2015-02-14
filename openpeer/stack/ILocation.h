@@ -89,7 +89,7 @@ namespace openpeer
       virtual bool isConnected() const = 0;
       virtual LocationConnectionStates getConnectionState() const = 0;
 
-      virtual PromisePtr sendMessage(message::MessagePtr message) const = 0;
+      virtual PromisePtr send(message::MessagePtr message) const = 0;
 
       virtual void hintNowAvailable() = 0;                          // indicate that this location is likely now online
     };

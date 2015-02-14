@@ -138,9 +138,9 @@ namespace openpeer
         {
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
-            SqlField(indexPeerLocation, sql::type_int, sql::flag_not_null),
-            SqlField(indexDatabase, sql::type_int, sql::flag_not_null),
             SqlField(disposition, sql::type_int, sql::flag_not_null),
+            SqlField(indexPeerLocation, sql::type_int, sql::flag_not_null),
+            SqlField(databaseID, sql::type_text, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };
           return table;
@@ -155,7 +155,7 @@ namespace openpeer
           static SqlField table[] = {
             SqlField(sql::FIELD_KEY),
             SqlField(indexPeerLocation, sql::type_int, sql::flag_not_null),
-            SqlField(indexDatabase, sql::type_int, sql::flag_not_null),
+            SqlField(databaseID, sql::type_text, sql::flag_not_null),
             SqlField(peerURI, sql::type_text, sql::flag_not_null),
             SqlField(sql::DEFINITION_END)
           };

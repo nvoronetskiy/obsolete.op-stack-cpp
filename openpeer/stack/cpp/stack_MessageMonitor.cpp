@@ -193,7 +193,7 @@ namespace openpeer
 
         MessageMonitorPtr pThis = monitor(delegate, message, timeout, Promise::create(UseStack::queueDelegate()));
 
-        PromisePtr sendPromise = location->sendMessage(message);
+        PromisePtr sendPromise = location->send(message);
         sendPromise->then(pThis->mSendPromise);
         sendPromise->background();
 

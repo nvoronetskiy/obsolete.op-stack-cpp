@@ -90,11 +90,11 @@ namespace openpeer
 
             ElementPtr entriesEl = databaseEl->findFirstChildElement("entries");
             if (entriesEl) {
-              ret->mEntries = DatabaseEntryInfoListPtr(new DatabaseEntryInfoList);
+              ret->mEntries = EntryInfoListPtr(new EntryInfoList);
 
               ElementPtr entryEl = entriesEl->findFirstChildElement("entry");
               while (entryEl) {
-                DatabaseEntryInfo info = DatabaseEntryInfo::create(entryEl);
+                EntryInfo info = EntryInfo::create(entryEl);
                 if (info.hasData()) {
                   ret->mEntries->push_back(info);
                 }
@@ -102,7 +102,7 @@ namespace openpeer
               }
 
               if (ret->mEntries->size() < 1) {
-                ret->mEntries = DatabaseEntryInfoListPtr();
+                ret->mEntries = EntryInfoListPtr();
               }
             }
           }
@@ -131,7 +131,7 @@ namespace openpeer
 
             for (auto iter = mEntries->begin(); iter != mEntries->end(); ++iter)
             {
-              const DatabaseEntryInfo &info = (*iter);
+              const EntryInfo &info = (*iter);
               if (info.hasData()) {
                 entriesEl->adoptAsLastChild(info.createElement());
               }

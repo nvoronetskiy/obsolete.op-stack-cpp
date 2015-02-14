@@ -147,7 +147,7 @@ namespace openpeer
           index         mIndex {-1};              // [auto, unique]
           index         mIndexPeerLocation {-1};
           Dispositions  mDisposition {Disposition_None};
-          index         mIndexDatabase;
+          String        mDatabaseID;
 
           ElementPtr toDebug() const;
         };
@@ -330,6 +330,13 @@ namespace openpeer
                                   ) const = 0;
 
           //-------------------------------------------------------------------
+          // PURPOSE: get a database record given the index
+          virtual bool getByDatabaseID(
+                                       const char *databaseID,
+                                       DatabaseRecord &outRecord
+                                       ) const = 0;
+
+          //-------------------------------------------------------------------
           // PURPOSE: get a list of databases related to a peer location
           virtual DatabaseRecordListPtr getBatchByPeerLocationIndex(
                                                                     index indexPeerLocationRecord,
@@ -372,14 +379,14 @@ namespace openpeer
         {
           virtual void flushAllForPeerLocation(index indexPeerLocationRecord) = 0;
 
-          virtual void flushAllForDatabase(index indexDatabaseRecord) = 0;
-
           virtual void insert(const DatabaseChangeRecord &record) = 0;
 
           virtual bool getByIndex(
                                   index indexDatabaseChangeRecord,
                                   DatabaseChangeRecord &outRecord
                                   ) const = 0;
+
+          virtual bool getLast(DatabaseChangeRecord &outRecord) const = 0;
 
           virtual DatabaseChangeRecordListPtr getChangeBatch(
                                                              index indexPeerLocationRecord,
@@ -405,18 +412,22 @@ namespace openpeer
         {
           virtual void flushAllForPeerLocation(index indexPeerLocationRecord) = 0;
 
-          virtual void flushAllForDatabase(index indexDatabaseRecord) = 0;
+          virtual void flushAllForDatabase(
+                                           index indexPeerLocationRecord,
+                                           const char *databaseID
+                                           ) = 0;
 
           virtual void insert(
                               index indexPeerLocation,
-                              index indexDatabaseRecord,
+                              const char *databaseID,
                               const PeerURIList &uris
                               ) = 0;
 
-          virtual void getByDatabaseIndex(
-                                          index indexDatabaseRecord,
-                                          PeerURIList &outURIs
-                                          ) const = 0;
+          virtual void getByDatabaseID(
+                                       index indexPeerLocationRecord,
+                                       const char *databaseID,
+                                       PeerURIList &outURIs
+                                       ) const = 0;
         };
 
         //---------------------------------------------------------------------

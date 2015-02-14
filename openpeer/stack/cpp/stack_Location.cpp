@@ -503,7 +503,7 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      PromisePtr Location::sendMessage(message::MessagePtr message) const
+      PromisePtr Location::send(message::MessagePtr message) const
       {
         UseAccountPtr account = mAccount.lock();
         if (!account) {

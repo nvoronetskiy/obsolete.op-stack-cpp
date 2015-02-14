@@ -48,38 +48,45 @@ namespace openpeer
 
     interaction ILocationDatabaseTypes
     {
-      struct Entry
+      ZS_DECLARE_STRUCT_PTR(EntryInfo)
+      ZS_DECLARE_TYPEDEF_PTR(std::list<EntryInfo>, EntryInfoList)
+
+      struct EntryInfo
       {
         typedef String UniqueID;
 
         enum Dispositions
         {
-          Disposition_Add,
-          Disposition_Update,
-          Disposition_Remove,
+          Disposition_None = 0,
+          Disposition_Add = 1,
+          Disposition_Update = 2,
+          Disposition_Remove = 3,
         };
 
         static const char *toString(Dispositions disposition);
+        static Dispositions toDisposition(const char *str);
 
-        Dispositions mDisposition;
-        UniqueID mUniqueID;
-        UINT mVersion;
+        Dispositions mDisposition {Disposition_None};
+
+        UniqueID mEntryID;
+        UINT mVersion {};
+
         ElementPtr mMetaData;
-        ElementPtr mData;
 
-        Time mCreation;
-        Time mLastUpdated;
+        ElementPtr mData;
+        size_t mDataSize {};
+
+        Time mCreated;
+        Time mUpdated;
 
         bool hasData() const;
         ElementPtr toDebug() const;
+
+        static EntryInfo create(ElementPtr elem);
+        ElementPtr createElement() const;
       };
 
-      ZS_DECLARE_PTR(Entry)
-
-      typedef std::list<Entry> EntryList;
-      ZS_DECLARE_PTR(EntryList)
-
-      typedef std::list<Entry::UniqueID> UniqueIDList;
+      typedef std::list<EntryInfo::UniqueID> UniqueIDList;
       ZS_DECLARE_PTR(UniqueIDList)
     };
 
@@ -137,14 +144,14 @@ namespace openpeer
       //
       //          An empty return result indicates there is no more data
       //          available at this time.
-      virtual EntryListPtr getUpdates(
-                                      const String &inExistingVersion,  // pass in String() when no data has been fetched before
-                                      String &outNewVersion             // the version to which the database has now been updated
-                                      ) const = 0;
+      virtual EntryInfoListPtr getUpdates(
+                                          const String &inExistingVersion,  // pass in String() when no data has been fetched before
+                                          String &outNewVersion             // the version to which the database has now been updated
+      ) const = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a database entry data based on a unique entry identifier.
-      virtual EntryPtr getEntry(const char *inUniqueID) const = 0;
+      virtual EntryInfoPtr getEntry(const char *inUniqueID) const = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: When database information is only downloaded on demand this

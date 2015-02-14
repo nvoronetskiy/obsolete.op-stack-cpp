@@ -34,6 +34,8 @@
 #include <openpeer/stack/message/MessageNotify.h>
 #include <openpeer/stack/message/p2p-database/MessageFactoryP2PDatabase.h>
 
+#include <openpeer/stack/ILocationDatabases.h>
+
 namespace openpeer
 {
   namespace stack
@@ -46,6 +48,9 @@ namespace openpeer
         {
         public:
           typedef std::list<IPublicationMetaDataPtr> PublicationList;
+
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabases::DatabaseInfo, DatabaseInfo)
+          ZS_DECLARE_TYPEDEF_PTR(ILocationDatabases::DatabaseInfoList, DatabaseInfoList)
 
           enum AttributeTypes
           {
