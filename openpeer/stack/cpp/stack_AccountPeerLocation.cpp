@@ -56,6 +56,7 @@
 #include <openpeer/services/IDHPublicKey.h>
 #include <openpeer/services/ISettings.h>
 
+#include <zsLib/Promise.h>
 #include <zsLib/XML.h>
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
@@ -275,7 +276,7 @@ namespace openpeer
         ZS_THROW_INVALID_ASSUMPTION_IF(!mLocationInfo)
 
         // monitor to receive all incoming notifications
-        mFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Seconds());
+        mFindRequestMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerLocationFindNotify>::convert(mThisWeak.lock()), mFindRequest, Seconds(), PromisePtr());
         mFindRequestTimer = Timer::create(mThisWeak.lock(), Seconds(OPENPEER_STACK_ACCOUNT_PEER_LOCATION_PEER_LOCATION_FIND_TIMEOUT_IN_SECONDS), false);
 
         // kick start the object
@@ -443,26 +444,31 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool AccountPeerLocation::send(MessagePtr message) const
+      PromisePtr AccountPeerLocation::send(MessagePtr message) const
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
+
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
 
         AutoRecursiveLock lock(*this);
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("attempted to send a message but the location is shutdown"))
-          return false;
+          promise->reject(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone));
+          return promise;
         }
 
         if (!isLegalDuringPreIdentify(message)) {
           ZS_LOG_WARNING(Detail, log("only identify result or peer location find notify requests may be sent out at this time"))
-          return false;
+          promise->reject(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Forbidden));
+          return promise;
         }
 
         DocumentPtr document = message->encode();
         if (!document) {
           ZS_LOG_WARNING(Detail, log("message failed to encode") + Message::toDebug(message))
-          return false;
+          promise->reject(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_BadRequest));
+          return promise;
         }
 
         ElementPtr rootEl = document->getFirstChildElement();
@@ -496,7 +502,8 @@ namespace openpeer
               ZS_LOG_TRACE(log("message sent via RUDP/MLS"))
 
               mMLSSendStream->write(output->BytePtr(), output->SizeInBytes());
-              return true;
+              mSendPromisesMLS.push_back(promise);
+              return promise;
             }
           }
         }
@@ -505,7 +512,8 @@ namespace openpeer
           if (mOutgoingRelaySendStream->isWriterReady()) {
             ZS_LOG_TRACE(log("message send via outgoing relay"))
             mOutgoingRelaySendStream->write(output->BytePtr(), output->SizeInBytes());
-            return true;
+            mSendPromisesOutgoingRelay.push_back(promise);
+            return promise;
           }
         }
 
@@ -513,12 +521,14 @@ namespace openpeer
           if (mIncomingRelaySendStream->isWriterReady()) {
             ZS_LOG_TRACE(log("message send via incoming relay"))
             mIncomingRelaySendStream->write(output->BytePtr(), output->SizeInBytes());
-            return true;
+            mSendPromisesIncomingRelay.push_back(promise);
+            return promise;
           }
         }
 
         ZS_LOG_WARNING(Detail, log("requested to send a message but messaging is not ready"))
-        return false;
+        promise->reject(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_ServiceUnavailable));
+        return promise;
       }
 
       //-----------------------------------------------------------------------
@@ -528,18 +538,16 @@ namespace openpeer
                                                           Seconds timeout
                                                           ) const
       {
-        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
+        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout, promise);
         if (!monitor) {
           ZS_LOG_WARNING(Detail, log("failed to create monitor"))
           return IMessageMonitorPtr();
         }
 
-        bool result = send(requestMessage);
-        if (!result) {
-          // notify that the message requester failed to send the message...
-          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
-          return monitor;
-        }
+        PromisePtr result = send(requestMessage);
+        result->then(promise);
+        result->background();
 
         ZS_LOG_DEBUG(log("request successfully created"))
         return monitor;
@@ -979,6 +987,18 @@ namespace openpeer
 
         AutoRecursiveLock lock(*this);
 
+        if (writer == mMLSSendStream) {
+          resolveAllPromises(mSendPromisesMLS);
+        }
+
+        if (writer == mOutgoingRelaySendStream) {
+          resolveAllPromises(mSendPromisesOutgoingRelay);
+        }
+
+        if (writer == mIncomingRelaySendStream) {
+          resolveAllPromises(mSendPromisesIncomingRelay);
+        }
+
         if (mHadConnection) {
           ZS_LOG_TRACE(log("transport stream write ready already had connection (thus ignored)"))
           return;
@@ -1388,6 +1408,10 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "force messages via relay", mDebugForceMessagesOverRelay);
 
+        IHelper::debugAppend(resultEl, "send promise mls", mSendPromisesMLS.size());
+        IHelper::debugAppend(resultEl, "send promise outgoing relay", mSendPromisesOutgoingRelay.size());
+        IHelper::debugAppend(resultEl, "send promise incoming relay", mSendPromisesIncomingRelay.size());
+
         return resultEl;
       }
 
@@ -1539,6 +1563,10 @@ namespace openpeer
           mRUDPSocketSessionSubscription->cancel();
           mRUDPSocketSessionSubscription.reset();
         }
+
+        rejectAllPromises(mSendPromisesMLS);
+        rejectAllPromises(mSendPromisesOutgoingRelay);
+        rejectAllPromises(mSendPromisesIncomingRelay);
 
         ZS_LOG_DEBUG(log("cancel completed"))
       }
@@ -2030,7 +2058,7 @@ namespace openpeer
                         remoteCandidates,
                         mFindRequest->final()
                         );
-        
+
         return true;
       }
 
@@ -2360,10 +2388,6 @@ namespace openpeer
 
         mCurrentState = state;
 
-        if (isShutdown()) {
-          UseMessageMonitorManager::notifyMessageSenderObjectGone(mID);
-        }
-
         if (!mDelegate) return;
 
         AccountPeerLocationPtr pThis = mThisWeak.lock();
@@ -2601,6 +2625,20 @@ namespace openpeer
         (IWakeDelegateProxy::create(mThisWeak.lock()))->onWake();
       }
       
+      //-----------------------------------------------------------------------
+      void AccountPeerLocation::resolveAllPromises(PromiseWeakList &promises)
+      {
+        Promise::resolveAll(promises);
+        promises.clear();
+      }
+
+      //-----------------------------------------------------------------------
+      void AccountPeerLocation::rejectAllPromises(PromiseWeakList &promises)
+      {
+        Promise::rejectAll(promises, PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone));
+        promises.clear();
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

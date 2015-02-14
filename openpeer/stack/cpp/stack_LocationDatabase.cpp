@@ -255,8 +255,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark LocationDatabases => ILocationDatabasesForLocationDatabasesManager
+      #pragma mark LocationDatabases => ILocationDatabaseForLocationDatabases
       #pragma mark
+
+      //-----------------------------------------------------------------------
+      void LocationDatabase::notifyConflict()
+      {
+        ZS_LOG_WARNING(Detail, log("notified of conflict"))
+      }
+
+      //-----------------------------------------------------------------------
+      void LocationDatabase::notifyUpdated()
+      {
+        ZS_LOG_DEBUG(log("notified updated"))
+      }
+
+      //-----------------------------------------------------------------------
+      void LocationDatabase::notifyRemoved()
+      {
+        ZS_LOG_WARNING(Detail, log("notified removed"))
+      }
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

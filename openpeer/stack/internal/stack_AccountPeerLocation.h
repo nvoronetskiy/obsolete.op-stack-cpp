@@ -68,7 +68,6 @@ namespace openpeer
     {
       interaction IPeerForAccount;
       interaction IAccountForAccountPeerLocation;
-      interaction IMessageMonitorManagerForAccountPeerLocation;
 
       using services::IICESocket;
 
@@ -138,7 +137,7 @@ namespace openpeer
         virtual bool hasReceivedCandidateInformation() const = 0;
         virtual bool hasReceivedFinalCandidateInformation() const = 0;
 
-        virtual bool send(MessagePtr message) const = 0;
+        virtual PromisePtr send(MessagePtr message) const = 0;
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
@@ -194,7 +193,8 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountPeerLocation, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
         ZS_DECLARE_TYPEDEF_PTR(IPeerForAccount, UsePeer)
-        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForAccountPeerLocation, UseMessageMonitorManager)
+
+        ZS_DECLARE_TYPEDEF_PTR(std::list<PromiseWeakPtr>, PromiseWeakList)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
@@ -281,7 +281,7 @@ namespace openpeer
         virtual bool hasReceivedCandidateInformation() const;
         virtual bool hasReceivedFinalCandidateInformation() const;
 
-        virtual bool send(MessagePtr message) const;
+        virtual PromisePtr send(MessagePtr message) const;
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
@@ -488,6 +488,9 @@ namespace openpeer
                              bool candidatesFinal
                              );
 
+        void resolveAllPromises(PromiseWeakList &promises);
+        void rejectAllPromises(PromiseWeakList &promises);
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -565,6 +568,10 @@ namespace openpeer
         IMessageMonitorPtr mKeepAliveMonitor;
 
         bool mDebugForceMessagesOverRelay;
+
+        mutable PromiseWeakList mSendPromisesMLS;
+        mutable PromiseWeakList mSendPromisesOutgoingRelay;
+        mutable PromiseWeakList mSendPromisesIncomingRelay;
       };
 
       //-----------------------------------------------------------------------

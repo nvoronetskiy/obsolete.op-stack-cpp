@@ -51,6 +51,7 @@ namespace openpeer
           {
             AttributeType_DatabaseID,
             AttributeType_DatabaseVersion,
+            AttributeType_SubscriptionExpires,
             AttributeType_DatabaseData,
           };
 
@@ -77,6 +78,9 @@ namespace openpeer
           const String &version() const                     {return mVersion;}
           void version(const String &value)                 {mVersion = value;}
 
+          Time expires() const                              {return mExpires;}
+          void expires(const Time &value)                   {mExpires = value;}
+
           bool data() const                                 {return mData;}
           void data(bool value)                             {mData = value;}
 
@@ -85,6 +89,7 @@ namespace openpeer
 
           String mDatabaseID;
           String mVersion;
+          Time mExpires;
           bool mData {};
         };
       }

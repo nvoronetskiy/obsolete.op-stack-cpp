@@ -84,14 +84,8 @@ namespace openpeer
           ElementPtr databasesEl = rootEl->findFirstChildElement("databases");
 
           if (databasesEl) {
+            ret->mBefore = databasesEl->getAttributeValue("before");
             ret->mVersion = databasesEl->getAttributeValue("version");
-
-            String completedStr = IMessageHelper::getElementText(databasesEl->findFirstChildElement("completed"));
-            try {
-              ret->mCompleted = Numeric<decltype(ret->mCompleted)>(completedStr);
-            } catch(Numeric<decltype(ret->mCompleted)>::ValueOutOfRange &) {
-              ZS_LOG_WARNING(Detail, slog("failed to convert") + ZS_PARAMIZE(completedStr))
-            }
 
             ret->mDatabases = DatabaseInfoListPtr(new DatabaseInfoList);
 
@@ -120,12 +114,12 @@ namespace openpeer
 
           ElementPtr databasesEl = Element::create("databases");
 
-          if (hasAttribute(AttributeType_DatabasesVersion)) {
-            databasesEl->setAttribute("version", mVersion);
+          if (hasAttribute(AttributeType_DatabasesBefore)) {
+            databasesEl->setAttribute("before", mBefore);
           }
 
-          if (hasAttribute(AttributeType_DatabasesCompleted)) {
-            databasesEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("completed", "true"));
+          if (hasAttribute(AttributeType_DatabasesVersion)) {
+            databasesEl->setAttribute("version", mVersion);
           }
 
           if (hasAttribute(AttributeType_Databases)) {
@@ -150,9 +144,9 @@ namespace openpeer
         bool ListSubscribeNotify::hasAttribute(AttributeTypes type) const
         {
           switch (type) {
-            case AttributeType_DatabasesVersion:     return mVersion.hasData();
-            case AttributeType_DatabasesCompleted:   return mCompleted;
-            case AttributeType_Databases:           return (bool)mDatabases;
+            case AttributeType_DatabasesBefore:       return mBefore.hasData();
+            case AttributeType_DatabasesVersion:      return mVersion.hasData();
+            case AttributeType_Databases:             return (bool)mDatabases;
           }
           return false;
         }

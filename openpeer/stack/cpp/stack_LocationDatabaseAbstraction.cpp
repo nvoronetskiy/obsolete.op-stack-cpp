@@ -49,10 +49,12 @@
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_PEER_LOCATION_UNUSED_BATCH_LIMIT 10
 
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_BY_PEER_LOCATION_INDEX_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_EXPIRES_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_WITH_PEER_URI_PERMISSION_BATCH_LIMIT 10
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_DOWNLOADED_BUT_NOT_NOTIFIED_BATCH_LIMIT 10
 
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_CHANGE_WITH_PEER_URI_PERMISSION_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_CHANGE_INDEX_BATCH_LIMIT 10
 
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_BATCH_LIMIT 10
 
@@ -162,7 +164,6 @@ namespace openpeer
         output.mPeerURI = record->getValue(UseTables::peerURI)->asString();
         output.mLocationID = record->getValue(UseTables::locationID)->asString();
         output.mLastDownloadedVersion = record->getValue(UseTables::lastDownloadedVersion)->asString();
-        output.mDownloadComplete = record->getValue(UseTables::downloadComplete)->asBool();
         auto lastAccessed = record->getValue(UseTables::lastAccessed)->asInteger();
         if (0 != lastAccessed) {
           output.mLastAccessed = zsLib::timeSinceEpoch(Seconds(lastAccessed));
@@ -186,13 +187,18 @@ namespace openpeer
         if (metaData.hasData()) {
           output.mMetaData = UseServicesHelper::toJSON(metaData);
         }
+        auto created = record->getValue(UseTables::created)->asInteger();
+        if (0 != created) {
+          output.mCreated = zsLib::timeSinceEpoch(Seconds(created));
+        } else {
+          output.mCreated = Time();
+        }
         auto expires = record->getValue(UseTables::expires)->asInteger();
         if (0 != expires) {
           output.mExpires = zsLib::timeSinceEpoch(Seconds(expires));
         } else {
           output.mExpires = Time();
         }
-        output.mDownloadComplete = record->getValue(UseTables::downloadComplete)->asBool();
         output.mUpdateVersion = record->getValue(UseTables::updateVersion)->asString();
       }
 
@@ -275,7 +281,6 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "peer uri", mPeerURI);
         UseServicesHelper::debugAppend(resultEl, "location id", mLocationID);
         UseServicesHelper::debugAppend(resultEl, "last downloaded version", mLastDownloadedVersion);
-        UseServicesHelper::debugAppend(resultEl, "download complete", mDownloadComplete);
         UseServicesHelper::debugAppend(resultEl, "last accessed", mLastAccessed);
         UseServicesHelper::debugAppend(resultEl, "update version", mUpdateVersion);
 
@@ -300,8 +305,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "database id", mDatabaseID);
         UseServicesHelper::debugAppend(resultEl, "last downloaded version", mLastDownloadedVersion);
         UseServicesHelper::debugAppend(resultEl, "metadata", mMetaData ? UseServicesHelper::toString(mMetaData) : String());
+        UseServicesHelper::debugAppend(resultEl, "expires", mCreated);
         UseServicesHelper::debugAppend(resultEl, "expires", mExpires);
-        UseServicesHelper::debugAppend(resultEl, "download complete", mDownloadComplete);
         UseServicesHelper::debugAppend(resultEl, "update version", mUpdateVersion);
 
         return resultEl;
@@ -644,7 +649,6 @@ namespace openpeer
           addRecord.setString(UseTables::peerURI, peerURI);
           addRecord.setString(UseTables::locationID, locationID);
           addRecord.setString(UseTables::lastDownloadedVersion, String());
-          addRecord.setBool(UseTables::downloadComplete, false);
           addRecord.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
 
           Time now = zsLib::now();
@@ -672,9 +676,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IPeerLocationTable_updateVersion(index indexPeerLocationRecord)
+      String LocationDatabaseAbstraction::IPeerLocationTable_updateVersion(index indexPeerLocationRecord)
       {
         AutoRecursiveLock lock(*this);
+
+        String result;
 
         ZS_LOG_TRACE(log("updating peer location version") + ZS_PARAMIZE(indexPeerLocationRecord))
 
@@ -689,26 +695,31 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          auto randomStr = UseServicesHelper::randomString(20);
+
           record.setInteger(SqlField::id, indexPeerLocationRecord);
-          record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
+          record.setString(UseTables::updateVersion, randomStr);
 
           table.updateRecord(&record);
+
+          result = randomStr;
 
         } catch (SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
         }
+
+        return result;
       }
 
       //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IPeerLocationTable_notifyDownloaded(
                                                                             index indexPeerLocationRecord,
-                                                                            const char *downloadedToVersion,
-                                                                            bool downloadComplete
+                                                                            const char *downloadedToVersion
                                                                             )
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_TRACE(log("updating peer location downloaded") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(downloadedToVersion) + ZS_PARAMIZE(downloadComplete))
+        ZS_LOG_TRACE(log("updating peer location downloaded") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(downloadedToVersion))
 
         try {
 
@@ -718,13 +729,11 @@ namespace openpeer
 
           table.fields()->getByName(SqlField::id)->setIgnored(false);
           table.fields()->getByName(UseTables::lastDownloadedVersion)->setIgnored(false);
-          table.fields()->getByName(UseTables::downloadComplete)->setIgnored(false);
 
           SqlRecord record(table.fields());
 
           record.setInteger(SqlField::id, indexPeerLocationRecord);
           record.setString(UseTables::lastDownloadedVersion, downloadedToVersion);
-          record.setBool(UseTables::downloadComplete, downloadComplete);
 
           table.updateRecord(&record);
 
@@ -857,10 +866,12 @@ namespace openpeer
             ignoreAllFieldsInTable(table);
             table.fields()->getByName(SqlField::id)->setIgnored(false);
 
-            if (ioRecord.mLastDownloadedVersion != previousRecord.mLastDownloadedVersion) {
-              table.fields()->getByName(UseTables::lastDownloadedVersion)->setIgnored(false);
-              found->setString(UseTables::lastDownloadedVersion, ioRecord.mLastDownloadedVersion);
-              changed = true;
+            if (ioRecord.mLastDownloadedVersion.hasData()) {
+              if (ioRecord.mLastDownloadedVersion != previousRecord.mLastDownloadedVersion) {
+                table.fields()->getByName(UseTables::lastDownloadedVersion)->setIgnored(false);
+                found->setString(UseTables::lastDownloadedVersion, ioRecord.mLastDownloadedVersion);
+                changed = true;
+              }
             }
 
             if (ioRecord.mMetaData) {
@@ -873,40 +884,64 @@ namespace openpeer
               }
             }
 
-            auto countNew = zsLib::timeSinceEpoch<Seconds>(ioRecord.mExpires).count();
-            auto countOld = zsLib::timeSinceEpoch<Seconds>(previousRecord.mExpires).count();
+            {
+              auto countNew = zsLib::timeSinceEpoch<Seconds>(ioRecord.mCreated).count();
+              auto countOld = zsLib::timeSinceEpoch<Seconds>(previousRecord.mCreated).count();
 
-            if (Time() == ioRecord.mExpires) {
-              countNew = 0;
-            }
-            if (Time() == previousRecord.mExpires) {
-              countOld = 0;
-            }
+              if (Time() == ioRecord.mCreated) {
+                countNew = 0;
+              }
+              if (Time() == previousRecord.mCreated) {
+                countOld = 0;
+              }
 
-            if (countNew != countOld) {
-              table.fields()->getByName(UseTables::expires)->setIgnored(false);
-              changed = true;
+              if ((countNew != countOld) &&
+                  (0 != countNew)) {
+                table.fields()->getByName(UseTables::created)->setIgnored(false);
+                changed = true;
 
-              if (Time() != ioRecord.mExpires) {
-                found->setInteger(UseTables::expires, zsLib::timeSinceEpoch<Seconds>(ioRecord.mExpires).count());
+                if (Time() != ioRecord.mCreated) {
+                  found->setInteger(UseTables::created, zsLib::timeSinceEpoch<Seconds>(ioRecord.mCreated).count());
+                } else {
+                  found->setInteger(UseTables::created, 0);
+                }
               } else {
-                found->setInteger(UseTables::expires, 0);
+                ioRecord.mCreated = previousRecord.mCreated;
+              }
+            }
+            {
+              auto countNew = zsLib::timeSinceEpoch<Seconds>(ioRecord.mExpires).count();
+              auto countOld = zsLib::timeSinceEpoch<Seconds>(previousRecord.mExpires).count();
+
+              if (Time() == ioRecord.mExpires) {
+                countNew = 0;
+              }
+              if (Time() == previousRecord.mExpires) {
+                countOld = 0;
+              }
+
+              if (countNew != countOld) {
+                table.fields()->getByName(UseTables::expires)->setIgnored(false);
+                changed = true;
+
+                if (Time() != ioRecord.mExpires) {
+                  found->setInteger(UseTables::expires, zsLib::timeSinceEpoch<Seconds>(ioRecord.mExpires).count());
+                } else {
+                  found->setInteger(UseTables::expires, 0);
+                }
               }
             }
 
-            if (ioRecord.mDownloadComplete != previousRecord.mDownloadComplete) {
-              table.fields()->getByName(UseTables::downloadComplete)->setIgnored(false);
-              found->setBool(UseTables::downloadComplete, ioRecord.mDownloadComplete);
+            if (ioRecord.mUpdateVersion.hasData()) {
+              changed = true;
+              table.fields()->getByName(UseTables::updateVersion)->setIgnored(false);
+              found->setString(UseTables::updateVersion, ioRecord.mUpdateVersion);
+            } else {
+              ioRecord.mUpdateVersion = previousRecord.mUpdateVersion;
             }
-
-            ioRecord.mUpdateVersion = previousRecord.mUpdateVersion;
 
             if (changed) {
               outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_Update;
-
-              ioRecord.mUpdateVersion = UseServicesHelper::randomString(20);
-              table.fields()->getByName(UseTables::updateVersion)->setIgnored(false);
-              found->setString(UseTables::updateVersion, ioRecord.mUpdateVersion);
 
               ZS_LOG_TRACE(log("updating existing record") + previousRecord.toDebug() + ioRecord.toDebug())
               table.updateRecord(found);
@@ -921,13 +956,20 @@ namespace openpeer
           addRecord.setString(UseTables::databaseID, ioRecord.mDatabaseID);
           addRecord.setString(UseTables::lastDownloadedVersion, ioRecord.mLastDownloadedVersion);
           addRecord.setString(UseTables::metaData, UseServicesHelper::toString(ioRecord.mMetaData));
+          if (Time() != ioRecord.mCreated) {
+            addRecord.setInteger(UseTables::created, zsLib::timeSinceEpoch<Seconds>(ioRecord.mCreated).count());
+          } else {
+            addRecord.setInteger(UseTables::created, 0);
+          }
           if (Time() != ioRecord.mExpires) {
             addRecord.setInteger(UseTables::expires, zsLib::timeSinceEpoch<Seconds>(ioRecord.mExpires).count());
           } else {
             addRecord.setInteger(UseTables::expires, 0);
           }
-          addRecord.setBool(UseTables::downloadComplete, ioRecord.mDownloadComplete);
-          addRecord.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
+          if (!ioRecord.mUpdateVersion.hasData()) {
+            ioRecord.mUpdateVersion = UseServicesHelper::randomString(20);
+          }
+          addRecord.setString(UseTables::updateVersion, ioRecord.mUpdateVersion);
 
           ZS_LOG_TRACE(log("adding new peer location record") + UseStackHelper::toDebug(&table, &addRecord))
           table.addRecord(&addRecord);
@@ -955,9 +997,11 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      void LocationDatabaseAbstraction::IDatabaseTable_updateVersion(index indexDatabase)
+      String LocationDatabaseAbstraction::IDatabaseTable_updateVersion(index indexDatabase)
       {
         AutoRecursiveLock lock(*this);
+
+        String result;
 
         ZS_LOG_TRACE(log("updating database version") + ZS_PARAMIZE(indexDatabase))
 
@@ -972,14 +1016,20 @@ namespace openpeer
 
           SqlRecord record(table.fields());
 
+          auto randomStr = UseServicesHelper::randomString(20);
+
           record.setInteger(SqlField::id, indexDatabase);
-          record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
+          record.setString(UseTables::updateVersion, randomStr);
 
           table.updateRecord(&record);
+
+          result = randomStr;
 
         } catch (SqlException &e) {
           ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
         }
+
+        return result;
       }
       
       //-----------------------------------------------------------------------
@@ -1058,9 +1108,9 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       DatabaseRecordListPtr LocationDatabaseAbstraction::IDatabaseTable_getBatchByPeerLocationIndex(
-                                                                                                 index indexPeerLocationRecord,
-                                                                                                 index afterIndexDatabase
-                                                                                                 ) const
+                                                                                                    index indexPeerLocationRecord,
+                                                                                                    index afterIndexDatabase
+                                                                                                    ) const
       {
         AutoRecursiveLock lock(*this);
 
@@ -1149,15 +1199,56 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      DatabaseRecordListPtr LocationDatabaseAbstraction::IDatabaseTable_getBatchExpired(
+                                                                                        index indexPeerLocationRecord,
+                                                                                        const Time &now
+                                                                                        ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        DatabaseRecordListPtr result(new DatabaseRecordList);
+
+        try {
+          SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
+
+          if (Time() == now) {
+            ZS_LOG_TRACE(log("time was not set thus no records expire"))
+            return result;
+          }
+
+          auto expires = zsLib::timeSinceEpoch<Seconds>(now).count();
+
+          String orderClause = " ORDER BY " + String(SqlField::id) + " ASC";
+          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + " AND " + UseTables::expires + " < " + string(expires) + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_EXPIRES_BATCH_LIMIT));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            DatabaseRecord databaseRecord;
+            internal::convert(record, databaseRecord);
+
+            ZS_LOG_TRACE(log("found database record") + databaseRecord.toDebug())
+
+            result->push_back(databaseRecord);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
+        return DatabaseRecordListPtr();
+      }
+      
+      //-----------------------------------------------------------------------
       void LocationDatabaseAbstraction::IDatabaseTable_notifyDownloaded(
                                                                         index indexDatabaseRecord,
-                                                                        const char *downloadedToVersion,
-                                                                        bool downloadComplete
+                                                                        const char *downloadedToVersion
                                                                         )
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_TRACE(log("updating database downloaded") + ZS_PARAMIZE(indexDatabaseRecord) + ZS_PARAMIZE(downloadedToVersion) + ZS_PARAMIZE(downloadComplete))
+        ZS_LOG_TRACE(log("updating database downloaded") + ZS_PARAMIZE(indexDatabaseRecord) + ZS_PARAMIZE(downloadedToVersion))
 
         try {
 
@@ -1167,13 +1258,11 @@ namespace openpeer
 
           table.fields()->getByName(SqlField::id)->setIgnored(false);
           table.fields()->getByName(UseTables::lastDownloadedVersion)->setIgnored(false);
-          table.fields()->getByName(UseTables::downloadComplete)->setIgnored(false);
 
           SqlRecord record(table.fields());
 
           record.setInteger(SqlField::id, indexDatabaseRecord);
           record.setString(UseTables::lastDownloadedVersion, downloadedToVersion);
-          record.setBool(UseTables::downloadComplete, downloadComplete);
           record.setString(UseTables::updateVersion, UseServicesHelper::randomString(20));
 
           table.updateRecord(&record);
@@ -1246,6 +1335,37 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IDatabaseChangeTable_getByIndex(
+                                                                        index indexDatabaseChangeRecord,
+                                                                        DatabaseChangeRecord &outRecord
+                                                                        ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::DatabaseChange_name(), UseTables::DatabaseChange());
+
+          table.open(String(SqlField::id) + " = " + string(indexDatabaseChangeRecord));
+
+          SqlRecord *found = table.getTopRecord();
+
+          if (!found) {
+            ZS_LOG_WARNING(Trace, log("did not fine existing database change record") + ZS_PARAMIZE(indexDatabaseChangeRecord))
+            return false;
+          }
+
+          internal::convert(found, outRecord);
+
+          ZS_LOG_TRACE(log("found previous database change record") + outRecord.toDebug())
+
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
       DatabaseChangeRecordListPtr LocationDatabaseAbstraction::IDatabaseChangeTable_getChangeBatch(
                                                                                                    index indexPeerLocationRecord,
                                                                                                    index afterIndexDatabaseChange
@@ -1264,7 +1384,7 @@ namespace openpeer
             afterClause = " AND " + String(SqlField::id) + " > " + string(afterIndexDatabaseChange);
           }
 
-          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + afterClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_BY_PEER_LOCATION_INDEX_BATCH_LIMIT));
+          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + afterClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_CHANGE_INDEX_BATCH_LIMIT));
 
           for (int row = 0; row < table.recordCount(); ++row) {
             SqlRecord *record = table.getRecord(row);
@@ -2038,7 +2158,6 @@ namespace openpeer
             table.create();
 
             SqlRecordSet query(*mDB);
-            query.query(String("CREATE INDEX ") + UseTables::PeerLocation_name() + "i" + UseTables::downloadComplete + " ON " + UseTables::PeerLocation_name() + "(" + UseTables::downloadComplete + ")");
             query.query(String("CREATE INDEX ") + UseTables::PeerLocation_name() + "i" + UseTables::lastAccessed + " ON " + UseTables::PeerLocation_name() + "(" + UseTables::lastAccessed + ")");
           }
           {
@@ -2048,6 +2167,7 @@ namespace openpeer
             SqlRecordSet query(*mDB);
             query.query(String("CREATE INDEX ") + UseTables::Database_name() + "i" + UseTables::indexPeerLocation + " ON " + UseTables::Database_name() + "(" + UseTables::indexPeerLocation + ")");
             query.query(String("CREATE INDEX ") + UseTables::Database_name() + "i" + UseTables::databaseID + " ON " + UseTables::Database_name() + "(" + UseTables::databaseID + ")");
+            query.query(String("CREATE INDEX ") + UseTables::Database_name() + "i" + UseTables::expires + " ON " + UseTables::Database_name() + "(" + UseTables::expires + ")");
           }
 
           {

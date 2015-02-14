@@ -49,8 +49,8 @@ namespace openpeer
 
           enum AttributeTypes
           {
+            AttributeType_DatabaseBefore,
             AttributeType_DatabaseVersion,
-            AttributeType_DatabaseCompleted,
             AttributeType_DatabaseEntries,
           };
 
@@ -72,11 +72,11 @@ namespace openpeer
 
           bool hasAttribute(AttributeTypes type) const;
 
+          const String &before() const                              {return mBefore;}
+          void before(const String &value)                          {mBefore = value;}
+
           const String &version() const                             {return mVersion;}
           void version(const String &value)                         {mVersion = value;}
-
-          bool completed() const                                    {return mCompleted;}
-          void completed(bool value)                                {mCompleted = value;}
 
           DatabaseEntryInfoListPtr entries() const                  {return mEntries;}
           void entries(DatabaseEntryInfoListPtr value)              {mEntries = value;}
@@ -84,6 +84,7 @@ namespace openpeer
         protected:
           SubscribeNotify();
 
+          String mBefore;
           String mVersion;
           bool mCompleted {false};
 

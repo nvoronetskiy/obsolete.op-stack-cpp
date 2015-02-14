@@ -34,11 +34,25 @@
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
 
+#include <openpeer/stack/message/p2p-database/ListSubscribeResult.h>
+
 #include <openpeer/stack/ILocationDatabases.h>
+#include <openpeer/stack/ILocationSubscription.h>
 #include <openpeer/stack/IServiceLockbox.h>
 
+#include <openpeer/stack/IMessageMonitor.h>
+
+#include <openpeer/services/IBackOffTimer.h>
 #include <openpeer/services/IWakeDelegate.h>
 
+#include <zsLib/Timer.h>
+
+#define OPENPEER_STACK_P2P_DATABASE_TYPE_FULL_LIST_VERSION "flv"
+#define OPENPEER_STACK_P2P_DATABASE_TYPE_CHANGE_LIST_VERSION "clv"
+
+#define OPENPEER_STACK_SETTING_P2P_DATABASE_REQUEST_TIMEOUT_IN_SECONDS "openpeer/stack/p2p-database-request-timeout-in-seconds"
+#define OPENPEER_STACK_SETTING_P2P_DATABASE_LIST_SUBSCRIPTION_EXPIRES_TIMEOUT_IN_SECONDS "openpeer/stack/p2p-database-list-subscription-expires-timeout-in-seconds"
+#define OPENPEER_STACK_SETTING_P2P_DATABASE_LIST_SUBSCRIPTION_BACK_OFF_TIMER_IN_SECONDS "openpeer/stack/p2p-database-list-subscription-back-off-timer-in-seconds"
 
 #include <map>
 
@@ -94,7 +108,11 @@ namespace openpeer
                                 public ILocationDatabasesForLocationDatabase,
                                 public ILocationDatabasesForLocationDatabasesManager,
                                 public IWakeDelegate,
-                                public IServiceLockboxSessionDelegate
+                                public zsLib::ITimerDelegate,
+                                public IBackOffTimerDelegate,
+                                public IServiceLockboxSessionDelegate,
+                                public ILocationSubscriptionDelegate,
+                                public IMessageMonitorResultDelegate<message::p2p_database::ListSubscribeResult>
       {
       public:
         friend interaction ILocationDatabasesFactory;
@@ -108,8 +126,50 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForLocationDatabases, UseLockbox)
 
+        ZS_DECLARE_TYPEDEF_PTR(services::IBackOffTimer, IBackOffTimer)
+
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeRequest, ListSubscribeRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeResult, ListSubscribeResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeNotify, ListSubscribeNotify)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeRequest, SubscribeRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeResult, SubscribeResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeNotify, SubscribeNotify)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetRequest, DataGetRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetResult, DataGetResult)
+
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction, UseDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction::PeerLocationRecord, PeerLocationRecord)
+
+        ZS_DECLARE_STRUCT_PTR(IncomingListSubscription)
+
         typedef String DatabaseID;
-        typedef std::map<DatabaseID, UseLocationDatabasePtr> LocationDatabaseMap;
+        typedef std::map<DatabaseID, UseLocationDatabaseWeakPtr> LocationDatabaseMap;
+
+        struct IncomingListSubscription
+        {
+          enum SubscriptionTypes
+          {
+            SubscriptionType_FullList,
+            SubscriptionType_ChangeList,
+          };
+          static const char *toString(SubscriptionTypes type);
+
+          UseLocationPtr mLocation;
+
+          SubscriptionTypes mType {SubscriptionType_FullList};
+          UseDatabase::index mAfterIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
+
+          String mLastVersion;
+
+          Time mExpires;
+
+          bool mNotified {false};
+
+          ElementPtr toDebug() const;
+        };
+
+        typedef PUID LocationID;
+        typedef std::map<LocationID, IncomingListSubscriptionPtr> IncomingListSubscriptionMap;
 
       protected:
         LocationDatabases(ILocationPtr location);
@@ -183,6 +243,24 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
+        #pragma mark LocationDatabases => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IBackOffTimerDelegate
+        #pragma mark
+
+        virtual void onBackOffTimerAttemptAgainNow(IBackOffTimerPtr timer);
+
+        virtual void onBackOffTimerAttemptTimeout(IBackOffTimerPtr timer);
+
+        virtual void onBackOffTimerAllAttemptsFailed(IBackOffTimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
         #pragma mark LocationDatabases => IServiceLockboxSessionDelegate
         #pragma mark
 
@@ -192,6 +270,40 @@ namespace openpeer
                                                          );
 
         virtual void onServiceLockboxSessionAssociatedIdentitiesChanged(IServiceLockboxSessionPtr session);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => ILocationSubscriptionDelegate
+        #pragma mark
+
+        virtual void onLocationSubscriptionShutdown(ILocationSubscriptionPtr subscription);
+
+        virtual void onLocationSubscriptionLocationConnectionStateChanged(
+                                                                          ILocationSubscriptionPtr subscription,
+                                                                          ILocationPtr location,
+                                                                          LocationConnectionStates state
+                                                                          );
+
+        virtual void onLocationSubscriptionMessageIncoming(
+                                                           ILocationSubscriptionPtr subscription,
+                                                           IMessageIncomingPtr message
+                                                           );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<ListSubscribeResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        ListSubscribeResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             ListSubscribeResultPtr ignore,         // will always be NULL
+                                                             message::MessageResultPtr result
+                                                             );
 
       protected:
         //---------------------------------------------------------------------
@@ -216,7 +328,22 @@ namespace openpeer
         void step();
 
         bool stepPrepareMasterDatabase();
-        bool stepOpenLocal();
+        bool stepSubscribeLocationAll();
+        bool stepSubscribeLocationRemote();
+
+        bool stepRemoteSubscribeList();
+        bool stepRemoteResubscribeTimer();
+
+        bool stepLocalIncomingSubscriptionsTimer();
+        bool stepLocalIncomingSubscriptionsNotify();
+
+        bool stepChangeNotify();
+
+        void notifyIncoming(ListSubscribeNotifyPtr notify);
+        void notifyIncoming(
+                            IMessageIncomingPtr message,
+                            ListSubscribeRequestPtr request
+                            );
 
       protected:
         //---------------------------------------------------------------------
@@ -233,6 +360,7 @@ namespace openpeer
         bool mIsLocal {false};
 
         UseLocationPtr mLocation;
+        ILocationSubscriptionPtr mLocationSubscription;
 
         ILocationDatabasesDelegateSubscriptions mSubscriptions;
 
@@ -241,9 +369,18 @@ namespace openpeer
         IServiceLockboxSessionSubscriptionPtr mLockboxSubscription;
         UseLockboxPtr mLockbox;
 
-        ILocationDatabaseAbstraction::PeerLocationRecord mPeerLocationRecord;
+        PeerLocationRecord mPeerLocationRecord;
 
         LocationDatabaseMap mLocationDatabases;
+
+        IBackOffTimerPtr mRemoteSubscriptionBackOffTimer;
+        IMessageMonitorPtr mRemoteSubscribeListMonitor;
+        TimerPtr mRemoteSubscribeTimeout;
+
+        String mLastChangeUpdateNotified;
+
+        IncomingListSubscriptionMap mIncomingListSubscription;
+        TimerPtr mIncomingListSubscriptionTimer;
       };
 
       //-----------------------------------------------------------------------

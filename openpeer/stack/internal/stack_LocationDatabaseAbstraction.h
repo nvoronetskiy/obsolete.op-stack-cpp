@@ -172,13 +172,12 @@ namespace openpeer
                                       PeerLocationRecord &outRecord
                                       )                                           {mOuter->IPeerLocationTable_createOrObtain(peerURI, locationID, outRecord);}
 
-          virtual void updateVersion(index indexPeerLocationRecord)               {mOuter->IPeerLocationTable_updateVersion(indexPeerLocationRecord);}
+          virtual String updateVersion(index indexPeerLocationRecord)             {return mOuter->IPeerLocationTable_updateVersion(indexPeerLocationRecord);}
 
           virtual void notifyDownloaded(
                                         index indexPeerLocationRecord,
-                                        const char *downloadedToVersion,
-                                        bool downloadComplete
-                                        )                                         {mOuter->IPeerLocationTable_notifyDownloaded(indexPeerLocationRecord, downloadedToVersion, downloadComplete);}
+                                        const char *downloadedToVersion
+                                        )                                         {mOuter->IPeerLocationTable_notifyDownloaded(indexPeerLocationRecord, downloadedToVersion);}
 
           virtual PeerLocationRecordListPtr getUnusedLocationsBatch(const Time &lastAccessedBefore) const  {return mOuter->IPeerLocationTable_getUnusedLocationsBatch(lastAccessedBefore);}
 
@@ -208,7 +207,7 @@ namespace openpeer
                                    DatabaseChangeRecord &outChangeRecord
                                    )                                            {mOuter->IDatabaseTable_addOrUpdate(ioRecord, outChangeRecord);}
 
-          virtual void updateVersion(index indexDatabase)                       {mOuter->IDatabaseTable_updateVersion(indexDatabase);}
+          virtual String updateVersion(index indexDatabase)                     {return mOuter->IDatabaseTable_updateVersion(indexDatabase);}
 
           virtual bool remove(
                               const DatabaseRecord &inRecord,
@@ -231,11 +230,15 @@ namespace openpeer
                                                                            index afterIndexDatabase = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
                                                                            ) const  {return mOuter->IDatabaseTable_getBatchByPeerLocationIndexForPeerURI(peerURIWithPermission, indexPeerLocationRecord, afterIndexDatabase);}
 
+          virtual DatabaseRecordListPtr getBatchExpired(
+                                                        index indexPeerLocationRecord,
+                                                        const Time &now
+                                                        ) const  {return mOuter->IDatabaseTable_getBatchExpired(indexPeerLocationRecord, now);}
+
           virtual void notifyDownloaded(
                                         index indexDatabaseRecord,
-                                        const char *downloadedToVersion,
-                                        bool downloadComplete
-                                        )                                       {return mOuter->IDatabaseTable_notifyDownloaded(indexDatabaseRecord, downloadedToVersion, downloadComplete);}
+                                        const char *downloadedToVersion
+                                        )                                       {return mOuter->IDatabaseTable_notifyDownloaded(indexDatabaseRecord, downloadedToVersion);}
 
         protected:
           LocationDatabaseAbstractionPtr mOuter;
@@ -259,6 +262,11 @@ namespace openpeer
           virtual void flushAllForDatabase(index indexDatabaseRecord)           {mOuter->IDatabaseChangeTable_flushAllForDatabase(indexDatabaseRecord);}
 
           virtual void insert(const DatabaseChangeRecord &record)               {mOuter->IDatabaseChangeTable_insert(record);}
+
+          virtual bool getByIndex(
+                                  index indexDatabaseChangeRecord,
+                                  DatabaseChangeRecord &outRecord
+                                  ) const                                       {return mOuter->IDatabaseChangeTable_getByIndex(indexDatabaseChangeRecord, outRecord);}
 
           virtual DatabaseChangeRecordListPtr getChangeBatch(
                                                              index indexPeerLocationRecord,
@@ -382,12 +390,11 @@ namespace openpeer
                                                PeerLocationRecord &outRecord
                                                );
 
-        void IPeerLocationTable_updateVersion(index indexPeerLocationRecord);
+        String IPeerLocationTable_updateVersion(index indexPeerLocationRecord);
 
         void IPeerLocationTable_notifyDownloaded(
                                                  index indexPeerLocationRecord,
-                                                 const char *downloadedToVersion,
-                                                 bool downloadComplete
+                                                 const char *downloadedToVersion
                                                  );
 
         PeerLocationRecordListPtr IPeerLocationTable_getUnusedLocationsBatch(const Time &lastAccessedBefore) const;
@@ -406,7 +413,7 @@ namespace openpeer
                                         DatabaseChangeRecord &outChangeRecord
                                         );
 
-        void IDatabaseTable_updateVersion(index indexDatabase);
+        String IDatabaseTable_updateVersion(index indexDatabase);
 
         bool IDatabaseTable_remove(
                                    const DatabaseRecord &inRecord,
@@ -419,20 +426,24 @@ namespace openpeer
                                        ) const;
 
         DatabaseRecordListPtr IDatabaseTable_getBatchByPeerLocationIndex(
-                                                                      index indexPeerLocationRecord,
-                                                                      index afterIndexDatabase = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
-                                                                      ) const;
+                                                                         index indexPeerLocationRecord,
+                                                                         index afterIndexDatabase = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
+                                                                         ) const;
 
         DatabaseRecordListPtr IDatabaseTable_getBatchByPeerLocationIndexForPeerURI(
-                                                                                const char *peerURIWithPermission,
-                                                                                index indexPeerLocationRecord,
-                                                                                index afterIndexDatabase = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
-                                                                                ) const;
+                                                                                   const char *peerURIWithPermission,
+                                                                                   index indexPeerLocationRecord,
+                                                                                   index afterIndexDatabase = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
+                                                                                   ) const;
+
+        DatabaseRecordListPtr IDatabaseTable_getBatchExpired(
+                                                             index indexPeerLocationRecord,
+                                                             const Time &now
+                                                             ) const;
 
         void IDatabaseTable_notifyDownloaded(
                                              index indexDatabaseRecord,
-                                             const char *downloadedToVersion,
-                                             bool downloadComplete
+                                             const char *downloadedToVersion
                                              );
 
         //---------------------------------------------------------------------
@@ -445,6 +456,11 @@ namespace openpeer
         void IDatabaseChangeTable_flushAllForDatabase(index indexDatabase);
 
         void IDatabaseChangeTable_insert(const DatabaseChangeRecord &record);
+
+        bool IDatabaseChangeTable_getByIndex(
+                                             index indexDatabaseChangeRecord,
+                                             DatabaseChangeRecord &outRecord
+                                             ) const;
 
         DatabaseChangeRecordListPtr IDatabaseChangeTable_getChangeBatch(
                                                                         index indexPeerLocationRecord,

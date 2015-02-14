@@ -385,8 +385,7 @@ namespace openpeer
         request->domain(mBootstrappedNetwork->getDomain());
         request->salts(mTotalToFetch);
 
-        mSaltMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<SignedSaltGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_SALT_FETCH_SIGNED_SALT_QUERY_GET_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("salt", "signed-salt-get", request);
+        mSaltMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<SignedSaltGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "salt", "signed-salt-get", request, Seconds(OPENPEER_STACK_SERVICE_SALT_FETCH_SIGNED_SALT_QUERY_GET_TIMEOUT_IN_SECONDS));
         ZS_LOG_DEBUG(log("sending signed salt get request"))
       }
 

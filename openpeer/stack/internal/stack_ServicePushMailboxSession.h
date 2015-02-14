@@ -197,8 +197,6 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(services::IDNS::SRVResult, SRVResult)
 
-        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForPushMailbox, UseMessageMonitorManager)
-
         ZS_DECLARE_TYPEDEF_PTR(services::IReachability, IReachability)
         ZS_DECLARE_TYPEDEF_PTR(services::IReachabilitySubscription, IReachabilitySubscription)
         ZS_DECLARE_TYPEDEF_PTR(services::IReachability::InterfaceTypes, InterfaceTypes)
@@ -228,6 +226,9 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::MessageRecord, MessageRecord)
         ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::ListRecord, ListRecord)
         ZS_DECLARE_TYPEDEF_PTR(IServicePushMailboxSessionDatabaseAbstraction::PendingDeliveryMessageRecord, PendingDeliveryMessageRecord)
+
+        ZS_DECLARE_TYPEDEF_PTR(std::list<PromisePtr>, PromiseList)
+        ZS_DECLARE_TYPEDEF_PTR(std::list<PromiseWeakPtr>, PromiseWeakList)
 
         typedef String FolderName;
         typedef IServicePushMailboxSessionDatabaseAbstraction::index FolderIndex;
@@ -839,13 +840,12 @@ namespace openpeer
 
         void notifyChangedFolder(const String &folderName);
 
-        bool send(MessagePtr message) const;
+        PromisePtr send(MessagePtr message) const;
         IMessageMonitorPtr sendRequest(
                                        IMessageMonitorDelegatePtr delegate,
                                        MessagePtr requestMessage,
                                        Seconds timeout
                                        );
-        bool sendRequest(MessagePtr requestMessage);
 
         virtual void handleChanged(ChangedNotifyPtr notify);
         virtual void handleListFetch(ListFetchRequestPtr request);
@@ -1037,6 +1037,9 @@ namespace openpeer
 
         ChannelID pickNextChannel();
 
+        void resolveAllPromises(PromiseWeakList &promises);
+        void rejectAllPromises(PromiseWeakList &promises);
+
       public:
 
 #define OPENPEER_STACK_SERVICE_PUSH_MAILBOX_SESSION_ASYNC_DECRYPT
@@ -1093,8 +1096,6 @@ namespace openpeer
         IReachabilitySubscriptionPtr mReachabilitySubscription;
 
         IServiceLockboxSessionSubscriptionPtr mLockboxSubscription;
-
-        PUID mSentViaObjectID;
 
         ITCPMessagingPtr mTCPMessaging;
         ITransportStreamPtr mWireStream;
@@ -1200,6 +1201,8 @@ namespace openpeer
         MonitorList mMarkingMonitors;
 
         bool mRefreshMessagesNeedingExpiry;
+
+        mutable PromiseWeakList mSendPromises;
       };
 
       //-----------------------------------------------------------------------

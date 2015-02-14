@@ -34,6 +34,7 @@
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Peer.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+#include <openpeer/stack/internal/stack_Stack.h>
 
 #include <openpeer/services/IHelper.h>
 
@@ -41,6 +42,7 @@
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 #include <zsLib/Stringize.h>
+#include <zsLib/Promise.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
 
@@ -50,6 +52,8 @@ namespace openpeer
   {
     namespace internal
     {
+      ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
+
       using services::IHelper;
 
       typedef ILocationForAccount::ForAccountPtr ForAccountPtr;
@@ -499,12 +503,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool Location::sendMessage(message::MessagePtr message) const
+      PromisePtr Location::sendMessage(message::MessagePtr message) const
       {
         UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
         return account->send(mThisWeak.lock(), message);
       }
@@ -628,23 +632,6 @@ namespace openpeer
       #pragma mark
       #pragma mark Location => ILocationForMessageMonitor
       #pragma mark
-
-      //-----------------------------------------------------------------------
-      Location::SentViaObjectID Location::sendMessageFromMonitor(message::MessagePtr message) const
-      {
-        UseAccountPtr account = mAccount.lock();
-        if (!account) {
-          ZS_LOG_WARNING(Detail, debug("send message failed as account is gone"))
-          return false;
-        }
-
-        SentViaObjectID sentViaObjectID = 0;
-
-        bool result = account->send(mThisWeak.lock(), message, &sentViaObjectID);
-
-        return (result ? sentViaObjectID : 0);
-      }
-
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

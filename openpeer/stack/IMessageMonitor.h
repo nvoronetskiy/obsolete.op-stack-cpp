@@ -56,7 +56,8 @@ namespace openpeer
       static IMessageMonitorPtr monitor(
                                         IMessageMonitorDelegatePtr delegate,
                                         message::MessagePtr requestMessage,
-                                        Seconds timeout
+                                        Seconds timeout,
+                                        PromisePtr sendPromise
                                         );
 
       static IMessageMonitorPtr monitorAndSendToLocation(

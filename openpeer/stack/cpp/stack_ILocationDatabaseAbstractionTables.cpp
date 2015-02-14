@@ -55,7 +55,6 @@ namespace openpeer
       const char *ILocationDatabaseAbstractionTables::locationID = "locationID";
       const char *ILocationDatabaseAbstractionTables::databaseID = "databaseID";
       const char *ILocationDatabaseAbstractionTables::lastDownloadedVersion = "lastDownloadedVersion";
-      const char *ILocationDatabaseAbstractionTables::downloadComplete = "downloadComplete";
       const char *ILocationDatabaseAbstractionTables::metaData = "metaData";
       const char *ILocationDatabaseAbstractionTables::expires = "expires";
       const char *ILocationDatabaseAbstractionTables::entryID = "entryID";

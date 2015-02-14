@@ -69,13 +69,13 @@ namespace openpeer
       virtual void cancel() = 0;
 
       // use IMessageMonitor to monitor the result (if result is important)
-      virtual bool sendServiceMessage(
-                                      const char *serviceType,
-                                      const char *serviceMethodName,
-                                      message::MessagePtr message,
-                                      const char *cachedCookieNameForResult = NULL,
-                                      Time cacheExpires = Time()
-                                      ) = 0;
+      virtual PromisePtr sendServiceMessage(
+                                            const char *serviceType,
+                                            const char *serviceMethodName,
+                                            message::MessagePtr message,
+                                            const char *cachedCookieNameForResult = NULL,
+                                            Time cacheExpires = Time()
+                                            ) = 0;
     };
 
     //-------------------------------------------------------------------------

@@ -498,7 +498,7 @@ namespace openpeer
     //-------------------------------------------------------------------------
     ElementPtr LocationInfo::toDebug() const
     {
-      ElementPtr resultEl = Element::create("LocationInfo");
+      ElementPtr resultEl = Element::create("stack::LocationInfo");
 
       UseServicesHelper::debugAppend(resultEl, ILocation::toDebug(mLocation));
       UseServicesHelper::debugAppend(resultEl, "IP address", !mIPAddress.isEmpty() ? mIPAddress.string() : String());
@@ -644,7 +644,39 @@ namespace openpeer
     //-----------------------------------------------------------------------
     //-----------------------------------------------------------------------
     #pragma mark
-    #pragma mark message::Server
+    #pragma mark PromiseRejectionStatus
+    #pragma mark
+
+    //-----------------------------------------------------------------------
+    PromiseRejectionStatusPtr PromiseRejectionStatus::create(
+                                                             IHTTP::HTTPStatusCodes status,
+                                                             const char *message
+                                                             )
+    {
+      PromiseRejectionStatusPtr pThis(new PromiseRejectionStatus);
+      pThis->mStatus = status;
+
+      String messageStr(message);
+      pThis->mMessage = messageStr.isEmpty() ? String(IHTTP::toString(status)) : messageStr;
+      return pThis;
+    }
+
+    //-----------------------------------------------------------------------
+    ElementPtr PromiseRejectionStatus::toDebug() const
+    {
+      ElementPtr resultEl = Element::create("stack::PromiseRejectionStatus");
+
+      UseServicesHelper::debugAppend(resultEl, "status", IHTTP::toString(mStatus));
+
+      return resultEl;
+    }
+
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark Server
     #pragma mark
 
     //-----------------------------------------------------------------------
@@ -664,11 +696,11 @@ namespace openpeer
     //-----------------------------------------------------------------------
     ElementPtr Server::toDebug() const
     {
-      ElementPtr resultEl = Element::create("message::Server");
+      ElementPtr resultEl = Element::create("stack::Server");
 
       UseServicesHelper::debugAppend(resultEl, "id", mID);
       UseServicesHelper::debugAppend(resultEl, "type", mType);
-      UseServicesHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "message::Server::ProtocolList"));
+      UseServicesHelper::debugAppend(resultEl, Candidate::toDebug(mProtocols, "Server::ProtocolList"));
       UseServicesHelper::debugAppend(resultEl, "public key", (bool)mPublicKey);
       UseServicesHelper::debugAppend(resultEl, "priority", mPriority);
       UseServicesHelper::debugAppend(resultEl, "weight", mWeight);
@@ -719,7 +751,7 @@ namespace openpeer
     //-----------------------------------------------------------------------
     //-----------------------------------------------------------------------
     #pragma mark
-    #pragma mark message::Token
+    #pragma mark Token
     #pragma mark
 
     //-----------------------------------------------------------------------
@@ -738,7 +770,7 @@ namespace openpeer
     //-----------------------------------------------------------------------
     ElementPtr Token::toDebug() const
     {
-      ElementPtr resultEl = Element::create("message::Token");
+      ElementPtr resultEl = Element::create("stack::Token");
 
       UseServicesHelper::debugAppend(resultEl, "id", mID);
       UseServicesHelper::debugAppend(resultEl, "secret", mSecret);

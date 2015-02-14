@@ -86,7 +86,10 @@ namespace openpeer
           virtual const PushSubscriptionInfo &getSubscriptionInfo() const {return mSubscriptionInfo;}
 
           virtual bool needsRequest() const;
-          virtual void monitor(RegisterPushRequestPtr requestMessage);
+          virtual void monitor(
+                               RegisterPushRequestPtr requestMessage,
+                               PromisePtr sendPromise
+                               );
 
           //-------------------------------------------------------------------
           #pragma mark

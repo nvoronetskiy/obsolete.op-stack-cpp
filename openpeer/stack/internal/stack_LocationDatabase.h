@@ -47,7 +47,15 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, ForLocationDatabases)
 
-        virtual ~ILocationDatabaseForLocationDatabases() {}
+        virtual String getDatabaseID() const = 0;
+
+        virtual void notifyConflict() = 0;
+
+        virtual void notifyUpdated() = 0;
+
+        virtual void notifyRemoved() = 0;
+
+        virtual ElementPtr toDebug() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -161,6 +169,16 @@ namespace openpeer
         #pragma mark
         #pragma mark LocationDatabase => ILocationDatabaseForLocationDatabases
         #pragma mark
+
+        // (duplicate) virtual String getDatabaseID() const = 0;
+
+        virtual void notifyConflict();
+
+        virtual void notifyUpdated();
+
+        virtual void notifyRemoved();
+
+        // (duplicate) virtual ElementPtr toDebug() const;
 
       protected:
         //---------------------------------------------------------------------

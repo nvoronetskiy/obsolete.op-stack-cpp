@@ -36,6 +36,7 @@
 
 #include <zsLib/MessageQueueAssociator.h>
 #include <zsLib/Timer.h>
+#include <zsLib/Promise.h>
 
 namespace openpeer
 {
@@ -63,9 +64,7 @@ namespace openpeer
         virtual String getMonitoredMessageID() const = 0;
 
         virtual bool handleMessage(message::MessagePtr message) = 0;
-
-        virtual void notifySendMessageFailure(message::MessagePtr message) = 0;
-        virtual void notifySenderObjectGone(PUID senderObjectID) = 0;
+        virtual void handleTimeout() = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -84,6 +83,7 @@ namespace openpeer
                                      ) = 0;
 
         virtual void onAutoHandleFailureResult(MessageResultPtr result) = 0;
+        virtual void onAutoHandleTimeout() = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -100,7 +100,8 @@ namespace openpeer
                              public IMessageMonitor,
                              public IMessageMonitorAsyncDelegate,
                              public IMessageMonitorForMessageMonitorManager,
-                             public ITimerDelegate
+                             public ITimerDelegate,
+                             public IPromiseCatchDelegate
       {
       public:
         friend interaction IMessageMonitorFactory;
@@ -139,7 +140,8 @@ namespace openpeer
         static MessageMonitorPtr monitor(
                                          IMessageMonitorDelegatePtr delegate,
                                          message::MessagePtr requestMessage,
-                                         Seconds timeout
+                                         Seconds timeout,
+                                         PromisePtr sendPromise
                                          );
 
         static MessageMonitorPtr monitorAndSendToLocation(
@@ -181,6 +183,7 @@ namespace openpeer
                                      );
 
         virtual void onAutoHandleFailureResult(MessageResultPtr result);
+        virtual void onAutoHandleTimeout();
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -191,9 +194,7 @@ namespace openpeer
         // (duplicate) virtual String getMonitoredMessageID();
 
         virtual bool handleMessage(message::MessagePtr message);
-
-        virtual void notifySendMessageFailure(message::MessagePtr message);
-        virtual void notifySenderObjectGone(PUID senderObjectID);
+        virtual void handleTimeout();
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -201,6 +202,13 @@ namespace openpeer
         #pragma mark
 
         virtual void onTimer(TimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageMonitor => IPromiseCatchDelegate
+        #pragma mark
+
+        virtual void onPromiseRejected(PromisePtr promise);
 
       protected:
         //---------------------------------------------------------------------
@@ -214,7 +222,10 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const;
 
-        void notifyWithError(IHTTP::HTTPStatusCodes code);
+        void notifyWithError(
+                             IHTTP::HTTPStatusCodes code,
+                             const char *reason
+                             );
 
       protected:
         AutoPUID mID;
@@ -234,7 +245,7 @@ namespace openpeer
         Time mExpires;
         message::MessagePtr mOriginalMessage;
 
-        SentViaObjectID mSentViaObjectID;
+        PromisePtr mSendPromise;
       };
 
       //-----------------------------------------------------------------------
@@ -252,7 +263,8 @@ namespace openpeer
         virtual MessageMonitorPtr monitor(
                                           IMessageMonitorDelegatePtr delegate,
                                           message::MessagePtr requestMessage,
-                                          Seconds timeout
+                                          Seconds timeout,
+                                          PromisePtr sendPromise
                                           );
 
         virtual MessageMonitorPtr monitorAndSendToLocation(
@@ -284,4 +296,5 @@ ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::message::MessagePtr, MessagePtr)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::message::MessageResultPtr, MessageResultPtr)
 ZS_DECLARE_PROXY_METHOD_2(onHandleMessage, IMessageMonitorDelegatePtr, MessagePtr)
 ZS_DECLARE_PROXY_METHOD_1(onAutoHandleFailureResult, MessageResultPtr)
+ZS_DECLARE_PROXY_METHOD_0(onAutoHandleTimeout)
 ZS_DECLARE_PROXY_END()

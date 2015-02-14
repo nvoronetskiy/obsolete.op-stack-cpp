@@ -32,6 +32,8 @@
 #include <openpeer/stack/message/p2p-database/SubscribeRequest.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 #include <zsLib/Numeric.h>
@@ -46,6 +48,8 @@ namespace openpeer
     {
       namespace p2p_database
       {
+        ZS_DECLARE_TYPEDEF_PTR(services::IHelper, UseServicesHelper)
+
         using zsLib::Numeric;
 
         //---------------------------------------------------------------------
@@ -86,6 +90,7 @@ namespace openpeer
           if (databaseEl) {
             ret->mDatabaseID = IMessageHelper::getAttribute(databaseEl, "id");
             ret->mVersion = IMessageHelper::getAttribute(databaseEl, "version");
+            ret->mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementText(databaseEl->findFirstChildElement("expires")));
 
             String dataStr = IMessageHelper::getElementText(databaseEl->findFirstChildElement("data"));
 
@@ -113,6 +118,10 @@ namespace openpeer
           if (hasAttribute(AttributeType_DatabaseVersion)) {
             databaseEl->setAttribute("version", mVersion);
           }
+          if (hasAttribute(AttributeType_SubscriptionExpires)) {
+            databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("expires", UseServicesHelper::timeToString(mExpires)));
+          }
+
           if (hasAttribute(AttributeType_DatabaseData)) {
             databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("data", "true"));
           }
@@ -129,9 +138,10 @@ namespace openpeer
         bool SubscribeRequest::hasAttribute(AttributeTypes type) const
         {
           switch (type) {
-            case AttributeType_DatabaseID:        return mDatabaseID.hasData();
-            case AttributeType_DatabaseVersion:   return mVersion.hasData();
-            case AttributeType_DatabaseData:      return mData;
+            case AttributeType_DatabaseID:          return mDatabaseID.hasData();
+            case AttributeType_DatabaseVersion:     return mVersion.hasData();
+            case AttributeType_SubscriptionExpires: return Time() != mExpires;
+            case AttributeType_DatabaseData:        return mData;
           }
           return false;
         }

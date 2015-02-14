@@ -32,6 +32,8 @@
 #pragma once
 
 #include <openpeer/stack/internal/types.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
+
 #include <openpeer/stack/ILocation.h>
 
 #define OPENPEER_STACK_SETTING_LOCATION_DATABASE_PATH "openpeer/stack/location-database-path"
@@ -50,16 +52,23 @@ namespace openpeer
       interaction ILocationDatabasesManagerForLocationDatabases
       {
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, ForLocationDatabases)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction::index, index)
 
         static ForLocationDatabasesPtr singleton();
 
         static LocationDatabasesPtr getOrCreateForLocation(ILocationPtr location);
+
+        static void notifyDestroyed(LocationDatabases &databases);
+
         static ILocationDatabaseAbstractionPtr getOrCreateForUserHash(
                                                                       ILocationPtr location,
                                                                       const String &userHash
                                                                       );
-
-        static void notifyDestroyed(LocationDatabases &databases);
+        static void purgePeerLocationDatabases(
+                                               ILocationPtr location,
+                                               ILocationDatabaseAbstractionPtr masterDatabase,
+                                               index indexPeerLocation
+                                               );
 
         virtual ~ILocationDatabasesManagerForLocationDatabases() {}
       };
@@ -129,6 +138,12 @@ namespace openpeer
                                                                       ILocationPtr location,
                                                                       const String &userHash
                                                                       );
+
+        virtual void purgePeerLocationDatabases(
+                                                ILocationPtr location,
+                                                ILocationDatabaseAbstractionPtr masterDatabase,
+                                                index indexPeerLocation
+                                                );
 
       protected:
         //---------------------------------------------------------------------

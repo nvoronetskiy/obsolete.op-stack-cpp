@@ -122,7 +122,7 @@ namespace openpeer
         virtual ILocationPtr getLocation() const;
         virtual message::MessagePtr getMessage() const;
 
-        virtual bool sendResponse(message::MessagePtr message);
+        virtual PromisePtr sendResponse(message::MessagePtr message);
 
         //---------------------------------------------------------------------
         #pragma mark

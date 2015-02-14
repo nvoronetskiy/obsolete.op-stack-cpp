@@ -1410,9 +1410,7 @@ namespace openpeer
         getNamespaces(namespaces);
         request->namespaceURLs(namespaces);
 
-        mLockboxAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-access", request);
-
+        mLockboxAccessMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<LockboxAccessResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "identity-lockbox", "lockbox-access", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         return false;
       }
 
@@ -1483,9 +1481,7 @@ namespace openpeer
         request->lockboxInfo(mLockboxInfo);
         request->namespaceGrantChallengeBundle(bundleEl);
 
-        mLockboxNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-namespace-grant-challenge-validate", request);
-
+        mLockboxNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<LockboxNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "identity-lockbox", "lockbox-namespace-grant-challenge-validate", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         return false;
       }
 
@@ -1513,9 +1509,7 @@ namespace openpeer
         request->lockboxInfo(mLockboxInfo);
         request->namespaceInfos(namespaces);
 
-        mLockboxContentGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxContentGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-content-get", request);
-
+        mLockboxContentGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<LockboxContentGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "identity-lockbox", "lockbox-content-get", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         return false;
       }
 
@@ -1707,8 +1701,7 @@ namespace openpeer
         request->lockboxInfo(mLockboxInfo);
         request->peerFilePublic(peerFilePublic);
 
-        mPeerFileSetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerFileSetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("peer", "peer-file-set", request);
+        mPeerFileSetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<PeerFileSetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "peer", "peer-file-set", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         return true;
       }
       
@@ -1734,8 +1727,7 @@ namespace openpeer
 
         request->lockboxInfo(mLockboxInfo);
 
-        mPeerServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<PeerServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("peer", "peer-services-get", request);
+        mPeerServicesGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<PeerServicesGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "peer", "peer-services-get", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
         return true;
       }
       
@@ -2088,9 +2080,7 @@ namespace openpeer
             request->identitiesToUpdate(updateInfos);
             request->identitiesToRemove(removeInfos);
 
-            mLockboxIdentitiesUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxIdentitiesUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-            mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-identities-update", request);
-
+            mLockboxIdentitiesUpdateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<LockboxIdentitiesUpdateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "identity-lockbox", "lockbox-identities-update", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
             // NOTE: It's entirely possible the associate request can fail. Unfortunately, there is very little that can be done upon failure. The user will have to take some responsibility to keep their identities associated.
           }
         }
@@ -2120,8 +2110,7 @@ namespace openpeer
 
         request->namespaceURLNameValues(mUpdatedContent);
 
-        mLockboxContentSetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<LockboxContentSetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
-        mBootstrappedNetwork->sendServiceMessage("identity-lockbox", "lockbox-content-set", request);
+        mLockboxContentSetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<LockboxContentSetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mBootstrappedNetwork), "identity-lockbox", "lockbox-content-set", request, Seconds(OPENPEER_STACK_SERVICE_LOCKBOX_TIMEOUT_IN_SECONDS));
 
         mUpdatedContent.clear();  // forget this content ever changed so newly changed content will update
 

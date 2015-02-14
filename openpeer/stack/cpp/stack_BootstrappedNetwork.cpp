@@ -50,6 +50,7 @@
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Promise.h>
 #include <zsLib/XML.h>
 
 #define OPENPEER_STACK_BOOTSTRAPPED_NETWORK_MAX_REDIRECTION_ATTEMPTS (5)
@@ -425,62 +426,44 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool BootstrappedNetwork::sendServiceMessage(
-                                                   const char *serviceType,
-                                                   const char *serviceMethodName,
-                                                   message::MessagePtr message,
-                                                   const char *cachedCookieNameForResult,
-                                                   Time cacheExpires
-                                                   )
+      PromisePtr BootstrappedNetwork::sendServiceMessage(
+                                                         const char *serviceType,
+                                                         const char *serviceMethodName,
+                                                         message::MessagePtr message,
+                                                         const char *cachedCookieNameForResult,
+                                                         Time cacheExpires
+                                                         )
       {
         ZS_LOG_DEBUG(log("sending message to service") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName) + Message::toDebug(message))
         AutoRecursiveLock lock(*this);
         if (!mCompleted) {
           ZS_LOG_WARNING(Detail, log("bootstrapper isn't complete and thus cannot send message"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_ServiceUnavailable), UseStack::queueDelegate());
         }
 
         if (!message) {
           ZS_LOG_WARNING(Detail, log("bootstrapped was asked to send a null message"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_BadRequest), UseStack::queueDelegate());
         }
 
         const Service::Method *service = findServiceMethod(serviceType, serviceMethodName);
         if (!service) {
           ZS_LOG_WARNING(Detail, log("failed to find service to send to") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName))
-          if ((message->isRequest()) ||
-              (message->isNotify())) {
-            MessageResultPtr result = MessageResult::create(message, ErrorCode_NotFound, toString(ErrorCode_NotFound));
-            if (!result) {
-              ZS_LOG_WARNING(Detail, log("failed to create result for message"))
-              return false;
-            }
-            IMessageMonitor::handleMessageReceived(result);
-          }
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_NotFound), UseStack::queueDelegate());
         }
 
         if (service->mURI.isEmpty()) {
           ZS_LOG_WARNING(Detail, log("failed to find service URI to send to") + ZS_PARAM("type", serviceType) + ZS_PARAM("method", serviceMethodName))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_NotFound), UseStack::queueDelegate());
         }
 
-        IHTTPQueryPtr query = post(service->mURI, message, cachedCookieNameForResult, cacheExpires);
+        PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+        IHTTPQueryPtr query = post(sendPromise, service->mURI, message, cachedCookieNameForResult, cacheExpires);
         if (!query) {
           ZS_LOG_WARNING(Detail, log("failed to create query for message"))
-          if ((message->isRequest()) ||
-              (message->isNotify())) {
-            MessageResultPtr result = MessageResult::create(message, ErrorCode_InternalServerError, toString(ErrorCode_InternalServerError));
-            if (!result) {
-              ZS_LOG_WARNING(Detail, log("failed to create result for message"))
-              return false;
-            }
-            IMessageMonitor::handleMessageReceived(result);
-          }
-          return false;
         }
 
-        return true;
+        return sendPromise;
       }
 
       //-----------------------------------------------------------------------
@@ -747,7 +730,7 @@ namespace openpeer
           return;
         }
 
-        MessagePtr originalMessage = (*found).second;
+        PendingRequest pending = (*found).second;
 
         mPendingRequests.erase(found);
 
@@ -760,7 +743,7 @@ namespace openpeer
 
         MessagePtr resultMessage = getMessageFromQuery(
                                                        query,
-                                                       originalMessage,
+                                                       pending.mMessage,
                                                        willAttemptStore ? &output : NULL
                                                        );
 
@@ -794,19 +777,16 @@ namespace openpeer
         if (resultMessage) {
           if (IMessageMonitor::handleMessageReceived(resultMessage)) {
             ZS_LOG_DEBUG(log("http result was handled by message monitor"))
+            pending.mSendPromise->resolve();
             return;
           }
           ZS_LOG_WARNING(Detail, log("no message handler registered for this request"))
-        } else {
-          ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
-        }
-
-        MessageResultPtr result = MessageResult::create(originalMessage, IHTTP::HTTPStatusCode_BadRequest);
-        if (!result) {
-          ZS_LOG_WARNING(Detail, log("failed to create result for message"))
+          pending.mSendPromise->resolve();
           return;
         }
-        IMessageMonitor::handleMessageReceived(result);
+
+        ZS_LOG_WARNING(Detail, log("failed to create message from pending query completion"))
+        pending.mSendPromise->reject(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_BadRequest));
       }
 
       //-----------------------------------------------------------------------
@@ -898,8 +878,9 @@ namespace openpeer
         ServicesGetRequestPtr request = ServicesGetRequest::create();
         request->domain(mDomain);
 
-        mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-        mServicesGetQuery = post(redirectionURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain, mRedirectionAttempts), getCacheTime(BootstrapperRequestType_ServicesGet));
+        PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+        mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS), sendPromise);
+        mServicesGetQuery = post(sendPromise, redirectionURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain, mRedirectionAttempts), getCacheTime(BootstrapperRequestType_ServicesGet));
         return true;
       }
 
@@ -1106,8 +1087,9 @@ namespace openpeer
             ZS_LOG_WARNING(Basic, log("/.well-known/" OPENPEER_STACK_SETTING_BOOSTRAPPER_SERVICES_GET_URL_METHOD_NAME " being forced as an HTTP POST request"))
           }
 
-          mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-          mServicesGetQuery = post(serviceURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain), getCacheTime(BootstrapperRequestType_ServicesGet), sendAsGetRequest);
+          PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+          mServicesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ServicesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS), sendPromise);
+          mServicesGetQuery = post(sendPromise, serviceURL, request, getCookieName(BootstrapperRequestType_ServicesGet, mDomain), getCacheTime(BootstrapperRequestType_ServicesGet), sendAsGetRequest);
         }
 
         if (!mServicesGetMonitor->isComplete()) {
@@ -1137,8 +1119,9 @@ namespace openpeer
           CertificatesGetRequestPtr request = CertificatesGetRequest::create();
           request->domain(mDomain);
 
-          mCertificatesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<CertificatesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS));
-          post(method->mURI, request, getCookieName(BootstrapperRequestType_CertificatesGet, mDomain), getCacheTime(BootstrapperRequestType_CertificatesGet));
+          PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+          mCertificatesGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<CertificatesGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_BOOSTRAPPER_DEFAULT_REQUEST_TIMEOUT_SECONDS), sendPromise);
+          post(sendPromise, method->mURI, request, getCookieName(BootstrapperRequestType_CertificatesGet, mDomain), getCacheTime(BootstrapperRequestType_CertificatesGet));
         }
 
         if (!mCertificatesGetMonitor->isComplete()) {
@@ -1354,6 +1337,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       IHTTPQueryPtr BootstrappedNetwork::post(
+                                              PromisePtr sendPromise,
                                               const char *url,
                                               MessagePtr message,
                                               const char *cachedCookieNameForResult,
@@ -1416,16 +1400,15 @@ namespace openpeer
 
         if (!query) {
           ZS_LOG_ERROR(Detail, log("failed to create HTTP query"))
-          MessageResultPtr result = MessageResult::create(message, IHTTP::HTTPStatusCode_BadRequest);
-          if (!result) {
-            ZS_LOG_WARNING(Detail, log("failed to create result for message"))
-            return query;
-          }
-          IMessageMonitor::handleMessageReceived(result);
+          sendPromise->reject(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_InternalServerError));
           return query;
         }
 
-        mPendingRequests[query] = message;
+        PendingRequest pending;
+        pending.mSendPromise = sendPromise;
+        pending.mMessage = message;
+
+        mPendingRequests[query] = pending;
 
         if ((!fakeQuery) &&
             (cachedCookieNameForResult)) {

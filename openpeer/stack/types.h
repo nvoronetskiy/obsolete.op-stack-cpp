@@ -40,6 +40,7 @@
 #include <cryptopp/secblock.h>
 
 #include <openpeer/services/IICESocket.h>
+#include <openpeer/services/IHTTP.h>
 
 #define OPENPEER_COMMON_SETTING_APPLICATION_NAME              "openpeer/common/application-name"
 #define OPENPEER_COMMON_SETTING_APPLICATION_IMAGE_URL         "openpeer/common/application-image-url"
@@ -78,6 +79,8 @@ namespace openpeer
     ZS_DECLARE_TYPEDEF_PTR(zsLib::RecursiveLock, RecursiveLock)
     ZS_DECLARE_TYPEDEF_PTR(zsLib::AutoRecursiveLock, AutoRecursiveLock)
 
+    ZS_DECLARE_USING_PTR(zsLib, Any)
+    ZS_DECLARE_USING_PTR(zsLib, Promise)
     ZS_DECLARE_USING_PTR(zsLib, IMessageQueue)
 
     ZS_DECLARE_USING_PTR(zsLib::XML, Element)
@@ -278,6 +281,27 @@ namespace openpeer
       ElementPtr toDebug() const;
 
       static Server create(ElementPtr elem);
+    };
+
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    //-----------------------------------------------------------------------
+    #pragma mark
+    #pragma mark Server
+    #pragma mark
+
+    ZS_DECLARE_STRUCT_PTR(PromiseRejectionStatus)
+
+    struct PromiseRejectionStatus : Any {
+      IHTTP::HTTPStatusCodes mStatus {IHTTP::HTTPStatusCode_NoResponse};
+      String mMessage;
+
+      static PromiseRejectionStatusPtr create(
+                                              IHTTP::HTTPStatusCodes status = IHTTP::HTTPStatusCode_NoResponse,
+                                              const char *message = NULL
+                                              );
+      ElementPtr toDebug() const;
     };
 
     ZS_DECLARE_TYPEDEF_PTR(std::list<Server>, ServerList)

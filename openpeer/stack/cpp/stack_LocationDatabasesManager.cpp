@@ -32,7 +32,6 @@
 #include <openpeer/stack/internal/stack_LocationDatabasesManager.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_LocationDatabases.h>
-#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
@@ -93,6 +92,19 @@ namespace openpeer
         if (!singleton) return ILocationDatabaseAbstractionPtr();
 
         return singleton->getOrCreateForUserHash(location, userHash);
+      }
+
+      //-----------------------------------------------------------------------
+      void ILocationDatabasesManagerForLocationDatabases::purgePeerLocationDatabases(
+                                                                                     ILocationPtr location,
+                                                                                     ILocationDatabaseAbstractionPtr masterDatabase,
+                                                                                     index indexPeerLocation
+                                                                                     )
+      {
+        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        if (!singleton) return;
+
+        return singleton->purgePeerLocationDatabases(location, masterDatabase, indexPeerLocation);
       }
 
       //-----------------------------------------------------------------------
@@ -274,28 +286,7 @@ namespace openpeer
               for (auto iter = batch->begin(); iter != batch->end(); ++iter) {
                 auto record = (*iter);
 
-                ILocationDatabaseAbstraction::index afterDatabaseIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
-                auto databaseBatch = info->mMasterDatabase->databaseTable()->getBatchByPeerLocationIndex(record.mIndex);
-                while (databaseBatch) {
-                  for (auto dbIter = databaseBatch->begin(); dbIter != databaseBatch->end(); ++dbIter) {
-                    auto databaseRecord = (*dbIter);
-
-                    afterDatabaseIndex = databaseRecord.mIndex;
-
-                    auto removed = ILocationDatabaseAbstraction::deleteDatabase(info->mMasterDatabase, location->getPeerURI(), location->getLocationID(), databaseRecord.mDatabaseID);
-                    if (!removed) {
-                      ZS_LOG_WARNING(Detail, log("failed to remove database associated with location") + location->toDebug())
-                    }
-                  }
-                  auto databaseBatch = info->mMasterDatabase->databaseTable()->getBatchByPeerLocationIndex(record.mIndex, afterDatabaseIndex);
-                }
-
-                ZS_LOG_DETAIL(log("pruning database records associated with location") + location->toDebug())
-
-                info->mMasterDatabase->databaseTable()->flushAllForPeerLocation(record.mIndex);
-                info->mMasterDatabase->databaseChangeTable()->flushAllForPeerLocation(record.mIndex);
-                info->mMasterDatabase->permissionTable()->flushAllForPeerLocation(record.mIndex);
-                info->mMasterDatabase->peerLocationTable()->remove(record.mIndex);
+                purgePeerLocationDatabases(Location::convert(location), info->mMasterDatabase, record.mIndex);
               }
               batch = info->mMasterDatabase->peerLocationTable()->getUnusedLocationsBatch(expires);
             }
@@ -306,6 +297,41 @@ namespace openpeer
 
         info->mAttachedLocations[location->getID()] = UseLocationDatabasesPtr();
         return info->mMasterDatabase;
+      }
+
+      //-----------------------------------------------------------------------
+      void LocationDatabasesManager::purgePeerLocationDatabases(
+                                                                ILocationPtr inLocation,
+                                                                ILocationDatabaseAbstractionPtr masterDatabase,
+                                                                index indexPeerLocation
+                                                                )
+      {
+        UseLocationPtr location = Location::convert(inLocation);
+
+        AutoRecursiveLock lock(*this);
+
+        index afterDatabaseIndex = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN;
+        auto databaseBatch = masterDatabase->databaseTable()->getBatchByPeerLocationIndex(indexPeerLocation);
+        while (databaseBatch) {
+          for (auto dbIter = databaseBatch->begin(); dbIter != databaseBatch->end(); ++dbIter) {
+            auto databaseRecord = (*dbIter);
+
+            afterDatabaseIndex = databaseRecord.mIndex;
+
+            auto removed = ILocationDatabaseAbstraction::deleteDatabase(masterDatabase, location->getPeerURI(), location->getLocationID(), databaseRecord.mDatabaseID);
+            if (!removed) {
+              ZS_LOG_WARNING(Detail, log("failed to remove database associated with location") + location->toDebug())
+            }
+          }
+          auto databaseBatch = masterDatabase->databaseTable()->getBatchByPeerLocationIndex(indexPeerLocation, afterDatabaseIndex);
+        }
+
+        ZS_LOG_DETAIL(log("pruning database records associated with location") + location->toDebug())
+
+        masterDatabase->databaseTable()->flushAllForPeerLocation(indexPeerLocation);
+        masterDatabase->databaseChangeTable()->flushAllForPeerLocation(indexPeerLocation);
+        masterDatabase->permissionTable()->flushAllForPeerLocation(indexPeerLocation);
+        masterDatabase->peerLocationTable()->remove(indexPeerLocation);
       }
 
       //-----------------------------------------------------------------------

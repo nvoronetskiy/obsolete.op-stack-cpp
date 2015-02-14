@@ -57,7 +57,7 @@
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
-
+#include <zsLib/Promise.h>
 #include <zsLib/Stringize.h>
 
 #include <regex>
@@ -2073,7 +2073,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("fetching rolodex credentials"))
 
-        mIdentityAccessRolodexCredentialsGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessRolodexCredentialsGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
+        mIdentityAccessRolodexCredentialsGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessRolodexCredentialsGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS), PromisePtr());
         sendInnerWindowMessage(request);
 
         return false;
@@ -2107,9 +2107,7 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("accessing rolodex (continuing to next step so other steps can run in parallel)"))
 
-        mRolodexAccessMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexAccessResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-
-        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-access", request);
+        mRolodexAccessMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<RolodexAccessResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "rolodex", "rolodex-access", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         return true;
       }
 
@@ -2156,8 +2154,7 @@ namespace openpeer
 
         request->providers(providers);
 
-        mIdentityLookupMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->sendServiceMessage("identity-lookup", "identity-lookup", request);
+        mIdentityLookupMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<IdentityLookupResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "identity-lookup", "identity-lookup", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
 
         setState(SessionState_Pending);
         return true;
@@ -2265,9 +2262,7 @@ namespace openpeer
         request->identityInfo(mIdentityInfo);
         request->namespaceGrantChallengeBundle(bundleEl);
 
-        mIdentityAccessNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-access-namespace-grant-challenge-validate", request);
-        
+        mIdentityAccessNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<IdentityAccessNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "identity", "identity-access-namespace-grant-challenge-validate", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         return true;
       }
       
@@ -2325,9 +2320,7 @@ namespace openpeer
         request->rolodexInfo(mRolodexInfo);
         request->namespaceGrantChallengeBundle(bundleEl);
 
-        mRolodexNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-namespace-grant-challenge-validate", request);
-        
+        mRolodexNamespaceGrantChallengeValidateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<RolodexNamespaceGrantChallengeValidateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "rolodex", "rolodex-namespace-grant-challenge-validate", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         return true;
       }
 
@@ -2579,9 +2572,7 @@ namespace openpeer
           request->identityInfo(killInfo);
           request->encryptionKeyUponGrantProof(mEncryptionKeyUponGrantProof);
 
-          mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-          mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
-
+          mIdentityLookupUpdateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "identity", "identity-lookup-update", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
           return false;
         }
 
@@ -2655,9 +2646,7 @@ namespace openpeer
         request->identityInfo(mIdentityInfo);
         request->encryptionKeyUponGrantProof(mEncryptionKeyUponGrantProof);
 
-        mIdentityLookupUpdateMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->sendServiceMessage("identity", "identity-lookup-update", request);
-
+        mIdentityLookupUpdateMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<IdentityLookupUpdateResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "identity", "identity-lookup-update", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         return false;
       }
 
@@ -2723,9 +2712,7 @@ namespace openpeer
 
         request->rolodexInfo(rolodexInfo);
 
-        mRolodexContactsGetMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<RolodexContactsGetResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
-        mActiveBootstrappedNetwork->sendServiceMessage("rolodex", "rolodex-contacts-get", request);
-
+        mRolodexContactsGetMonitor = IMessageMonitor::monitorAndSendToService(IMessageMonitorResultDelegate<RolodexContactsGetResult>::convert(mThisWeak.lock()), BootstrappedNetwork::convert(mActiveBootstrappedNetwork), "rolodex", "rolodex-contacts-get", request, Seconds(OPENPEER_STACK_SERVICE_IDENTITY_TIMEOUT_IN_SECONDS));
         return true;
       }
 

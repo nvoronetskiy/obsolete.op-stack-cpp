@@ -73,7 +73,7 @@ namespace openpeer
         virtual PeerPtr getPeer(bool internal = true) const = 0;
 
         virtual bool isConnected() const = 0;
-        virtual bool sendMessage(message::MessagePtr message) const = 0;
+        virtual PromisePtr sendMessage(message::MessagePtr message) const = 0;
 
         virtual String getPeerURI() const = 0;
 
@@ -102,6 +102,8 @@ namespace openpeer
 
         virtual String getPeerURI() const = 0;
         virtual String getLocationID() const = 0;
+
+        virtual bool isConnected() const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -185,9 +187,7 @@ namespace openpeer
 
       interaction ILocationForMessageMonitor
       {
-        typedef PUID SentViaObjectID;
-
-        virtual SentViaObjectID sendMessageFromMonitor(message::MessagePtr message) const = 0;
+        virtual PromisePtr sendMessage(message::MessagePtr message) const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -237,7 +237,7 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const = 0;
 
-        virtual bool sendMessage(message::MessagePtr message) const = 0;
+        virtual PromisePtr sendMessage(message::MessagePtr message) const = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -324,7 +324,7 @@ namespace openpeer
         virtual bool isConnected() const;
         virtual LocationConnectionStates getConnectionState() const;
 
-        virtual bool sendMessage(message::MessagePtr message) const;
+        virtual PromisePtr sendMessage(message::MessagePtr message) const;
 
         virtual void hintNowAvailable();
 
@@ -342,7 +342,7 @@ namespace openpeer
 
         // (duplicate) virtual bool isConnected() const;
 
-        // (duplicate) virtual bool sendMessage(message::MessagePtr message) const;
+        // (duplicate) virtual PromisePtr sendMessage(message::MessagePtr message) const;
 
         // (duplicate) virtual String getPeerURI() const;
 
@@ -361,6 +361,8 @@ namespace openpeer
 
         // (duplicate) virtual String getPeerURI() const = 0;
         // (duplicate) virtual String getLocationID() const = 0;
+
+        // (duplicate) virtual bool isConnected() const = 0;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -407,7 +409,7 @@ namespace openpeer
         #pragma mark Location => ILocationForMessageMonitor
         #pragma mark
 
-        virtual SentViaObjectID sendMessageFromMonitor(message::MessagePtr message) const;
+        // (duplicate) virtual PromisePtr sendMessage(message::MessagePtr message) const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -427,7 +429,7 @@ namespace openpeer
 
         // (duplicate) virtual ElementPtr toDebug() const;
 
-        // (duplicate) virtual bool sendMessage(message::MessagePtr message) const
+        // (duplicate) virtual PromisePtr sendMessage(message::MessagePtr message) const
 
         //---------------------------------------------------------------------
         #pragma mark

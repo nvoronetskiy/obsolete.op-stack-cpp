@@ -33,6 +33,7 @@
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_Helper.h>
+#include <openpeer/stack/internal/stack_Stack.h>
 #include <openpeer/stack/message/Message.h>
 
 #include <openpeer/services/IHelper.h>
@@ -40,6 +41,7 @@
 #include <zsLib/Log.h>
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Promise.h>
 #include <zsLib/Stringize.h>
 
 namespace openpeer { namespace stack { ZS_DECLARE_SUBSYSTEM(openpeer_stack) } }
@@ -51,6 +53,7 @@ namespace openpeer
     namespace internal
     {
       using services::IHelper;
+      ZS_DECLARE_TYPEDEF_PTR(IStackForInternal, UseStack)
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -168,20 +171,20 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool MessageIncoming::sendResponse(message::MessagePtr message)
+      PromisePtr MessageIncoming::sendResponse(message::MessagePtr message)
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
 
         AutoRecursiveLock lock(*this);
 
+        mResponseSent = true; //
+
         UseAccountPtr account = mAccount.lock();
         if (!account) {
           ZS_LOG_WARNING(Detail, debug("failed to send incoming message response as account is gone"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
-        bool sent = account->send(mLocation, message);
-        mResponseSent = mResponseSent ||  sent;
-        return sent;
+        return account->send(mLocation, message);
       }
 
       //-----------------------------------------------------------------------

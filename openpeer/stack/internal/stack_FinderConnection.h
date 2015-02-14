@@ -95,6 +95,8 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(IFinderRelayChannelForFinderConnection, UseFinderRelayChannel)
 
+        ZS_DECLARE_TYPEDEF_PTR(std::list<PromiseWeakPtr>, PromiseWeakList)
+
         ZS_DECLARE_CLASS_PTR(Channel)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
@@ -283,6 +285,9 @@ namespace openpeer
                                                  ITransportStreamPtr receiveStream,
                                                  ITransportStreamPtr sendStream
                                                  );
+
+        void resolveAllPromises(PromiseWeakList &promises);
+        void rejectAllPromises(PromiseWeakList &promises);
 
       public:
         //---------------------------------------------------------------------
@@ -502,6 +507,8 @@ namespace openpeer
 
         IMessageMonitorPtr mMapRequestChannelMonitor;
         ChannelNumber mMapRequestChannelNumber {};
+
+        PromiseWeakList mSendPromises;
       };
 
       //-----------------------------------------------------------------------

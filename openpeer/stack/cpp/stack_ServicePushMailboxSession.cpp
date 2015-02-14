@@ -72,6 +72,7 @@
 #include <cryptopp/sha.h>
 
 #include <zsLib/Log.h>
+#include <zsLib/Promise.h>
 #include <zsLib/XML.h>
 #include <zsLib/helpers.h>
 
@@ -303,8 +304,6 @@ namespace openpeer
         mCurrentState(SessionState_Pending),
 
         mBootstrappedNetwork(network),
-
-        mSentViaObjectID(mID),
 
         mAccount(account),
 
@@ -1103,7 +1102,7 @@ namespace openpeer
             }
 
             // now that the upload has finished the response from the upload request should complete
-            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)), PromisePtr());
 
             IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
             return;
@@ -1222,6 +1221,8 @@ namespace openpeer
           return;
         }
 
+        resolveAllPromises(mSendPromises);
+
         if (mPendingDelivery.size() < 1) {
           ZS_LOG_TRACE(log("message upload is not required at this time"))
           return;
@@ -1266,7 +1267,7 @@ namespace openpeer
           }
 
           // all data is now sent thus need to monitor for final result
-          processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+          processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), processedInfo.mPendingDeliveryMessageUpdateRequest, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)), PromisePtr());
         }
 
         step();
@@ -2688,8 +2689,6 @@ namespace openpeer
 
         UseServicesHelper::debugAppend(resultEl, "lockbox subscription", mLockboxSubscription ? mLockboxSubscription->getID() : 0);
 
-        UseServicesHelper::debugAppend(resultEl, "sent via object id", mSentViaObjectID);
-
         UseServicesHelper::debugAppend(resultEl, "tcp messaging id", mTCPMessaging ? mTCPMessaging->getID() : 0);
         UseServicesHelper::debugAppend(resultEl, "wire stream", mWireStream ? mWireStream->getID() : 0);
 
@@ -2793,6 +2792,8 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "marking monitors", mMarkingMonitors.size());
 
         UseServicesHelper::debugAppend(resultEl, "refresh needing expiry", mRefreshMessagesNeedingExpiry);
+
+        UseServicesHelper::debugAppend(resultEl, "send promises", mSendPromises.size());
 
         return resultEl;
       }
@@ -3452,13 +3453,20 @@ namespace openpeer
           request->token(mDeviceToken);
           request->subscriptions(subscriptions);
 
+          PromiseList promises;
           for (RegisterQueryList::iterator iter = queriesNeedingRequest.begin(); iter != queriesNeedingRequest.end(); ++iter)
           {
             RegisterQueryPtr query = (*iter);
-            query->monitor(request);
+            PromisePtr promise = Promise::create();
+            query->monitor(request, promise);
+            promises.push_back(promise);
           }
 
-          sendRequest(request);
+          PromisePtr broadcastPromise = Promise::broadcast(promises);
+
+          PromisePtr sendPromise = send(request);
+          sendPromise->then(broadcastPromise);
+          sendPromise->background();
         }
 
         if (mRegisterQueries.size() < 1) {
@@ -4802,7 +4810,7 @@ namespace openpeer
           if ((0 == processedInfo.mMessage.mChannelID) &&
               (processedInfo.mEncryptedFileName.isEmpty())) {
             // message contains no data thus can immediately expect final result
-            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)));
+            processedInfo.mPendingDeliveryMessageUpdateUploadCompleteMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<MessageUpdateResult>::convert(mThisWeak.lock()), request, Seconds(services::ISettings::getUInt(OPENPEER_STACK_SETTING_PUSH_MAILBOX_REQUEST_TIMEOUT_IN_SECONDS)), PromisePtr());
           } else {
             issuedUpload = true;
           }
@@ -5324,6 +5332,8 @@ namespace openpeer
 
           mSendQueries.clear();
         }
+
+        rejectAllPromises(mSendPromises);
       }
 
       //-----------------------------------------------------------------------
@@ -5358,9 +5368,6 @@ namespace openpeer
         ZS_LOG_DEBUG(log("connection reset"))
 
         // any message monitored via the message monitor that was sent over the previous connection will not be able to complete
-        UseMessageMonitorManager::notifyMessageSenderObjectGone(mSentViaObjectID);
-        mSentViaObjectID = 0; // reset since no longer sending via this object ID
-
         if (mRetryTimer) {
           mRetryTimer->cancel();
           mRetryTimer.reset();
@@ -5514,6 +5521,8 @@ namespace openpeer
         //.....................................................................
         // wire cleanup
 
+        rejectAllPromises(mSendPromises);
+
         if (mTCPMessaging) {
           mTCPMessaging->shutdown();
           mTCPMessaging.reset();
@@ -5548,24 +5557,24 @@ namespace openpeer
       }
 
       //---------------------------------------------------------------------
-      bool ServicePushMailboxSession::send(MessagePtr message) const
+      PromisePtr ServicePushMailboxSession::send(MessagePtr message) const
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
 
         AutoRecursiveLock lock(*this);
         if (!message) {
           ZS_LOG_ERROR(Detail, log("message to send was NULL"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_BadRequest), UseStack::queueDelegate());
         }
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("attempted to send a message but the location is shutdown"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
 
         if (!mWriter) {
           ZS_LOG_WARNING(Detail, log("requested to send a message but send stream is not ready"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_ServiceUnavailable), UseStack::queueDelegate());
         }
 
         DocumentPtr document = message->encode();
@@ -5584,8 +5593,11 @@ namespace openpeer
           ZS_LOG_BASIC(log("-------------------------------------------------------------------------------------------"))
         }
 
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
+        mSendPromises.push_back(promise);
+
         mWriter->write(output->BytePtr(), output->SizeInBytes());
-        return true;
+        return promise;
       }
 
       //---------------------------------------------------------------------
@@ -5595,34 +5607,17 @@ namespace openpeer
                                                                 Seconds timeout
                                                                 )
       {
-        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
+        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout, promise);
         if (!monitor) {
           ZS_LOG_WARNING(Detail, log("failed to create monitor"))
           return IMessageMonitorPtr();
         }
 
-        sendRequest(requestMessage);
+        PromisePtr sendPromise = send(requestMessage);
+        sendPromise->then(promise);
+        sendPromise->background();
         return monitor;
-      }
-
-      //---------------------------------------------------------------------
-      bool ServicePushMailboxSession::sendRequest(MessagePtr requestMessage)
-      {
-        bool result = send(requestMessage);
-        if (!result) {
-          // notify that the message requester failed to send the message...
-          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
-          return false;
-        }
-
-        if (0 == mSentViaObjectID) {
-          mSentViaObjectID = zsLib::createPUID();
-        }
-
-        UseMessageMonitorManager::trackSentViaObjectID(requestMessage, mSentViaObjectID);
-
-        ZS_LOG_DEBUG(log("request successfully created"))
-        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -7049,6 +7044,20 @@ namespace openpeer
         return mLastChannel;
       }
 
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::resolveAllPromises(PromiseWeakList &promises)
+      {
+        Promise::resolveAll(promises);
+        promises.clear();
+      }
+
+      //-----------------------------------------------------------------------
+      void ServicePushMailboxSession::rejectAllPromises(PromiseWeakList &promises)
+      {
+        Promise::rejectAll(promises, PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone));
+        promises.clear();
+      }
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

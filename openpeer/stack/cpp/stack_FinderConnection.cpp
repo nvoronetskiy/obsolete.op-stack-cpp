@@ -44,6 +44,7 @@
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Promise.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
 
@@ -436,6 +437,8 @@ namespace openpeer
           mMapRequestChannelMonitor->cancel();
           mMapRequestChannelMonitor.reset();
         }
+
+        rejectAllPromises(mSendPromises);
       }
 
       //-----------------------------------------------------------------------
@@ -602,6 +605,8 @@ namespace openpeer
 
         if (writer == mWireSendStream) {
           mSendStreamNotifiedReady = true;
+
+          resolveAllPromises(mSendPromises);
 
           for (ChannelMap::iterator iter = mChannels.begin(); iter != mChannels.end(); ++iter)
           {
@@ -885,6 +890,8 @@ namespace openpeer
         IHelper::debugAppend(resultEl, "map request monitor", (bool)mMapRequestChannelMonitor);
         IHelper::debugAppend(resultEl, "map request channel number", mMapRequestChannelNumber);
 
+        IHelper::debugAppend(resultEl, "send promises", mSendPromises.size());
+
         return resultEl;
       }
 
@@ -1142,7 +1149,10 @@ namespace openpeer
         request->remoteContextID(info.mRemoteContextID);
         request->relayToken(info.mRelayToken);
 
-        mMapRequestChannelMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ChannelMapResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CHANNEL_MAP_REQUEST_TIMEOUT_SECONDS));
+        PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
+        mMapRequestChannelMonitor = IMessageMonitor::monitor(IMessageMonitorResultDelegate<ChannelMapResult>::convert(mThisWeak.lock()), request, Seconds(OPENPEER_STACK_CHANNEL_MAP_REQUEST_TIMEOUT_SECONDS), promise);
         mMapRequestChannelNumber = channelNumber;
 
         DocumentPtr doc = request->encode();
@@ -1155,6 +1165,8 @@ namespace openpeer
         header->mChannelID = 0;
 
         mWireSendStream->write((const BYTE *) (output.get()), outputLength, header);
+
+        mSendPromises.push_back(promise);
 
         mLastSentData = zsLib::now();
 
@@ -1171,7 +1183,6 @@ namespace openpeer
         }
 
         mPendingMapRequest.erase(found);
-
         return true;
       }
 
@@ -1330,6 +1341,20 @@ namespace openpeer
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
         return channel;
+      }
+
+      //-----------------------------------------------------------------------
+      void FinderConnection::resolveAllPromises(PromiseWeakList &promises)
+      {
+        Promise::resolveAll(promises);
+        promises.clear();
+      }
+
+      //-----------------------------------------------------------------------
+      void FinderConnection::rejectAllPromises(PromiseWeakList &promises)
+      {
+        Promise::rejectAll(promises, PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone));
+        promises.clear();
       }
 
       //-----------------------------------------------------------------------

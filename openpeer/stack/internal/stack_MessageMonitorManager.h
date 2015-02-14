@@ -51,38 +51,6 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
-      #pragma mark IMessageMonitorManagerForAccountFinder
-      #pragma mark
-
-      interaction IMessageMonitorManagerForAccountFinder
-      {
-        static void notifyMessageSendFailed(message::MessagePtr message);
-        static void notifyMessageSenderObjectGone(PUID objectID);
-
-        virtual ~IMessageMonitorManagerForAccountFinder() {}  // need until virtual method added to make dynamic cast work
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark IMessageMonitorManagerForAccountPeerLocation
-      #pragma mark
-
-      interaction IMessageMonitorManagerForAccountPeerLocation
-      {
-        static void notifyMessageSendFailed(message::MessagePtr message);
-        static void notifyMessageSenderObjectGone(PUID objectID);
-
-        virtual ~IMessageMonitorManagerForAccountPeerLocation() {}  // need until virtual method added to make dynamic cast work
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
       #pragma mark IMessageMonitorManagerForMessageMonitor
       #pragma mark
 
@@ -90,43 +58,14 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForMessageMonitor, ForMessageMonitor)
 
-        typedef PUID SentViaObjectID;
-
         static ForMessageMonitorPtr singleton();
 
-        virtual SentViaObjectID monitorStart(MessageMonitorPtr requester) = 0;
+        virtual void monitorStart(MessageMonitorPtr requester) = 0;
 
         virtual void monitorEnd(MessageMonitor &monitor) = 0;
 
         virtual bool handleMessage(message::MessagePtr message) = 0;
-
-        virtual void trackSentViaObjectID(
-                                          message::MessagePtr message,
-                                          SentViaObjectID sentViaObjectID
-                                          ) = 0;
-      };
-
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      //-----------------------------------------------------------------------
-      #pragma mark
-      #pragma mark IMessageMonitorManagerForPushMailbox
-      #pragma mark
-
-      interaction IMessageMonitorManagerForPushMailbox
-      {
-        typedef PUID SentViaObjectID;
-
-        static void notifyMessageSendFailed(message::MessagePtr message);
-        static void notifyMessageSenderObjectGone(PUID objectID);
-
-        static void trackSentViaObjectID(
-                                         message::MessagePtr message,
-                                         SentViaObjectID sentViaObjectID
-                                         );
-
-        virtual ~IMessageMonitorManagerForPushMailbox() {}  // need until virtual method added to make dynamic cast work
+        virtual void handleTimeoutAll(message::MessagePtr message) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -140,24 +79,15 @@ namespace openpeer
       class MessageMonitorManager : public Noop,
                                     public MessageQueueAssociator,
                                     public SharedRecursiveLock,
-                                    public IMessageMonitorManagerForMessageMonitor,
-                                    public IWakeDelegate,
-                                    public ITimerDelegate
+                                    public IMessageMonitorManagerForMessageMonitor
       {
       public:
         friend interaction IMessageMonitorManagerFactory;
-        friend interaction IMessageMonitorManagerForAccountFinder;
-        friend interaction IMessageMonitorManagerForAccountPeerLocation;
         friend interaction IMessageMonitorManagerForMessageMonitor;
-        friend interaction IMessageMonitorManagerForPushMailbox;
 
         ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorForMessageMonitorManager, UseMessageMonitor)
 
-        typedef std::list<MessagePtr> PendingMessageSendFailureMessageList;
-        typedef std::list<SentViaObjectID> PendingSenderObjectGoneList;
-
         typedef String MessageID;
-        typedef std::map<MessageID, SentViaObjectID> SentViaObjectMap;
 
         typedef Time Expiry;
         typedef std::pair<MessageID, Expiry> MessageExpiryPair;
@@ -194,60 +124,12 @@ namespace openpeer
 
         static MessageMonitorManagerPtr singleton();
 
-        virtual SentViaObjectID monitorStart(MessageMonitorPtr requester);
+        virtual void monitorStart(MessageMonitorPtr requester);
 
         virtual void monitorEnd(MessageMonitor &monitor);
 
         virtual bool handleMessage(message::MessagePtr message);
-
-        virtual void trackSentViaObjectID(
-                                          message::MessagePtr message,
-                                          SentViaObjectID sentViaObjectID
-                                          );
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitorManager => IMessageMonitorManagerForAccountFinder
-        #pragma mark
-
-        // (duplicate) static MessageMonitorManagerPtr singleton();
-
-        virtual void notifyMessageSendFailed(message::MessagePtr message);
-        virtual void notifyMessageSenderObjectGone(PUID objectID);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitorManager => IMessageMonitorManagerForAccountPeerLocation
-        #pragma mark
-
-        // (duplicate) static MessageMonitorManagerPtr singleton();
-
-        // (duplicate) virtual void notifyMessageSendFailed(message::MessagePtr message);
-        // (duplicate) virtual void notifyMessageSenderObjectGone(PUID objectID);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitorManager => IMessageMonitorManagerForPushMailbox
-        #pragma mark
-
-        // (duplicate) static MessageMonitorManagerPtr singleton();
-
-        // (duplicate) virtual void notifyMessageSendFailed(message::MessagePtr message);
-        // (duplicate) virtual void notifyMessageSenderObjectGone(PUID objectID);
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitorManager => IMessageMonitorManagerForMessageMonitor
-        #pragma mark
-
-        virtual void onWake();
-
-        //---------------------------------------------------------------------
-        #pragma mark
-        #pragma mark MessageMonitorManager => ITimerDelegate
-        #pragma mark
-
-        virtual void onTimer(TimerPtr timer);
+        virtual void handleTimeoutAll(message::MessagePtr message);
 
       protected:
         //---------------------------------------------------------------------
@@ -269,16 +151,6 @@ namespace openpeer
         MessageMonitorManagerWeakPtr mThisWeak;
 
         MonitorsMap mMonitors;
-
-        PendingMessageSendFailureMessageList mPendingFailures;
-        PendingSenderObjectGoneList mPendingGone;
-
-        MessageExpiryList mMessageExpiryList;
-
-        SentViaObjectMap mSentViaObjectIDs;
-        MessageExpiryList mExpiredSentViaObjectIDs;
-
-        TimerPtr mTimer;
       };
 
       //-----------------------------------------------------------------------

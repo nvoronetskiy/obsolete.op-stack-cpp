@@ -1335,15 +1335,15 @@
 			isa = PBXGroup;
 			children = (
 				00D7DF4E1A8C592100DC0F6E /* cpp */,
-				00D7DF581A8C592100DC0F6E /* DataGetRequest.h */,
-				00D7DF591A8C592100DC0F6E /* DataGetResult.h */,
+				00D7DF5D1A8C592100DC0F6E /* MessageFactoryP2PDatabase.h */,
 				00D7DF5A1A8C592100DC0F6E /* ListSubscribeNotify.h */,
 				00D7DF5B1A8C592100DC0F6E /* ListSubscribeRequest.h */,
 				00D7DF5C1A8C592100DC0F6E /* ListSubscribeResult.h */,
-				00D7DF5D1A8C592100DC0F6E /* MessageFactoryP2PDatabase.h */,
 				00D7DF5E1A8C592100DC0F6E /* SubscribeNotify.h */,
 				00D7DF5F1A8C592100DC0F6E /* SubscribeRequest.h */,
 				00D7DF601A8C592100DC0F6E /* SubscribeResult.h */,
+				00D7DF581A8C592100DC0F6E /* DataGetRequest.h */,
+				00D7DF591A8C592100DC0F6E /* DataGetResult.h */,
 			);
 			path = "p2p-database";
 			sourceTree = "<group>";
@@ -1351,15 +1351,15 @@
 		00D7DF4E1A8C592100DC0F6E /* cpp */ = {
 			isa = PBXGroup;
 			children = (
-				00D7DF4F1A8C592100DC0F6E /* DataGetRequest.cpp */,
-				00D7DF501A8C592100DC0F6E /* DataGetResult.cpp */,
+				00D7DF541A8C592100DC0F6E /* MessageFactoryP2PDatabase.cpp */,
 				00D7DF511A8C592100DC0F6E /* ListSubscribeNotify.cpp */,
 				00D7DF521A8C592100DC0F6E /* ListSubscribeRequest.cpp */,
 				00D7DF531A8C592100DC0F6E /* ListSubscribeResult.cpp */,
-				00D7DF541A8C592100DC0F6E /* MessageFactoryP2PDatabase.cpp */,
 				00D7DF551A8C592100DC0F6E /* SubscribeNotify.cpp */,
 				00D7DF561A8C592100DC0F6E /* SubscribeRequest.cpp */,
 				00D7DF571A8C592100DC0F6E /* SubscribeResult.cpp */,
+				00D7DF4F1A8C592100DC0F6E /* DataGetRequest.cpp */,
+				00D7DF501A8C592100DC0F6E /* DataGetResult.cpp */,
 			);
 			path = cpp;
 			sourceTree = "<group>";

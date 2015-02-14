@@ -94,7 +94,6 @@ namespace openpeer
           String    mPeerURI;
           String    mLocationID;
           String    mLastDownloadedVersion;
-          bool      mDownloadComplete {false};
           Time      mLastAccessed;
           String    mUpdateVersion;
 
@@ -117,8 +116,8 @@ namespace openpeer
           String  mDatabaseID;
           String  mLastDownloadedVersion;
           ElementPtr mMetaData;
+          Time    mCreated;
           Time    mExpires;
-          bool    mDownloadComplete {false};
           String  mUpdateVersion;
 
           ElementPtr toDebug() const;
@@ -273,12 +272,11 @@ namespace openpeer
                                       PeerLocationRecord &outRecord
                                       ) = 0;
 
-          virtual void updateVersion(index indexPeerLocationRecord) = 0;
+          virtual String updateVersion(index indexPeerLocationRecord) = 0;
 
           virtual void notifyDownloaded(
                                         index indexPeerLocationRecord,
-                                        const char *downloadedToVersion,
-                                        bool downloadComplete
+                                        const char *downloadedToVersion
                                         ) = 0;
 
           virtual PeerLocationRecordListPtr getUnusedLocationsBatch(const Time &lastAccessedBefore) const = 0;
@@ -311,7 +309,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: update a database record to indicate it has changed
           //          since last checked
-          virtual void updateVersion(index indexDatabase) = 0;
+          virtual String updateVersion(index indexDatabase) = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: remove a database from the database table
@@ -347,12 +345,18 @@ namespace openpeer
                                                                               ) const = 0;
           
           //-------------------------------------------------------------------
+          // PURPOSE: get a batch of expired database records
+          virtual DatabaseRecordListPtr getBatchExpired(
+                                                        index indexPeerLocationRecord,
+                                                        const Time &now
+                                                        ) const = 0;
+
+          //-------------------------------------------------------------------
           // PURPOSE: Notify that database entries have been downloaded for a
           //          given database.
           virtual void notifyDownloaded(
                                         index indexDatabaseRecord,
-                                        const char *downloadedToVersion,
-                                        bool downloadComplete
+                                        const char *downloadedToVersion
                                         ) = 0;
         };
 
@@ -371,6 +375,11 @@ namespace openpeer
           virtual void flushAllForDatabase(index indexDatabaseRecord) = 0;
 
           virtual void insert(const DatabaseChangeRecord &record) = 0;
+
+          virtual bool getByIndex(
+                                  index indexDatabaseChangeRecord,
+                                  DatabaseChangeRecord &outRecord
+                                  ) const = 0;
 
           virtual DatabaseChangeRecordListPtr getChangeBatch(
                                                              index indexPeerLocationRecord,

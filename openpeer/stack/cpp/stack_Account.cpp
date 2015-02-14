@@ -68,6 +68,7 @@
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Promise.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
 
@@ -650,15 +651,12 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
-      bool Account::send(
-                         LocationPtr inLocation,
-                         MessagePtr message,
-                         PUID *outSentViaObjectID
-                         ) const
+      PromisePtr Account::send(
+                               LocationPtr inLocation,
+                               MessagePtr message
+                               ) const
       {
         UseLocationPtr location = inLocation;
-
-        if (outSentViaObjectID) *outSentViaObjectID = 0;
 
         ZS_THROW_INVALID_ARGUMENT_IF(!location)
 
@@ -666,16 +664,14 @@ namespace openpeer
 
         if (location == getLocationForLocal()) {
           ZS_LOG_ERROR(Detail, log("attempting to send message to self") + UseLocation::toDebug(location))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Forbidden), UseStack::queueDelegate());
         }
 
         if (location == getLocationForFinder()) {
           if (!mFinder) {
-            ZS_LOG_WARNING(Detail, log("attempting to send to finder") + UseLocation::toDebug(location))
-            return false;
+            ZS_LOG_WARNING(Detail, log("attempting to send to NULL finder") + UseLocation::toDebug(location))
+            return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
           }
-
-          if (outSentViaObjectID) *outSentViaObjectID = mFinder->getID();
 
           return mFinder->send(message);
         }
@@ -683,7 +679,7 @@ namespace openpeer
         PeerInfoMap::const_iterator found = mPeerInfos.find(location->getPeerURI());
         if (found == mPeerInfos.end()) {
           ZS_LOG_DEBUG(log("peer is not connected") + UseLocation::toDebug(location))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
 
         PeerInfoPtr peerInfo = (*found).second;
@@ -691,13 +687,10 @@ namespace openpeer
         PeerInfo::PeerLocationMap::const_iterator foundLocation = peerInfo->mLocations.find(location->getLocationID());
         if (foundLocation == peerInfo->mLocations.end()) {
           ZS_LOG_WARNING(Detail, log("could not find peer location information for non-connected peer location") + UseLocation::toDebug(location))
-          return ILocation::LocationConnectionState_Disconnected;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
 
         UseAccountPeerLocationPtr accountPeerLocation = (*foundLocation).second;
-
-        if (outSentViaObjectID) *outSentViaObjectID = accountPeerLocation->getID();
-
         return accountPeerLocation->send(message);
       }
 

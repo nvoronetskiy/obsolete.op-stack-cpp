@@ -60,7 +60,6 @@ namespace openpeer
     {
       interaction ILocationForAccount;
       interaction IAccountForAccountFinder;
-      interaction IMessageMonitorManagerForAccountFinder;
 
       using message::peer_finder::SessionCreateResult;
       using message::peer_finder::SessionCreateResultPtr;
@@ -94,7 +93,7 @@ namespace openpeer
 
         virtual void shutdown() = 0;
 
-        virtual bool send(MessagePtr message) const = 0;
+        virtual PromisePtr send(MessagePtr message) const = 0;
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
@@ -138,7 +137,8 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationForAccount, UseLocation)
         ZS_DECLARE_TYPEDEF_PTR(IAccountForAccountFinder, UseAccount)
-        ZS_DECLARE_TYPEDEF_PTR(IMessageMonitorManagerForAccountFinder, UseMessageMonitorManager)
+
+        ZS_DECLARE_TYPEDEF_PTR(std::list<PromiseWeakPtr>, PromiseWeakList)
 
         typedef IFinderConnection::ChannelNumber ChannelNumber;
 
@@ -183,7 +183,7 @@ namespace openpeer
 
         virtual void shutdown();
 
-        virtual bool send(MessagePtr message) const;
+        virtual PromisePtr send(MessagePtr message) const;
         virtual IMessageMonitorPtr sendRequest(
                                                IMessageMonitorDelegatePtr delegate,
                                                MessagePtr message,
@@ -314,6 +314,9 @@ namespace openpeer
 
         void setState(AccountStates state);
 
+        void resolveAllPromises(PromiseWeakList &promises);
+        void rejectAllPromises(PromiseWeakList &promises);
+
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -348,6 +351,8 @@ namespace openpeer
         Token mRelayToken;
 
         TimerPtr mKeepAliveTimer;
+
+        mutable PromiseWeakList mSendPromises;
       };
 
       //-----------------------------------------------------------------------

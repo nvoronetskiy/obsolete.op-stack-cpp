@@ -63,12 +63,12 @@ namespace openpeer
 
         Dispositions mDisposition;
         DatabaseID mDatabaseID;
-        UINT mVersion;
         ElementPtr mMetaData;
-        ElementPtr mData;
 
         Time mCreation;
         Time mLastUpdated;
+
+        String mLastUpdateVersion;
 
         bool hasData() const;
         ElementPtr toDebug() const;
@@ -138,6 +138,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       // PURPOSE: Notify that the available list of datbases has changed
       virtual void onLocationDatabasesChanged(ILocationDatabasesPtr inDatabases) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Notify that the available list of datbases has changed
+      virtual void onLocationDatabasesShutdown(ILocationDatabasesPtr inDatabases) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -163,9 +167,11 @@ namespace openpeer
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabasesDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesShutdown, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::ILocationDatabasesDelegate, openpeer::stack::ILocationDatabasesSubscription)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesShutdown, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()

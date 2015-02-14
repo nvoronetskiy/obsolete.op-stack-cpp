@@ -71,6 +71,10 @@ namespace openpeer
       using zsLib::Singleton;
       using zsLib::SingletonLazySharedPtr;
 
+      ZS_DECLARE_USING_PTR(zsLib, Promise)
+
+      ZS_DECLARE_USING_PTR(zsLib, IPromiseCatchDelegate)
+
       ZS_DECLARE_USING_PTR(zsLib::XML, Element)
       ZS_DECLARE_USING_PTR(zsLib::XML, Document)
       ZS_DECLARE_USING_PTR(zsLib::XML, Node)
@@ -114,6 +118,7 @@ namespace openpeer
 
       ZS_DECLARE_USING_PROXY(services, IWakeDelegate)
       ZS_DECLARE_USING_PROXY(services, IBackgroundingDelegate)
+      ZS_DECLARE_USING_PROXY(services, IBackOffTimerDelegate)
 
       using services::IFactory;
 

@@ -115,13 +115,13 @@ namespace openpeer
                                    String *outErrorReason = NULL
                                    ) const = 0;
 
-        virtual bool sendServiceMessage(
-                                        const char *serviceType,
-                                        const char *serviceMethodName,
-                                        message::MessagePtr message,
-                                        const char *cachedCookieNameForResult = NULL,
-                                        Time cacheExpires = Time()
-                                        ) = 0;
+        virtual PromisePtr sendServiceMessage(
+                                              const char *serviceType,
+                                              const char *serviceMethodName,
+                                              message::MessagePtr message,
+                                              const char *cachedCookieNameForResult = NULL,
+                                              Time cacheExpires = Time()
+                                              ) = 0;
 
         virtual String getServiceURI(
                                      const char *serviceType,
@@ -244,7 +244,13 @@ namespace openpeer
         static BootstrappedNetworkPtr convert(ForServicesPtr network);
         static BootstrappedNetworkPtr convert(ForBootstrappedNetworkManagerPtr network);
 
-        typedef std::map<IHTTPQueryPtr, message::MessagePtr> PendingRequestMap;
+        struct PendingRequest
+        {
+          PromisePtr mSendPromise;
+          message::MessagePtr mMessage;
+        };
+
+        typedef std::map<IHTTPQueryPtr, PendingRequest> PendingRequestMap;
 
         typedef String CookieName;
         typedef Time CookieExpires;
@@ -278,13 +284,13 @@ namespace openpeer
         // (duplicate) virtual void cancel();
 
         // use IMessageMonitor to monitor the result (if result is important)
-        virtual bool sendServiceMessage(
-                                        const char *serviceType,
-                                        const char *serviceMethodName,
-                                        message::MessagePtr message,
-                                        const char *cachedCookieNameForResult = NULL,
-                                        Time cacheExpires = Time()
-                                        );
+        virtual PromisePtr sendServiceMessage(
+                                              const char *serviceType,
+                                              const char *serviceMethodName,
+                                              message::MessagePtr message,
+                                              const char *cachedCookieNameForResult = NULL,
+                                              Time cacheExpires = Time()
+                                              );
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -371,13 +377,13 @@ namespace openpeer
         //                                        String *outErrorReason = NULL
         //                                        ) const;
 
-        // (duplicate) virtual bool sendServiceMessage(
-        //                                             const char *serviceType,
-        //                                             const char *serviceMethodName,
-        //                                             message::MessagePtr message
-        //                                             const char *cachedCookieNameForResult = NULL,
-        //                                             Time cacheExpires = Time()
-        //                                             );
+        // (duplicate) virtual PromisePtr sendServiceMessage(
+        //                                                   const char *serviceType,
+        //                                                   const char *serviceMethodName,
+        //                                                   message::MessagePtr message
+        //                                                   const char *cachedCookieNameForResult = NULL,
+        //                                                   Time cacheExpires = Time()
+        //                                                   );
 
         // (duplicate) virtual bool isValidSignature(ElementPtr signedElement) const;
 
@@ -495,6 +501,7 @@ namespace openpeer
                                        );
 
         IHTTPQueryPtr post(
+                           PromisePtr sendPromise,
                            const char *url,
                            MessagePtr message,
                            const char *cachedCookieNameForResult = NULL,

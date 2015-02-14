@@ -55,6 +55,7 @@
 
 #include <zsLib/Log.h>
 #include <zsLib/helpers.h>
+#include <zsLib/Promise.h>
 #include <zsLib/Stringize.h>
 #include <zsLib/XML.h>
 
@@ -217,19 +218,19 @@ namespace openpeer
       }
 
       //---------------------------------------------------------------------
-      bool AccountFinder::send(MessagePtr message) const
+      PromisePtr AccountFinder::send(MessagePtr message) const
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!message)
 
         AutoRecursiveLock lock(*this);
         if (!message) {
           ZS_LOG_ERROR(Detail, log("message to send was NULL"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_BadRequest), UseStack::queueDelegate());
         }
 
         if (isShutdown()) {
           ZS_LOG_WARNING(Detail, log("attempted to send a message but the location is shutdown"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone), UseStack::queueDelegate());
         }
 
         if (!isReady()) {
@@ -237,20 +238,20 @@ namespace openpeer
             SessionCreateRequestPtr sessionCreateRequest = SessionCreateRequest::convert(message);
             if (!sessionCreateRequest) {
               ZS_LOG_WARNING(Detail, log("attempted to send a message when the finder is not ready"))
-              return false;
+              return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_ServiceUnavailable), UseStack::queueDelegate());
             }
           } else {
             SessionDeleteRequestPtr sessionDeleteRequest = SessionDeleteRequest::convert(message);
             if (!sessionDeleteRequest) {
-              ZS_LOG_WARNING(Detail, log("attempted to send a message when the finder is not ready"))
-              return false;
+              ZS_LOG_WARNING(Detail, log("attempted to send a message when the finder is shutting down"))
+              return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_ServiceUnavailable), UseStack::queueDelegate());
             }
           }
         }
 
         if (!mSendStream) {
           ZS_LOG_WARNING(Detail, log("requested to send a message but send stream is not ready"))
-          return false;
+          return Promise::createRejected(PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_ServiceUnavailable), UseStack::queueDelegate());
         }
 
         DocumentPtr document = message->encode();
@@ -270,7 +271,10 @@ namespace openpeer
         }
 
         mSendStream->write(output->BytePtr(), output->SizeInBytes());
-        return true;
+
+        PromisePtr promise = Promise::create(UseStack::queueDelegate());
+        mSendPromises.push_back(promise);
+        return promise;
       }
 
       //---------------------------------------------------------------------
@@ -280,18 +284,16 @@ namespace openpeer
                                                     Seconds timeout
                                                     ) const
       {
-        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout);
+        PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+        IMessageMonitorPtr monitor = IMessageMonitor::monitor(delegate, requestMessage, timeout, sendPromise);
         if (!monitor) {
           ZS_LOG_WARNING(Detail, log("failed to create monitor"))
           return IMessageMonitorPtr();
         }
 
-        bool result = send(requestMessage);
-        if (!result) {
-          // notify that the message requester failed to send the message...
-          UseMessageMonitorManager::notifyMessageSendFailed(requestMessage);
-          return monitor;
-        }
+        PromisePtr promise = send(requestMessage);
+        promise->then(sendPromise);
+        promise->background();
 
         ZS_LOG_DEBUG(log("request successfully created"))
         return monitor;
@@ -408,7 +410,14 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void AccountFinder::onTransportStreamWriterReady(ITransportStreamWriterPtr writer)
       {
-        ZS_LOG_TRACE(log("send stream write ready (ignored)"))
+        ZS_LOG_TRACE(log("send stream write ready"))
+
+        AutoRecursiveLock lock(*this);
+
+        if (writer == mSendStream) {
+          ZS_LOG_TRACE(log("all data sent over send stream (thus promises are filled)"))
+          resolveAllPromises(mSendPromises);
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -753,6 +762,8 @@ namespace openpeer
 
         IHelper::debugAppend(resultEl, "keep alive timer id", mKeepAliveTimer ? mKeepAliveTimer->getID() : 0);
 
+        IHelper::debugAppend(resultEl, "send promises", mSendPromises.size());
+
         return resultEl;
       }
 
@@ -834,6 +845,8 @@ namespace openpeer
           mSessionDeleteMonitor->cancel();
           mSessionDeleteMonitor.reset();
         }
+
+        rejectAllPromises(mSendPromises);
 
         ZS_LOG_DEBUG(log("shutdown complete"))
       }
@@ -966,10 +979,6 @@ namespace openpeer
 
         mCurrentState = state;
 
-        if (isShutdown()) {
-          UseMessageMonitorManager::notifyMessageSenderObjectGone(mID);
-        }
-
         if (!mDelegate) return;
 
         AccountFinderPtr pThis = mThisWeak.lock();
@@ -983,6 +992,20 @@ namespace openpeer
         }
       }
 
+      //-----------------------------------------------------------------------
+      void AccountFinder::resolveAllPromises(PromiseWeakList &promises)
+      {
+        Promise::resolveAll(promises);
+        promises.clear();
+      }
+
+      //-----------------------------------------------------------------------
+      void AccountFinder::rejectAllPromises(PromiseWeakList &promises)
+      {
+        Promise::rejectAll(promises, PromiseRejectionStatus::create(IHTTP::HTTPStatusCode_Gone));
+        promises.clear();
+      }
+      
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------

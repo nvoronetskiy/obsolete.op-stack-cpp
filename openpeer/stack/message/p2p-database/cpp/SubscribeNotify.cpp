@@ -85,11 +85,8 @@ namespace openpeer
           ElementPtr databaseEl = rootEl->findFirstChildElement("database");
 
           if (databaseEl) {
+            ret->mBefore = databaseEl->getAttributeValue("before");
             ret->mVersion = databaseEl->getAttributeValue("version");
-            try {
-              ret->mCompleted = Numeric<decltype(ret->mCompleted)>(IMessageHelper::getElementText(databaseEl->findFirstChildElement("completed")));
-            } catch(Numeric<decltype(ret->mCompleted)>::ValueOutOfRange &) {
-            }
 
             ElementPtr entriesEl = databaseEl->findFirstChildElement("entries");
             if (entriesEl) {
@@ -121,12 +118,12 @@ namespace openpeer
 
           ElementPtr databaseEl = Element::create("database");
 
-          if (hasAttribute(AttributeType_DatabaseVersion)) {
-            databaseEl->setAttribute("version", mVersion);
+          if (hasAttribute(AttributeType_DatabaseBefore)) {
+            databaseEl->setAttribute("before", mBefore);
           }
 
-          if (hasAttribute(AttributeType_DatabaseCompleted)) {
-            databaseEl->adoptAsLastChild(IMessageHelper::createElementWithNumber("completed", "true"));
+          if (hasAttribute(AttributeType_DatabaseVersion)) {
+            databaseEl->setAttribute("version", mVersion);
           }
 
           if (hasAttribute(AttributeType_DatabaseEntries)) {
@@ -157,8 +154,8 @@ namespace openpeer
         bool SubscribeNotify::hasAttribute(AttributeTypes type) const
         {
           switch (type) {
+            case AttributeType_DatabaseBefore:      return mBefore.hasData();
             case AttributeType_DatabaseVersion:     return mVersion.hasData();
-            case AttributeType_DatabaseCompleted:   return mCompleted;
             case AttributeType_DatabaseEntries:     return (bool)mEntries;
           }
           return false;

@@ -166,11 +166,10 @@ namespace openpeer
 
         virtual ILocation::LocationConnectionStates getConnectionState(LocationPtr location) const = 0;
 
-        virtual bool send(
-                          LocationPtr location,
-                          MessagePtr message,
-                          PUID *outSentViaObjectID = NULL
-                          ) const = 0;
+        virtual PromisePtr send(
+                                LocationPtr location,
+                                MessagePtr message
+                                ) const = 0;
 
         virtual void hintNowAvailable(LocationPtr location) = 0;
       };
@@ -218,11 +217,10 @@ namespace openpeer
       {
         ZS_DECLARE_TYPEDEF_PTR(IAccountForMessageIncoming, ForMessageIncoming)
 
-        virtual bool send(
-                          LocationPtr location,
-                          MessagePtr response,
-                          PUID *outSentViaObjectID = NULL
-                          ) const = 0;
+        virtual PromisePtr send(
+                                LocationPtr location,
+                                MessagePtr response
+                                ) const = 0;
         virtual void notifyMessageIncomingResponseNotSent(MessageIncoming &messageIncoming) = 0;
       };
 
@@ -521,11 +519,10 @@ namespace openpeer
 
         virtual ILocation::LocationConnectionStates getConnectionState(LocationPtr location) const;
 
-        virtual bool send(
-                          LocationPtr location,
-                          MessagePtr message,
-                          PUID *outSentViaObjectID = NULL
-                          ) const;
+        virtual PromisePtr send(
+                                LocationPtr location,
+                                MessagePtr message
+                                ) const;
 
         virtual void hintNowAvailable(LocationPtr location);
 
@@ -549,11 +546,10 @@ namespace openpeer
         #pragma mark Account => IAccountForMessageIncoming
         #pragma mark
 
-        // (duplicate) virtual bool send(
-        //                              LocationPtr location,
-        //                              MessagePtr response,
-        //                              PUID *outSentViaObjectID = NULL
-        //                              ) const;
+        // (duplicate) virtual PromisePtr send(
+        //                                     LocationPtr location,
+        //                                     MessagePtr response
+        //                                     ) const;
         virtual void notifyMessageIncomingResponseNotSent(MessageIncoming &messageIncoming);
 
         //---------------------------------------------------------------------

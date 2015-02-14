@@ -50,6 +50,7 @@ namespace openpeer
           enum AttributeTypes
           {
             AttributeType_DatabasesVersion,
+            AttributeType_SubscriptionExpires,
           };
 
         public:
@@ -72,10 +73,14 @@ namespace openpeer
           const String &version() const                     {return mVersion;}
           void version(const String &value)                 {mVersion = value;}
 
+          Time expires() const                              {return mExpires;}
+          void expires(const Time &value)                   {mExpires = value;}
+
         protected:
           ListSubscribeRequest();
 
           String mVersion;
+          Time mExpires;
         };
       }
     }

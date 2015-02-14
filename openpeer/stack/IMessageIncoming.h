@@ -55,7 +55,7 @@ namespace openpeer
       virtual ILocationPtr getLocation() const = 0;
       virtual message::MessagePtr getMessage() const = 0;
 
-      virtual bool sendResponse(message::MessagePtr message) = 0;
+      virtual PromisePtr sendResponse(message::MessagePtr message) = 0;
     };
   }
 }
