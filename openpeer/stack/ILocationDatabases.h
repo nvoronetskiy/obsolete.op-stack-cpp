@@ -79,6 +79,14 @@ namespace openpeer
 
       typedef std::list<DatabaseInfo> DatabaseInfoList;
       ZS_DECLARE_PTR(DatabaseInfoList)
+
+      enum DatabasesStates
+      {
+        DatabasesState_Pending,
+        DatabasesState_Ready,
+        DatabasesState_Shutdown,
+      };
+      static const char *toString(DatabasesStates state);
     };
 
     //-------------------------------------------------------------------------
@@ -113,6 +121,10 @@ namespace openpeer
       virtual ILocationPtr getLocation() const = 0;
 
       //-----------------------------------------------------------------------
+      // PURPOSE: Get the current state of the databases for this location
+      virtual DatabasesStates getState() const = 0;
+
+      //-----------------------------------------------------------------------
       // PURPOSE: Get latest batch of databases available for a location.
       // RETURNS: If a NULL LocationDatabaseListPtr() is returned then a
       //          conflict has occured and the entire list of databases must
@@ -136,13 +148,18 @@ namespace openpeer
 
     interaction ILocationDatabasesDelegate
     {
-      //-----------------------------------------------------------------------
-      // PURPOSE: Notify that the available list of datbases has changed
-      virtual void onLocationDatabasesChanged(ILocationDatabasesPtr inDatabases) = 0;
+      typedef ILocationDatabases::DatabasesStates DatabasesStates;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Notify that the available list of datbases has changed
-      virtual void onLocationDatabasesShutdown(ILocationDatabasesPtr inDatabases) = 0;
+      virtual void onLocationDatabasesStateChanged(
+                                                   ILocationDatabasesPtr inDatabases,
+                                                   DatabasesStates state
+                                                   ) = 0;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Notify that the available list of datbases has changed
+      virtual void onLocationDatabasesUpdated(ILocationDatabasesPtr inDatabases) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -167,12 +184,12 @@ namespace openpeer
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabasesDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesShutdown, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_METHOD_2(onLocationDatabasesStateChanged, ILocationDatabasesPtr, DatabasesStates)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabasesUpdated, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::ILocationDatabasesDelegate, openpeer::stack::ILocationDatabasesSubscription)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasesPtr, ILocationDatabasesPtr)
-ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesChanged, ILocationDatabasesPtr)
-ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesShutdown, ILocationDatabasesPtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onLocationDatabasesStateChanged, ILocationDatabasesPtr, DatabasesStates)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabasesUpdated, ILocationDatabasesPtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()

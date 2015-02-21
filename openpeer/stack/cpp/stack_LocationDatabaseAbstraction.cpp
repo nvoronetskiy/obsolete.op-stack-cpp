@@ -57,6 +57,7 @@
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_DATABASE_CHANGE_INDEX_BATCH_LIMIT 10
 
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_BATCH_LIMIT 10
+#define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_MISSING_DATA_BATCH_LIMIT 10
 
 #define OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_CHANGE_BATCH_LIMIT 10
 
@@ -1112,6 +1113,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       bool LocationDatabaseAbstraction::IDatabaseTable_getByDatabaseID(
+                                                                       index indexPeerLocationRecord,
                                                                        const char *databaseID,
                                                                        DatabaseRecord &outRecord
                                                                        ) const
@@ -1121,12 +1123,12 @@ namespace openpeer
         try {
           SqlTable table(*mDB, UseTables::Database_name(), UseTables::Database());
 
-          table.open(String(UseTables::databaseID) + " = " + SqlQuote(databaseID));
+          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + " AND " + UseTables::databaseID + " = " + SqlQuote(databaseID));
 
           SqlRecord *found = table.getTopRecord();
 
           if (!found) {
-            ZS_LOG_WARNING(Trace, log("did not find existing database record") + ZS_PARAMIZE(databaseID))
+            ZS_LOG_WARNING(Trace, log("did not find existing database record") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(databaseID))
             return false;
           }
 
@@ -1618,6 +1620,34 @@ namespace openpeer
       }
 
       //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IPermissionTable_hasPermission(
+                                                                       index indexPeerLocationRecord,
+                                                                       const char *databaseID,
+                                                                       const char *peerURI
+                                                                       ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::Permission_name(), UseTables::Permission());
+
+          table.open(String(UseTables::indexPeerLocation) + " = " + string(indexPeerLocationRecord) + " AND " + UseTables::databaseID + " = " + SqlQuote(databaseID) + " AND " + UseTables::peerURI + " = " + SqlQuote(peerURI));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_WARNING(Trace, log("does not have permission") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(databaseID) + ZS_PARAMIZE(peerURI))
+            return false;
+          }
+
+          ZS_LOG_TRACE(log("has permission") + ZS_PARAMIZE(indexPeerLocationRecord) + ZS_PARAMIZE(databaseID) + ZS_PARAMIZE(peerURI))
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        return false;
+      }
+
+      //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -1684,36 +1714,39 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       bool LocationDatabaseAbstraction::IEntryTable_update(
-                                                           const EntryRecord &entry,
+                                                           EntryRecord &ioEntry,
                                                            EntryChangeRecord &outChangeRecord
                                                            )
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_TRACE(log("updating entry record") + entry.toDebug())
+        ZS_LOG_TRACE(log("updating entry record") + ioEntry.toDebug())
 
         outChangeRecord.mDisposition = EntryChangeRecord::Disposition_None;
-        outChangeRecord.mEntryID = entry.mEntryID;
+        outChangeRecord.mEntryID = ioEntry.mEntryID;
 
         try {
 
           SqlTable table(*mDB, UseTables::Entry_name(), UseTables::Entry());
 
-          if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != entry.mIndex) {
-            table.open(String(SqlField::id) + " = " + string(entry.mIndex));
+          if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioEntry.mIndex) {
+            table.open(String(SqlField::id) + " = " + string(ioEntry.mIndex));
           } else {
-            table.open(String(UseTables::entryID) + " = " + SqlQuote(entry.mEntryID));
+            table.open(String(UseTables::entryID) + " = " + SqlQuote(ioEntry.mEntryID));
           }
 
           SqlRecord *found = table.getTopRecord();
 
           if (!found) {
-            ZS_LOG_TRACE(log("did not find an existing record to update") + entry.toDebug())
+            ZS_LOG_TRACE(log("did not find an existing record to update") + ioEntry.toDebug())
             return false;
           }
 
           EntryRecord previousEntry;
           internal::convert(found, previousEntry);
+
+          ioEntry.mIndex = previousEntry.mIndex;
+          ioEntry.mEntryID = previousEntry.mEntryID;
 
           bool changed = false;
 
@@ -1721,20 +1754,29 @@ namespace openpeer
 
           table.fields()->getByName(UseTables::version)->setIgnored(false);
 
-          if (0 != entry.mVersion) {
-            if (entry.mVersion <= previousEntry.mVersion) {
-              ZS_LOG_WARNING(Detail, log("attempting to update with an older version of an entry record") + entry.toDebug() + previousEntry.toDebug())
+          if (0 != ioEntry.mVersion) {
+            if (ioEntry.mVersion <= previousEntry.mVersion) {
+              ZS_LOG_WARNING(Detail, log("attempting to update with an older version of an entry record") + ioEntry.toDebug() + previousEntry.toDebug())
               return false;
             }
             changed = true;
 
-            found->setInteger(UseTables::version, entry.mVersion);
+            found->setInteger(UseTables::version, ioEntry.mVersion);
           } else {
+            ioEntry.mVersion = previousEntry.mVersion + 1;
             found->setInteger(UseTables::version, previousEntry.mVersion + 1);
           }
 
-          String entryDataAsStr = UseServicesHelper::toString(entry.mData);
+          String entryDataAsStr = UseServicesHelper::toString(ioEntry.mData);
           String previousEntryDataAsStr = UseServicesHelper::toString(previousEntry.mData);
+
+          // correct data related details
+          if (entryDataAsStr.hasData()) {
+            ioEntry.mDataLength = entryDataAsStr.length();
+            ioEntry.mDataFetched = true;
+          } else {
+            ioEntry.mDataFetched = (0 == ioEntry.mDataLength);
+          }
 
           if (entryDataAsStr != previousEntryDataAsStr) {
             changed = true;
@@ -1742,43 +1784,20 @@ namespace openpeer
             found->setString(UseTables::data, entryDataAsStr);
           }
 
-          if (entryDataAsStr.hasData()) {
-            if (entryDataAsStr.length() != previousEntry.mDataLength) {
-              changed = true;
-              table.fields()->getByName(UseTables::dataLength)->setIgnored(false);
-              found->setInteger(UseTables::dataLength, entryDataAsStr.length());
-
-              table.fields()->getByName(UseTables::dataFetched)->setIgnored(false);
-              found->setBool(UseTables::dataFetched, true);
-            }
-          } else if (0 != entry.mDataLength) {
-            if (entry.mDataLength != previousEntry.mDataLength) {
-              changed = true;
-              table.fields()->getByName(UseTables::data)->setIgnored(false);
-              found->setString(UseTables::data, String());
-
-              table.fields()->getByName(UseTables::dataLength)->setIgnored(false);
-              found->setInteger(UseTables::dataLength, entry.mDataLength);
-
-              table.fields()->getByName(UseTables::dataFetched)->setIgnored(false);
-              found->setBool(UseTables::dataFetched, false);
-            }
-          } else {
-            if (0 != previousEntry.mDataLength) {
-              changed = true;
-              table.fields()->getByName(UseTables::data)->setIgnored(false);
-              found->setString(UseTables::data, String());
-
-              table.fields()->getByName(UseTables::dataLength)->setIgnored(false);
-              found->setInteger(UseTables::dataLength, entry.mDataLength);
-
-              table.fields()->getByName(UseTables::dataFetched)->setIgnored(false);
-              found->setBool(UseTables::dataFetched, true);
-            }
+          if (ioEntry.mDataLength != previousEntry.mDataLength) {
+            changed = true;
+            table.fields()->getByName(UseTables::dataLength)->setIgnored(false);
+            found->setInteger(UseTables::dataLength, ioEntry.mDataLength);
           }
 
-          if (Time() != entry.mCreated) {
-            auto current = zsLib::timeSinceEpoch<Seconds>(entry.mCreated).count();
+          if (ioEntry.mDataFetched != previousEntry.mDataFetched) {
+            changed = true;
+            table.fields()->getByName(UseTables::dataFetched)->setIgnored(false);
+            found->setBool(UseTables::dataFetched, ioEntry.mDataFetched);
+          }
+
+          if (Time() != ioEntry.mCreated) {
+            auto current = zsLib::timeSinceEpoch<Seconds>(ioEntry.mCreated).count();
             auto previous = zsLib::timeSinceEpoch<Seconds>(previousEntry.mCreated).count();
 
             if (current != previous) {
@@ -1786,10 +1805,12 @@ namespace openpeer
               table.fields()->getByName(UseTables::created)->setIgnored(false);
               found->setInteger(UseTables::created, current);
             }
+          } else {
+            ioEntry.mCreated = previousEntry.mCreated;
           }
 
-          if (Time() != entry.mUpdated) {
-            auto current = zsLib::timeSinceEpoch<Seconds>(entry.mUpdated).count();
+          if (Time() != ioEntry.mUpdated) {
+            auto current = zsLib::timeSinceEpoch<Seconds>(ioEntry.mUpdated).count();
             auto previous = zsLib::timeSinceEpoch<Seconds>(previousEntry.mUpdated).count();
 
             if (current != previous) {
@@ -1797,10 +1818,12 @@ namespace openpeer
               table.fields()->getByName(UseTables::updated)->setIgnored(false);
               found->setInteger(UseTables::updated, current);
             }
+          } else {
+            ioEntry.mUpdated = previousEntry.mUpdated;
           }
 
           if (!changed) {
-            ZS_LOG_TRACE(log("no changes found from previous record") + entry.toDebug() + previousEntry.toDebug())
+            ZS_LOG_TRACE(log("no changes found from previous record") + ioEntry.toDebug() + previousEntry.toDebug())
             return false;
           }
 
@@ -1878,7 +1901,7 @@ namespace openpeer
           if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != afterIndexEntry) {
             afterClause = String(SqlField::id) + " > " + string(afterIndexEntry);
           } else {
-            afterClause = String(SqlField::id) + " > " + string(0);
+            afterClause = String(SqlField::id) + " > 0";
           }
 
           if (!includeData) {
@@ -1886,6 +1909,45 @@ namespace openpeer
           }
 
           table.open(afterClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_BATCH_LIMIT));
+
+          for (int row = 0; row < table.recordCount(); ++row) {
+            SqlRecord *record = table.getRecord(row);
+
+            EntryRecord entryRecord;
+            internal::convert(record, entryRecord);
+
+            ZS_LOG_TRACE(log("found entry record") + entryRecord.toDebug())
+
+            result->push_back(entryRecord);
+          }
+
+          return result;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        
+        return EntryRecordListPtr();
+      }
+
+      //-----------------------------------------------------------------------
+      EntryRecordListPtr LocationDatabaseAbstraction::IEntryTable_getBatchMissingData(index afterIndexEntry) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        EntryRecordListPtr result(new EntryRecordList);
+
+        try {
+          SqlTable table(*mDB, UseTables::Entry_name(), UseTables::Entry());
+
+          table.fields()->getByName(UseTables::data)->setIgnored(true);
+
+          String afterClause;
+          String orderClause = " ORDER BY " + String(SqlField::id) + " ASC";
+          if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != afterIndexEntry) {
+            afterClause = " AND " + String(SqlField::id) + " > " + string(afterIndexEntry);
+          }
+
+          table.open(String(UseTables::dataFetched) + " = 0" + afterClause + orderClause + " LIMIT " + string(OPENPEER_STACK_SERVICES_LOCATION_DATABASE_ABSTRACTION_ENTRY_MISSING_DATA_BATCH_LIMIT));
 
           for (int row = 0; row < table.recordCount(); ++row) {
             SqlRecord *record = table.getRecord(row);
@@ -1947,6 +2009,37 @@ namespace openpeer
         return false;
       }
       
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IEntryChangeTable_getLast(EntryChangeRecord &outRecord) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        try {
+          SqlTable table(*mDB, UseTables::EntryChange_name(), UseTables::EntryChange());
+
+          SqlRecordSet recordSet(*mDB, table.fields());
+
+          String queryStr = "SELECT " + table.getSelectFields() + " FROM " + table.name() + " ORDER BY " + String(SqlField::id) + " DESC LIMIT 1";
+          recordSet.query(queryStr);
+
+          SqlRecord *found = recordSet.getTopRecord();
+
+          if (!found) {
+            ZS_LOG_WARNING(Trace, log("did not find existing entry change record"))
+            return false;
+          }
+
+          internal::convert(found, outRecord);
+
+          ZS_LOG_TRACE(log("found previous entry change record") + outRecord.toDebug())
+
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+        return false;
+      }
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -2014,6 +2107,39 @@ namespace openpeer
         }
 
         return EntryChangeRecordListPtr();
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabaseAbstraction::IEntryChangeTable_getByIndex(
+                                                                     index indexEntryChangeRecord,
+                                                                     EntryChangeRecord &outRecord
+                                                                     ) const
+      {
+        AutoRecursiveLock lock(*this);
+
+        EntryChangeRecordListPtr result(new EntryChangeRecordList);
+
+        try {
+          SqlTable table(*mDB, UseTables::EntryChange_name(), UseTables::EntryChange());
+
+          table.open(String(SqlField::id) + " = " + string(indexEntryChangeRecord));
+
+          SqlRecord *record = table.getTopRecord();
+          if (!record) {
+            ZS_LOG_WARNING(Trace, log("change entry does not exist") + ZS_PARAMIZE(indexEntryChangeRecord))
+            return false;
+          }
+
+          internal::convert(record, outRecord);
+
+          ZS_LOG_TRACE(log("found change entry") + ZS_PARAMIZE(indexEntryChangeRecord) + outRecord.toDebug())
+
+          return true;
+        } catch (SqlException &e) {
+          ZS_LOG_ERROR(Detail, log("database failure") + ZS_PARAM("message", e.msg()))
+        }
+
+        return false;
       }
 
       //-----------------------------------------------------------------------
@@ -2246,6 +2372,9 @@ namespace openpeer
           {
             SqlTable table(*mDB, UseTables::Entry_name(), UseTables::Entry());
             table.create();
+
+            SqlRecordSet query(*mDB);
+            query.query(String("CREATE INDEX ") + UseTables::Entry_name() + "i" + UseTables::dataFetched + " ON " + UseTables::Entry_name() + "(" + UseTables::dataFetched + ")");
           }
           {
             SqlTable table(*mDB, UseTables::EntryChange_name(), UseTables::EntryChange());

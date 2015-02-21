@@ -51,7 +51,7 @@ namespace openpeer
       ZS_DECLARE_STRUCT_PTR(EntryInfo)
       ZS_DECLARE_TYPEDEF_PTR(std::list<EntryInfo>, EntryInfoList)
 
-      struct EntryInfo
+      struct EntryInfo : public Any
       {
         typedef String UniqueID;
 
@@ -88,6 +88,14 @@ namespace openpeer
 
       typedef std::list<EntryInfo::UniqueID> UniqueIDList;
       ZS_DECLARE_PTR(UniqueIDList)
+
+      enum DatabaseStates
+      {
+        DatabaseState_Pending,
+        DatabaseState_Ready,
+        DatabaseState_Shutdown,
+      };
+      static const char *toString(DatabaseStates state);
     };
 
     //-------------------------------------------------------------------------
@@ -147,7 +155,7 @@ namespace openpeer
       virtual EntryInfoListPtr getUpdates(
                                           const String &inExistingVersion,  // pass in String() when no data has been fetched before
                                           String &outNewVersion             // the version to which the database has now been updated
-      ) const = 0;
+                                          ) const = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Get a database entry data based on a unique entry identifier.
@@ -156,10 +164,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       // PURPOSE: When database information is only downloaded on demand this
       //          method will
-      virtual void notifyWhenDataReady(
-                                       const UniqueIDList &needingEntryData,
-                                       ILocationDatabaseDataReadyDelegatePtr inDelegate
-                                       ) = 0;
+      virtual PromisePtr notifyWhenDataReady(const UniqueIDList &needingEntryData) = 0;
     };
     
     //-------------------------------------------------------------------------
@@ -172,25 +177,18 @@ namespace openpeer
 
     interaction ILocationDatabaseDelegate
     {
+      typedef ILocationDatabaseTypes::DatabaseStates DatabaseStates;
+
+      //-----------------------------------------------------------------------
+      // PURPOSE: Notify that the available list of datbases has changed
+      virtual void onLocationDatabaseStateChanged(
+                                                  ILocationDatabasePtr inDatabase,
+                                                  DatabaseStates state
+                                                  ) = 0;
+
       //-----------------------------------------------------------------------
       // PURPOSE: Notification event when the database data has changed.
-      virtual void onLocationDatabaseChanged(ILocationDatabasePtr inDatabase) = 0;
-    };
-
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
-    #pragma mark
-    #pragma mark ILocationDatabaseDataReadyDelegate
-    #pragma mark
-
-    interaction ILocationDatabaseDataReadyDelegate
-    {
-      //-----------------------------------------------------------------------
-      // PURPOSE: Notification event when the all the requested data is now
-      //          available for the location.
-      virtual void onLocationDatabaseDataReady(ILocationDatabasePtr inDatabase) = 0;
+      virtual void onLocationDatabaseUpdated(ILocationDatabasePtr inDatabase) = 0;
     };
 
     //-------------------------------------------------------------------------
@@ -216,15 +214,13 @@ namespace openpeer
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabaseDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabaseChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_METHOD_2(onLocationDatabaseStateChanged, ILocationDatabasePtr, DatabaseStates)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabaseUpdated, ILocationDatabasePtr)
 ZS_DECLARE_PROXY_END()
 
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_BEGIN(openpeer::stack::ILocationDatabaseDelegate, openpeer::stack::ILocationDatabaseSubscription)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabaseChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_2(onLocationDatabaseStateChanged, ILocationDatabasePtr, DatabaseStates)
+ZS_DECLARE_PROXY_SUBSCRIPTIONS_METHOD_1(onLocationDatabaseUpdated, ILocationDatabasePtr)
 ZS_DECLARE_PROXY_SUBSCRIPTIONS_END()
 
-ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabaseDataReadyDelegate)
-ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabaseDataReady, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_END()

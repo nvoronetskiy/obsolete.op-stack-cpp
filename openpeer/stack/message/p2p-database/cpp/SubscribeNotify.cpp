@@ -118,6 +118,10 @@ namespace openpeer
 
           ElementPtr databaseEl = Element::create("database");
 
+          if (hasAttribute(AttributeType_DatabaseID)) {
+            databaseEl->setAttribute("id", mDatabaseID);
+          }
+
           if (hasAttribute(AttributeType_DatabaseBefore)) {
             databaseEl->setAttribute("before", mBefore);
           }
@@ -154,6 +158,7 @@ namespace openpeer
         bool SubscribeNotify::hasAttribute(AttributeTypes type) const
         {
           switch (type) {
+            case AttributeType_DatabaseID:          return mDatabaseID.hasData();
             case AttributeType_DatabaseBefore:      return mBefore.hasData();
             case AttributeType_DatabaseVersion:     return mVersion.hasData();
             case AttributeType_DatabaseEntries:     return (bool)mEntries;

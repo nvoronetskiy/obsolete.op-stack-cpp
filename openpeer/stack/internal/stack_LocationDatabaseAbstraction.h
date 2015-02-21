@@ -220,9 +220,10 @@ namespace openpeer
                                   ) const                                       {return mOuter->IDatabaseTable_getByIndex(indexDatabaseRecord, outRecord);}
 
           virtual bool getByDatabaseID(
+                                       index indexPeerLocationRecord,
                                        const char *databaseID,
                                        DatabaseRecord &outRecord
-                                       ) const                                  {return mOuter->IDatabaseTable_getByDatabaseID(databaseID, outRecord);}
+                                       ) const                                  {return mOuter->IDatabaseTable_getByDatabaseID(indexPeerLocationRecord, databaseID, outRecord);}
 
           virtual DatabaseRecordListPtr getBatchByPeerLocationIndex(
                                                                     index indexPeerLocationRecord,
@@ -320,6 +321,11 @@ namespace openpeer
                                        PeerURIList &outURIs
                                        ) const                                  {mOuter->IPermissionTable_getByDatabaseID(indexPeerLocationRecord, databaseID, outURIs);}
 
+          virtual bool hasPermission(
+                                     index indexPeerLocationRecord,
+                                     const char *databaseID,
+                                     const char *peerURI
+                                     ) const                                    {return mOuter->IPermissionTable_hasPermission(indexPeerLocationRecord, databaseID, peerURI);}
         protected:
           LocationDatabaseAbstractionPtr mOuter;
         };
@@ -343,9 +349,9 @@ namespace openpeer
                            )                                                    {return mOuter->IEntryTable_add(entry, outChangeRecord);}
 
           virtual bool update(
-                              const EntryRecord &entry,
+                              EntryRecord &ioEntry,
                               EntryChangeRecord &outChangeRecord
-                              )                                                 {return mOuter->IEntryTable_update(entry, outChangeRecord);}
+                              )                                                 {return mOuter->IEntryTable_update(ioEntry, outChangeRecord);}
 
           virtual bool remove(
                               const EntryRecord &entry,
@@ -356,6 +362,10 @@ namespace openpeer
                                               bool includeData,
                                               index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
                                               ) const                           {return mOuter->IEntryTable_getBatch(includeData, afterIndexEntry);}
+
+          virtual EntryRecordListPtr getBatchMissingData(
+                                                         index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
+                                                         ) const                {return mOuter->IEntryTable_getBatchMissingData(afterIndexEntry);}
 
           virtual bool getEntry(
                                 EntryRecord &ioRecord,
@@ -382,6 +392,12 @@ namespace openpeer
 
           virtual EntryChangeRecordListPtr getBatch(index afterIndexEntryChanged = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN) const {return mOuter->IEntryChangeTable_getBatch(afterIndexEntryChanged);}
 
+          virtual bool getByIndex(
+                                  index indexEntryChangeRecord,
+                                  EntryChangeRecord &outRecord
+                                  ) const                                       {return mOuter->IEntryChangeTable_getByIndex(indexEntryChangeRecord, outRecord);}
+
+          virtual bool getLast(EntryChangeRecord &outRecord) const              {return mOuter->IEntryChangeTable_getLast(outRecord);}
         protected:
           LocationDatabaseAbstractionPtr mOuter;
         };
@@ -435,6 +451,7 @@ namespace openpeer
                                        ) const;
 
         bool IDatabaseTable_getByDatabaseID(
+                                            index indexPeerLocationRecord,
                                             const char *databaseID,
                                             DatabaseRecord &outRecord
                                             ) const;
@@ -512,6 +529,12 @@ namespace openpeer
                                               PeerURIList &outURIs
                                               ) const;
 
+        bool IPermissionTable_hasPermission(
+                                            index indexPeerLocationRecord,
+                                            const char *databaseID,
+                                            const char *peerURI
+                                            ) const;
+
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -524,7 +547,7 @@ namespace openpeer
                              );
 
         bool IEntryTable_update(
-                                const EntryRecord &entry,
+                                EntryRecord &ioEntry,
                                 EntryChangeRecord &outChangeRecord
                                 );
 
@@ -537,6 +560,8 @@ namespace openpeer
                                                 bool includeData,
                                                 index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
                                                 ) const;
+
+        EntryRecordListPtr IEntryTable_getBatchMissingData(index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN) const;
 
         bool IEntryTable_getEntry(
                                   EntryRecord &ioRecord,
@@ -551,6 +576,13 @@ namespace openpeer
         void IEntryChangeTable_insert(const EntryChangeRecord &record);
 
         EntryChangeRecordListPtr IEntryChangeTable_getBatch(index afterIndexEntryChanged = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN) const;
+
+        bool IEntryChangeTable_getByIndex(
+                                          index indexEntryChangeRecord,
+                                          EntryChangeRecord &outRecord
+                                          ) const;
+
+        bool IEntryChangeTable_getLast(EntryChangeRecord &outRecord) const;
 
         //---------------------------------------------------------------------
         #pragma mark

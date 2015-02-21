@@ -361,7 +361,6 @@ namespace openpeer
     ZS_DECLARE_INTERACTION_PROXY(IKeyGeneratorDelegate)
     ZS_DECLARE_INTERACTION_PROXY(ILocationDatabasesDelegate)
     ZS_DECLARE_INTERACTION_PROXY(ILocationDatabaseDelegate)
-    ZS_DECLARE_INTERACTION_PROXY(ILocationDatabaseDataReadyDelegate)
     ZS_DECLARE_INTERACTION_PROXY(ILocationDatabaseLocalDelegate)
     ZS_DECLARE_INTERACTION_PROXY(ILocationSubscriptionDelegate)
     ZS_DECLARE_INTERACTION_PROXY(IMessageMonitorDelegate)

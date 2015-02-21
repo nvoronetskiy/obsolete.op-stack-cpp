@@ -332,6 +332,7 @@ namespace openpeer
           //-------------------------------------------------------------------
           // PURPOSE: get a database record given the index
           virtual bool getByDatabaseID(
+                                       index indexPeerLocationRecord,
                                        const char *databaseID,
                                        DatabaseRecord &outRecord
                                        ) const = 0;
@@ -428,6 +429,12 @@ namespace openpeer
                                        const char *databaseID,
                                        PeerURIList &outURIs
                                        ) const = 0;
+
+          virtual bool hasPermission(
+                                     index indexPeerLocationRecord,
+                                     const char *databaseID,
+                                     const char *peerURI
+                                     ) const = 0;
         };
 
         //---------------------------------------------------------------------
@@ -452,7 +459,7 @@ namespace openpeer
           // PURPOSE: update an entry record for a database
           // RETURNS: true if entry was updated
           virtual bool update(
-                              const EntryRecord &entry,
+                              EntryRecord &ioEntry,
                               EntryChangeRecord &outChangeRecord
                               ) = 0;
 
@@ -472,6 +479,10 @@ namespace openpeer
                                               bool includeData,
                                               index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN
                                               ) const = 0;
+
+          //-------------------------------------------------------------------
+          // PURPOSE: get a list of entries after an index record
+          virtual EntryRecordListPtr getBatchMissingData(index afterIndexEntry = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN) const = 0;
 
           //-------------------------------------------------------------------
           // PURPOSE: get an individual entry record
@@ -499,6 +510,13 @@ namespace openpeer
           // PURPOSE: get a list of entry changes after a particular change
           //          index
           virtual EntryChangeRecordListPtr getBatch(index afterIndexEntryChanged = OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN) const = 0;
+
+          virtual bool getByIndex(
+                                  index indexEntryChangeRecord,
+                                  EntryChangeRecord &outRecord
+                                  ) const = 0;
+
+          virtual bool getLast(EntryChangeRecord &outRecord) const = 0;
         };
 
       };

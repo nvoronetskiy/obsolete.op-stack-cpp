@@ -90,7 +90,7 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       // PURPOSE: Add a unique entry into the database.
-      virtual void add(
+      virtual bool add(
                        const char *uniqueID,
                        ElementPtr inMetaData,
                        ElementPtr inData
@@ -98,14 +98,14 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       // PURPOSE: Updates an existing entry in the database.
-      virtual void update(
+      virtual bool update(
                           const char *uniqueID,
                           ElementPtr inData
                           ) = 0;
 
       //-----------------------------------------------------------------------
       // PURPOSE: Remove an entry from the database.
-      virtual void remove(const char *uniqueID) = 0;
+      virtual bool remove(const char *uniqueID) = 0;
     };
     
     //-------------------------------------------------------------------------
@@ -125,5 +125,6 @@ namespace openpeer
 
 ZS_DECLARE_PROXY_BEGIN(openpeer::stack::ILocationDatabaseLocalDelegate)
 ZS_DECLARE_PROXY_TYPEDEF(openpeer::stack::ILocationDatabasePtr, ILocationDatabasePtr)
-ZS_DECLARE_PROXY_METHOD_1(onLocationDatabaseChanged, ILocationDatabasePtr)
+ZS_DECLARE_PROXY_METHOD_2(onLocationDatabaseStateChanged, ILocationDatabasePtr, DatabaseStates)
+ZS_DECLARE_PROXY_METHOD_1(onLocationDatabaseUpdated, ILocationDatabasePtr)
 ZS_DECLARE_PROXY_END()

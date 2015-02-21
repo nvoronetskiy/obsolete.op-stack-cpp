@@ -91,11 +91,15 @@ namespace openpeer
 
       interaction ILocationForLocationDatabases
       {
+        typedef ILocation::LocationTypes LocationTypes;
+
         ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, ForLocationDatabases)
 
         static ElementPtr toDebug(ForLocationDatabasesPtr location);
 
         virtual PUID getID() const = 0;
+
+        virtual LocationTypes getLocationType() const = 0;
 
         virtual AccountPtr getAccount() const = 0;
 
@@ -358,7 +362,9 @@ namespace openpeer
 
         // (duplicate) virtual PUID getID() const = 0;
 
-        // (dupicate) virtual AccountPtr getAccount() const = 0;
+        // (duplicate) virtual LocationTypes getLocationType() const;
+
+        // (duplicate) virtual AccountPtr getAccount() const = 0;
 
         // (duplicate) virtual ElementPtr toDebug() const = 0;
 

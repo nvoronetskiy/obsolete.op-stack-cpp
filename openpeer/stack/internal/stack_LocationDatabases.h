@@ -36,6 +36,7 @@
 
 #include <openpeer/stack/message/p2p-database/ListSubscribeResult.h>
 
+#include <openpeer/stack/ILocationDatabaseLocal.h>
 #include <openpeer/stack/ILocationDatabases.h>
 #include <openpeer/stack/ILocationSubscription.h>
 #include <openpeer/stack/IServiceLockbox.h>
@@ -73,11 +74,65 @@ namespace openpeer
       interaction ILocationDatabasesForLocationDatabase
       {
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesForLocationDatabase, ForLocationDatabase)
+
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction, UseDatabase)
+
+        typedef ILocationDatabaseLocalTypes::PeerList PeerList;
 
         static ElementPtr toDebug(ForLocationDatabasePtr object);
 
+        virtual PUID getID() const = 0;
+
+        virtual ILocationPtr getLocation() const = 0;
+
+        virtual bool isLocal() const = 0;
+
+        virtual LocationDatabasePtr getOrCreate(
+                                                const String &databaseID,
+                                                bool downloadAllEntries
+                                                ) = 0;
+
+        virtual LocationDatabasePtr getOrCreate(
+                                                const String &databaseID,
+                                                ElementPtr inMetaData,
+                                                const PeerList &inPeerAccessList,
+                                                Time expires
+                                                ) = 0;
+
+        virtual void notifyShutdown(UseLocationDatabase &database) = 0;
         virtual void notifyDestroyed(UseLocationDatabase &database) = 0;
+
+        virtual PromisePtr notifyWhenReady() = 0;
+
+        virtual UseDatabasePtr getMasterDatabase() = 0;
+
+        virtual bool openRemoteDB(
+                                  const String &databaseID,
+                                  UseDatabase::DatabaseRecord &outRecord
+                                  ) = 0;
+        virtual bool openLocalDB(
+                                 const String &databaseID,
+                                 UseDatabase::DatabaseRecord &outRecord,
+                                 PeerList &outPeerAccessList
+                                 ) = 0;
+
+        virtual bool createLocalDB(
+                                   const String &databaseID,
+                                   ElementPtr inMetaData,
+                                   const PeerList &inPeerAccessList,
+                                   Time expires,
+                                   UseDatabase::DatabaseRecord &outRecord
+                                   ) = 0;
+
+        virtual void notifyDownloaded(
+                                      const String &databaseID,
+                                      const String &downloadedVersion
+                                      ) = 0;
+
+        virtual String updateVersion(const String &databaseID) = 0;
+
+        virtual void getDatabaseRecordUpdate(UseDatabase::DatabaseRecord &ioRecord) const = 0;
       };
       
       //-----------------------------------------------------------------------
@@ -133,11 +188,9 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeRequest, ListSubscribeRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeResult, ListSubscribeResult)
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::ListSubscribeNotify, ListSubscribeNotify)
+
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeRequest, SubscribeRequest)
-        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeResult, SubscribeResult)
-        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeNotify, SubscribeNotify)
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetRequest, DataGetRequest)
-        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetResult, DataGetResult)
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction, UseDatabase)
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction::PeerLocationRecord, PeerLocationRecord)
@@ -166,12 +219,17 @@ namespace openpeer
         {
           UseLocationPtr mLocation;
 
+          String mSubscribeMessageID;
+
           String mLastVersion;
 
           Time mExpires;
 
           bool mNotified {false};
           PromisePtr mPendingSendPromise;
+
+          IncomingListSubscription();
+          virtual ~IncomingListSubscription();
 
           ElementPtr toDebug() const;
         };
@@ -216,6 +274,8 @@ namespace openpeer
 
         virtual ILocationPtr getLocation() const;
 
+        virtual DatabasesStates getState() const;
+
         virtual DatabaseInfoListPtr getUpdates(
                                                const String &inExistingVersion,
                                                String &outNewVersion
@@ -240,7 +300,54 @@ namespace openpeer
 
         // (duplicate) virtual ElementPtr toDebug() const;
 
+        // (duplicate) virtual ILocationPtr getLocation() const = 0;
+
+        // (duplicate) virtual bool isLocal() const = 0;
+
+        virtual LocationDatabasePtr getOrCreate(
+                                                const String &databaseID,
+                                                bool downloadAllEntries
+                                                );
+        virtual LocationDatabasePtr getOrCreate(
+                                                const String &databaseID,
+                                                ElementPtr inMetaData,
+                                                const PeerList &inPeerAccessList,
+                                                Time expires
+                                                );
+        virtual void notifyShutdown(UseLocationDatabase &database);
         virtual void notifyDestroyed(UseLocationDatabase &database);
+
+        virtual PromisePtr notifyWhenReady();
+
+        virtual UseDatabasePtr getMasterDatabase();
+
+        virtual bool openRemoteDB(
+                                  const String &databaseID,
+                                  UseDatabase::DatabaseRecord &outRecord
+                                  );
+
+        virtual bool openLocalDB(
+                                 const String &databaseID,
+                                 UseDatabase::DatabaseRecord &outRecord,
+                                 PeerList &outPeerAccessList
+                                 );
+
+        virtual bool createLocalDB(
+                                   const String &databaseID,
+                                   ElementPtr inMetaData,
+                                   const PeerList &inPeerAccessList,
+                                   Time expires,
+                                   UseDatabase::DatabaseRecord &outRecord
+                                   );
+
+        virtual void notifyDownloaded(
+                                      const String &databaseID,
+                                      const String &downloadedVersion
+                                      );
+
+        virtual String updateVersion(const String &databaseID);
+
+        virtual void getDatabaseRecordUpdate(UseDatabase::DatabaseRecord &ioRecord) const;
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -306,7 +413,7 @@ namespace openpeer
 
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark ServiceLockboxSession => IMessageMonitorResultDelegate<ListSubscribeResult>
+        #pragma mark LocationDatabases => IMessageMonitorResultDelegate<ListSubscribeResult>
         #pragma mark
 
         virtual bool handleMessageMonitorResultReceived(
@@ -334,9 +441,10 @@ namespace openpeer
 
         ILocationDatabasesSubscriptionPtr subscribe(ILocationDatabasesDelegatePtr originalDelegate);
 
-        bool isLocal() const {return mIsLocal;}
-        bool isReady() const {return mReady;}
-        bool isShutdown() const {return mShutdown;}
+        virtual bool isLocal() const {return mIsLocal;}
+        bool isPending() const {return DatabasesState_Pending == mState;}
+        bool isReady() const {return DatabasesState_Ready == mState;}
+        bool isShutdown() const {return DatabasesState_Shutdown == mState;}
 
         void cancel();
 
@@ -346,6 +454,8 @@ namespace openpeer
         bool stepSubscribeLocationAll();
         bool stepSubscribeLocationRemote();
 
+        bool stepPurgeConflict();
+
         bool stepRemoteSubscribeList();
         bool stepRemoteResubscribeTimer();
 
@@ -353,6 +463,8 @@ namespace openpeer
         bool stepLocalIncomingSubscriptionsNotify();
 
         bool stepChangeNotify();
+
+        void setState(DatabasesStates state);
 
         static DatabaseInfo::Dispositions toDisposition(UseDatabase::DatabaseChangeRecord::Dispositions disposition);
 
@@ -371,6 +483,21 @@ namespace openpeer
                             IMessageIncomingPtr message,
                             ListSubscribeRequestPtr request
                             );
+        void notifyIncoming(
+                            IMessageIncomingPtr message,
+                            SubscribeRequestPtr request
+                            );
+        void notifyIncoming(
+                            IMessageIncomingPtr message,
+                            DataGetRequestPtr request
+                            );
+
+        UseLocationDatabasePtr prepareDatabaseLocationForMessage(
+                                                                 MessageRequestPtr request,
+                                                                 IMessageIncomingPtr message,
+                                                                 UseLocationPtr fromLocation,
+                                                                 const String &requestedDatabaseID
+                                                                 );
 
       protected:
         //---------------------------------------------------------------------
@@ -381,8 +508,7 @@ namespace openpeer
         AutoPUID mID;
         LocationDatabasesWeakPtr mThisWeak;
 
-        bool mReady {false};
-        bool mShutdown {false};
+        DatabasesStates mState {DatabasesState_Pending};
 
         bool mIsLocal {false};
 
@@ -399,15 +525,20 @@ namespace openpeer
         PeerLocationRecord mPeerLocationRecord;
 
         LocationDatabaseMap mLocationDatabases;
+        LocationDatabaseMap mExpectingShutdownLocationDatabases;
 
         IBackOffTimerPtr mRemoteSubscriptionBackOffTimer;
-        IMessageMonitorPtr mRemoteSubscribeListMonitor;
+        IMessageMonitorPtr mRemoteListSubscribeMonitor;
         TimerPtr mRemoteSubscribeTimeout;
 
         String mLastChangeUpdateNotified;
 
-        IncomingListSubscriptionMap mIncomingListSubscription;
+        IncomingListSubscriptionMap mIncomingListSubscriptions;
         TimerPtr mIncomingListSubscriptionTimer;
+
+        Promise::PromiseWeakList mPromiseWhenReadyList;
+
+        bool mDatabaseListConflict {false};
       };
 
       //-----------------------------------------------------------------------

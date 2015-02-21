@@ -33,6 +33,23 @@
 
 #include <openpeer/stack/internal/types.h>
 #include <openpeer/stack/ILocationDatabaseLocal.h>
+#include <openpeer/stack/internal/stack_ILocationDatabaseAbstraction.h>
+
+#include <openpeer/stack/message/p2p-database/SubscribeResult.h>
+#include <openpeer/stack/message/p2p-database/DataGetResult.h>
+
+#include <openpeer/stack/IMessageMonitor.h>
+#include <openpeer/stack/ILocationSubscription.h>
+
+#include <openpeer/services/IBackOffTimer.h>
+#include <openpeer/services/IWakeDelegate.h>
+
+#include <zsLib/Promise.h>
+#include <zsLib/Timer.h>
+
+#define OPENPEER_STACK_SETTING_LOCATION_DATABASE_WAKE_TIME_AFTER_INCOMING_DATABASE_REQUEST_IN_SECONDS "openpeer/stack/location-database-wake-time-after-incoming-database-request-in-seconds"
+
+#define OPENPEER_STACK_SETTING_P2P_DATABASE_SUBSCRIPTION_EXPIRES_TIMEOUT_IN_SECONDS "openpeer/stack/p2p-database-subscription-expires-timeout-in-seconds"
 
 namespace openpeer
 {
@@ -40,12 +57,39 @@ namespace openpeer
   {
     namespace internal
     {
+      ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabasesForLocationDatabase)
 
       //-----------------------------------------------------------------------
       interaction ILocationDatabaseForLocationDatabases
       {
+        typedef ILocationDatabaseLocalTypes::PeerList PeerList;
+
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, ForLocationDatabases)
+
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeRequest, SubscribeRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetRequest, DataGetRequest)
+
+        static ForLocationDatabasesPtr openRemote(
+                                                  LocationDatabasesPtr databases,
+                                                  const String &databaseID,
+                                                  bool downloadAllEntries
+                                                  );
+
+        static ForLocationDatabasesPtr openLocal(
+                                                 LocationDatabasesPtr databases,
+                                                 const String &databaseID
+                                                 );
+
+        static ForLocationDatabasesPtr createLocal(
+                                                   LocationDatabasesPtr databases,
+                                                   const String &databaseID,
+                                                   ElementPtr inMetaData,
+                                                   const PeerList &inPeerAccessList,
+                                                   Time expires
+                                                   );
+
+        virtual PUID getID() const = 0;
 
         virtual String getDatabaseID() const = 0;
 
@@ -55,7 +99,16 @@ namespace openpeer
 
         virtual void notifyRemoved() = 0;
 
-        virtual ElementPtr toDebug() const = 0;
+        virtual void notifyShutdown() = 0;
+
+        virtual void notifyIncoming(
+                                    IMessageIncomingPtr message,
+                                    SubscribeRequestPtr request
+                                    ) = 0;
+        virtual void notifyIncoming(
+                                    IMessageIncomingPtr message,
+                                    DataGetRequestPtr request
+                                    ) = 0;
       };
 
       //-----------------------------------------------------------------------
@@ -66,10 +119,18 @@ namespace openpeer
       #pragma mark LocationDatabase
       #pragma mark
 
-      class LocationDatabase : public SharedRecursiveLock,
+      class LocationDatabase : public MessageQueueAssociator,
+                               public SharedRecursiveLock,
                                public Noop,
                                public ILocationDatabaseLocal,
-                               public ILocationDatabaseForLocationDatabases
+                               public ILocationDatabaseForLocationDatabases,
+                               public IWakeDelegate,
+                               public ITimerDelegate,
+                               public IBackOffTimerDelegate,
+                               public IPromiseSettledDelegate,
+                               public ILocationSubscriptionDelegate,
+                               public IMessageMonitorResultDelegate<message::p2p_database::SubscribeResult>,
+                               public IMessageMonitorResultDelegate<message::p2p_database::DataGetResult>
       {
       public:
         friend interaction ILocationDatabaseFactory;
@@ -78,11 +139,93 @@ namespace openpeer
         friend interaction ILocationDatabaseForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesForLocationDatabase, UseLocationDatabases)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
+
+        ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction, UseDatabase)
+
+        ZS_DECLARE_TYPEDEF_PTR(services::IBackOffTimer, IBackOffTimer)
+
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeRequest, SubscribeRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeResult, SubscribeResult)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeNotify, SubscribeNotify)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetRequest, DataGetRequest)
+        ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetResult, DataGetResult)
+
+        typedef ILocationDatabaseLocalTypes::PeerList PeerList;
+
+        typedef LocationDatabasePtr SelfReferencePtr;
+
+        ZS_DECLARE_STRUCT_PTR(VersionedData)
+        ZS_DECLARE_STRUCT_PTR(IncomingSubscription)
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase::VersionedData
+        #pragma mark
+
+        struct VersionedData
+        {
+          enum VersionTypes
+          {
+            VersionType_FullList,
+            VersionType_ChangeList,
+          };
+          static const char *toString(VersionTypes type);
+
+          VersionTypes mType {VersionType_FullList};
+          UseDatabase::index mAfterIndex {OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN};
+
+          ElementPtr toDebug() const;
+        };
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase::IncomingSubscription
+        #pragma mark
+
+        struct IncomingSubscription : public VersionedData
+        {
+          SelfReferencePtr mSelf;
+          ILocationSubscriptionPtr mLocationSubscription;
+
+          UseLocationPtr mLocation;
+          String mSubscribeMessageID;
+
+          String mLastVersion;
+
+          Time mExpires;
+
+          bool mDownloadData {false};
+          bool mNotified {false};
+          PromisePtr mPendingSendPromise;
+
+          IncomingSubscription();
+          virtual ~IncomingSubscription();
+
+          ElementPtr toDebug() const;
+        };
+
+        typedef PUID LocationID;
+        typedef std::map<LocationID, IncomingSubscriptionPtr> IncomingSubscriptionMap;
+
+        typedef std::map<TimerPtr, SelfReferencePtr> TimedReferenceMap;
+
+        typedef String EntryID;
+        typedef std::map<EntryID, Promise::PromiseList> PendingEntryMap;
+
+        typedef std::list<EntryID> EntryList;
 
       protected:
-        LocationDatabase(UseLocationDatabasesPtr databases);
+        LocationDatabase(
+                         const String &databaseID,
+                         UseLocationDatabasesPtr databases
+                         );
         
-        LocationDatabase(Noop) :
+        LocationDatabase(
+                         Noop,
+                         IMessageQueuePtr queue = IMessageQueuePtr()
+                         ) :
+          MessageQueueAssociator(queue),
           SharedRecursiveLock(SharedRecursiveLock::create()),
           Noop(true) {}
 
@@ -126,10 +269,7 @@ namespace openpeer
 
         virtual EntryInfoPtr getEntry(const char *inUniqueID) const;
 
-        virtual void notifyWhenDataReady(
-                                         const UniqueIDList &needingEntryData,
-                                         ILocationDatabaseDataReadyDelegatePtr inDelegate
-                                         );
+        virtual PromisePtr notifyWhenDataReady(const UniqueIDList &needingEntryData);
 
         //---------------------------------------------------------------------
         #pragma mark
@@ -152,23 +292,44 @@ namespace openpeer
 
         virtual void setExpires(const Time &time);
 
-        virtual void add(
+        virtual bool add(
                          const char *uniqueID,
                          ElementPtr inMetaData,
                          ElementPtr inData
                          );
 
-        virtual void update(
+        virtual bool update(
                             const char *uniqueID,
                             ElementPtr inData
                             );
 
-        virtual void remove(const char *uniqueID);
+        virtual bool remove(const char *uniqueID);
 
         //---------------------------------------------------------------------
         #pragma mark
         #pragma mark LocationDatabase => ILocationDatabaseForLocationDatabases
         #pragma mark
+
+        static LocationDatabasePtr openRemote(
+                                              LocationDatabasesPtr databases,
+                                              const String &databaseID,
+                                              bool downloadAllEntries
+                                              );
+
+        static LocationDatabasePtr openLocal(
+                                             LocationDatabasesPtr databases,
+                                             const String &databaseID
+                                             );
+
+        static LocationDatabasePtr createLocal(
+                                               LocationDatabasesPtr databases,
+                                               const String &databaseID,
+                                               ElementPtr inMetaData,
+                                               const PeerList &inPeerAccessList,
+                                               Time expires
+                                               );
+
+        // (duplicate) virtual PUID getID() const = 0;
 
         // (duplicate) virtual String getDatabaseID() const = 0;
 
@@ -178,8 +339,98 @@ namespace openpeer
 
         virtual void notifyRemoved();
 
-        // (duplicate) virtual ElementPtr toDebug() const;
+        virtual void notifyShutdown();
 
+        // (duplicate) virtual void notifyIncoming(
+        //                                         IMessageIncomingPtr message,
+        //                                         SubscribeRequestPtr request
+        //                                         ) = 0;
+
+        // (duplicate) virtual void notifyIncoming(
+        //                                         IMessageIncomingPtr message,
+        //                                         DataGetRequestPtr request
+        //                                         ) = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase => IWakeDelegate
+        #pragma mark
+
+        virtual void onWake();
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase => ITimerDelegate
+        #pragma mark
+
+        virtual void onTimer(TimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase => IBackOffTimerDelegate
+        #pragma mark
+
+        virtual void onBackOffTimerAttemptAgainNow(IBackOffTimerPtr timer);
+
+        virtual void onBackOffTimerAttemptTimeout(IBackOffTimerPtr timer);
+
+        virtual void onBackOffTimerAllAttemptsFailed(IBackOffTimerPtr timer);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase => IPromiseSettledDelegate
+        #pragma mark
+        
+        virtual void onPromiseSettled(PromisePtr promise);
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabase => ILocationSubscriptionDelegate
+        #pragma mark
+
+        virtual void onLocationSubscriptionShutdown(ILocationSubscriptionPtr subscription);
+
+        virtual void onLocationSubscriptionLocationConnectionStateChanged(
+                                                                          ILocationSubscriptionPtr subscription,
+                                                                          ILocationPtr location,
+                                                                          LocationConnectionStates state
+                                                                          );
+
+        virtual void onLocationSubscriptionMessageIncoming(
+                                                           ILocationSubscriptionPtr subscription,
+                                                           IMessageIncomingPtr message
+                                                           );
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IMessageMonitorResultDelegate<SubscribeResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        SubscribeResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             SubscribeResultPtr ignore,         // will always be NULL
+                                                             message::MessageResultPtr result
+                                                             );
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationDatabases => IMessageMonitorResultDelegate<DataGetResult>
+        #pragma mark
+
+        virtual bool handleMessageMonitorResultReceived(
+                                                        IMessageMonitorPtr monitor,
+                                                        DataGetResultPtr result
+                                                        );
+
+        virtual bool handleMessageMonitorErrorResultReceived(
+                                                             IMessageMonitorPtr monitor,
+                                                             DataGetResultPtr ignore,         // will always be NULL
+                                                             message::MessageResultPtr result
+                                                             );
       protected:
         //---------------------------------------------------------------------
         #pragma mark
@@ -192,7 +443,64 @@ namespace openpeer
 
         virtual ElementPtr toDebug() const;
 
+        bool isPending() const {return DatabaseState_Pending == mState;}
+        bool isReady() const {return DatabaseState_Ready == mState;}
+        bool isShutdown() const {return DatabaseState_Shutdown == mState;}
+        bool isLocal() const {return mIsLocal;}
+
         ILocationDatabaseSubscriptionPtr subscribe(ILocationDatabaseDelegatePtr originalDelegate);
+
+        void cancel();
+
+        void setState(DatabaseStates state);
+
+        void step();
+
+        bool stepConflict();
+        bool stepShutdown();
+
+        bool stepMasterPromise();
+        bool stepRemoved();
+        bool stepOpenDB();
+        bool stepUpdate();
+
+        bool stepSubscribeLocationRemote();
+        bool stepRemoteSubscribe();
+        bool stepRemoteResubscribeTimer();
+
+        bool stepLocalIncomingSubscriptionsTimer();
+        bool stepLocalIncomingSubscriptionsNotify();
+
+        bool stepRemoteDownloadPendingRequestedData();
+        bool stepRemoteAutomaticDownloadAllData();
+
+        bool stepChangeNotify();
+
+        void notifyIncoming(SubscribeNotifyPtr notify);
+        virtual void notifyIncoming(
+                                    IMessageIncomingPtr message,
+                                    SubscribeRequestPtr request
+                                    );
+        virtual void notifyIncoming(
+                                    IMessageIncomingPtr message,
+                                    DataGetRequestPtr request
+                                    );
+
+        void processEntries(const EntryInfoList &entries);
+        void downloadAgain();
+
+        static EntryInfo::Dispositions toDisposition(UseDatabase::EntryChangeRecord::Dispositions disposition);
+
+        EntryInfoListPtr getUpdates(
+                                    VersionedData &ioVersionData,
+                                    String &outLastVersion,
+                                    bool includeData
+                                    ) const;
+
+        bool validateVersionInfo(
+                                 const String &version,
+                                 VersionedData &outVersionData
+                                 ) const;
 
       protected:
         //---------------------------------------------------------------------
@@ -201,11 +509,59 @@ namespace openpeer
         #pragma mark
 
         AutoPUID mID;
-        LocationDatabasesWeakPtr mThisWeak;
+        LocationDatabaseWeakPtr mThisWeak;
+
+        UseLocationPtr mLocation;
+        ILocationSubscriptionPtr mLocationSubscription;
 
         UseLocationDatabasesPtr mDatabases;
 
         ILocationDatabaseDelegateSubscriptions mSubscriptions;
+
+        DatabaseStates mState {DatabaseState_Pending};
+
+        bool mIsLocal;
+
+        String mDatabaseID;
+
+        bool mAutomaticallyDownloadAllEntries {false};
+
+        bool mOpenOnly {false};
+        ElementPtr mMetaData;
+        PeerList mPeerAccessList;
+
+        Time mExpires;
+
+        PromisePtr mMasterReady;
+
+        UseDatabase::DatabaseRecord mDatabaseRecord;
+        UseDatabasePtr mEntryDatabase;
+
+        String mLastChangeUpdateNotified;
+
+        TimedReferenceMap mTimedReferences;
+
+        IncomingSubscriptionMap mIncomingSubscriptions;
+        TimerPtr mIncomingSubscriptionTimer;
+
+        IBackOffTimerPtr mRemoteSubscriptionBackOffTimer;
+        IMessageMonitorPtr mRemoteSubscribeMonitor;
+        TimerPtr mRemoteSubscribeTimeout;
+
+        PendingEntryMap mPendingWhenDataReady;
+        IBackOffTimerPtr mRemoteDataGetBackOffTimer;
+        IMessageMonitorPtr mDataGetRequestMonitor;
+
+        bool mDownloadedAllData {false};
+        EntryList mRequestedEntries;
+        UseDatabase::index mLastRequestedIndex {OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN};
+        UseDatabase::index mLastRequestedIndexUponSuccess {OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN};
+
+        // no lock needed
+        std::atomic<bool> mNotifiedConflict {false};
+        std::atomic<bool> mNotifiedUpdated {false};
+        std::atomic<bool> mNotifiedRemoved {false};
+        std::atomic<bool> mNotifiedShutdown {false};
       };
 
       //-----------------------------------------------------------------------
@@ -237,6 +593,25 @@ namespace openpeer
                                                  const PeerList &inPeerAccessList,
                                                  Time expires = Time()
                                                  );
+
+        virtual LocationDatabasePtr openRemote(
+                                               LocationDatabasesPtr databases,
+                                               const String &databaseID,
+                                               bool downloadAllEntries
+                                               );
+
+        virtual LocationDatabasePtr openLocal(
+                                               LocationDatabasesPtr databases,
+                                               const String &databaseID
+                                               );
+
+        virtual LocationDatabasePtr createLocal(
+                                                LocationDatabasesPtr databases,
+                                                const String &databaseID,
+                                                ElementPtr inMetaData,
+                                                const PeerList &inPeerAccessList,
+                                                Time expires
+                                                );
       };
 
       class LocationDatabaseFactory : public IFactory<ILocationDatabaseFactory> {};

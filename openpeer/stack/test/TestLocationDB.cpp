@@ -1429,6 +1429,11 @@ namespace openpeer
         }
 
         {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/a");
+          TESTING_CHECK(!result)
+        }
+
+        {
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/a");
           uris.push_back("peer://domain.com/b");
@@ -1454,6 +1459,31 @@ namespace openpeer
         }
 
         {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/a");
+          TESTING_CHECK(result)
+        }
+        {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/b");
+          TESTING_CHECK(result)
+        }
+        {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/c");
+          TESTING_CHECK(result)
+        }
+        {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/d");
+          TESTING_CHECK(!result)
+        }
+        {
+          auto result = permission->hasPermission(3, "10", "peer://domain.com/a");
+          TESTING_CHECK(!result)
+        }
+        {
+          auto result = permission->hasPermission(2, "11", "peer://domain.com/a");
+          TESTING_CHECK(!result)
+        }
+
+        {
           IUseAbstraction::PeerURIList uris;
           uris.push_back("peer://domain.com/e");
           uris.push_back("peer://domain.com/a");
@@ -1470,6 +1500,19 @@ namespace openpeer
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::indexPeerLocation, 3);
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::databaseID, "11");
           checkIndexValue(UseTables::Permission(), UseTables::Permission_name(), 4, UseTables::peerURI, "peer://domain.com/a");
+        }
+
+        {
+          auto result = permission->hasPermission(3, "11", "peer://domain.com/a");
+          TESTING_CHECK(result)
+        }
+        {
+          auto result = permission->hasPermission(3, "11", "peer://domain.com/e");
+          TESTING_CHECK(result)
+        }
+        {
+          auto result = permission->hasPermission(2, "10", "peer://domain.com/e");
+          TESTING_CHECK(!result)
         }
 
         {
@@ -2192,6 +2235,36 @@ namespace openpeer
           Time now = zsLib::now() - Seconds(2);
           Time end = zsLib::now() + Seconds(17);
 
+          auto result = entry->getBatchMissingData();
+          TESTING_CHECK(result)
+
+          int loop = 0;
+          for (auto iter = result->begin(); iter != result->end(); ++loop, ++iter)
+          {
+            auto record = (*iter);
+            switch (loop) {
+              case 0: {
+                TESTING_EQUAL(record.mIndex, 3)
+                TESTING_EQUAL(record.mEntryID, "foo-c")
+                TESTING_EQUAL(record.mVersion, 1)
+                TESTING_EQUAL(UseServicesHelper::toString(record.mMetaData), "{\"values\":{\"value\":[\"valuec1\",\"valuec2\"]}}")
+                TESTING_EQUAL(UseServicesHelper::toString(record.mData), "")
+                TESTING_EQUAL(record.mDataLength, 100)
+                TESTING_CHECK(!record.mDataFetched)
+                TESTING_CHECK(Time() == record.mCreated)
+                TESTING_CHECK((record.mUpdated > now) && (record.mUpdated < end))
+                break;
+              }
+              default: TESTING_CHECK(false); break;
+            }
+          }
+          TESTING_EQUAL(1, loop)
+        }
+
+        {
+          Time now = zsLib::now() - Seconds(2);
+          Time end = zsLib::now() + Seconds(17);
+
           IUseAbstraction::EntryRecord record;
           record.mIndex = 2;
 
@@ -2294,6 +2367,18 @@ namespace openpeer
 
         {
           IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getLast(record);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getByIndex(1, record);
+          TESTING_CHECK(!result)
+        }
+
+        {
+          IUseAbstraction::EntryChangeRecord record;
           record.mDisposition = IUseAbstraction::EntryChangeRecord::Disposition_Add;
           record.mEntryID = "foo-a";
 
@@ -2346,6 +2431,42 @@ namespace openpeer
           checkIndexValue(UseTables::EntryChange(), UseTables::EntryChange_name(), 3, SqlField::id, 4);
           checkIndexValue(UseTables::EntryChange(), UseTables::EntryChange_name(), 3, UseTables::disposition, 3);
           checkIndexValue(UseTables::EntryChange(), UseTables::EntryChange_name(), 3, UseTables::entryID, "foo-b");
+        }
+
+        {
+          IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getByIndex(2, record);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(record.mIndex, 2)
+          TESTING_EQUAL(record.mDisposition, IUseAbstraction::EntryChangeRecord::Disposition_Add)
+          TESTING_EQUAL(record.mEntryID, "foo-b")
+        }
+        
+        {
+          IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getByIndex(3, record);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(record.mIndex, 3)
+          TESTING_EQUAL(record.mDisposition, IUseAbstraction::EntryChangeRecord::Disposition_Update)
+          TESTING_EQUAL(record.mEntryID, "foo-a")
+        }
+
+        {
+          IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getLast(record);
+          TESTING_CHECK(result)
+
+          TESTING_EQUAL(record.mIndex, 4)
+          TESTING_EQUAL(record.mDisposition, IUseAbstraction::EntryChangeRecord::Disposition_Remove)
+          TESTING_EQUAL(record.mEntryID, "foo-b")
+        }
+
+        {
+          IUseAbstraction::EntryChangeRecord record;
+          auto result = entryChange->getByIndex(5, record);
+          TESTING_CHECK(!result)
         }
 
         {
