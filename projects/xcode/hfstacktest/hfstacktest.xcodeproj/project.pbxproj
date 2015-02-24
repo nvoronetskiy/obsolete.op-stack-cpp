@@ -18,6 +18,7 @@
 		0063D33616CB255C00E6DB4D /* libhfstack.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D32716CB248A00E6DB4D /* libhfstack.a */; };
 		008C9C991A814912002ADD3B /* libcurl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063CA7116CABA6100E6DB4D /* libcurl.dylib */; };
 		008C9C9B1A814B38002ADD3B /* TestLocationDB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */; };
+		0091A2711A993D51005EB898 /* TestILocationDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0091A26F1A993D51005EB898 /* TestILocationDatabase.cpp */; };
 		00CB25AD177C84D600A12B5A /* libcryptopp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A6177C846700A12B5A /* libcryptopp.a */; };
 		00CB25AE177C84DD00A12B5A /* libudns.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB25A1177C846700A12B5A /* libudns.a */; };
 		00CB25AF177C84E400A12B5A /* libzsLib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 00CB259C177C846700A12B5A /* libzsLib.a */; };
@@ -181,6 +182,8 @@
 		0063D32216CB248A00E6DB4D /* hfstack.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = hfstack.xcodeproj; path = ../hfstack/hfstack.xcodeproj; sourceTree = "<group>"; };
 		008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestLocationDB.cpp; sourceTree = "<group>"; };
 		008C9C9C1A814B47002ADD3B /* TestLocationDB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestLocationDB.h; sourceTree = "<group>"; };
+		0091A26F1A993D51005EB898 /* TestILocationDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestILocationDatabase.cpp; sourceTree = "<group>"; };
+		0091A2701A993D51005EB898 /* TestILocationDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestILocationDatabase.h; sourceTree = "<group>"; };
 		00CF4B9A1A15BDBB00573A34 /* idnkit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = idnkit.xcodeproj; path = "../../../../ortc-lib/libs/idnkit/projects/xcode/idnkit.xcodeproj"; sourceTree = "<group>"; };
 		00CF4C191A15C60D00573A34 /* ortclib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ortclib.xcodeproj; path = "../../../../ortc-lib/projects/xcode/ortclib/ortclib.xcodeproj"; sourceTree = "<group>"; };
 		00CF4CAB1A15C85300573A34 /* easysqlite.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = easysqlite.xcodeproj; path = ../../../../easysqlite/projects/xcode/easysqlite.xcodeproj; sourceTree = "<group>"; };
@@ -264,6 +267,8 @@
 				002638401A2FC39E008EC96E /* TestSetup.cpp */,
 				0026383F1A2FC144008EC96E /* TestCache.h */,
 				0026383D1A2FC139008EC96E /* TestCache.cpp */,
+				0091A26F1A993D51005EB898 /* TestILocationDatabase.cpp */,
+				0091A2701A993D51005EB898 /* TestILocationDatabase.h */,
 				008C9C9A1A814B38002ADD3B /* TestLocationDB.cpp */,
 				008C9C9C1A814B47002ADD3B /* TestLocationDB.h */,
 				00FA3FF71A8A4DCA00C7C32B /* TestP2PDatabaseMessage.cpp */,
@@ -533,6 +538,7 @@
 				0063CA3416CAB85000E6DB4D /* testing.cpp in Sources */,
 				002DF47F1A38B2AA0046DE49 /* TestPushMailboxDB.cpp in Sources */,
 				0063CA3516CAB85000E6DB4D /* main.cpp in Sources */,
+				0091A2711A993D51005EB898 /* TestILocationDatabase.cpp in Sources */,
 				0063CA3616CAB85000E6DB4D /* TestStack.cpp in Sources */,
 				58E68C8316D7877F0098B4E3 /* TestServiceLockboxSession.cpp in Sources */,
 				581C0E1916E8A71B001AA7D3 /* TestAccount.cpp in Sources */,

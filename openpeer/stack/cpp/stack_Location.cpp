@@ -99,6 +99,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationForLocationDatabase
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ILocationForLocationDatabase::ForLocationDatabasePtr ILocationForLocationDatabase::getForLocal(AccountPtr account)
+      {
+        return ILocationFactory::singleton().getForLocal(account);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationForLocationDatabase::toDebug(ForLocationDatabasePtr location)
+      {
+        return Location::toDebug(Location::convert(location));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ILocationForLocationDatabases
       #pragma mark
 
@@ -320,6 +340,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       LocationPtr Location::convert(ForAccountPtr location)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Location, location);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationPtr Location::convert(ForLocationDatabasePtr location)
       {
         return ZS_DYNAMIC_PTR_CAST(Location, location);
       }

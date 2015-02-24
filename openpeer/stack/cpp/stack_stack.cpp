@@ -388,6 +388,16 @@ namespace openpeer
     }
 
     //-------------------------------------------------------------------------
+    IMessageQueuePtr IStack::getDefaultQueue()
+    {
+      internal::StackPtr singleton = internal::Stack::singleton();
+      if (!singleton) {
+        return services::IMessageQueueManager::getMessageQueue(OPENPEER_STACK_STACK_THREAD_NAME);
+      }
+      return singleton->queueDelegate();
+    }
+
+    //-------------------------------------------------------------------------
     IMessageQueuePtr IStack::getStackQueue()
     {
       internal::StackPtr singleton = internal::Stack::singleton();

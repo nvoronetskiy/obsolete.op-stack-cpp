@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0091A2BF1A9C3BED005EB898 /* TestILocationDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0091A2BD1A9C3BED005EB898 /* TestILocationDatabase.cpp */; };
 		00BDC01D1A1B974800F0DA1C /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC01C1A1B974800F0DA1C /* main.m */; };
 		00BDC0201A1B974800F0DA1C /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC01F1A1B974800F0DA1C /* AppDelegate.m */; };
 		00BDC0231A1B974800F0DA1C /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 00BDC0221A1B974800F0DA1C /* ViewController.m */; };
@@ -83,6 +84,8 @@
 		008C9C871A8111EF002ADD3B /* zsLib_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = zsLib_ios.xcodeproj; path = "../../../../ortc-lib/libs/zsLib/projects/xcode/zsLib_ios/zsLib_ios.xcodeproj"; sourceTree = "<group>"; };
 		008C9C8D1A8111F6002ADD3B /* udns_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = udns_ios.xcodeproj; path = "../../../../ortc-lib/libs/udns/projects/xcode/udns_ios/udns_ios.xcodeproj"; sourceTree = "<group>"; };
 		008C9C931A811203002ADD3B /* cryptopp_ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = cryptopp_ios.xcodeproj; path = "../../../../ortc-lib/libs/cryptopp/projects/xcode/cryptopp_ios/cryptopp_ios.xcodeproj"; sourceTree = "<group>"; };
+		0091A2BD1A9C3BED005EB898 /* TestILocationDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestILocationDatabase.cpp; sourceTree = "<group>"; };
+		0091A2BE1A9C3BED005EB898 /* TestILocationDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestILocationDatabase.h; sourceTree = "<group>"; };
 		00BDC0171A1B974800F0DA1C /* hfstackTest_ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = hfstackTest_ios.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00BDC01B1A1B974800F0DA1C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00BDC01C1A1B974800F0DA1C /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -256,6 +259,8 @@
 				00BDC1E11A1B978900F0DA1C /* TestAccount.h */,
 				00D7DF6A1A8C595A00DC0F6E /* TestCache.cpp */,
 				00D7DF6B1A8C595A00DC0F6E /* TestCache.h */,
+				0091A2BD1A9C3BED005EB898 /* TestILocationDatabase.cpp */,
+				0091A2BE1A9C3BED005EB898 /* TestILocationDatabase.h */,
 				00D7DF6C1A8C595A00DC0F6E /* TestLocationDB.cpp */,
 				00D7DF6D1A8C595A00DC0F6E /* TestLocationDB.h */,
 				00D7DF6E1A8C595A00DC0F6E /* TestP2PDatabaseMessage.cpp */,
@@ -465,6 +470,7 @@
 				00BDC0201A1B974800F0DA1C /* AppDelegate.m in Sources */,
 				00D7DF751A8C595A00DC0F6E /* TestLocationDB.cpp in Sources */,
 				00BDC01D1A1B974800F0DA1C /* main.m in Sources */,
+				0091A2BF1A9C3BED005EB898 /* TestILocationDatabase.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -78,6 +78,61 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ILocationSubscriptionForLocationDatabase
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ILocationSubscriptionForLocationDatabase::ForLocationDatabasePtr ILocationSubscriptionForLocationDatabase::subscribe(
+                                                                                                                           ILocationPtr location,
+                                                                                                                           ILocationSubscriptionDelegatePtr delegate
+                                                                                                                           )
+      {
+        return internal::ILocationSubscriptionFactory::singleton().subscribe(location, delegate);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationSubscriptionForLocationDatabase::toDebug(ForLocationDatabasePtr subscription)
+      {
+        return ILocationSubscription::toDebug(LocationSubscription::convert(subscription));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ILocationSubscriptionForLocationDatabases
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ILocationSubscriptionForLocationDatabases::ForLocationDatabasesPtr ILocationSubscriptionForLocationDatabases::subscribe(
+                                                                                                                              ILocationPtr location,
+                                                                                                                              ILocationSubscriptionDelegatePtr delegate
+                                                                                                                              )
+      {
+        return internal::ILocationSubscriptionFactory::singleton().subscribe(location, delegate);
+      }
+
+      //-----------------------------------------------------------------------
+      ILocationSubscriptionForLocationDatabases::ForLocationDatabasesPtr ILocationSubscriptionForLocationDatabases::subscribeAll(
+                                                                                                                                 AccountPtr account,
+                                                                                                                                 ILocationSubscriptionDelegatePtr delegate
+                                                                                                                                 )
+      {
+        return internal::ILocationSubscriptionFactory::singleton().subscribeAll(account, delegate);
+      }
+
+      //-----------------------------------------------------------------------
+      ElementPtr ILocationSubscriptionForLocationDatabases::toDebug(ForLocationDatabasesPtr subscription)
+      {
+        return ILocationSubscription::toDebug(LocationSubscription::convert(subscription));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
       LocationSubscription::LocationSubscription(
                                                  AccountPtr account,
                                                  ILocationSubscriptionDelegatePtr delegate
@@ -124,6 +179,18 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       LocationSubscriptionPtr LocationSubscription::convert(ForAccountPtr subscription)
+      {
+        return ZS_DYNAMIC_PTR_CAST(LocationSubscription, subscription);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationSubscriptionPtr LocationSubscription::convert(ForLocationDatabasePtr subscription)
+      {
+        return ZS_DYNAMIC_PTR_CAST(LocationSubscription, subscription);
+      }
+
+      //-----------------------------------------------------------------------
+      LocationSubscriptionPtr LocationSubscription::convert(ForLocationDatabasesPtr subscription)
       {
         return ZS_DYNAMIC_PTR_CAST(LocationSubscription, subscription);
       }
@@ -389,11 +456,11 @@ namespace openpeer
 
     //-------------------------------------------------------------------------
     ILocationSubscriptionPtr ILocationSubscription::subscribe(
-                                                              ILocationPtr peer,
+                                                              ILocationPtr location,
                                                               ILocationSubscriptionDelegatePtr delegate
                                                               )
     {
-      return internal::ILocationSubscriptionFactory::singleton().subscribe(peer, delegate);
+      return internal::ILocationSubscriptionFactory::singleton().subscribe(location, delegate);
     }
   }
 }

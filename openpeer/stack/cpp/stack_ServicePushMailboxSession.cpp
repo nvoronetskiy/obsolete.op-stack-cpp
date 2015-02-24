@@ -2932,6 +2932,7 @@ namespace openpeer
         String reason;
         switch (mLockbox->getState(&errorCode, &reason)) {
           case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
           case IServiceLockboxSession::SessionState_Ready:
           {

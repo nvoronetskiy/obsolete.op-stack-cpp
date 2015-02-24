@@ -54,8 +54,6 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, ForLocationDatabases)
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction::index, index)
 
-        static ForLocationDatabasesPtr singleton();
-
         static LocationDatabasesPtr getOrCreateForLocation(ILocationPtr location);
 
         static void notifyDestroyed(LocationDatabases &databases);

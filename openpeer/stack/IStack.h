@@ -56,6 +56,7 @@ namespace openpeer
                         IMessageQueuePtr keyGenerationQueue = IMessageQueuePtr()
                         );
 
+      static IMessageQueuePtr getDefaultQueue();
       static IMessageQueuePtr getStackQueue();
       static IMessageQueuePtr getServicesQueue();
       static IMessageQueuePtr getKeyGenerationQueue();

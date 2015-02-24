@@ -44,9 +44,12 @@
 
 #define OPENPEER_STACK_TEST_DO_SETUP_TEST                   (true)
 #define OPENPEER_STACK_TEST_DO_CACHE_TEST                   (false)
-#define OPENPEER_STACK_TEST_DO_P2P_DATABASE_MESSAGE_TEST    (true)
-#define OPENPEER_STACK_TEST_DO_LOCATION_DB_TEST             (true)
+#define OPENPEER_STACK_TEST_DO_P2P_DATABASE_MESSAGE_TEST    (false)
+#define OPENPEER_STACK_TEST_DO_LOCATION_DB_TEST             (false)
 #define OPENPEER_STACK_TEST_DO_PUSH_MAILBOX_DB_TEST         (false)
+
+#define OPENPEER_STACK_TEST_DO_ILOCATIONDATABASE_TEST       (true)
+
 #define OPENPEER_STACK_TEST_DO_STACK_TEST                   (false)
 #define OPENPEER_STACK_TEST_DO_LOCKBOX_SESSION_TEST         (false)
 #define OPENPEER_STACK_TEST_DO_ACCOUNT_TEST                 (false)

@@ -68,6 +68,50 @@ namespace openpeer
         virtual ElementPtr toDebug() const = 0;
       };
 
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageIncomingForLocationDatabase
+      #pragma mark
+
+      interaction IMessageIncomingForLocationDatabase
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabase, ForLocationDatabase)
+
+        static ElementPtr toDebug(ForLocationDatabasePtr messageIncoming);
+
+        virtual LocationPtr getLocation(bool internal = true) const = 0;
+        virtual message::MessagePtr getMessage() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual PromisePtr sendResponse(message::MessagePtr message) = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageIncomingForLocationDatabases
+      #pragma mark
+
+      interaction IMessageIncomingForLocationDatabases
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabases, ForLocationDatabases)
+
+        static ElementPtr toDebug(ForLocationDatabasesPtr messageIncoming);
+
+        virtual LocationPtr getLocation(bool internal = true) const = 0;
+        virtual message::MessagePtr getMessage() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual PromisePtr sendResponse(message::MessagePtr message) = 0;
+      };
+
 
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -80,12 +124,16 @@ namespace openpeer
       class MessageIncoming : public Noop,
                               public SharedRecursiveLock,
                               public IMessageIncoming,
-                              public IMessageIncomingForAccount
+                              public IMessageIncomingForAccount,
+                              public IMessageIncomingForLocationDatabase,
+                              public IMessageIncomingForLocationDatabases
       {
       public:
         friend interaction IMessageIncomingFactory;
         friend interaction IMessageIncoming;
         friend interaction IMessageIncomingForAccount;
+        friend interaction IMessageIncomingForLocationDatabase;
+        friend interaction IMessageIncomingForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForMessageIncoming, UseAccount)
 
@@ -106,8 +154,10 @@ namespace openpeer
       public:
         ~MessageIncoming();
 
-        static MessageIncomingPtr convert(IMessageIncomingPtr peer);
-        static MessageIncomingPtr convert(ForAccountPtr peer);
+        static MessageIncomingPtr convert(IMessageIncomingPtr messageIncoming);
+        static MessageIncomingPtr convert(ForAccountPtr messageIncoming);
+        static MessageIncomingPtr convert(ForLocationDatabasePtr messageIncoming);
+        static MessageIncomingPtr convert(ForLocationDatabasesPtr messageIncoming);
 
       protected:
         //---------------------------------------------------------------------
@@ -129,9 +179,6 @@ namespace openpeer
         #pragma mark MessageIncoming => IMessageIncomingForAccount
         #pragma mark
 
-        // (duplicate) virtual ILocationPtr getLocation() const;
-        // (duplicate) virtual message::MessagePtr getMessage() const;
-
         static ForAccountPtr create(
                                     AccountPtr account,
                                     LocationPtr location,
@@ -143,6 +190,30 @@ namespace openpeer
         // (duplicate) virtual message::MessagePtr getMessage() const;
 
         // (duplicate) virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageIncoming => IMessageIncomingForLocationDatabase
+        #pragma mark
+
+        // (duplicate) virtual LocationPtr getLocation(bool internal = true) const = 0;
+        // (duplicate) virtual message::MessagePtr getMessage() const = 0;
+
+        // (duplicate) virtual ElementPtr toDebug() const = 0;
+
+        // (duplicate) virtual PromisePtr sendResponse(message::MessagePtr message) = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark MessageIncoming => IMessageIncomingForLocationDatabases
+        #pragma mark
+
+        // (duplicate) virtual LocationPtr getLocation(bool internal = true) const = 0;
+        // (duplicate) virtual message::MessagePtr getMessage() const = 0;
+
+        // (duplicate) virtual ElementPtr toDebug() const = 0;
+
+        // (duplicate) virtual PromisePtr sendResponse(message::MessagePtr message) = 0;
 
       protected:
         //---------------------------------------------------------------------

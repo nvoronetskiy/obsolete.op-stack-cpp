@@ -2126,6 +2126,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ServiceLockboxSession::setState(SessionStates state)
       {
+        if (SessionState_Pending == state) {
+          if (mLockboxInfo.mToken.hasData()) {
+            state = SessionState_PendingWithLockboxAccessReady;
+          }
+        }
+
         if (state == mCurrentState) return;
 
         ZS_LOG_BASIC(debug("state changed") + ZS_PARAM("state", toString(state)) + ZS_PARAM("old state", toString(mCurrentState)))
@@ -2450,10 +2456,11 @@ namespace openpeer
     {
       switch (state)
       {
-        case SessionState_Pending:                      return "Pending";
-        case SessionState_PendingPeerFilesGeneration:   return "Pending Peer File Generation";
-        case SessionState_Ready:                        return "Ready";
-        case SessionState_Shutdown:                     return "Shutdown";
+        case SessionState_Pending:                        return "Pending";
+        case SessionState_PendingWithLockboxAccessReady:  return "Pending with Lockbox Access Ready";
+        case SessionState_PendingPeerFilesGeneration:     return "Pending Peer File Generation";
+        case SessionState_Ready:                          return "Ready";
+        case SessionState_Shutdown:                       return "Shutdown";
       }
       return "UNDEFINED";
     }

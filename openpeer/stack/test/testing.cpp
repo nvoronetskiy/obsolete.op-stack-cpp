@@ -43,11 +43,14 @@ typedef openpeer::services::ILogger ILogger;
 void doTestSetup();
 void doTestCache();
 void doTestLocationDB();
+void doTestILocationDatabase();
 void doTestP2PDatabaseMessage();
 void doTestPushMailboxDB();
 void doTestStack();
 void doTestLockboxSession();
 void doTestAccount();
+
+namespace openpeer { namespace stack { namespace test { ZS_IMPLEMENT_SUBSYSTEM(openpeer_stack_test) } } }
 
 
 namespace Testing
@@ -128,6 +131,7 @@ namespace Testing
     doTestSetup();
     doTestCache();
     doTestLocationDB();
+    doTestILocationDatabase();
     doTestP2PDatabaseMessage();
     doTestPushMailboxDB();
     doTestStack();

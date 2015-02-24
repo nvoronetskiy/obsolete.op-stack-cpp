@@ -66,8 +66,10 @@ namespace openpeer
     {
       ZS_DECLARE_INTERACTION_PTR(IAccountForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(ILocationSubscriptionForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabasesManagerForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabaseForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(IMessageIncomingForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSessionForLocationDatabases)
 
       //-----------------------------------------------------------------------
@@ -179,8 +181,10 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForLocationDatabases, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationSubscriptionForLocationDatabases, UseLocationSubscription)
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesManagerForLocationDatabases, UseLocationDatabasesManager)
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabases, UseMessageIncoming)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForLocationDatabases, UseLockbox)
 
         ZS_DECLARE_TYPEDEF_PTR(services::IBackOffTimer, IBackOffTimer)
@@ -480,21 +484,21 @@ namespace openpeer
 
         void notifyIncoming(ListSubscribeNotifyPtr notify);
         void notifyIncoming(
-                            IMessageIncomingPtr message,
+                            UseMessageIncomingPtr message,
                             ListSubscribeRequestPtr request
                             );
         void notifyIncoming(
-                            IMessageIncomingPtr message,
+                            UseMessageIncomingPtr message,
                             SubscribeRequestPtr request
                             );
         void notifyIncoming(
-                            IMessageIncomingPtr message,
+                            UseMessageIncomingPtr message,
                             DataGetRequestPtr request
                             );
 
         UseLocationDatabasePtr prepareDatabaseLocationForMessage(
                                                                  MessageRequestPtr request,
-                                                                 IMessageIncomingPtr message,
+                                                                 UseMessageIncomingPtr message,
                                                                  UseLocationPtr fromLocation,
                                                                  const String &requestedDatabaseID
                                                                  );
@@ -513,7 +517,7 @@ namespace openpeer
         bool mIsLocal {false};
 
         UseLocationPtr mLocation;
-        ILocationSubscriptionPtr mLocationSubscription;
+        UseLocationSubscriptionPtr mLocationSubscription;
 
         ILocationDatabasesDelegateSubscriptions mSubscriptions;
 

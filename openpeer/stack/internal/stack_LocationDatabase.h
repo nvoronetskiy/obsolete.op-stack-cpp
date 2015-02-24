@@ -57,8 +57,10 @@ namespace openpeer
   {
     namespace internal
     {
-      ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(ILocationForLocationDatabase)
+      ZS_DECLARE_INTERACTION_PTR(ILocationSubscriptionForLocationDatabase)
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabasesForLocationDatabase)
+      ZS_DECLARE_INTERACTION_PTR(IMessageIncomingForLocationDatabase)
 
       //-----------------------------------------------------------------------
       interaction ILocationDatabaseForLocationDatabases
@@ -69,6 +71,7 @@ namespace openpeer
 
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::SubscribeRequest, SubscribeRequest)
         ZS_DECLARE_TYPEDEF_PTR(message::p2p_database::DataGetRequest, DataGetRequest)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabase, UseMessageIncoming)
 
         static ForLocationDatabasesPtr openRemote(
                                                   LocationDatabasesPtr databases,
@@ -102,11 +105,11 @@ namespace openpeer
         virtual void notifyShutdown() = 0;
 
         virtual void notifyIncoming(
-                                    IMessageIncomingPtr message,
+                                    UseMessageIncomingPtr message,
                                     SubscribeRequestPtr request
                                     ) = 0;
         virtual void notifyIncoming(
-                                    IMessageIncomingPtr message,
+                                    UseMessageIncomingPtr message,
                                     DataGetRequestPtr request
                                     ) = 0;
       };
@@ -139,7 +142,9 @@ namespace openpeer
         friend interaction ILocationDatabaseForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabasesForLocationDatabase, UseLocationDatabases)
-        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabases, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabase, UseLocation)
+        ZS_DECLARE_TYPEDEF_PTR(ILocationSubscriptionForLocationDatabase, UseLocationSubscription)
+        ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabase, UseMessageIncoming)
 
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseAbstraction, UseDatabase)
 
@@ -186,7 +191,7 @@ namespace openpeer
         struct IncomingSubscription : public VersionedData
         {
           SelfReferencePtr mSelf;
-          ILocationSubscriptionPtr mLocationSubscription;
+          UseLocationSubscriptionPtr mLocationSubscription;
 
           UseLocationPtr mLocation;
           String mSubscribeMessageID;
@@ -342,12 +347,12 @@ namespace openpeer
         virtual void notifyShutdown();
 
         // (duplicate) virtual void notifyIncoming(
-        //                                         IMessageIncomingPtr message,
+        //                                         UseMessageIncomingPtr message,
         //                                         SubscribeRequestPtr request
         //                                         ) = 0;
 
         // (duplicate) virtual void notifyIncoming(
-        //                                         IMessageIncomingPtr message,
+        //                                         UseMessageIncomingPtr message,
         //                                         DataGetRequestPtr request
         //                                         ) = 0;
 
@@ -478,11 +483,11 @@ namespace openpeer
 
         void notifyIncoming(SubscribeNotifyPtr notify);
         virtual void notifyIncoming(
-                                    IMessageIncomingPtr message,
+                                    UseMessageIncomingPtr message,
                                     SubscribeRequestPtr request
                                     );
         virtual void notifyIncoming(
-                                    IMessageIncomingPtr message,
+                                    UseMessageIncomingPtr message,
                                     DataGetRequestPtr request
                                     );
 
@@ -512,7 +517,7 @@ namespace openpeer
         LocationDatabaseWeakPtr mThisWeak;
 
         UseLocationPtr mLocation;
-        ILocationSubscriptionPtr mLocationSubscription;
+        UseLocationSubscriptionPtr mLocationSubscription;
 
         UseLocationDatabasesPtr mDatabases;
 

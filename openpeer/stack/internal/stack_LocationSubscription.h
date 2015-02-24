@@ -79,17 +79,79 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationSubscriptionForLocationDatabase
+      #pragma mark
+
+      interaction ILocationSubscriptionForLocationDatabase
+      {
+        ZS_DECLARE_TYPEDEF_PTR(ILocationSubscriptionForLocationDatabase, ForLocationDatabase)
+
+        static ForLocationDatabasePtr subscribe(
+                                                ILocationPtr location,
+                                                ILocationSubscriptionDelegatePtr delegate
+                                                );
+
+        static ElementPtr toDebug(ForLocationDatabasePtr subscription);
+
+        virtual PUID getID() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual void cancel() = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark ILocationSubscriptionForLocationDatabases
+      #pragma mark
+
+      interaction ILocationSubscriptionForLocationDatabases
+      {
+        ZS_DECLARE_TYPEDEF_PTR(ILocationSubscriptionForLocationDatabases, ForLocationDatabases)
+
+        static ForLocationDatabasesPtr subscribe(
+                                                 ILocationPtr location,
+                                                 ILocationSubscriptionDelegatePtr delegate
+                                                 );
+
+        static ForLocationDatabasesPtr subscribeAll(
+                                                    AccountPtr account,
+                                                    ILocationSubscriptionDelegatePtr delegate
+                                                    );
+
+        static ElementPtr toDebug(ForLocationDatabasesPtr subscription);
+
+        virtual PUID getID() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual void cancel() = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark LocationSubscription
       #pragma mark
 
       class LocationSubscription : public Noop,
                                    public SharedRecursiveLock,
                                    public ILocationSubscription,
-                                   public ILocationSubscriptionForAccount
+                                   public ILocationSubscriptionForAccount,
+                                   public ILocationSubscriptionForLocationDatabase,
+                                   public ILocationSubscriptionForLocationDatabases
       {
       public:
         friend interaction ILocationSubscriptionFactory;
         friend interaction ILocationSubscription;
+        friend interaction ILocationSubscriptionForAccount;
+        friend interaction ILocationSubscriptionForLocationDatabase;
+        friend interaction ILocationSubscriptionForLocationDatabases;
 
         ZS_DECLARE_TYPEDEF_PTR(IAccountForLocationSubscription, UseAccount)
         ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationSubscription, UseLocation)
@@ -112,6 +174,8 @@ namespace openpeer
 
         static LocationSubscriptionPtr convert(ILocationSubscriptionPtr subscription);
         static LocationSubscriptionPtr convert(ForAccountPtr subscription);
+        static LocationSubscriptionPtr convert(ForLocationDatabasePtr subscription);
+        static LocationSubscriptionPtr convert(ForLocationDatabasesPtr subscription);
 
       protected:
         //---------------------------------------------------------------------
@@ -156,6 +220,28 @@ namespace openpeer
         virtual void notifyShutdown();
 
         // (duplicate) virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationSubscription => ILocationSubscriptionForLocationDatabase
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const;
+
+        // (duplicate) virtual ElementPtr toDebug() const;
+
+        // (duplicate) virtual void cancel() = 0;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark LocationSubscription => ILocationSubscriptionForLocationDatabases
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const;
+
+        // (duplicate) virtual ElementPtr toDebug() const;
+
+        // (duplicate) virtual void cancel() = 0;
 
       protected:
         //---------------------------------------------------------------------

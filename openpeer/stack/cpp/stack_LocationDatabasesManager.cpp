@@ -59,15 +59,9 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      ILocationDatabasesManagerForLocationDatabases::ForLocationDatabasesPtr ILocationDatabasesManagerForLocationDatabases::singleton()
-      {
-        return internal::ILocationDatabasesManagerFactory::singleton().singletonManager();
-      }
-
-      //-----------------------------------------------------------------------
       LocationDatabasesPtr ILocationDatabasesManagerForLocationDatabases::getOrCreateForLocation(ILocationPtr location)
       {
-        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        auto singleton = LocationDatabasesManager::singleton();
         if (!singleton) return LocationDatabasesPtr();
 
         return singleton->getOrCreateForLocation(location);
@@ -76,7 +70,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void ILocationDatabasesManagerForLocationDatabases::notifyDestroyed(LocationDatabases &databases)
       {
-        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        auto singleton = LocationDatabasesManager::singleton();
         if (!singleton) return;
 
         return singleton->notifyDestroyed(databases);
@@ -88,7 +82,7 @@ namespace openpeer
                                                                                                             const String &userHash
                                                                                                             )
       {
-        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        auto singleton = LocationDatabasesManager::singleton();
         if (!singleton) return ILocationDatabaseAbstractionPtr();
 
         return singleton->getOrCreateForUserHash(location, userHash);
@@ -101,7 +95,7 @@ namespace openpeer
                                                                                      index indexPeerLocation
                                                                                      )
       {
-        ForLocationDatabasesPtr singleton = ILocationDatabasesManagerForLocationDatabases::singleton();
+        auto singleton = LocationDatabasesManager::singleton();
         if (!singleton) return;
 
         return singleton->purgePeerLocationDatabases(location, masterDatabase, indexPeerLocation);
@@ -283,6 +277,10 @@ namespace openpeer
             auto batch = info->mMasterDatabase->peerLocationTable()->getUnusedLocationsBatch(expires);
 
             while (batch) {
+              if (batch->size() < 1) {
+                ZS_LOG_TRACE(log("no peer locations to expire at this time"))
+                break;
+              }
               for (auto iter = batch->begin(); iter != batch->end(); ++iter) {
                 auto record = (*iter);
 
@@ -385,7 +383,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ILocationDatabasesManagerFactory &ILocationDatabasesManagerFactory::singleton()
       {
-        return ILocationDatabasesManagerFactory::singleton();
+        return LocationDatabasesManagerFactory::singleton();
       }
 
       //-----------------------------------------------------------------------

@@ -2472,6 +2472,7 @@ namespace openpeer
 
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
 
             LockboxInfo lockboxInfo = lockbox->getLockboxInfo();
@@ -2521,6 +2522,7 @@ namespace openpeer
 
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration: {
 
             ZS_LOG_TRACE(log("must wait for lockbox to be ready (pending with access token is not enough)"))

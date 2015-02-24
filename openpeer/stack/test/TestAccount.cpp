@@ -48,8 +48,6 @@
 
 namespace openpeer { namespace stack { namespace test { ZS_DECLARE_SUBSYSTEM(openpeer_stack_test) } } }
 
-namespace openpeer { namespace stack { namespace test { ZS_IMPLEMENT_SUBSYSTEM(openpeer_stack_test) } } }
-
 //#define OPENPEER_MEDIA_ENGINE_DEBUG_LOG_LEVEL
 //#define OPENPEER_MEDIA_ENGINE_ENABLE_TIMER
 #define OPENPEER_STACK_TEST_ACCOUNT_TIMEOUT_IN_SECONDS (60*2)

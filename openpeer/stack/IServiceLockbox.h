@@ -68,6 +68,7 @@ namespace openpeer
       enum SessionStates
       {
         SessionState_Pending,
+        SessionState_PendingWithLockboxAccessReady,
         SessionState_PendingPeerFilesGeneration,
         SessionState_Ready,
         SessionState_Shutdown,

@@ -33,9 +33,11 @@
 
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Location.h>
+#include <openpeer/stack/internal/stack_LocationSubscription.h>
 #include <openpeer/stack/internal/stack_LocationDatabase.h>
 #include <openpeer/stack/internal/stack_LocationDatabasesManager.h>
 #include <openpeer/stack/internal/stack_LocationDatabasesTearAway.h>
+#include <openpeer/stack/internal/stack_MessageIncoming.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
@@ -46,7 +48,6 @@
 
 #include <openpeer/stack/message/IMessageHelper.h>
 
-#include <openpeer/stack/IMessageIncoming.h>
 
 #include <openpeer/services/IHelper.h>
 #include <openpeer/services/ISettings.h>
@@ -125,9 +126,9 @@ namespace openpeer
       {
         ZS_THROW_INVALID_ARGUMENT_IF(!mLocation)
 
-        ZS_LOG_DEBUG(debug("created"))
-
         mIsLocal = ILocation::LocationType_Local == mLocation->getLocationType();
+
+        ZS_LOG_DEBUG(debug("created"))
       }
 
       //-----------------------------------------------------------------------
@@ -143,6 +144,8 @@ namespace openpeer
         
         mThisWeak.reset();
         ZS_LOG_DEBUG(log("destroyed"))
+
+        cancel();
 
         UseLocationDatabasesManager::notifyDestroyed(*this);
       }
@@ -760,9 +763,11 @@ namespace openpeer
       #pragma mark
 
       //-----------------------------------------------------------------------
-      void LocationDatabases::onLocationSubscriptionShutdown(ILocationSubscriptionPtr subscription)
+      void LocationDatabases::onLocationSubscriptionShutdown(ILocationSubscriptionPtr inSubscription)
       {
-        ZS_LOG_TRACE(log("notified location subscription shutdown (thus account must be closed)") + ILocationSubscription::toDebug(subscription))
+        UseLocationSubscriptionPtr subscription = LocationSubscription::convert(inSubscription);
+
+        ZS_LOG_TRACE(log("notified location subscription shutdown (thus account must be closed)") + UseLocationSubscription::toDebug(subscription))
 
         AutoRecursiveLock lock(*this);
 
@@ -772,12 +777,15 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void LocationDatabases::onLocationSubscriptionLocationConnectionStateChanged(
-                                                                                   ILocationSubscriptionPtr subscription,
-                                                                                   ILocationPtr location,
+                                                                                   ILocationSubscriptionPtr inSubscription,
+                                                                                   ILocationPtr inLocation,
                                                                                    LocationConnectionStates state
                                                                                    )
       {
-        ZS_LOG_TRACE(log("notified location state changed") + ILocationSubscription::toDebug(subscription) + ILocation::toDebug(location) + ZS_PARAM("state", ILocation::toString(state)))
+        UseLocationSubscriptionPtr subscription = LocationSubscription::convert(inSubscription);
+        UseLocationPtr location = Location::convert(inLocation);
+
+        ZS_LOG_TRACE(log("notified location state changed") + UseLocationSubscription::toDebug(subscription) + UseLocation::toDebug(location) + ZS_PARAM("state", ILocation::toString(state)))
 
         AutoRecursiveLock lock(*this);
 
@@ -808,10 +816,11 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void LocationDatabases::onLocationSubscriptionMessageIncoming(
                                                                     ILocationSubscriptionPtr subscription,
-                                                                    IMessageIncomingPtr message
+                                                                    IMessageIncomingPtr inMessage
                                                                     )
       {
-        ZS_LOG_TRACE(log("notified location message") + ILocationSubscription::toDebug(subscription) + IMessageIncoming::toDebug(message))
+        UseMessageIncomingPtr message = MessageIncoming::convert(inMessage);
+        ZS_LOG_TRACE(log("notified location message") + ILocationSubscription::toDebug(subscription) + UseMessageIncoming::toDebug(message))
 
         {
           AutoRecursiveLock lock(*this);
@@ -1000,7 +1009,7 @@ namespace openpeer
 
         if (!originalDelegate) return ILocationDatabasesSubscriptionPtr();
 
-        ILocationDatabasesSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate);
+        ILocationDatabasesSubscriptionPtr subscription = mSubscriptions.subscribe(originalDelegate, UseStack::queueDelegate());
 
         ILocationDatabasesDelegatePtr delegate = mSubscriptions.delegate(subscription, true);
 
@@ -1035,6 +1044,11 @@ namespace openpeer
         ZS_LOG_DEBUG(log("cancel called") + toDebug())
 
         mMasterDatase.reset();
+
+        if (mLocationSubscription) {
+          mLocationSubscription->cancel();
+          mLocationSubscription.reset();
+        }
 
         if (mLockboxSubscription) {
           mLockboxSubscription->cancel();
@@ -1075,7 +1089,7 @@ namespace openpeer
 
         setState(DatabasesState_Shutdown);
 
-        {
+        if (mPromiseWhenReadyList.size() > 0) {
           PromisePtr broadcast = Promise::broadcast(mPromiseWhenReadyList);
           broadcast->reject();
           mPromiseWhenReadyList.clear();
@@ -1097,7 +1111,8 @@ namespace openpeer
         if (!stepPrepareMasterDatabase()) goto not_ready;
 
         {
-          if (mExpectingShutdownLocationDatabases.size() < 1) {
+          if ((mExpectingShutdownLocationDatabases.size() < 1) &&
+              (mPromiseWhenReadyList.size() > 0)) {
             PromisePtr broadcast = Promise::broadcast(mPromiseWhenReadyList);
             broadcast->resolve();
             mPromiseWhenReadyList.clear();
@@ -1149,6 +1164,7 @@ namespace openpeer
         IServiceLockboxSession::SessionStates state = lockbox->getState();
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
           case IServiceLockboxSession::SessionState_Ready: {
             break;
@@ -1166,8 +1182,10 @@ namespace openpeer
             (lockboxInfo.mDomain.isEmpty())) {
           ZS_LOG_TRACE(log("must wait for lockbox to be ready before continuing") + lockbox->toDebug() + lockboxInfo.toDebug())
 
-          mLockboxSubscription = lockbox->subscribe(mThisWeak.lock());
-          mLockbox = lockbox;
+          if (!mLockboxSubscription) {
+            mLockboxSubscription = lockbox->subscribe(mThisWeak.lock());
+            mLockbox = lockbox;
+          }
           return false;
         }
 
@@ -1215,7 +1233,7 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(log("subscribing to all remote locations (needed to maintain information about all remote databases)"))
-        mLocationSubscription = ILocationSubscription::subscribeAll(mLocation->getAccount(), mThisWeak.lock());
+        mLocationSubscription = UseLocationSubscription::subscribeAll(mLocation->getAccount(), mThisWeak.lock());
 
         return true;
       }
@@ -1234,7 +1252,7 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(log("subscribing to remote location (only need to subscribe to single remote location)"))
-        mLocationSubscription = ILocationSubscription::subscribe(Location::convert(mLocation), mThisWeak.lock());
+        mLocationSubscription = UseLocationSubscription::subscribe(Location::convert(mLocation), mThisWeak.lock());
 
         return true;
       }
@@ -1806,13 +1824,13 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void LocationDatabases::notifyIncoming(
-                                             IMessageIncomingPtr message,
+                                             UseMessageIncomingPtr message,
                                              ListSubscribeRequestPtr request
                                              )
       {
         AutoRecursiveLock lock(*this);
 
-        ZS_LOG_DEBUG(log("notified of incoming list subscription request") + IMessageIncoming::toDebug(message) + Message::toDebug(request))
+        ZS_LOG_DEBUG(log("notified of incoming list subscription request") + UseMessageIncoming::toDebug(message) + Message::toDebug(request))
 
         IHTTP::HTTPStatusCodes errorCode = IHTTP::HTTPStatusCode_Conflict;
         String errorReason;
@@ -1820,7 +1838,7 @@ namespace openpeer
         IncomingListSubscriptionMap::iterator found = mIncomingListSubscriptions.end();
 
         {
-          UseLocationPtr location = Location::convert(message->getLocation());
+          UseLocationPtr location = message->getLocation();
           if (!location) {
             errorCode = IHTTP::HTTPStatusCode_InternalServerError;
             goto fail_incoming_subscribe;
@@ -1885,11 +1903,11 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void LocationDatabases::notifyIncoming(
-                                             IMessageIncomingPtr message,
+                                             UseMessageIncomingPtr message,
                                              SubscribeRequestPtr request
                                              )
       {
-        UseLocationPtr location = Location::convert(message->getLocation());
+        UseLocationPtr location = message->getLocation();
         String databaseID = request->databaseID();
 
         UseLocationDatabasePtr database = prepareDatabaseLocationForMessage(request, message, location, databaseID);
@@ -1898,16 +1916,16 @@ namespace openpeer
           ZS_LOG_WARNING(Detail, log("could not subscribe to database") + ZS_PARAMIZE(databaseID) + location->toDebug())
           return;
         }
-        database->notifyIncoming(message, request);
+        database->notifyIncoming(MessageIncoming::convert(message), request);
       }
 
       //-----------------------------------------------------------------------
       void LocationDatabases::notifyIncoming(
-                                             IMessageIncomingPtr message,
+                                             UseMessageIncomingPtr message,
                                              DataGetRequestPtr request
                                              )
       {
-        UseLocationPtr location = Location::convert(message->getLocation());
+        UseLocationPtr location = message->getLocation();
         String databaseID = request->databaseID();
 
         UseLocationDatabasePtr database = prepareDatabaseLocationForMessage(request, message, location, databaseID);
@@ -1916,13 +1934,13 @@ namespace openpeer
           ZS_LOG_WARNING(Detail, log("could not subscribe to database") + ZS_PARAMIZE(databaseID) + location->toDebug())
           return;
         }
-        database->notifyIncoming(message, request);
+        database->notifyIncoming(MessageIncoming::convert(message), request);
       }
 
       //-----------------------------------------------------------------------
       LocationDatabases::UseLocationDatabasePtr LocationDatabases::prepareDatabaseLocationForMessage(
                                                                                                      MessageRequestPtr request,
-                                                                                                     IMessageIncomingPtr message,
+                                                                                                     UseMessageIncomingPtr message,
                                                                                                      UseLocationPtr fromLocation,
                                                                                                      const String &requestedDatabaseID
                                                                                                      )
@@ -2072,7 +2090,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       ILocationDatabasesFactory &ILocationDatabasesFactory::singleton()
       {
-        return ILocationDatabasesFactory::singleton();
+        return LocationDatabasesFactory::singleton();
       }
 
       //-----------------------------------------------------------------------

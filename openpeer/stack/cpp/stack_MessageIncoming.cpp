@@ -84,6 +84,34 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IMessageIncomingForLocationDatabase
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IMessageIncomingForLocationDatabase::toDebug(ForLocationDatabasePtr messageIncoming)
+      {
+        return MessageIncoming::toDebug(MessageIncoming::convert(messageIncoming));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
+      #pragma mark IMessageIncomingForLocationDatabases
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      ElementPtr IMessageIncomingForLocationDatabases::toDebug(ForLocationDatabasesPtr messageIncoming)
+      {
+        return MessageIncoming::toDebug(MessageIncoming::convert(messageIncoming));
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark MessageIncoming
       #pragma mark
 
@@ -137,6 +165,18 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       MessageIncomingPtr MessageIncoming::convert(ForAccountPtr messageIncoming)
+      {
+        return ZS_DYNAMIC_PTR_CAST(MessageIncoming, messageIncoming);
+      }
+
+      //-----------------------------------------------------------------------
+      MessageIncomingPtr MessageIncoming::convert(ForLocationDatabasePtr messageIncoming)
+      {
+        return ZS_DYNAMIC_PTR_CAST(MessageIncoming, messageIncoming);
+      }
+
+      //-----------------------------------------------------------------------
+      MessageIncomingPtr MessageIncoming::convert(ForLocationDatabasesPtr messageIncoming)
       {
         return ZS_DYNAMIC_PTR_CAST(MessageIncoming, messageIncoming);
       }

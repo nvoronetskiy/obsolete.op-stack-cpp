@@ -2189,6 +2189,7 @@ namespace openpeer
         IServiceLockboxSession::SessionStates state = mLockboxSession->getState(&errorCode, &reason);
         switch (state) {
           case IServiceLockboxSession::SessionState_Pending:
+          case IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady:
           case IServiceLockboxSession::SessionState_PendingPeerFilesGeneration:
           {
             ZS_LOG_TRACE(log("lockbox session pending"))

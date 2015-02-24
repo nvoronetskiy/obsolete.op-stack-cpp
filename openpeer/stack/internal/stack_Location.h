@@ -86,6 +86,36 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark ILocationForLocationDatabase
+      #pragma mark
+
+      interaction ILocationForLocationDatabase
+      {
+        typedef ILocation::LocationTypes LocationTypes;
+
+        ZS_DECLARE_TYPEDEF_PTR(ILocationForLocationDatabase, ForLocationDatabase)
+
+        static ForLocationDatabasePtr getForLocal(AccountPtr account);
+
+        static ElementPtr toDebug(ForLocationDatabasePtr location);
+
+        virtual PUID getID() const = 0;
+
+        virtual ElementPtr toDebug() const = 0;
+
+        virtual String getPeerURI() const = 0;
+        virtual String getLocationID() const = 0;
+
+        virtual bool isConnected() const = 0;
+
+        virtual PromisePtr send(message::MessagePtr message) const = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark ILocationForLocationDatabases
       #pragma mark
 
@@ -258,6 +288,7 @@ namespace openpeer
       class Location : public Noop,
                        public ILocation,
                        public ILocationForAccount,
+                       public ILocationForLocationDatabase,
                        public ILocationForLocationDatabases,
                        public ILocationForLocationSubscription,
                        public ILocationForMessages,
@@ -270,6 +301,7 @@ namespace openpeer
       public:
         friend interaction ILocationFactory;
         friend interaction ILocation;
+        friend interaction ILocationForLocationDatabase;
         friend interaction ILocationForLocationDatabases;
         friend interaction ILocationForLocationSubscription;
         friend interaction ILocationForMessages;
@@ -296,6 +328,7 @@ namespace openpeer
 
         static LocationPtr convert(ILocationPtr location);
         static LocationPtr convert(ForAccountPtr location);
+        static LocationPtr convert(ForLocationDatabasePtr location);
         static LocationPtr convert(ForLocationDatabasesPtr location);
         static LocationPtr convert(ForLocationSubscriptionPtr location);
         static LocationPtr convert(ForMessagesPtr location);
@@ -354,6 +387,22 @@ namespace openpeer
         // (duplicate) virtual String getPeerURI() const;
 
         // (duplicate) virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Location => ILocationForLocationDatabase
+        #pragma mark
+
+        // (duplicate) virtual PUID getID() const = 0;
+
+        // (duplicate) virtual ElementPtr toDebug() const = 0;
+
+        // (duplicate) virtual String getPeerURI() const = 0;
+        // (duplicate) virtual String getLocationID() const = 0;
+
+        // (duplicate) virtual bool isConnected() const = 0;
+
+        // (duplicate) virtual PromisePtr send(message::MessagePtr message) const;
 
         //---------------------------------------------------------------------
         #pragma mark
