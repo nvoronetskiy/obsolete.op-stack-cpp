@@ -514,7 +514,7 @@ namespace openpeer
         #pragma mark Location => (data)
         #pragma mark
 
-        PUID mID;
+        AutoPUID mID;
         LocationWeakPtr mThisWeak;
 
         UseAccountWeakPtr mAccount;

@@ -113,6 +113,23 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IPeerForLocationDatabases
+      #pragma mark
+
+      //-----------------------------------------------------------------------
+      IPeerForLocationDatabases::ForLocationDatabasesPtr IPeerForLocationDatabases::create(
+                                                                                           AccountPtr account,
+                                                                                           const char *peerURI
+                                                                                           )
+      {
+        return IPeerFactory::singleton().create(account, peerURI);
+      }
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IPeerForMessages
       #pragma mark
 
@@ -224,6 +241,12 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       PeerPtr Peer::convert(ForLocationPtr peer)
+      {
+        return ZS_DYNAMIC_PTR_CAST(Peer, peer);
+      }
+
+      //-----------------------------------------------------------------------
+      PeerPtr Peer::convert(ForLocationDatabasesPtr peer)
       {
         return ZS_DYNAMIC_PTR_CAST(Peer, peer);
       }

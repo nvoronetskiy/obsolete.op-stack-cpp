@@ -39,6 +39,19 @@
 #include <zsLib/XML.h>
 
 #include <openpeer/stack/internal/stack_LocationDatabasesManager.h>
+#include <openpeer/stack/ILocationDatabaseLocal.h>
+
+#include <openpeer/stack/message/p2p-database/ListSubscribeRequest.h>
+#include <openpeer/stack/message/p2p-database/ListSubscribeResult.h>
+#include <openpeer/stack/message/p2p-database/ListSubscribeNotify.h>
+
+#include <openpeer/stack/message/p2p-database/SubscribeRequest.h>
+#include <openpeer/stack/message/p2p-database/SubscribeResult.h>
+#include <openpeer/stack/message/p2p-database/SubscribeNotify.h>
+
+#include <openpeer/stack/message/p2p-database/DataGetRequest.h>
+#include <openpeer/stack/message/p2p-database/DataGetResult.h>
+
 
 #include <openpeer/stack/IStack.h>
 #include <openpeer/stack/ICache.h>
@@ -82,8 +95,24 @@ ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::MessageIncomingFactory, Messag
 
 ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::LockboxInfo, LockboxInfo)
 
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::Peer, Peer)
+
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::IPeerFactory, IPeerFactory)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::PeerFactory, PeerFactory)
+
 ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::IServiceLockboxSessionFactory, IServiceLockboxSessionFactory)
 ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::ServiceLockboxSessionFactory, ServiceLockboxSessionFactory)
+
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::ListSubscribeRequest, ListSubscribeRequest)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::ListSubscribeResult, ListSubscribeResult)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::ListSubscribeNotify, ListSubscribeNotify)
+
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::SubscribeRequest, SubscribeRequest)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::SubscribeResult, SubscribeResult)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::SubscribeNotify, SubscribeNotify)
+
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::DataGetRequest, DataGetRequest)
+ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::message::p2p_database::DataGetResult, DataGetResult)
 
 namespace openpeer { namespace stack { namespace test { ZS_DECLARE_SUBSYSTEM(openpeer_stack_test) } } }
 
@@ -167,25 +196,6 @@ namespace openpeer
           ElementPtr objectEl = Element::create("OverrideAccount");
           UseServicesHelper::debugAppend(objectEl, "id", mID);
           return Log::Params(message, objectEl);
-        }
-
-        //---------------------------------------------------------------------
-        void OverrideAccount::testAddLocation(OverrideLocationPtr location)
-        {
-          {
-            AutoRecursiveLock lock(*this);
-
-            auto hash = location->testGetLocationHash();
-
-            ZS_LOG_BASIC(log("adding location") + ZS_PARAMIZE(hash) + location->toDebug())
-            mLocations[hash] = location;
-          }
-
-          auto state = location->testGetConnectionState();
-
-          if (ILocation::LocationConnectionState_Pending == state) return;
-
-          testNotifySubscriptions(location, state);
         }
 
         //---------------------------------------------------------------------
@@ -279,6 +289,96 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
+        void OverrideAccount::testNotifySubscriptions(
+                                                      OverrideLocationPtr location,
+                                                      OverrideMessageIncomingPtr incomingMessage
+                                                      )
+        {
+          ZS_LOG_BASIC(log("notifying subscriptions of incoming message (simulated)") + location->toDebug() + incomingMessage->toDebug())
+
+          LocationSubscriptionList tempAll;
+          LocationSubscriptionList tempLocations;
+
+          {
+            AutoRecursiveLock lock(*this);
+            tempAll = mSubscribeAllLocations;
+
+            auto found = mSubscribeLocations.find(location->testGetLocationHash());
+            if (found != mSubscribeLocations.end()) {
+              tempLocations = *((*found).second);
+            }
+          }
+
+          {
+            for (auto iter = tempAll.begin(); iter != tempAll.end(); ++iter) {
+              auto subscription = (*iter);
+              subscription->testNotifyIncoming(incomingMessage);
+            }
+          }
+
+          {
+            for (auto iter = tempLocations.begin(); iter != tempLocations.end(); ++iter) {
+              auto subscription = (*iter);
+              subscription->testNotifyIncoming(incomingMessage);
+            }
+          }
+        }
+
+        //---------------------------------------------------------------------
+        OverrideLocationPtr OverrideAccount::testCreateLocation(
+                                                                ILocation::LocationTypes type,
+                                                                const char *peerURI,
+                                                                const char *locationID
+                                                                )
+        {
+          OverrideLocationPtr location;
+
+          {
+            AutoRecursiveLock lock(*this);
+
+            auto hash = OverrideLocation::testGetLocationHash(type, peerURI, locationID);
+
+            auto found = mLocations.find(hash);
+            if (found != mLocations.end()) {
+              location = (*found).second;
+              ZS_LOG_BASIC(log("found existing location") + ZS_PARAMIZE(hash) + location->toDebug())
+              return location;
+            }
+
+            location = OverrideLocation::testCreate(OverrideAccount::convert(mThisWeak.lock()), type, peerURI, locationID);
+
+            ZS_LOG_BASIC(log("adding location") + ZS_PARAMIZE(hash) + location->toDebug())
+            mLocations[hash] = location;
+          }
+
+          auto state = location->testGetConnectionState();
+
+          if (ILocation::LocationConnectionState_Pending == state) return location;
+
+          testNotifySubscriptions(location, state);
+
+          return location;
+        }
+        
+        //---------------------------------------------------------------------
+        OverridePeerPtr OverrideAccount::testCreatePeer(const char *inPeerURI)
+        {
+          AutoRecursiveLock lock(*this);
+
+          String peerURI(inPeerURI);
+
+          auto found = mPeers.find(peerURI);
+          if (found != mPeers.end()) {
+            return (*found).second;
+          }
+
+          auto peer = OverridePeer::testCreate(OverrideAccount::convert(mThisWeak.lock()), inPeerURI);
+
+          mPeers[peerURI] = peer;
+          return peer;
+        }
+
+        //---------------------------------------------------------------------
         IServiceLockboxSessionPtr OverrideAccount::getLockboxSession() const
         {
           return mLockboxSession;
@@ -344,7 +444,7 @@ namespace openpeer
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
         #pragma mark
-        #pragma mark OverrideLocationAbstraction
+        #pragma mark OverrideLocation
         #pragma mark
 
         //---------------------------------------------------------------------
@@ -355,6 +455,7 @@ namespace openpeer
                                            const char *locationID
                                            ) :
           Location(zsLib::Noop(true)),
+          SharedRecursiveLock(SharedRecursiveLock::create()),
           mAccount(account),
           mType(type),
           mPeerURI(peerURI),
@@ -384,10 +485,20 @@ namespace openpeer
                                                      const char *locationID
                                                      )
         {
+          TESTING_CHECK(account)
+          return account->testCreateLocation(type, peerURI, locationID);
+        }
+
+        //---------------------------------------------------------------------
+        OverrideLocationPtr OverrideLocation::testCreate(
+                                                         OverrideAccountPtr account,
+                                                         ILocation::LocationTypes type,
+                                                         const char *peerURI,
+                                                         const char *locationID
+                                                         )
+        {
           OverrideLocationPtr pThis(new OverrideLocation(account, type, peerURI, locationID));
           pThis->mThisWeak = pThis;
-
-          account->testAddLocation(pThis);
 
           pThis->init();
           return pThis;
@@ -407,11 +518,32 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
+        String OverrideLocation::testGetLocationHash(
+                                                     ILocation::LocationTypes type,
+                                                     const char *peerURI,
+                                                     const char *locationID
+                                                     )
+        {
+          String preHash = String(ILocation::toString(type)) + ":" + String(peerURI) + ":" + String(locationID);
+          String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(preHash));
+          return hash;
+        }
+
+        //---------------------------------------------------------------------
         String OverrideLocation::testGetLocationHash() const
         {
           String preHash = String(ILocation::toString(mType)) + ":" + mPeerURI + ":" + mLocationID;
           String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(preHash));
           return hash;
+        }
+
+        //---------------------------------------------------------------------
+        OverridePeerPtr OverrideLocation::testGetPeer()
+        {
+          auto account = mAccount.lock();
+          TESTING_CHECK(account)
+
+          return OverridePeer::create(account, mPeerURI);
         }
 
         //---------------------------------------------------------------------
@@ -425,6 +557,42 @@ namespace openpeer
 
           auto account = mAccount.lock();
           if (account) account->testNotifySubscriptions(OverrideLocation::convert(mThisWeak.lock()), state);
+        }
+
+        //---------------------------------------------------------------------
+        message::MessagePtr OverrideLocation::testPopSentMessage()
+        {
+          AutoRecursiveLock lock(*this);
+          if (mSentMessages.size() < 1) return message::MessagePtr();
+
+          message::MessagePtr result = mSentMessages.back();
+          mSentMessages.pop_back();
+          return result;
+        }
+
+        //---------------------------------------------------------------------
+        void OverrideLocation::testSimulateIncomingMessage(message::MessagePtr message)
+        {
+          String messageAsStr;
+          DocumentPtr doc = message->encode();
+          if (doc) {
+            ElementPtr rootEl = doc->getFirstChildElement();
+            messageAsStr = UseServicesHelper::toString(rootEl);
+          }
+
+          auto result = IMessageMonitor::handleMessageReceived(message);
+          if (result) {
+            ZS_LOG_BASIC(log("incoming (simulated) message was handled") + message::Message::toDebug(message) + ZS_PARAM("json in", messageAsStr))
+            return;
+          }
+
+          ZS_LOG_BASIC(log("incoming (simulated) message needs to be handled via subscriptions") + message::Message::toDebug(message) + ZS_PARAM("json in", messageAsStr))
+          auto messageIncoming = OverrideMessageIncoming::create(OverrideLocation::convert(mThisWeak.lock()), message);
+
+          auto account = mAccount.lock();
+          TESTING_CHECK(account)
+
+          account->testNotifySubscriptions(OverrideLocation::convert(mThisWeak.lock()), messageIncoming);
         }
 
         //---------------------------------------------------------------------
@@ -461,18 +629,29 @@ namespace openpeer
         //---------------------------------------------------------------------
         bool OverrideLocation::isConnected() const
         {
-          return mIsConnected;
+          return ILocation::LocationConnectionState_Connected == mConnectionState;
         }
 
         //---------------------------------------------------------------------
         PromisePtr OverrideLocation::send(message::MessagePtr message) const
         {
-          if ((!mIsConnected) ||
+          {
+            AutoRecursiveLock lock(*this);
+            mSentMessages.push_back(message);
+          }
+          String messageAsStr;
+          DocumentPtr doc = message->encode();
+          if (doc) {
+            ElementPtr rootEl = doc->getFirstChildElement();
+            messageAsStr = UseServicesHelper::toString(rootEl);
+          }
+
+          if ((!isConnected()) ||
               (mSendFailure)) {
-            ZS_LOG_BASIC(log("message send successfully (simulation)") + message::Message::toDebug(message))
+            ZS_LOG_BASIC(log("message send failure (simulation)") + message::Message::toDebug(message) + ZS_PARAM("json out", messageAsStr))
             return Promise::createRejected(IStack::getStackQueue());
           }
-          ZS_LOG_BASIC(log("message send failure (simulation)") + message::Message::toDebug(message))
+          ZS_LOG_BASIC(log("message send successfully (simulation)") + message::Message::toDebug(message) + ZS_PARAM("json out", messageAsStr))
           return Promise::createResolved(IStack::getStackQueue());
         }
 
@@ -610,6 +789,28 @@ namespace openpeer
             mDelegate->onLocationSubscriptionLocationConnectionStateChanged(mThisWeak.lock(), location, state);
           } catch (ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
             ZS_LOG_WARNING(Basic, log("delegate gone") + location->toDebug() + ZS_PARAM("state", ILocation::toString(state)))
+          }
+        }
+
+        //---------------------------------------------------------------------
+        void OverrideLocationSubscription::testNotifyIncoming(OverrideMessageIncomingPtr incomingMessage)
+        {
+          ZS_LOG_BASIC(log("notify location state") + incomingMessage->toDebug())
+
+          ILocationSubscriptionDelegatePtr delegate;
+
+          {
+            AutoRecursiveLock lock(*this);
+            if (!mDelegate) return;
+
+            delegate = mDelegate;
+          }
+
+          try {
+            ZS_LOG_BASIC(log("notifying state") + incomingMessage->toDebug())
+            mDelegate->onLocationSubscriptionMessageIncoming(mThisWeak.lock(), incomingMessage);
+          } catch (ILocationSubscriptionDelegateProxy::Exceptions::DelegateGone &) {
+            ZS_LOG_WARNING(Basic, log("delegate gone") + incomingMessage->toDebug())
           }
         }
 
@@ -767,6 +968,129 @@ namespace openpeer
             return OverrideServiceLockboxSessionFactoryPtr(new OverrideServiceLockboxSessionFactory);
           }
         };
+
+
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark OverridePeerFactory
+        #pragma mark
+
+        interaction OverridePeerFactory : public IPeerFactory
+        {
+          ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::IPeer, IPeer)
+          ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::Peer, Peer)
+          ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::Account, Account)
+
+          //-------------------------------------------------------------------
+          static OverridePeerFactoryPtr create()
+          {
+            return OverridePeerFactoryPtr(new OverridePeerFactory);
+          }
+
+          //-------------------------------------------------------------------
+          virtual PeerPtr create(
+                                 AccountPtr account,
+                                 const char *peerURI
+                                 )
+          {
+            return OverridePeer::create(OverrideAccount::convert(account), peerURI);
+          }
+        };
+
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark OverrideLocation
+        #pragma mark
+
+        //---------------------------------------------------------------------
+        OverridePeer::OverridePeer(
+                                   OverrideAccountPtr account,
+                                   const char *peerURI
+                                   ) :
+          Peer(zsLib::Noop(true)),
+          SharedRecursiveLock(SharedRecursiveLock::create()),
+          mAccount(account),
+          mPeerURI(peerURI)
+        {
+          ZS_LOG_BASIC(log("peer created") + toDebug())
+        }
+
+        //---------------------------------------------------------------------
+        OverridePeer::~OverridePeer()
+        {
+          mThisWeak.reset();
+          ZS_LOG_BASIC(log("peer destroyed") + toDebug())
+        }
+
+        //---------------------------------------------------------------------
+        OverridePeerPtr OverridePeer::convert(PeerPtr peer)
+        {
+          return ZS_DYNAMIC_PTR_CAST(OverridePeer, peer);
+        }
+
+        //---------------------------------------------------------------------
+        OverridePeerPtr OverridePeer::create(
+                                             OverrideAccountPtr account,
+                                             const char *peerURI
+                                             )
+        {
+          return account->testCreatePeer(peerURI);
+        }
+
+        //---------------------------------------------------------------------
+        OverridePeerPtr OverridePeer::testCreate(
+                                                 OverrideAccountPtr account,
+                                                 const char *peerURI
+                                                 )
+        {
+          OverridePeerPtr pThis(new OverridePeer(account, peerURI));
+          pThis->mThisWeak = pThis;
+
+          pThis->init();
+          return pThis;
+        }
+        
+        //---------------------------------------------------------------------
+        void OverridePeer::init()
+        {
+        }
+
+        //---------------------------------------------------------------------
+        Log::Params OverridePeer::log(const char *message) const
+        {
+          ElementPtr objectEl = Element::create("OverridePeer");
+          UseServicesHelper::debugAppend(objectEl, "id", mID);
+          return Log::Params(message, objectEl);
+        }
+
+        //---------------------------------------------------------------------
+        PUID OverridePeer::getID() const
+        {
+          return mID;
+        }
+
+        //---------------------------------------------------------------------
+        ElementPtr OverridePeer::toDebug() const
+        {
+          ElementPtr resultEl = Element::create("OverridePeer");
+
+          UseServicesHelper::debugAppend(resultEl, "id", mID);
+          UseServicesHelper::debugAppend(resultEl, "peer uri", mPeerURI);
+
+          return resultEl;
+        }
+
+        //---------------------------------------------------------------------
+        String OverridePeer::getPeerURI() const
+        {
+          return mPeerURI;
+        }
 
         //---------------------------------------------------------------------
         //---------------------------------------------------------------------
@@ -967,6 +1291,9 @@ namespace openpeer
           UseStackHelper::mkdir("/tmp/test_location_databases", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
           ISettings::setString(OPENPEER_STACK_SETTING_LOCATION_DATABASE_PATH, "/tmp/test_location_databases");
 
+          remove("/tmp/test_location_databases/0c992e47e7417b04ed76ed1d26d6402e46c13898/locations.db");
+          remove("/tmp/test_location_databases/0c992e47e7417b04ed76ed1d26d6402e46c13898/location_db_07e82ba71e807e0a8f11940d44708f16e20fee63_0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33.db");
+
           AutoRecursiveLock lock(*this);
 
           mSelfReference = mThisWeak.lock();
@@ -981,11 +1308,10 @@ namespace openpeer
         }
 
         //---------------------------------------------------------------------
-        void Tester::test()
+        void Tester::testDualListSubscribe()
         {
-          mLocalDatabases = ILocationDatabases::open(mLocal, mThisWeak.lock());
-
-          mLockboxPendingWithLockboxAccessTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(1));
+          mTestDualSubscribe = true;
+          mNextTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(1));
         }
 
         //---------------------------------------------------------------------
@@ -1021,6 +1347,30 @@ namespace openpeer
         //---------------------------------------------------------------------
         void Tester::onLocationDatabasesUpdated(ILocationDatabasesPtr inDatabases)
         {
+          ZS_LOG_BASIC(log("on location databases notified updated") + ILocationDatabases::toDebug(inDatabases))
+        }
+
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Tester => ILocationDatabaseDelegate
+        #pragma mark
+
+        //---------------------------------------------------------------------
+        void Tester::onLocationDatabaseStateChanged(
+                                                    ILocationDatabasePtr inDatabase,
+                                                    DatabaseStates state
+                                                    )
+        {
+          ZS_LOG_BASIC(log("on location database state changed") + ILocationDatabase::toDebug(inDatabase) + ZS_PARAM("state", ILocationDatabase::toString(state)))
+        }
+
+        //---------------------------------------------------------------------
+        void Tester::onLocationDatabaseUpdated(ILocationDatabasePtr inDatabases)
+        {
+          ZS_LOG_BASIC(log("on location database notified updated") + ILocationDatabase::toDebug(inDatabases))
         }
 
         //---------------------------------------------------------------------
@@ -1034,43 +1384,212 @@ namespace openpeer
         //---------------------------------------------------------------------
         void Tester::onTimer(TimerPtr timer)
         {
-          if (timer == mLockboxPendingWithLockboxAccessTimer) {
+          mNextTimer.reset();
+
+          int waitNextSeconds = 0;
+          if (mTestDualSubscribe) {
+            testDualListSubscribe(waitNextSeconds);
+          }
+
+          if (0 != waitNextSeconds) {
+            mNextTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(waitNextSeconds));
+          }
+
+          ++mLoop;
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      void Tester::testDualListSubscribe(int &outWaitNext)
+      {
+        auto now = zsLib::now();
+
+        outWaitNext = 0;
+
+        struct Next
+        {
+          int mWaitSeconds;
+          int mSequence;
+        };
+
+        static Next sequence[] = {
+          {0,   1},
+          {3,   10},
+          {2,   20},
+          {1,   21},
+          {2,   30},
+          {1,   31},
+          {4,   35},
+          {3,   40},
+          {1,   50},
+          {2,   51},
+          {2,   60},
+          {2,   61},
+          {2,   70},
+          {2,   71},
+          {2,   80},
+          {2,   81},
+          {40,  100},
+          {3,   110},
+          {0,0}
+        };
+
+        outWaitNext = sequence[mLoop+1].mWaitSeconds;
+
+        switch (sequence[mLoop].mSequence) {
+          case 1: {
+            ZS_LOG_BASIC(log("creating local databases"))
+            mLocalDatabases = ILocationDatabases::open(mLocal, mThisWeak.lock());
+            break;
+          }
+          case 10: {
             ZS_LOG_BASIC(log("lockbox is now pending with lockbox access"))
             LockboxInfo info;
             info.mAccountID = "act1234";
             info.mDomain = "domain.com";
             mLockboxSession->testSetLockboxInfo(info);
             mLockboxSession->testSetState(IServiceLockboxSession::SessionState_PendingWithLockboxAccessReady);
-            mLockboxPendingWithLockboxAccessTimer.reset();
-
-            mLockboxReadyTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(3));
-            return;
+            break;
           }
-          if (timer == mLockboxReadyTimer) {
+          case 20: {
             ZS_LOG_BASIC(log("lockbox is now ready"))
             mLockboxSession->testSetState(IServiceLockboxSession::SessionState_Ready);
-            mLockboxReadyTimer.reset();
-
-            mShuttingDownTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(30));
-            return;
+            break;
           }
-          if (timer == mShuttingDownTimer) {
+          case 21: {
+            ZS_LOG_BASIC(log("make sure local database is ready"))
+            TESTING_CHECK(ILocationDatabases::DatabasesState_Ready == mLocalDatabases->getState())
+            break;
+          }
+          case 30: {
+            ZS_LOG_BASIC(log("remote location created (bob)"))
+            mRemoteLocationBob = OverrideLocation::create(mAccount, ILocation::LocationType_Peer, "peer://domain.com/bob", "bob");
+            break;
+          }
+          case 31: {
+            ZS_LOG_BASIC(log("remote databases created (bob)"))
+            mRemoteDatabasesBob = ILocationDatabases::open(mRemoteLocationBob, mThisWeak.lock());
+            break;
+          }
+          case 35: {
+            ZS_LOG_BASIC(log("remote location connected (bob)"))
+            mRemoteLocationBob->testSetConnectionState(ILocation::LocationConnectionState_Connected);
+            TESTING_CHECK(mRemoteLocationBob->isConnected())
+            break;
+          }
+          case 40: {
+            ZS_LOG_BASIC(log("remote location respond (bob)"))
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            ListSubscribeRequestPtr request = ListSubscribeRequest::convert(message);
+            TESTING_CHECK(request)
+
+            ListSubscribeResultPtr result = ListSubscribeResult::create(request);
+            mRemoteLocationBob->testSimulateIncomingMessage(result);
+            break;
+          }
+          case 50: {
+            ZS_LOG_BASIC(log("remote location (simulated) subscribing to local location (bob)"))
+            ListSubscribeRequestPtr request = ListSubscribeRequest::create();
+            request->messageID("bob-message-id-1");
+            request->expires(zsLib::now() + Seconds(1000));
+            mRemoteLocationBob->testSimulateIncomingMessage(request);
+            break;
+          }
+          case 51: {
+            ZS_LOG_BASIC(log("expecting response to (simulated) incoming subscription request (bob)"))
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            ListSubscribeResultPtr result = ListSubscribeResult::convert(message);
+            TESTING_CHECK(result)
+            break;
+          }
+          case 60: {
+            ILocationDatabaseLocalTypes::PeerList peerList;
+            ElementPtr metaData = UseServicesHelper::toJSON("{\"values\":{\"value\":[\"valuea1i\",\"valuea1ii\"]}}");
+            peerList.push_back(mRemoteLocationBob->testGetPeer());
+            Time expires = zsLib::now() + Seconds(500);
+            mLocalDatabaseApple1 = ILocationDatabaseLocal::create(mThisWeak.lock(), mAccount, "apple1", metaData, peerList, expires);
+            break;
+          }
+          case 61: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            ListSubscribeNotifyPtr notify = ListSubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-1", notify->messageID())
+            TESTING_CHECK(notify->databases())
+            TESTING_EQUAL(1, notify->databases()->size())
+
+            auto now = zsLib::now();
+            ILocationDatabases::DatabaseInfo &info = *(notify->databases()->begin());
+
+            auto expires = now + Seconds(500);
+
+            TESTING_EQUAL("apple1", info.mDatabaseID)
+            TESTING_EQUAL(ILocationDatabases::DatabaseInfo::Disposition_Add, info.mDisposition)
+            TESTING_EQUAL("{\"values\":{\"value\":[\"valuea1i\",\"valuea1ii\"]}}", UseServicesHelper::toString(info.mMetaData))
+            TESTING_CHECK((info.mCreated < now) && (info.mCreated + Seconds(4) > now))
+            TESTING_CHECK((info.mExpires < expires) && (info.mExpires + Seconds(4) > expires))
+            TESTING_CHECK(info.mVersion.hasData())
+            break;
+          }
+          case 70: {
+            ZS_LOG_BASIC(log("remote location (simulated) subscribing to local location database (bob)"))
+            SubscribeRequestPtr request = SubscribeRequest::create();
+            request->databaseID("apple1");
+            request->messageID("bob-message-id-2");
+            request->expires(zsLib::now() + Seconds(1000));
+            mRemoteLocationBob->testSimulateIncomingMessage(request);
+            break;
+          }
+          case 71: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeResultPtr notify = SubscribeResult::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-2", notify->messageID())
+            break;
+          }
+          case 80: {
+            ElementPtr metaData = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"metaentrya1i\",\"metaentrya1ii\"]}}");
+            ElementPtr data = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"entrya1i\",\"entrya1ii\"]}}");
+            mLocalDatabaseApple1->add("entry1", metaData, data);
+            break;
+          }
+          case 81: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-2", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(1, notify->entries()->size())
+            auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya1i\",\"metaentrya1ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(now > entry.mCreated)
+            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now > entry.mUpdated)
+            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_EQUAL(1, entry.mVersion)
+            break;
+          }
+          case 100: {
             ZS_LOG_BASIC(log("shutting down"))
             mLockboxSession->testSetState(IServiceLockboxSession::SessionState_Shutdown);
-            mShuttingDownTimer.reset();
-
-            mShutdownTimer = Timer::create(mThisWeak.lock(), zsLib::now() + Seconds(1));
-            return;
+            break;
           }
-          if (timer == mShutdownTimer) {
+          case 110: {
             ZS_LOG_BASIC(log("shutting down"))
-            mShutdownTimer.reset();
-
             mSelfReference.reset();
-            return;
+            break;
           }
         }
       }
+
+
     }
   }
 }
@@ -1087,10 +1606,10 @@ void doTestILocationDatabase()
     {
       TesterPtr testObject = Tester::create();
 
-      testObject->test();
+      testObject->testDualListSubscribe();
 
       int count = 0;
-      for (; count < 120; ++count)
+      for (; count < 600; ++count)
       {
         std::cout << "TESTING:      ILocationDatabase...\n";
 
@@ -1107,6 +1626,9 @@ void doTestILocationDatabase()
 
       TESTING_CHECK(count < 120)
     }
+
+    std::cout << "WAITING:      ILocationDatabase(s) to shutdown...\n";
+    std::this_thread::sleep_for(Seconds(10));
 
     std::cout << "COMPLETE:     ILocationDatabase(s) complete.\n";
   }

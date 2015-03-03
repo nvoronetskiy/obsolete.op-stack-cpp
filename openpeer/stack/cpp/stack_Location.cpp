@@ -303,7 +303,6 @@ namespace openpeer
                          UsePeerPtr peer,
                          const char *locationID
                          ) :
-        mID(zsLib::createPUID()),
         mAccount(account),
         mType(type),
         mPeer(peer),

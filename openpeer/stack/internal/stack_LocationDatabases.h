@@ -71,6 +71,7 @@ namespace openpeer
       ZS_DECLARE_INTERACTION_PTR(ILocationDatabaseForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(IMessageIncomingForLocationDatabases)
       ZS_DECLARE_INTERACTION_PTR(IServiceLockboxSessionForLocationDatabases)
+      ZS_DECLARE_INTERACTION_PTR(IPeerForLocationDatabases)
 
       //-----------------------------------------------------------------------
       interaction ILocationDatabasesForLocationDatabase
@@ -101,6 +102,7 @@ namespace openpeer
                                                 const PeerList &inPeerAccessList,
                                                 Time expires
                                                 ) = 0;
+        virtual bool remove(const String &databaseID) = 0;
 
         virtual void notifyShutdown(UseLocationDatabase &database) = 0;
         virtual void notifyDestroyed(UseLocationDatabase &database) = 0;
@@ -186,6 +188,7 @@ namespace openpeer
         ZS_DECLARE_TYPEDEF_PTR(ILocationDatabaseForLocationDatabases, UseLocationDatabase)
         ZS_DECLARE_TYPEDEF_PTR(IMessageIncomingForLocationDatabases, UseMessageIncoming)
         ZS_DECLARE_TYPEDEF_PTR(IServiceLockboxSessionForLocationDatabases, UseLockbox)
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForLocationDatabases, UsePeer)
 
         ZS_DECLARE_TYPEDEF_PTR(services::IBackOffTimer, IBackOffTimer)
 
@@ -318,6 +321,8 @@ namespace openpeer
                                                 const PeerList &inPeerAccessList,
                                                 Time expires
                                                 );
+        virtual bool remove(const String &databaseID);
+
         virtual void notifyShutdown(UseLocationDatabase &database);
         virtual void notifyDestroyed(UseLocationDatabase &database);
 
@@ -536,6 +541,7 @@ namespace openpeer
         TimerPtr mRemoteSubscribeTimeout;
 
         String mLastChangeUpdateNotified;
+        bool mChangeUpdateNotified {false};
 
         IncomingListSubscriptionMap mIncomingListSubscriptions;
         TimerPtr mIncomingListSubscriptionTimer;

@@ -950,7 +950,7 @@ namespace openpeer
             if (changed) {
               outChangeRecord.mDisposition = DatabaseChangeRecord::Disposition_Update;
 
-              ZS_LOG_TRACE(log("updating existing record") + previousRecord.toDebug() + ioRecord.toDebug())
+              ZS_LOG_TRACE(log("updating existing database record") + previousRecord.toDebug() + ioRecord.toDebug())
               table.updateRecord(found);
             }
             return;
@@ -977,7 +977,7 @@ namespace openpeer
           }
           addRecord.setString(UseTables::updateVersion, ioRecord.mUpdateVersion);
 
-          ZS_LOG_TRACE(log("adding new peer location record") + UseStackHelper::toDebug(&table, &addRecord))
+          ZS_LOG_TRACE(log("adding new database record") + UseStackHelper::toDebug(&table, &addRecord))
           table.addRecord(&addRecord);
 
           {

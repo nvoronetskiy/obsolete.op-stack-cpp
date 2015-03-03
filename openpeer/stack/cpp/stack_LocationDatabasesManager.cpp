@@ -289,6 +289,8 @@ namespace openpeer
               batch = info->mMasterDatabase->peerLocationTable()->getUnusedLocationsBatch(expires);
             }
           }
+        } else {
+          info = (*found).second;
         }
 
         ZS_LOG_DEBUG(log("associating location to master database") + ZS_PARAMIZE(userHash) + location->toDebug())

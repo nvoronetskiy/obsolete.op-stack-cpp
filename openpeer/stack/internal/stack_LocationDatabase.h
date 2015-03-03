@@ -293,6 +293,11 @@ namespace openpeer
                                                 Time expires = Time()
                                                 );
 
+        static bool remove(
+                           IAccountPtr account,
+                           const char *inDatabaseID
+                           );
+
         virtual PeerListPtr getPeerAccessList() const;
 
         virtual void setExpires(const Time &time);
@@ -598,6 +603,11 @@ namespace openpeer
                                                  const PeerList &inPeerAccessList,
                                                  Time expires = Time()
                                                  );
+
+        virtual bool remove(
+                            IAccountPtr account,
+                            const char *inDatabaseID
+                            );
 
         virtual LocationDatabasePtr openRemote(
                                                LocationDatabasesPtr databases,

@@ -36,12 +36,14 @@
 #include <zsLib/Timer.h>
 
 #include <openpeer/stack/ILocationDatabase.h>
+#include <openpeer/stack/ILocationDatabaseLocal.h>
 #include <openpeer/stack/ILocationDatabases.h>
 
 #include <openpeer/stack/internal/stack_Account.h>
 #include <openpeer/stack/internal/stack_Location.h>
 #include <openpeer/stack/internal/stack_LocationSubscription.h>
 #include <openpeer/stack/internal/stack_MessageIncoming.h>
+#include <openpeer/stack/internal/stack_Peer.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
 
 namespace openpeer
@@ -70,16 +72,19 @@ namespace openpeer
         ZS_DECLARE_CLASS_PTR(OverrideMessageIncomingFactory)
         ZS_DECLARE_CLASS_PTR(OverrideMessageIncoming)
 
+        ZS_DECLARE_CLASS_PTR(OverridePeerFactory)
+        ZS_DECLARE_CLASS_PTR(OverridePeer)
+
         ZS_DECLARE_CLASS_PTR(OverrideServiceLockboxSessionFactory)
         ZS_DECLARE_CLASS_PTR(OverrideServiceLockboxSession)
 
 
         ZS_DECLARE_CLASS_PTR(Tester)
 
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark OverrideAccount
         #pragma mark
@@ -115,6 +120,17 @@ namespace openpeer
                                        OverrideLocationPtr location,
                                        LocationConnectionStates state
                                        );
+          void testNotifySubscriptions(
+                                       OverrideLocationPtr location,
+                                       OverrideMessageIncomingPtr incomingMessage
+                                       );
+
+          OverrideLocationPtr testCreateLocation(
+                                                 ILocation::LocationTypes type,
+                                                 const char *peerURI,
+                                                 const char *locationID
+                                                 );
+          OverridePeerPtr testCreatePeer(const char *peerURI);
 
         public:
           virtual IServiceLockboxSessionPtr getLockboxSession() const;
@@ -130,22 +146,26 @@ namespace openpeer
 
           typedef std::map<LocationHash, LocationSubscriptionListPtr> LocationSubscriptionMap;
 
+          typedef String PeerURI;
+          typedef std::map<PeerURI, OverridePeerPtr> PeerMap;
 
+          PeerMap mPeers;
           LocationMap mLocations;
 
           LocationSubscriptionList mSubscribeAllLocations;
           LocationSubscriptionMap mSubscribeLocations;
         };
 
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark OverrideLocation
         #pragma mark
 
-        class OverrideLocation : public openpeer::stack::internal::Location
+        class OverrideLocation : public SharedRecursiveLock,
+                                 public openpeer::stack::internal::Location
         {
         public:
 
@@ -177,12 +197,29 @@ namespace openpeer
           Log::Params log(const char *message) const;
 
         public:
-          String testGetLocationHash() const;
+          static OverrideLocationPtr testCreate(
+                                                OverrideAccountPtr account,
+                                                ILocation::LocationTypes type,
+                                                const char *peerURI,
+                                                const char *locationID
+                                                );
 
-          void testSetConnected(bool isConnected) {mIsConnected = isConnected;}
+          static String testGetLocationHash(
+                                            ILocation::LocationTypes type,
+                                            const char *peerURI,
+                                            const char *locationID
+                                            );
+
+          String testGetLocationHash() const;
+          OverridePeerPtr testGetPeer();
+
           void testSetSendFailure(bool failure) {mSendFailure = failure;}
           void testSetConnectionState(LocationConnectionStates state);
           LocationConnectionStates testGetConnectionState() const {return mConnectionState;}
+
+          message::MessagePtr testPopSentMessage();
+          void testSimulateIncomingMessage(message::MessagePtr message);
+
 
         public:
           virtual PUID getID() const;
@@ -206,15 +243,16 @@ namespace openpeer
           String mPeerURI;
           String mLocationID;
 
-          std::atomic<bool> mIsConnected {false};
           std::atomic<bool> mSendFailure {false};
           std::atomic<LocationConnectionStates> mConnectionState {ILocation::LocationConnectionState_Pending};
+
+          mutable std::list<message::MessagePtr> mSentMessages;
         };
 
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark OverrideLocationSubscription
         #pragma mark
@@ -244,6 +282,7 @@ namespace openpeer
                                OverrideLocationPtr location,
                                LocationConnectionStates state
                                );
+          void testNotifyIncoming(OverrideMessageIncomingPtr incomingMessage);
 
         public:
           virtual PUID getID() const;
@@ -257,10 +296,10 @@ namespace openpeer
         };
 
 
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark OverrideMessageIncoming
         #pragma mark
@@ -301,10 +340,63 @@ namespace openpeer
           message::MessagePtr mMessage;
         };
 
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark OverridePeer
+        #pragma mark
+
+        class OverridePeer : public SharedRecursiveLock,
+                             public openpeer::stack::internal::Peer
+        {
+        public:
+
+          ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::Account, Account)
+          ZS_DECLARE_TYPEDEF_PTR(openpeer::stack::internal::Peer, Peer)
+
+        public:
+          OverridePeer(
+                       OverrideAccountPtr account,
+                       const char *peerURI
+                       );
+          ~OverridePeer();
+
+          static OverridePeerPtr convert(PeerPtr peer);
+
+          static OverridePeerPtr create(
+                                        OverrideAccountPtr account,
+                                        const char *peerURI
+                                        );
+
+          void init();
+
+          Log::Params log(const char *message) const;
+
+        public:
+          virtual PUID getID() const;
+
+          virtual ElementPtr toDebug() const;
+
+          virtual String getPeerURI() const;
+
+        public:
+          static OverridePeerPtr testCreate(
+                                            OverrideAccountPtr account,
+                                            const char *peerURI
+                                            );
+
+
+        private:
+          OverrideAccountWeakPtr mAccount;
+          String mPeerURI;
+        };
+
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark OverrideServiceLockboxSession
         #pragma mark
@@ -363,10 +455,10 @@ namespace openpeer
           IServiceLockboxSessionDelegateSubscriptions mLockboxSubscriptions;
         };
         
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
-        //-----------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
+        //---------------------------------------------------------------------
         #pragma mark
         #pragma mark Tester
         #pragma mark
@@ -374,6 +466,7 @@ namespace openpeer
         class Tester : public MessageQueueAssociator,
                        public SharedRecursiveLock,
                        public ILocationDatabasesDelegate,
+                       public ILocationDatabaseLocalDelegate,
                        public ITimerDelegate
         {
         public:
@@ -391,7 +484,7 @@ namespace openpeer
 
           static TesterPtr create();
 
-          void test();
+          void testDualListSubscribe();
 
           bool testIsDone();
 
@@ -413,10 +506,26 @@ namespace openpeer
 
           //-------------------------------------------------------------------
           #pragma mark
+          #pragma mark Tester => ILocationDatabaseDelegate
+          #pragma mark
+
+          virtual void onLocationDatabaseStateChanged(
+                                                      ILocationDatabasePtr inDatabase,
+                                                      DatabaseStates state
+                                                      );
+
+          virtual void onLocationDatabaseUpdated(ILocationDatabasePtr inDatabase);
+
+
+          //-------------------------------------------------------------------
+          #pragma mark
           #pragma mark Tester => ITimerDelegate
           #pragma mark
 
           void onTimer(TimerPtr timer);
+
+        private:
+          void testDualListSubscribe(int &outWaitNext);
 
         public:
           AutoPUID mID;
@@ -437,11 +546,15 @@ namespace openpeer
           OverrideLocationPtr mLocal;
 
           ILocationDatabasesPtr mLocalDatabases;
+          ILocationDatabaseLocalPtr mLocalDatabaseApple1;
 
-          TimerPtr mLockboxPendingWithLockboxAccessTimer;
-          TimerPtr mLockboxReadyTimer;
-          TimerPtr mShuttingDownTimer;
-          TimerPtr mShutdownTimer;
+          int mLoop {};
+          TimerPtr mNextTimer;
+
+          OverrideLocationPtr mRemoteLocationBob;
+          ILocationDatabasesPtr mRemoteDatabasesBob;
+
+          bool mTestDualSubscribe {false};
         };
       }
     }

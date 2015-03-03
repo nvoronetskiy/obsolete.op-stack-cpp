@@ -32,8 +32,9 @@
 #include <openpeer/stack/message/p2p-database/ListSubscribeNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/XML.h>
-#include <zsLib/Numeric.h>
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -45,7 +46,7 @@ namespace openpeer
     {
       namespace p2p_database
       {
-        using zsLib::Numeric;
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::services::IHelper, UseServicesHelper)
 
         //---------------------------------------------------------------------
         static Log::Params slog(const char *message)
@@ -89,6 +90,8 @@ namespace openpeer
 
             ret->mDatabases = DatabaseInfoListPtr(new DatabaseInfoList);
 
+            ret->mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(databasesEl->findFirstChildElement("expires")));
+
             ElementPtr databaseEl = databasesEl->findFirstChildElement("database");
             while (databaseEl) {
               DatabaseInfo info = DatabaseInfo::create(databaseEl);
@@ -122,6 +125,9 @@ namespace openpeer
             databasesEl->setAttribute("version", mVersion);
           }
 
+          // must be present at all times
+          databasesEl->adoptAsLastChild(IMessageHelper::createElementWithTime("expires", mExpires));
+
           if (hasAttribute(AttributeType_Databases)) {
             for (auto iter = mDatabases->begin(); iter != mDatabases->end(); ++iter)
             {
@@ -146,6 +152,7 @@ namespace openpeer
           switch (type) {
             case AttributeType_DatabasesBefore:       return mBefore.hasData();
             case AttributeType_DatabasesVersion:      return mVersion.hasData();
+            case AttributeType_DatabasesExpires:      return Time() != mExpires;
             case AttributeType_Databases:             return (bool)mDatabases;
           }
           return false;

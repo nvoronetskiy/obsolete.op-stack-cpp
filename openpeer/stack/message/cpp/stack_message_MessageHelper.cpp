@@ -275,7 +275,12 @@ namespace openpeer
       {
         ElementPtr tmp = Element::create(elName);
 
-        if (numberAsStringValue.isEmpty()) return tmp;
+        if (numberAsStringValue.isEmpty()) {
+          TextPtr tmpTxt = Text::create();
+          tmpTxt->setValue("0", Text::Format_JSONNumberEncoded);
+          tmp->adoptAsFirstChild(tmpTxt);
+          return tmp;
+        }
 
         TextPtr tmpTxt = Text::create();
         tmpTxt->setValue(numberAsStringValue, Text::Format_JSONNumberEncoded);

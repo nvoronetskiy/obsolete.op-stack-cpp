@@ -81,6 +81,13 @@ namespace openpeer
                                               );
 
       //-----------------------------------------------------------------------
+      // PURPOSE: Remove a database previously created from the system
+      static bool remove(
+                         IAccountPtr account,
+                         const char *inDatabaseID
+                         );
+
+      //-----------------------------------------------------------------------
       // PURPOSE: Obtain list of peers that have access to this database.
       virtual PeerListPtr getPeerAccessList() const = 0;
 

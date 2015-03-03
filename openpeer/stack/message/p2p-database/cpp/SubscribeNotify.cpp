@@ -32,8 +32,9 @@
 #include <openpeer/stack/message/p2p-database/SubscribeNotify.h>
 #include <openpeer/stack/message/internal/stack_message_MessageHelper.h>
 
+#include <openpeer/services/IHelper.h>
+
 #include <zsLib/XML.h>
-#include <zsLib/Numeric.h>
 
 namespace openpeer { namespace stack { namespace message { ZS_DECLARE_SUBSYSTEM(openpeer_stack_message) } } }
 
@@ -45,8 +46,7 @@ namespace openpeer
     {
       namespace p2p_database
       {
-        typedef zsLib::XML::Exceptions::CheckFailed CheckFailed;
-        using zsLib::Numeric;
+        ZS_DECLARE_TYPEDEF_PTR(openpeer::services::IHelper, UseServicesHelper)
 
         //---------------------------------------------------------------------
         static Log::Params slog(const char *message)
@@ -87,6 +87,8 @@ namespace openpeer
           if (databaseEl) {
             ret->mBefore = databaseEl->getAttributeValue("before");
             ret->mVersion = databaseEl->getAttributeValue("version");
+
+            ret->mExpires = UseServicesHelper::stringToTime(IMessageHelper::getElementTextAndDecode(databaseEl->findFirstChildElement("expires")));
 
             ElementPtr entriesEl = databaseEl->findFirstChildElement("entries");
             if (entriesEl) {
@@ -130,6 +132,9 @@ namespace openpeer
             databaseEl->setAttribute("version", mVersion);
           }
 
+          // must be present at all times
+          databaseEl->adoptAsLastChild(IMessageHelper::createElementWithTime("expires", mExpires));
+
           if (hasAttribute(AttributeType_DatabaseEntries)) {
             ElementPtr entriesEl = Element::create("entries");
 
@@ -161,6 +166,7 @@ namespace openpeer
             case AttributeType_DatabaseID:          return mDatabaseID.hasData();
             case AttributeType_DatabaseBefore:      return mBefore.hasData();
             case AttributeType_DatabaseVersion:     return mVersion.hasData();
+            case AttributeType_DatabaseExpires:     return Time() != mExpires;
             case AttributeType_DatabaseEntries:     return (bool)mEntries;
           }
           return false;

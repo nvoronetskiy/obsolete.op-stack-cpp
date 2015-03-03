@@ -39,6 +39,7 @@
 #include <openpeer/stack/internal/stack_LocationDatabasesTearAway.h>
 #include <openpeer/stack/internal/stack_MessageIncoming.h>
 #include <openpeer/stack/internal/stack_ServiceLockboxSession.h>
+#include <openpeer/stack/internal/stack_Peer.h>
 #include <openpeer/stack/internal/stack_Stack.h>
 
 #include <openpeer/stack/message/p2p-database/ListSubscribeRequest.h>
@@ -309,7 +310,7 @@ namespace openpeer
                                                          Time expires
                                                          )
       {
-        ZS_LOG_TRACE(log("creating or obtaining remote database") + ZS_PARAMIZE(databaseID) + ZS_PARAM("meta data", (bool)inMetaData) + ZS_PARAM("peer access list", inPeerAccessList.size()) + ZS_PARAMIZE(expires))
+        ZS_LOG_TRACE(log("creating or obtaining local database") + ZS_PARAMIZE(databaseID) + ZS_PARAM("meta data", (bool)inMetaData) + ZS_PARAM("peer access list", inPeerAccessList.size()) + ZS_PARAMIZE(expires))
 
         AutoRecursiveLock lock(*this);
 
@@ -335,6 +336,90 @@ namespace openpeer
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
 
         return LocationDatabase::convert(database);
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabases::remove(const String &databaseID)
+      {
+        ZS_LOG_DEBUG(log("removing local database") + ZS_PARAMIZE(databaseID))
+
+        ZS_THROW_INVALID_ASSUMPTION_IF(!isLocal())
+
+        AutoRecursiveLock lock(*this);
+
+        if (isShutdown()) {
+          ZS_LOG_WARNING(Detail, log("cannot remove database when shutdown"))
+          return false;
+        }
+
+        if (!mMasterDatase) {
+          step();
+        }
+
+        if (!mMasterDatase) {
+          ZS_LOG_WARNING(Detail, log("cannot remove database when master database is not ready"))
+          return false;
+        }
+
+        UseLocationDatabasePtr database;
+        auto found = mLocationDatabases.find(databaseID);
+        if (found != mLocationDatabases.end()) {
+          database = (*found).second.lock();
+          if (!database) {
+            mLocationDatabases.erase(found);
+            found = mLocationDatabases.end();
+          }
+        }
+
+        UseDatabase::DatabaseRecord record;
+        record.mIndexPeerLocation = mPeerLocationRecord.mIndex;
+        record.mDatabaseID = databaseID;
+
+        UseDatabase::DatabaseChangeRecord changeRecord;
+        mMasterDatase->databaseTable()->remove(record, changeRecord);
+        if (UseDatabase::DatabaseChangeRecord::Disposition_None == changeRecord.mDisposition) {
+          ZS_LOG_WARNING(Detail, log("database was not found"))
+          return false;
+        }
+
+        ZS_LOG_DEBUG(log("removed database record") + record.toDebug() + changeRecord.toDebug())
+
+        mMasterDatase->databaseChangeTable()->insert(changeRecord);
+
+        mMasterDatase->permissionTable()->flushAllForDatabase(mPeerLocationRecord.mIndex, record.mDatabaseID);
+
+        mPeerLocationRecord.mUpdateVersion = mMasterDatase->peerLocationTable()->updateVersion(mPeerLocationRecord.mIndex);
+
+        if (database) {
+          database->notifyRemoved();
+          mExpectingShutdownLocationDatabases[databaseID] = UseLocationDatabasePtr();
+        } else {
+          UseDatabase::deleteDatabase(mMasterDatase, mLocation->getPeerURI(), mLocation->getLocationID(), databaseID);
+        }
+
+        for (auto iter_doNotUse = mIncomingListSubscriptions.begin(); iter_doNotUse != mIncomingListSubscriptions.end(); ) {
+          auto current = iter_doNotUse;
+          ++iter_doNotUse;
+
+          auto subscription = (*current).second;
+          if (VersionedData::VersionType_ChangeList == subscription->mType) {
+            ZS_LOG_TRACE(log("removal will be notified") + subscription->toDebug())
+            subscription->mNotified = false;
+            continue;
+          }
+
+          ZS_LOG_WARNING(Debug, log("must shutdown incoming subscription because it cannot understand this version") + subscription->toDebug())
+
+          ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
+          notify->messageID(subscription->mSubscribeMessageID);
+          notify->expires(Time());
+          mLocation->send(notify);
+
+          mIncomingListSubscriptions.erase(current);
+        }
+
+        IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
+        return true;
       }
 
       //-----------------------------------------------------------------------
@@ -459,9 +544,9 @@ namespace openpeer
             auto uri = (*iter);
             ZS_LOG_INSANE(log("found uri with permission") + ZS_PARAM("uri", uri))
 
-            IPeerPtr peer = IPeer::create(account, uri);
+            UsePeerPtr peer = UsePeer::create(Account::convert(account), uri);
             if (peer) {
-              outPeerAccessList.push_back(peer);
+              outPeerAccessList.push_back(Peer::convert(peer));
             }
           }
         }
@@ -519,7 +604,7 @@ namespace openpeer
 
         UseDatabase::PeerURIList uris;
         for (auto iter = inPeerAccessList.begin(); iter != inPeerAccessList.end(); ++iter) {
-          auto peer = (*iter);
+          UsePeerPtr peer = Peer::convert(*iter);
           if (!peer) {
             ZS_LOG_WARNING(Detail, log("found null peer in list") + ZS_PARAMIZE(databaseID) + ZS_PARAM("peers", inPeerAccessList.size()))
             continue;
@@ -738,13 +823,23 @@ namespace openpeer
 
       //-----------------------------------------------------------------------
       void LocationDatabases::onServiceLockboxSessionStateChanged(
-                                                                  IServiceLockboxSessionPtr session,
+                                                                  IServiceLockboxSessionPtr inSession,
                                                                   IServiceLockboxSession::SessionStates state
                                                                   )
       {
+        UseLockboxPtr session = ServiceLockboxSession::convert(inSession);
+
         ZS_LOG_DEBUG(log("lockbox state changed") + ZS_PARAM("lockbox", session->getID()) + ZS_PARAM("state", IServiceLockboxSession::toString(state)))
 
         AutoRecursiveLock lock(*this);
+        if (mLockbox) {
+          if ((IServiceLockboxSession::SessionState_Shutdown == state) &&
+              (session->getID() == mLockbox->getID())) {
+            ZS_LOG_WARNING(Detail, log("lockbox is shutdown (thus databases needs to shutdown)"))
+            cancel();
+            return;
+          }
+        }
         step();
       }
 
@@ -811,6 +906,10 @@ namespace openpeer
             }
           }
         }
+
+        if (!isLocal()) {
+          step();
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -831,23 +930,25 @@ namespace openpeer
           }
         }
 
+        auto actualMessage = message->getMessage();
+
         if (isLocal()) {
           {
-            auto request = DataGetRequest::convert(message->getMessage());
+            auto request = DataGetRequest::convert(actualMessage);
             if (request) {
               notifyIncoming(message, request);
               return;
             }
           }
           {
-            auto request = SubscribeRequest::convert(message->getMessage());
+            auto request = SubscribeRequest::convert(actualMessage);
             if (request) {
               notifyIncoming(message, request);
               return;
             }
           }
           {
-            auto request = ListSubscribeRequest::convert(message->getMessage());
+            auto request = ListSubscribeRequest::convert(actualMessage);
             if (request) {
               notifyIncoming(message, request);
               return;
@@ -855,7 +956,7 @@ namespace openpeer
           }
         } else {
           {
-            auto notify = ListSubscribeNotify::convert(message->getMessage());
+            auto notify = ListSubscribeNotify::convert(actualMessage);
             if (notify) {
               notifyIncoming(notify);
               return;
@@ -989,6 +1090,7 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "remote subscribe timeout", mRemoteSubscribeTimeout ? mRemoteSubscribeTimeout->getID() : 0);
 
         UseServicesHelper::debugAppend(resultEl, "last changed update notified", mLastChangeUpdateNotified);
+        UseServicesHelper::debugAppend(resultEl, "changed update notified", mChangeUpdateNotified);
 
         UseServicesHelper::debugAppend(resultEl, "incoming subscriptions", mIncomingListSubscriptions.size());
         UseServicesHelper::debugAppend(resultEl, "incoming subscription timer", mIncomingListSubscriptionTimer ? mIncomingListSubscriptionTimer->getID() : 0);
@@ -1020,7 +1122,7 @@ namespace openpeer
           }
 
           if (!isShutdown()) {
-            if (mLastChangeUpdateNotified.hasData()) {
+            if (mChangeUpdateNotified) {
               delegate->onLocationDatabasesUpdated(pThis);
             }
           }
@@ -1147,18 +1249,22 @@ namespace openpeer
           return true;
         }
 
-        UseAccountPtr account = mLocation->getAccount();
-        if (!account) {
-          ZS_LOG_WARNING(Detail, log("account was not found for location"))
-          cancel();
-          return false;
-        }
+        UseLockboxPtr lockbox = mLockbox;
 
-        UseLockboxPtr lockbox = ServiceLockboxSession::convert(account->getLockboxSession());
         if (!lockbox) {
-          ZS_LOG_WARNING(Detail, log("lockbox session was not found for location"))
-          cancel();
-          return false;
+          UseAccountPtr account = mLocation->getAccount();
+          if (!account) {
+            ZS_LOG_WARNING(Detail, log("account was not found for location"))
+            cancel();
+            return false;
+          }
+
+          lockbox = ServiceLockboxSession::convert(account->getLockboxSession());
+          if (!lockbox) {
+            ZS_LOG_WARNING(Detail, log("lockbox session was not found for location"))
+            cancel();
+            return false;
+          }
         }
 
         IServiceLockboxSession::SessionStates state = lockbox->getState();
@@ -1201,14 +1307,10 @@ namespace openpeer
           return false;
         }
 
-        if (mLockboxSubscription) {
-          mLockboxSubscription->cancel();
-          mLockboxSubscription.reset();
-        }
-        mLockbox.reset();
-
         // obtain the DB record information about this database location
         mMasterDatase->peerLocationTable()->createOrObtain(mLocation->getPeerURI(), mLocation->getLocationID(), mPeerLocationRecord);
+
+        mLastChangeUpdateNotified = mPeerLocationRecord.mUpdateVersion;
 
         if (!mMasterDatase) {
           ZS_LOG_WARNING(Detail, log("unable to open master peer location database"))
@@ -1262,7 +1364,7 @@ namespace openpeer
       {
         if (!mDatabaseListConflict) {
           ZS_LOG_TRACE(log("not purging any conflict"))
-          return false;
+          return true;
         }
 
         for (auto iter_doNotUse = mLocationDatabases.begin(); iter_doNotUse != mLocationDatabases.end();)
@@ -1421,6 +1523,7 @@ namespace openpeer
 
           notify->messageID(subscription->mSubscribeMessageID);
           notify->before(subscription->mLastVersion);
+          notify->expires(subscription->mExpires);
 
           DatabaseInfoListPtr notifyList = getUpdates(subscription->mLocation->getPeerURI(), *subscription, subscription->mLastVersion);
           if (!notifyList) {
@@ -1446,6 +1549,7 @@ namespace openpeer
 
           subscription->mPendingSendPromise = subscription->mLocation->send(notify);
           subscription->mPendingSendPromise->then(mThisWeak.lock());
+          continue;
 
         notify_failure:
           {
@@ -1465,6 +1569,8 @@ namespace openpeer
         }
 
         ZS_LOG_DEBUG(log("notified of databases changed event") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion) + ZS_PARAMIZE(mLastChangeUpdateNotified))
+
+        mChangeUpdateNotified = true;
 
         mSubscriptions.delegate()->onLocationDatabasesUpdated(mThisWeak.lock());
         mLastChangeUpdateNotified = mPeerLocationRecord.mUpdateVersion;
@@ -1622,7 +1728,7 @@ namespace openpeer
         UseServicesHelper::SplitMap split;
         UseServicesHelper::split(version, split, '-');
 
-        if ((0 != split.size()) ||
+        if ((0 != split.size()) &&
             (3 != split.size())) {
           ZS_LOG_WARNING(Detail, log("version is not understood") + ZS_PARAMIZE(version))
           return false;
@@ -1725,100 +1831,124 @@ namespace openpeer
           return;
         }
 
-        if (notify->before() != mPeerLocationRecord.mLastDownloadedVersion) {
-          ZS_LOG_WARNING(Detail, log("cannot accept list subscribe notification due to conflicting version") + ZS_PARAM("version", notify->before()) + ZS_PARAM("expecting", mPeerLocationRecord.mLastDownloadedVersion))
-          return;
-        }
+        {
+          if (notify->before() != mPeerLocationRecord.mLastDownloadedVersion) {
+            ZS_LOG_WARNING(Detail, log("cannot accept list subscribe notification due to conflicting version") + ZS_PARAM("version", notify->before()) + ZS_PARAM("expecting", mPeerLocationRecord.mLastDownloadedVersion))
+            goto subscription_must_terminate;
+          }
 
-        auto databases = notify->databases();
-        if (!databases) {
-          ZS_LOG_TRACE("nothing new notified")
+          auto databases = notify->databases();
+          if (!databases) {
+            ZS_LOG_TRACE("nothing new notified")
+            mPeerLocationRecord.mLastDownloadedVersion = notify->version();
+            mMasterDatase->peerLocationTable()->notifyDownloaded(mPeerLocationRecord.mIndex, notify->version());
+            goto check_subscription_must_terminate;
+          }
+
+          bool added = false;
+          bool changed = false;
+
+          for (auto iter = databases->begin(); iter != databases->end(); ++iter) {
+            auto databaseInfo = (*iter);
+
+            ZS_LOG_TRACE(log("notified about database") + databaseInfo.toDebug())
+
+            UseLocationDatabasePtr database;
+            auto found = mLocationDatabases.find(databaseInfo.mDatabaseID);
+            if (found != mLocationDatabases.end()) {
+              database = (*found).second.lock();
+              if (!database) {
+                mLocationDatabases.erase(found);
+                found = mLocationDatabases.end();
+              }
+            }
+
+            switch (databaseInfo.mDisposition) {
+              case DatabaseInfo::Disposition_None:    break;
+              case DatabaseInfo::Disposition_Add:
+              case DatabaseInfo::Disposition_Update:  {
+                UseDatabase::DatabaseRecord record;
+                record.mIndexPeerLocation = mPeerLocationRecord.mIndex;
+                record.mDatabaseID = databaseInfo.mDatabaseID;
+                record.mMetaData = databaseInfo.mMetaData;
+                record.mExpires = databaseInfo.mExpires;
+                record.mUpdateVersion = databaseInfo.mVersion;
+
+                UseDatabase::DatabaseChangeRecord changeRecord;
+                mMasterDatase->databaseTable()->addOrUpdate(record, changeRecord);
+                if (UseDatabase::DatabaseChangeRecord::Disposition_None != changeRecord.mDisposition) {
+                  ZS_LOG_TRACE(log("add or updated database record") + record.toDebug() + changeRecord.toDebug())
+
+                  mMasterDatase->databaseChangeTable()->insert(changeRecord);
+                  added = added || (UseDatabase::DatabaseChangeRecord::Disposition_Add == changeRecord.mDisposition);
+                  changed = changed || (UseDatabase::DatabaseChangeRecord::Disposition_Add != changeRecord.mDisposition);
+                }
+
+                if (database) {
+                  database->notifyUpdated();
+                }
+                break;
+              }
+              case DatabaseInfo::Disposition_Remove:  {
+                UseDatabase::DatabaseRecord record;
+                record.mIndexPeerLocation = mPeerLocationRecord.mIndex;
+                record.mDatabaseID = databaseInfo.mDatabaseID;
+                UseDatabase::DatabaseChangeRecord changeRecord;
+                mMasterDatase->databaseTable()->remove(record, changeRecord);
+                if (UseDatabase::DatabaseChangeRecord::Disposition_None != changeRecord.mDisposition) {
+                  ZS_LOG_DEBUG(log("removed database record") + record.toDebug() + changeRecord.toDebug())
+
+                  mMasterDatase->databaseChangeTable()->insert(changeRecord);
+                  changed = true;
+                }
+
+                mMasterDatase->permissionTable()->flushAllForDatabase(mPeerLocationRecord.mIndex, record.mDatabaseID);
+
+                if (database) {
+                  database->notifyRemoved();
+                  mExpectingShutdownLocationDatabases[record.mDatabaseID] = UseLocationDatabasePtr();
+                } else {
+                  UseDatabase::deleteDatabase(mMasterDatase, mLocation->getPeerURI(), mLocation->getLocationID(), record.mDatabaseID);
+                }
+                break;
+              }
+            }
+          }
+
           mPeerLocationRecord.mLastDownloadedVersion = notify->version();
           mMasterDatase->peerLocationTable()->notifyDownloaded(mPeerLocationRecord.mIndex, notify->version());
+
+          if (changed) {
+            mPeerLocationRecord.mUpdateVersion = mMasterDatase->peerLocationTable()->updateVersion(mPeerLocationRecord.mIndex);
+            ZS_LOG_DEBUG(log("registered peer location databases has changed") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion))
+          } else if (added) {
+            ZS_LOG_DEBUG(log("registered peer location databases has additions") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion) + ZS_PARAMIZE(mLastChangeUpdateNotified))
+            mLastChangeUpdateNotified = "added";  // by setting to added it will notify delegates (but doesn't actually cause a version update change)
+          } else {
+            ZS_LOG_DEBUG(log("no changes to database were found"))
+          }
+
+          goto check_subscription_must_terminate;
+        }
+
+      check_subscription_must_terminate:
+        {
+          if (Time() == notify->expires()) {
+            ZS_LOG_WARNING(Detail, log("notified that subscription is being terminated"))
+            goto subscription_must_terminate;
+          }
           return;
         }
 
-        bool added = false;
-        bool changed = false;
-
-        for (auto iter = databases->begin(); iter != databases->end(); ++iter) {
-          auto databaseInfo = (*iter);
-
-          ZS_LOG_TRACE(log("notified about database") + databaseInfo.toDebug())
-
-          UseLocationDatabasePtr database;
-          auto found = mLocationDatabases.find(databaseInfo.mDatabaseID);
-          if (found != mLocationDatabases.end()) {
-            database = (*found).second.lock();
-            if (!database) {
-              mLocationDatabases.erase(found);
-              found = mLocationDatabases.end();
-            }
+      subscription_must_terminate:
+        {
+          if (mRemoteSubscribeTimeout) {
+            mRemoteSubscribeTimeout->cancel();
+            mRemoteSubscribeTimeout.reset();
           }
 
-          switch (databaseInfo.mDisposition) {
-            case DatabaseInfo::Disposition_None:    break;
-            case DatabaseInfo::Disposition_Add:
-            case DatabaseInfo::Disposition_Update:  {
-              UseDatabase::DatabaseRecord record;
-              record.mIndexPeerLocation = mPeerLocationRecord.mIndex;
-              record.mDatabaseID = databaseInfo.mDatabaseID;
-              record.mMetaData = databaseInfo.mMetaData;
-              record.mExpires = databaseInfo.mExpires;
-              record.mUpdateVersion = databaseInfo.mVersion;
-
-              UseDatabase::DatabaseChangeRecord changeRecord;
-              mMasterDatase->databaseTable()->addOrUpdate(record, changeRecord);
-              if (UseDatabase::DatabaseChangeRecord::Disposition_None != changeRecord.mDisposition) {
-                ZS_LOG_TRACE(log("add or updated database record") + record.toDebug() + changeRecord.toDebug())
-
-                mMasterDatase->databaseChangeTable()->insert(changeRecord);
-                added = added || (UseDatabase::DatabaseChangeRecord::Disposition_Add == changeRecord.mDisposition);
-                changed = changed || (UseDatabase::DatabaseChangeRecord::Disposition_Add != changeRecord.mDisposition);
-              }
-
-              if (database) {
-                database->notifyUpdated();
-              }
-              break;
-            }
-            case DatabaseInfo::Disposition_Remove:  {
-              UseDatabase::DatabaseRecord record;
-              record.mIndexPeerLocation = mPeerLocationRecord.mIndex;
-              record.mDatabaseID = databaseInfo.mDatabaseID;
-              UseDatabase::DatabaseChangeRecord changeRecord;
-              mMasterDatase->databaseTable()->remove(record, changeRecord);
-              if (UseDatabase::DatabaseChangeRecord::Disposition_None != changeRecord.mDisposition) {
-                ZS_LOG_DEBUG(log("removed database record") + record.toDebug() + changeRecord.toDebug())
-
-                mMasterDatase->databaseChangeTable()->insert(changeRecord);
-                changed = true;
-              }
-
-              mMasterDatase->permissionTable()->flushAllForDatabase(mPeerLocationRecord.mIndex, record.mDatabaseID);
-
-              if (database) {
-                database->notifyRemoved();
-                mExpectingShutdownLocationDatabases[record.mDatabaseID] = UseLocationDatabasePtr();
-              } else {
-                UseDatabase::deleteDatabase(mMasterDatase, mLocation->getPeerURI(), mLocation->getLocationID(), record.mDatabaseID);
-              }
-              break;
-            }
-          }
-        }
-
-        mPeerLocationRecord.mLastDownloadedVersion = notify->version();
-        mMasterDatase->peerLocationTable()->notifyDownloaded(mPeerLocationRecord.mIndex, notify->version());
-
-        if (changed) {
-          mPeerLocationRecord.mUpdateVersion = mMasterDatase->peerLocationTable()->updateVersion(mPeerLocationRecord.mIndex);
-          ZS_LOG_DEBUG(log("registered peer location databases has changed") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion))
-        } else if (added) {
-          ZS_LOG_DEBUG(log("registered peer location databases has additions") + ZS_PARAMIZE(mPeerLocationRecord.mUpdateVersion) + ZS_PARAMIZE(mLastChangeUpdateNotified))
-          mLastChangeUpdateNotified = "added";  // by setting to added it will notify delegates (but doesn't actually cause a version update change)
-        } else {
-          ZS_LOG_DEBUG(log("no changes to database were found"))
+          // re-subscribe immediately
+          mRemoteSubscribeTimeout = Timer::create(mThisWeak.lock(), Milliseconds(1), false);
         }
       }
 

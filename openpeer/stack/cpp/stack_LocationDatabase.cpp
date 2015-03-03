@@ -155,10 +155,12 @@ namespace openpeer
       //-----------------------------------------------------------------------
       LocationDatabase::~LocationDatabase()
       {
-        if(isNoop()) return;
+        if (isNoop()) return;
         
         mThisWeak.reset();
         ZS_LOG_DEBUG(log("destroyed"))
+
+        cancel();
 
         mDatabases->notifyDestroyed(*this);
       }
@@ -294,6 +296,7 @@ namespace openpeer
         EntryInfoPtr info(new EntryInfo);
         info->mDisposition = EntryInfo::Disposition_Add;
         info->mEntryID = entryRecord.mEntryID;
+        info->mVersion = entryRecord.mVersion;
         info->mCreated = entryRecord.mCreated;
         info->mUpdated = entryRecord.mUpdated;
         info->mMetaData = entryRecord.mMetaData;
@@ -336,6 +339,7 @@ namespace openpeer
               EntryInfoPtr info(new EntryInfo);
               info->mDisposition = EntryInfo::Disposition_Add;
               info->mCreated = entryRecord.mCreated;
+              info->mVersion = entryRecord.mVersion;
               info->mUpdated = entryRecord.mUpdated;
               info->mMetaData = entryRecord.mMetaData;
               info->mData = entryRecord.mData;
@@ -424,7 +428,7 @@ namespace openpeer
 
         UseLocationDatabasesPtr databases = LocationDatabases::convert(databasesForLocation);
 
-        LocationDatabasePtr pThis = databases->getOrCreate(String(inDatabaseID), false);
+        LocationDatabasePtr pThis = databases->getOrCreate(String(inDatabaseID), inMetaData, inPeerAccessList, expires);
         if (!pThis) {
           ZS_LOG_WARNING(Detail, slog("failed to create database") + ZS_PARAMIZE(inDatabaseID))
           return ILocationDatabaseLocalPtr();
@@ -436,6 +440,31 @@ namespace openpeer
         data->mSubscription = subscription;
 
         return ILocationDatabaseLocalTearAway::create(pThis, data);
+      }
+
+      //-----------------------------------------------------------------------
+      bool LocationDatabase::remove(
+                                    IAccountPtr account,
+                                    const char *inDatabaseID
+                                    )
+      {
+        ZS_THROW_INVALID_ARGUMENT_IF(!account)
+
+        String databaseID(inDatabaseID);
+
+        UseLocationPtr location = UseLocation::getForLocal(Account::convert(account));
+        ZS_THROW_INVALID_ARGUMENT_IF(!location)
+
+        ILocationDatabasesPtr databasesForLocation = ILocationDatabases::open(Location::convert(location), ILocationDatabasesDelegatePtr());
+
+        if (!databasesForLocation) {
+          ZS_LOG_WARNING(Detail, slog("failed to open location databaess") + UseLocation::toDebug(location))
+          return false;
+        }
+
+        UseLocationDatabasesPtr databases = LocationDatabases::convert(databasesForLocation);
+
+        return databases->remove(String(inDatabaseID));
       }
 
       //-----------------------------------------------------------------------
@@ -494,7 +523,19 @@ namespace openpeer
           ZS_LOG_DEBUG(log("added database record") + record.toDebug() + changeRecord.toDebug())
 
           mEntryDatabase->entryChangeTable()->insert(changeRecord);
-          mLastChangeUpdateNotified = "add";
+
+          // cause any incoming subscriptions to be notified about new entry
+          for (auto iter = mIncomingSubscriptions.begin(); iter != mIncomingSubscriptions.end(); ++iter) {
+            auto subscription = (*iter).second;
+
+            ZS_LOG_TRACE(log("incoming subscription will need notification about new entry") + subscription->toDebug());
+
+            subscription->mNotified = false;
+          }
+
+          // cause local notification about new database
+          mLastChangeUpdateNotified = "added";
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
         }
 
@@ -536,7 +577,19 @@ namespace openpeer
           mDatabaseRecord.mUpdateVersion = mDatabases->updateVersion(mDatabaseID);
 
           mEntryDatabase->entryChangeTable()->insert(changeRecord);
-          mLastChangeUpdateNotified = "update";
+
+          // cause any incoming subscriptions to be notified about updated entry
+          for (auto iter = mIncomingSubscriptions.begin(); iter != mIncomingSubscriptions.end(); ++iter) {
+            auto subscription = (*iter).second;
+
+            ZS_LOG_TRACE(log("incoming subscription will need notification about updated entry") + subscription->toDebug());
+
+            subscription->mNotified = false;
+          }
+
+          // cause local notification about new database
+          mLastChangeUpdateNotified = "updated";
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
         }
 
@@ -572,7 +625,37 @@ namespace openpeer
           mDatabaseRecord.mUpdateVersion = mDatabases->updateVersion(mDatabaseID);
 
           mEntryDatabase->entryChangeTable()->insert(changeRecord);
-          mLastChangeUpdateNotified = "update";
+
+          // cause any incoming subscriptions to be notified about removed entry
+          for (auto iter_doNotUse = mIncomingSubscriptions.begin(); iter_doNotUse != mIncomingSubscriptions.end(); ) {
+
+            auto current = iter_doNotUse;
+            ++iter_doNotUse;
+
+            auto subscription = (*current).second;
+
+            if (subscription->mType == VersionedData::VersionType_ChangeList) {
+              ZS_LOG_TRACE(log("incoming subscription will need notification about removed entry") + subscription->toDebug());
+
+              subscription->mNotified = false;
+              continue;
+            }
+
+            ZS_LOG_WARNING(Detail, log("incoming database subscription must be expired because it does not match version"))
+
+            SubscribeNotifyPtr notify = SubscribeNotify::create();
+            notify->messageID(subscription->mSubscribeMessageID);
+            notify->databaseID(mDatabaseID);
+            notify->expires(Time());
+
+            subscription->mLocation->send(notify);
+
+            mIncomingSubscriptions.erase(current);
+          }
+
+          // cause local notification about new database
+          mLastChangeUpdateNotified = "removed";
+          IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
           return true;
         }
 
@@ -663,7 +746,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void LocationDatabase::notifyShutdown()
       {
-        ZS_LOG_WARNING(Detail, log("notified removed"))
+        ZS_LOG_WARNING(Detail, log("notified shutdown"))
         mNotifiedShutdown = true;
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
       }
@@ -698,6 +781,11 @@ namespace openpeer
         ZS_LOG_TRACE(log("on timer") + ZS_PARAM("timer id", timer->getID()))
 
         AutoRecursiveLock lock(*this);
+
+        if (isShutdown()) {
+          ZS_LOG_WARNING(Detail, log("already shutdown"))
+          return;
+        }
 
         auto found = mTimedReferences.find(timer);
         if (found != mTimedReferences.end()) {
@@ -880,8 +968,11 @@ namespace openpeer
         if (isLocal()) {
           // nothing to do
         } else {
+
+          auto actualMessage = message->getMessage();
+
           {
-            auto notify = SubscribeNotify::convert(message->getMessage());
+            auto notify = SubscribeNotify::convert(actualMessage);
             if (notify) {
               notifyIncoming(notify);
               return;
@@ -967,7 +1058,7 @@ namespace openpeer
         IWakeDelegateProxy::create(mThisWeak.lock())->onWake();
         return true;
       }
-      
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -1321,7 +1412,7 @@ namespace openpeer
       //-----------------------------------------------------------------------
       bool LocationDatabase::stepShutdown()
       {
-        if (!mNotifiedConflict) {
+        if (!mNotifiedShutdown) {
           ZS_LOG_TRACE(log("no shutdown notified"))
           return true;
         }
@@ -1579,6 +1670,7 @@ namespace openpeer
 
           notify->messageID(subscription->mSubscribeMessageID);
           notify->before(subscription->mLastVersion);
+          notify->expires(subscription->mExpires);
 
           EntryInfoListPtr notifyList = getUpdates(*subscription, subscription->mLastVersion, subscription->mDownloadData);
           if (!notifyList) {
@@ -1604,6 +1696,8 @@ namespace openpeer
 
           subscription->mPendingSendPromise = subscription->mLocation->send(notify);
           subscription->mPendingSendPromise->then(mThisWeak.lock());
+
+          continue;
 
         notify_failure:
           {
@@ -1748,28 +1842,51 @@ namespace openpeer
 
         ZS_LOG_DEBUG(log("notified of incoming subscription notification") + Message::toDebug(notify))
 
-        if (!mEntryDatabase) {
-          ZS_LOG_WARNING(Detail, log("entry database is not ready thus cannot accept list subscribe notification"))
-          return;
-        }
+        {
+          if (!mEntryDatabase) {
+            ZS_LOG_WARNING(Detail, log("entry database is not ready thus cannot accept list subscribe notification"))
+            return;
+          }
 
-        if (notify->before() != mDatabaseRecord.mLastDownloadedVersion) {
-          ZS_LOG_WARNING(Detail, log("cannot accept list subscribe notification due to conflicting version") + ZS_PARAM("version", notify->before()) + ZS_PARAM("expecting", mDatabaseRecord.mLastDownloadedVersion))
-          return;
-        }
+          if (notify->before() != mDatabaseRecord.mLastDownloadedVersion) {
+            ZS_LOG_WARNING(Detail, log("cannot accept list subscribe notification due to conflicting version") + ZS_PARAM("version", notify->before()) + ZS_PARAM("expecting", mDatabaseRecord.mLastDownloadedVersion))
+            return;
+          }
 
-        auto entries = notify->entries();
-        if (!entries) {
-          ZS_LOG_TRACE("nothing new notified")
+          auto entries = notify->entries();
+          if (!entries) {
+            ZS_LOG_TRACE("nothing new notified")
+            mDatabaseRecord.mLastDownloadedVersion = notify->version();
+            mDatabases->notifyDownloaded(mDatabaseID, notify->version());
+            goto check_subscription_must_terminate;
+          }
+
+          processEntries(*entries);
+
           mDatabaseRecord.mLastDownloadedVersion = notify->version();
           mDatabases->notifyDownloaded(mDatabaseID, notify->version());
+          goto check_subscription_must_terminate;
+        }
+
+      check_subscription_must_terminate:
+        {
+          if (Time() == notify->expires()) {
+            ZS_LOG_WARNING(Detail, log("notified that subscription is being terminated"))
+            goto subscription_must_terminate;
+          }
           return;
         }
 
-        processEntries(*entries);
+      subscription_must_terminate:
+        {
+          if (mRemoteSubscribeTimeout) {
+            mRemoteSubscribeTimeout->cancel();
+            mRemoteSubscribeTimeout.reset();
+          }
 
-        mDatabaseRecord.mLastDownloadedVersion = notify->version();
-        mDatabases->notifyDownloaded(mDatabaseID, notify->version());
+          // re-subscribe immediately
+          mRemoteSubscribeTimeout = Timer::create(mThisWeak.lock(), Milliseconds(1), false);
+        }
       }
 
       //-----------------------------------------------------------------------
@@ -1789,6 +1906,7 @@ namespace openpeer
             case EntryInfo::Disposition_Update:  {
               UseDatabase::EntryRecord record;
               record.mEntryID = entryInfo.mEntryID;
+              record.mVersion = entryInfo.mVersion;
               record.mMetaData = entryInfo.mMetaData;
               record.mData = entryInfo.mData;
               record.mDataLength = entryInfo.mDataSize;
@@ -1811,6 +1929,7 @@ namespace openpeer
 
                   EntryInfoPtr promiseInfo(new EntryInfo);
                   promiseInfo->mEntryID = record.mEntryID;
+                  promiseInfo->mVersion = record.mVersion;
                   promiseInfo->mMetaData = record.mMetaData;
                   promiseInfo->mData = record.mData;
                   promiseInfo->mDataSize = record.mDataLength;
@@ -2026,6 +2145,7 @@ namespace openpeer
             EntryInfo info;
             info.mDisposition = EntryInfo::Disposition_Add;
             info.mEntryID = entryRecord.mEntryID;
+            info.mVersion = entryRecord.mVersion;
             info.mCreated = entryRecord.mCreated;
             info.mUpdated = entryRecord.mUpdated;
             info.mMetaData = entryRecord.mMetaData;
@@ -2096,6 +2216,7 @@ namespace openpeer
               EntryInfo info;
               info.mDisposition = EntryInfo::Disposition_Add;
               info.mEntryID = entryRecord.mEntryID;
+              info.mVersion = entryRecord.mVersion;
               info.mCreated = entryRecord.mCreated;
               info.mUpdated = entryRecord.mUpdated;
               info.mMetaData = entryRecord.mMetaData;
@@ -2161,6 +2282,7 @@ namespace openpeer
                     info.mMetaData = entryRecord.mMetaData;
                     info.mCreated = entryRecord.mCreated;
                   }
+                  info.mVersion = entryRecord.mVersion;
                   info.mUpdated = entryRecord.mUpdated;
                   info.mData = entryRecord.mData;
                   if (!includeData) {
@@ -2192,7 +2314,7 @@ namespace openpeer
         UseServicesHelper::SplitMap split;
         UseServicesHelper::split(version, split, '-');
 
-        if ((0 != split.size()) ||
+        if ((0 != split.size()) &&
             (3 != split.size())) {
           ZS_LOG_WARNING(Detail, log("version is not understood") + ZS_PARAMIZE(version))
           return false;
@@ -2408,6 +2530,16 @@ namespace openpeer
       {
         if (this) {}
         return LocationDatabase::create(inDelegate, account, inDatabaseID, inMetaData, inPeerAccessList, expires);
+      }
+
+      //-----------------------------------------------------------------------
+      bool ILocationDatabaseFactory::remove(
+                                            IAccountPtr account,
+                                            const char *inDatabaseID
+                                            )
+      {
+        if (this) {}
+        return LocationDatabase::remove(account, inDatabaseID);
       }
 
       //-----------------------------------------------------------------------
@@ -2677,5 +2809,13 @@ namespace openpeer
       return internal::ILocationDatabaseFactory::singleton().create(inDelegate, account, inDatabaseID, inMetaData, inPeerAccessList, expires);
     }
 
+    //-------------------------------------------------------------------------
+    bool ILocationDatabaseLocal::remove(
+                                        IAccountPtr account,
+                                        const char *inDatabaseID
+                                        )
+    {
+      return internal::ILocationDatabaseFactory::singleton().remove(account, inDatabaseID);
+    }
   }
 }

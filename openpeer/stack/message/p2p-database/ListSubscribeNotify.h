@@ -56,6 +56,7 @@ namespace openpeer
           {
             AttributeType_DatabasesBefore,
             AttributeType_DatabasesVersion,
+            AttributeType_DatabasesExpires,
             AttributeType_Databases,
           };
 
@@ -83,6 +84,9 @@ namespace openpeer
           const String &version() const                             {return mVersion;}
           void version(const String &value)                         {mVersion = value;}
 
+          const Time &expires() const                               {return mExpires;}
+          void expires(const Time &value)                           {mExpires = value;}
+
           DatabaseInfoListPtr databases() const                     {return mDatabases;}
           void databases(DatabaseInfoListPtr value)                 {mDatabases = value;}
 
@@ -91,6 +95,8 @@ namespace openpeer
 
           String mBefore;
           String mVersion;
+
+          Time mExpires;
 
           DatabaseInfoListPtr mDatabases;
         };

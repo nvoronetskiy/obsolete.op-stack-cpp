@@ -103,6 +103,26 @@ namespace openpeer
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       #pragma mark
+      #pragma mark IPeerForLocationDatabases
+      #pragma mark
+
+      interaction IPeerForLocationDatabases
+      {
+        ZS_DECLARE_TYPEDEF_PTR(IPeerForLocationDatabases, ForLocationDatabases)
+
+        static ForLocationDatabasesPtr create(
+                                              AccountPtr account,
+                                              const char *peerURI
+                                              );
+
+        virtual String getPeerURI() const = 0;
+      };
+
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      //-----------------------------------------------------------------------
+      #pragma mark
       #pragma mark IPeerForMessages
       #pragma mark
 
@@ -165,6 +185,8 @@ namespace openpeer
         virtual String getPeerURI() const = 0;
       };
 
+
+
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
       //-----------------------------------------------------------------------
@@ -178,6 +200,7 @@ namespace openpeer
                    public IPeer,
                    public IPeerForAccount,
                    public IPeerForLocation,
+                   public IPeerForLocationDatabases,
                    public IPeerForMessages,
                    public IPeerForPeerSubscription,
                    public IPeerForPeerPublicationRepository
@@ -186,6 +209,7 @@ namespace openpeer
         friend interaction IPeerFactory;
         friend interaction IPeerForAccount;
         friend interaction IPeerForMessages;
+        friend interaction IPeerForLocationDatabases;
         friend interaction IPeerForPeerSubscription;
 
         friend interaction IPeer;
@@ -214,6 +238,7 @@ namespace openpeer
         static PeerPtr convert(ForAccountPtr peer);
         static PeerPtr convert(ForMessagesPtr peer);
         static PeerPtr convert(ForLocationPtr peer);
+        static PeerPtr convert(ForLocationDatabasesPtr peer);
         static PeerPtr convert(ForPeerSubscriptionPtr peer);
 
       protected:
@@ -291,6 +316,18 @@ namespace openpeer
         // (duplicate) virtual String getPeerURI() const;
 
         virtual ElementPtr toDebug() const;
+
+        //---------------------------------------------------------------------
+        #pragma mark
+        #pragma mark Peer => IPeerForLocation
+        #pragma mark
+
+        // (duplicate) static PeerPtr create(
+        //                                   AccountPtr account,
+        //                                   const char *peerURI
+        //                                   );
+
+        // (duplicate) virtual String getPeerURI() const = 0;
 
         //---------------------------------------------------------------------
         #pragma mark

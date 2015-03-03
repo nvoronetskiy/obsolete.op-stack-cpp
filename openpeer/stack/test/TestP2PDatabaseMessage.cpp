@@ -357,6 +357,7 @@ namespace openpeer
           TESTING_EQUAL("", notify->appID())
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
 
           DocumentPtr doc = notify->encode();
@@ -368,7 +369,34 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\"}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"expires\":0}}}")
+        }
+
+        {
+          ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
+          notify->time(now);
+          notify->messageID("test-id");
+          notify->expires(zsLib::timeSinceEpoch(Seconds(999)));
+
+          TESTING_CHECK(MessageFactoryP2PDatabase::Method_ListSubscribe == ((MessageFactoryP2PDatabase::Methods) notify->method()))
+          TESTING_EQUAL("list-subscribe", notify->methodAsString())
+
+          TESTING_EQUAL("", notify->appID())
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
+
+          DocumentPtr doc = notify->encode();
+
+          TESTING_CHECK(doc)
+
+          ElementPtr rootEl = doc->getFirstChildElement();
+          TESTING_CHECK(rootEl)
+
+          String encodeStr = UseServicesHelper::toString(rootEl);
+
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"expires\":999}}}")
         }
 
         {
@@ -383,6 +411,7 @@ namespace openpeer
           TESTING_EQUAL("", notify->appID())
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
 
           DocumentPtr doc = notify->encode();
@@ -394,7 +423,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"expires\":0}}}")
         }
         {
           ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
@@ -402,6 +431,7 @@ namespace openpeer
           notify->messageID("test-id");
           notify->before("test-before");
           notify->version("test-version");
+          notify->expires(zsLib::timeSinceEpoch(Seconds(999)));
 
           TESTING_CHECK(MessageFactoryP2PDatabase::Method_ListSubscribe == ((MessageFactoryP2PDatabase::Methods) notify->method()))
           TESTING_EQUAL("list-subscribe", notify->methodAsString())
@@ -409,6 +439,7 @@ namespace openpeer
           TESTING_EQUAL("", notify->appID())
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
 
           DocumentPtr doc = notify->encode();
@@ -420,7 +451,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$before\":\"test-before\",\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$before\":\"test-before\",\"$version\":\"test-version\",\"expires\":999}}}")
         }
         {
           ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
@@ -434,6 +465,7 @@ namespace openpeer
           TESTING_EQUAL("", notify->appID())
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
 
           DocumentPtr doc = notify->encode();
 
@@ -444,13 +476,14 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"expires\":0}}}")
         }
         {
           ListSubscribeNotifyPtr notify = ListSubscribeNotify::create();
           notify->time(now);
           notify->messageID("test-id");
           notify->version("test-version");
+          notify->expires(zsLib::timeSinceEpoch(Seconds(999)));
 
           DatabaseInfoListPtr databases = DatabaseInfoListPtr(new DatabaseInfoList);
 
@@ -494,6 +527,7 @@ namespace openpeer
           TESTING_EQUAL("", notify->appID())
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
 
           DocumentPtr doc = notify->encode();
@@ -505,7 +539,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"database\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":\"ver-a\",\"metaData\":{\"meta\":\"data-a\"},\"created\":10001,\"expires\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":\"ver-b\",\"metaData\":\"data-b\",\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"expires\":999,\"database\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":\"ver-a\",\"metaData\":{\"meta\":\"data-a\"},\"created\":10001,\"expires\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":\"ver-b\",\"metaData\":\"data-b\",\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}")
         }
 
         {
@@ -525,9 +559,59 @@ namespace openpeer
           TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
           TESTING_EQUAL("", notify->before())
           TESTING_EQUAL("", notify->version())
+          TESTING_CHECK(Time() == notify->expires())
           TESTING_CHECK(!((bool) notify->databases()))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
+        }
+        {
+          const char *messageStr = "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"expires\":0}}}";
+
+          MessagePtr message = MessageFactoryP2PDatabase::singleton()->create(UseServicesHelper::toJSON(messageStr), IMessageSourcePtr());
+          TESTING_CHECK(message)
+
+          ListSubscribeNotifyPtr notify = ListSubscribeNotify::convert(message);
+
+          TESTING_CHECK(notify)
+          TESTING_CHECK(MessageFactoryP2PDatabase::Method_ListSubscribe == ((MessageFactoryP2PDatabase::Methods) notify->method()))
+          TESTING_EQUAL("list-subscribe", notify->methodAsString())
+
+          TESTING_EQUAL("", notify->appID())
+          TESTING_EQUAL("test-id", notify->messageID())
+          TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
+          TESTING_EQUAL("", notify->before())
+          TESTING_EQUAL("", notify->version())
+          TESTING_CHECK(Time() == notify->expires())
+          TESTING_CHECK(!((bool) notify->databases()))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
+        }
+        {
+          const char *messageStr = "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"expires\":999}}}";
+
+          MessagePtr message = MessageFactoryP2PDatabase::singleton()->create(UseServicesHelper::toJSON(messageStr), IMessageSourcePtr());
+          TESTING_CHECK(message)
+
+          ListSubscribeNotifyPtr notify = ListSubscribeNotify::convert(message);
+
+          TESTING_CHECK(notify)
+          TESTING_CHECK(MessageFactoryP2PDatabase::Method_ListSubscribe == ((MessageFactoryP2PDatabase::Methods) notify->method()))
+          TESTING_EQUAL("list-subscribe", notify->methodAsString())
+
+          TESTING_EQUAL("", notify->appID())
+          TESTING_EQUAL("test-id", notify->messageID())
+          TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
+          TESTING_EQUAL("", notify->before())
+          TESTING_EQUAL("", notify->version())
+          TESTING_EQUAL(Seconds(999).count(), zsLib::timeSinceEpoch<Seconds>(notify->expires()).count())
+          TESTING_CHECK(!((bool) notify->databases()))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
         }
         {
@@ -547,9 +631,11 @@ namespace openpeer
           TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
           TESTING_EQUAL("", notify->before())
           TESTING_EQUAL("test-version", notify->version())
+          TESTING_CHECK(Time() == notify->expires())
           TESTING_CHECK(!((bool) notify->databases()))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
         }
         {
@@ -569,9 +655,11 @@ namespace openpeer
           TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
           TESTING_EQUAL("", notify->before())
           TESTING_EQUAL("test-version", notify->version())
+          TESTING_CHECK(Time() == notify->expires())
           TESTING_CHECK(!((bool) notify->databases()))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
         }
         {
@@ -591,13 +679,15 @@ namespace openpeer
           TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
           TESTING_EQUAL("test-before", notify->before())
           TESTING_EQUAL("test-version", notify->version())
+          TESTING_CHECK(Time() == notify->expires())
           TESTING_CHECK(!((bool) notify->databases()))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
         }
         {
-          const char *messageStr = "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"database\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":\"ver-a\",\"metaData\":{\"meta\":\"data-a\"},\"created\":10001,\"expires\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":\"ver-b\",\"metaData\":\"data-b\",\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}";
+          const char *messageStr = "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"list-subscribe\",\"databases\":{\"$version\":\"test-version\",\"expires\":999,\"database\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":\"ver-a\",\"metaData\":{\"meta\":\"data-a\"},\"created\":10001,\"expires\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":\"ver-b\",\"metaData\":\"data-b\",\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}";
 
           MessagePtr message = MessageFactoryP2PDatabase::singleton()->create(UseServicesHelper::toJSON(messageStr), IMessageSourcePtr());
           TESTING_CHECK(message)
@@ -613,9 +703,11 @@ namespace openpeer
           TESTING_EQUAL(Seconds(10000).count(), zsLib::timeSinceEpoch<Seconds>(notify->time()).count())
           TESTING_EQUAL("", notify->before())
           TESTING_EQUAL("test-version", notify->version())
+          TESTING_EQUAL(Seconds(999).count(), zsLib::timeSinceEpoch<Seconds>(notify->expires()).count())
           TESTING_CHECK((bool) notify->databases())
           TESTING_CHECK(!notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesBefore))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesVersion))
+          TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_DatabasesExpires))
           TESTING_CHECK(notify->hasAttribute(ListSubscribeNotify::AttributeType_Databases))
 
           TESTING_CHECK(notify->databases())
@@ -905,7 +997,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\"}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"expires\":0}}}")
         }
 
         {
@@ -930,7 +1022,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\",\"expires\":0}}}")
         }
         {
           SubscribeNotifyPtr notify = SubscribeNotify::create();
@@ -955,7 +1047,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\",\"expires\":0}}}")
         }
         {
           SubscribeNotifyPtr notify = SubscribeNotify::create();
@@ -981,7 +1073,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$before\":\"test-before\",\"$version\":\"test-version\"}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$before\":\"test-before\",\"$version\":\"test-version\",\"expires\":0}}}")
         }
         {
           SubscribeNotifyPtr notify = SubscribeNotify::create();
@@ -1045,7 +1137,7 @@ namespace openpeer
 
           String encodeStr = UseServicesHelper::toString(rootEl);
 
-          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\",\"entries\":{\"entry\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":1,\"metaData\":{\"meta\":\"data-a\"},\"data\":\"bar-a\",\"created\":10001,\"updated\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":2,\"metaData\":\"data-b\",\"data\":{\"data2\":\"bar-b\"},\"size\":17,\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}}")
+          TESTING_EQUAL(encodeStr, "{\"notify\":{\"$timestamp\":10000,\"$handler\":\"p2p-database\",\"$id\":\"test-id\",\"$method\":\"subscribe\",\"database\":{\"$version\":\"test-version\",\"expires\":0,\"entries\":{\"entry\":[{\"$id\":\"foo-a\",\"$disposition\":\"add\",\"$version\":1,\"metaData\":{\"meta\":\"data-a\"},\"data\":\"bar-a\",\"created\":10001,\"updated\":10002},{\"$id\":\"foo-b\",\"$disposition\":\"update\",\"$version\":2,\"metaData\":\"data-b\",\"data\":{\"data2\":\"bar-b\"},\"size\":17,\"created\":10003},{\"$id\":\"foo-c\",\"$disposition\":\"remove\"}]}}}}")
         }
 
         {
