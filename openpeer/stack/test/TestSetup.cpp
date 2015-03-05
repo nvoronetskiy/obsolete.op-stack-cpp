@@ -107,10 +107,10 @@ namespace openpeer
       //-----------------------------------------------------------------------
       void TestSetup::init()
       {
-        mThreadDelegate = MessageQueueThread::createBasic();
-        mThreadStack = MessageQueueThread::createBasic();
-        mThreadServices = MessageQueueThread::createBasic();
-        mThreadKeyGeneration = MessageQueueThread::createBasic();
+        mThreadDelegate = MessageQueueThread::createBasic("test.delegate");
+        mThreadStack = MessageQueueThread::createBasic("test.stack");
+        mThreadServices = MessageQueueThread::createBasic("test.services");
+        mThreadKeyGeneration = MessageQueueThread::createBasic("test.keygeneration");
 
         IStack::setup(
                       mThreadDelegate,

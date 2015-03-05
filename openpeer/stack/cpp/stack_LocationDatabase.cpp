@@ -2012,7 +2012,7 @@ namespace openpeer
           step();
         }
 
-        ZS_LOG_DEBUG(log("notified of incoming list subscription request") + UseMessageIncoming::toDebug(message) + Message::toDebug(request))
+        ZS_LOG_DEBUG(log("notified of incoming subscription request") + UseMessageIncoming::toDebug(message) + Message::toDebug(request))
 
         IHTTP::HTTPStatusCodes errorCode = IHTTP::HTTPStatusCode_Conflict;
         String errorReason;
@@ -2064,6 +2064,7 @@ namespace openpeer
           subscription->mDownloadData = request->data();
           subscription->mExpires = request->expires();
           subscription->mLastVersion = request->version();
+          subscription->mNotified = false;
 
           if (!mEntryDatabase) {
             ZS_LOG_WARNING(Detail, log("entry database is gone"))
@@ -2113,7 +2114,7 @@ namespace openpeer
           step();
         }
 
-        ZS_LOG_DEBUG(log("notified of incoming list subscription request") + UseMessageIncoming::toDebug(message) + Message::toDebug(request))
+        ZS_LOG_DEBUG(log("notified of incoming list data get request") + UseMessageIncoming::toDebug(message) + Message::toDebug(request))
 
         IHTTP::HTTPStatusCodes errorCode = IHTTP::HTTPStatusCode_Conflict;
         String errorReason;
@@ -2146,9 +2147,9 @@ namespace openpeer
             info.mDisposition = EntryInfo::Disposition_Add;
             info.mEntryID = entryRecord.mEntryID;
             info.mVersion = entryRecord.mVersion;
-            info.mCreated = entryRecord.mCreated;
+            //info.mCreated = entryRecord.mCreated;
             info.mUpdated = entryRecord.mUpdated;
-            info.mMetaData = entryRecord.mMetaData;
+            //info.mMetaData = entryRecord.mMetaData;
             info.mData = entryRecord.mData;
 
             entries->push_back(info);
@@ -2205,52 +2206,62 @@ namespace openpeer
 
         switch (ioVersionData.mType) {
           case VersionedData::VersionType_FullList: {
-            UseDatabase::EntryRecordListPtr batch = mEntryDatabase->entryTable()->getBatch(includeData, ioVersionData.mAfterIndex);
-            if (!batch) batch = UseDatabase::EntryRecordListPtr(new UseDatabase::EntryRecordList);
+            for (int count = 0; count < 2; ++count) {
+              UseDatabase::EntryRecordListPtr batch = mEntryDatabase->entryTable()->getBatch(includeData, ioVersionData.mAfterIndex);
+              if (!batch) batch = UseDatabase::EntryRecordListPtr(new UseDatabase::EntryRecordList);
 
-            ZS_LOG_TRACE(log("getting batch of entries to notify") + ZS_PARAM("size", batch->size()))
+              ZS_LOG_TRACE(log("getting batch of entries to notify") + ZS_PARAM("size", batch->size()))
 
-            for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
-              auto entryRecord = (*batchIter);
+              for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
+                auto entryRecord = (*batchIter);
 
-              EntryInfo info;
-              info.mDisposition = EntryInfo::Disposition_Add;
-              info.mEntryID = entryRecord.mEntryID;
-              info.mVersion = entryRecord.mVersion;
-              info.mCreated = entryRecord.mCreated;
-              info.mUpdated = entryRecord.mUpdated;
-              info.mMetaData = entryRecord.mMetaData;
-              info.mData = entryRecord.mData;
-              info.mDataSize = entryRecord.mDataLength;
+                EntryInfo info;
+                info.mDisposition = EntryInfo::Disposition_Add;
+                info.mEntryID = entryRecord.mEntryID;
+                info.mVersion = entryRecord.mVersion;
+                info.mCreated = entryRecord.mCreated;
+                info.mUpdated = entryRecord.mUpdated;
+                info.mMetaData = entryRecord.mMetaData;
+                info.mData = entryRecord.mData;
+                info.mDataSize = entryRecord.mDataLength;
 
-              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
+                ioVersionData.mAfterIndex = entryRecord.mIndex;
 
-              result->push_back(info);
+                result->push_back(info);
 
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(entryRecord.mEntryID + ":" + mDatabaseRecord.mUpdateVersion));
-              outLastVersion = String(VersionedData::toString(VersionedData::VersionType_FullList)) + "-" + hash + "-" + string(entryRecord.mIndex);
-            }
+                String prehash = entryRecord.mEntryID + ":" + mDatabaseRecord.mUpdateVersion;
+                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
+                outLastVersion = String(VersionedData::toString(VersionedData::VersionType_FullList)) + "-" + hash + "-" + string(entryRecord.mIndex);
 
-            if (batch->size() < 1) {
-              ZS_LOG_DEBUG(log("no additional database records found"))
-              // nothing more to notify
+                ZS_LOG_TRACE(log("found additional updated record") + info.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
+              }
 
-              if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioVersionData.mAfterIndex) {
-                ZS_LOG_TRACE(log("switching to change list subscription type"))
-                UseDatabase::EntryChangeRecord changeRecord;
-                auto result = mEntryDatabase->entryChangeTable()->getLast(changeRecord);
-                if (!result) {
-                  ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
-                  return EntryInfoListPtr();
+              if (batch->size() < 1) {
+                ZS_LOG_DEBUG(log("no additional database records found"))
+                // nothing more to notify
+
+                if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioVersionData.mAfterIndex) {
+                  ZS_LOG_TRACE(log("switching to change list subscription type"))
+                  UseDatabase::EntryChangeRecord changeRecord;
+                  auto result = mEntryDatabase->entryChangeTable()->getLast(changeRecord);
+                  if (!result) {
+                    ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
+                    return EntryInfoListPtr();
+                  }
+
+                  ioVersionData.mType = VersionedData::VersionType_ChangeList;
+                  ioVersionData.mAfterIndex = changeRecord.mIndex;
+
+                  String prehash = string(changeRecord.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + changeRecord.mEntryID;
+                  String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
+
+                  outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+
+                  ZS_LOG_TRACE(log("switching to change list subscription type") + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
+                } else {
+                  outLastVersion = String();
+                  break;
                 }
-
-                ioVersionData.mType = VersionedData::VersionType_ChangeList;
-                ioVersionData.mAfterIndex = changeRecord.mIndex;
-
-                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + changeRecord.mEntryID));
-                outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
-              } else {
-                outLastVersion = String();
               }
             }
             break;
@@ -2265,8 +2276,11 @@ namespace openpeer
             for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
               auto changeRecord = (*batchIter);
 
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + changeRecord.mEntryID));
+              String prehash = string(changeRecord.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + changeRecord.mEntryID;
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
+
               outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+              ioVersionData.mAfterIndex = changeRecord.mIndex;
 
               EntryInfo info;
               info.mDisposition = toDisposition(changeRecord.mDisposition);
@@ -2294,7 +2308,7 @@ namespace openpeer
                 }
               }
 
-              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
+              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
               result->push_back(info);
             }
             break;
@@ -2376,10 +2390,11 @@ namespace openpeer
             }
 
             if (updateVersion.hasData()) {
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(mDatabaseRecord.mDatabaseID + ":" + mDatabaseRecord.mUpdateVersion));
+              String prehash = mDatabaseRecord.mDatabaseID + ":" + mDatabaseRecord.mUpdateVersion;
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
 
               if (hash != updateVersion) {
-                ZS_LOG_WARNING(Detail, log("version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + mDatabaseRecord.toDebug() + ZS_PARAMIZE(hash))
+                ZS_LOG_WARNING(Detail, log("version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + mDatabaseRecord.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash))
                 return false;
               }
             }
@@ -2394,9 +2409,10 @@ namespace openpeer
               return false;
             }
 
-            String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(record.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + record.mEntryID));
+            String prehash = string(record.mDisposition) + ":" + mDatabaseRecord.mDatabaseID + ":" + record.mEntryID;
+            String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
             if (hash != updateVersion) {
-              ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + ZS_PARAMIZE(hash))
+              ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash))
               return false;
             }
             break;

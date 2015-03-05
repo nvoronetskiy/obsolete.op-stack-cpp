@@ -554,6 +554,8 @@ namespace openpeer
           OverrideLocationPtr mRemoteLocationBob;
           ILocationDatabasesPtr mRemoteDatabasesBob;
 
+          String mPreviousVersion;
+
           bool mTestDualSubscribe {false};
         };
       }

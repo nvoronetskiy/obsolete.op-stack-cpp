@@ -565,8 +565,8 @@ namespace openpeer
           AutoRecursiveLock lock(*this);
           if (mSentMessages.size() < 1) return message::MessagePtr();
 
-          message::MessagePtr result = mSentMessages.back();
-          mSentMessages.pop_back();
+          message::MessagePtr result = mSentMessages.front();
+          mSentMessages.pop_front();
           return result;
         }
 
@@ -1429,8 +1429,17 @@ namespace openpeer
           {2,   71},
           {2,   80},
           {2,   81},
-          {40,  100},
-          {3,   110},
+          {2,   90},
+          {2,   91},
+          {2,   100},
+          {2,   101},
+          {2,   105},
+          {2,   106},
+          {2,   110},
+          {2,   111},
+          {2,   112},
+          {40,  1000},
+          {3,   1100},
           {0,0}
         };
 
@@ -1529,8 +1538,8 @@ namespace openpeer
             TESTING_EQUAL("apple1", info.mDatabaseID)
             TESTING_EQUAL(ILocationDatabases::DatabaseInfo::Disposition_Add, info.mDisposition)
             TESTING_EQUAL("{\"values\":{\"value\":[\"valuea1i\",\"valuea1ii\"]}}", UseServicesHelper::toString(info.mMetaData))
-            TESTING_CHECK((info.mCreated < now) && (info.mCreated + Seconds(4) > now))
-            TESTING_CHECK((info.mExpires < expires) && (info.mExpires + Seconds(4) > expires))
+            TESTING_CHECK((info.mCreated < now) && (info.mCreated + Seconds(6) > now))
+            TESTING_CHECK((info.mExpires < expires) && (info.mExpires + Seconds(6) > expires))
             TESTING_CHECK(info.mVersion.hasData())
             break;
           }
@@ -1567,7 +1576,63 @@ namespace openpeer
             TESTING_CHECK(notify->entries())
             TESTING_EQUAL(1, notify->entries()->size())
             auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL("entry1", entry.mEntryID)
             TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya1i\",\"metaentrya1ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(now > entry.mCreated)
+            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now > entry.mUpdated)
+            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_EQUAL(1, entry.mVersion)
+
+            mPreviousVersion = notify->version();
+            break;
+          }
+          case 90: {
+            DataGetRequestPtr request = DataGetRequest::create();
+            DataGetRequest::EntryIDList entries;
+            entries.push_back("entry1");
+            request->messageID("bob-message-id-3");
+            request->databaseID("apple1");
+            request->entries(entries);
+            mRemoteLocationBob->testSimulateIncomingMessage(request);
+            break;
+          }
+          case 91: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            DataGetResultPtr result = DataGetResult::convert(message);
+            TESTING_CHECK(result)
+            TESTING_EQUAL("bob-message-id-3", result->messageID())
+            TESTING_CHECK(result->entries())
+            TESTING_EQUAL(1, result->entries()->size())
+            auto entry = *(result->entries()->begin());
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya1i\",\"entrya1ii\"]}}", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(Time() == entry.mCreated)
+            TESTING_CHECK(now > entry.mUpdated)
+            TESTING_CHECK(now < entry.mUpdated + Seconds(10))
+            TESTING_EQUAL(1, entry.mVersion)
+            break;
+          }
+          case 100: {
+            ElementPtr metaData = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"metaentrya2i\",\"metaentrya2ii\"]}}");
+            ElementPtr data = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"entrya2i\",\"entrya2ii\"]}}");
+            mLocalDatabaseApple1->add("entry2", metaData, data);
+            break;
+          }
+          case 101: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-2", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(1, notify->entries()->size())
+            auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL("entry2", entry.mEntryID)
+            TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya2i\",\"metaentrya2ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
             TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
             TESTING_CHECK(now > entry.mCreated)
             TESTING_CHECK(now < entry.mCreated + Seconds(4))
@@ -1576,12 +1641,100 @@ namespace openpeer
             TESTING_EQUAL(1, entry.mVersion)
             break;
           }
-          case 100: {
+          case 105: {
+            ElementPtr metaData = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"metaentrya3i\",\"metaentrya3ii\"]}}");
+            ElementPtr data = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"entrya3i\",\"entrya3ii\"]}}");
+            mLocalDatabaseApple1->add("entry3", metaData, data);
+            break;
+          }
+          case 106: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-2", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(1, notify->entries()->size())
+            auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL("entry3", entry.mEntryID)
+            TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya3i\",\"metaentrya3ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(now > entry.mCreated)
+            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now > entry.mUpdated)
+            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_EQUAL(1, entry.mVersion)
+            break;
+          }
+          case 110: {
+            ZS_LOG_BASIC(log("remote location (simulated) subscribing to local location database [AGAIN] (bob)"))
+            SubscribeRequestPtr request = SubscribeRequest::create();
+            request->databaseID("apple1");
+            request->messageID("bob-message-id-4");
+            request->expires(zsLib::now() + Seconds(1000));
+            request->version(mPreviousVersion);
+            request->data(true);
+            mRemoteLocationBob->testSimulateIncomingMessage(request);
+            break;
+          }
+          case 111: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeResultPtr result = SubscribeResult::convert(message);
+            TESTING_CHECK(result)
+            TESTING_EQUAL("bob-message-id-4", result->messageID())
+            break;
+          }
+          case 112: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-4", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(2, notify->entries()->size())
+
+            auto entries = notify->entries();
+
+            int count = 0;
+            for (auto iter = entries->begin(); iter != entries->end(); ++iter, ++count) {
+              switch (count) {
+                case 0: {
+                  auto entry = *(notify->entries()->begin());
+                  TESTING_EQUAL("entry2", entry.mEntryID)
+                  TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya2i\",\"metaentrya2ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
+                  TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya2i\",\"entrya2ii\"]}}", UseServicesHelper::toString(entry.mData))
+                  TESTING_CHECK(now > entry.mCreated)
+                  TESTING_CHECK(now < entry.mCreated + Seconds(20))
+                  TESTING_CHECK(now > entry.mUpdated)
+                  TESTING_CHECK(now < entry.mUpdated + Seconds(20))
+                  TESTING_EQUAL(1, entry.mVersion)
+                  break;
+                }
+                case 1:
+                {
+                  auto entry = *(++(notify->entries()->begin()));
+                  TESTING_EQUAL("entry3", entry.mEntryID)
+                  TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya3i\",\"metaentrya3ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
+                  TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya3i\",\"entrya3ii\"]}}", UseServicesHelper::toString(entry.mData))
+                  TESTING_CHECK(now > entry.mCreated)
+                  TESTING_CHECK(now < entry.mCreated + Seconds(20))
+                  TESTING_CHECK(now > entry.mUpdated)
+                  TESTING_CHECK(now < entry.mUpdated + Seconds(20))
+                  TESTING_EQUAL(1, entry.mVersion)
+                  break;
+                }
+              }
+            }
+          }
+          case 1000: {
             ZS_LOG_BASIC(log("shutting down"))
             mLockboxSession->testSetState(IServiceLockboxSession::SessionState_Shutdown);
             break;
           }
-          case 110: {
+          case 1100: {
             ZS_LOG_BASIC(log("shutting down"))
             mSelfReference.reset();
             break;

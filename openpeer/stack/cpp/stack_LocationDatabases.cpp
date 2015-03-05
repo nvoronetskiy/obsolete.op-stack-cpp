@@ -1295,9 +1295,10 @@ namespace openpeer
           return false;
         }
 
-        String userHash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(lockboxInfo.mDomain + ":" + lockboxInfo.mAccountID));
+        String prehash = lockboxInfo.mDomain + ":" + lockboxInfo.mAccountID;
+        String userHash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
 
-        ZS_LOG_DEBUG(log("creating master database for location") + ZS_PARAMIZE(userHash))
+        ZS_LOG_DEBUG(log("creating master database for location") + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(userHash))
 
         mMasterDatase = UseLocationDatabasesManager::getOrCreateForUserHash(Location::convert(mLocation), userHash);
 
@@ -1617,55 +1618,64 @@ namespace openpeer
 
         switch (ioVersionData.mType) {
           case VersionedData::VersionType_FullList: {
-            UseDatabase::DatabaseRecordListPtr batch;
-            if (peerURI.hasData()) {
-              batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndexForPeerURI(peerURI, mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
-            } else {
-              batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndex(mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
-            }
-            if (!batch) batch = UseDatabase::DatabaseRecordListPtr(new UseDatabase::DatabaseRecordList);
-
-            ZS_LOG_TRACE(log("getting batch of databases to notify") + ZS_PARAM("size", batch->size()))
-
-            for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
-              auto databaseRecord = (*batchIter);
-
-              DatabaseInfo info;
-              info.mDisposition = DatabaseInfo::Disposition_Add;
-              info.mDatabaseID = databaseRecord.mDatabaseID;
-              info.mCreated = databaseRecord.mCreated;
-              info.mExpires = databaseRecord.mExpires;
-              info.mMetaData = databaseRecord.mMetaData;
-              info.mVersion = databaseRecord.mUpdateVersion;
-
-              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
-
-              result->push_back(info);
-
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(databaseRecord.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion));
-              outLastVersion = String(VersionedData::toString(VersionedData::VersionType_FullList)) + "-" + hash + "-" + string(databaseRecord.mIndex);
-            }
-
-            if (batch->size() < 1) {
-              ZS_LOG_DEBUG(log("no additional database records found"))
-              // nothing more to notify
-
-              if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioVersionData.mAfterIndex) {
-                ZS_LOG_TRACE(log("switching to change list subscription type"))
-                UseDatabase::DatabaseChangeRecord changeRecord;
-                auto result = mMasterDatase->databaseChangeTable()->getLast(changeRecord);
-                if (!result) {
-                  ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
-                  return DatabaseInfoListPtr();
-                }
-
-                ioVersionData.mType = VersionedData::VersionType_ChangeList;
-                ioVersionData.mAfterIndex = changeRecord.mIndex;
-
-                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID));
-                outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+            for (int count = 0; count < 2; ++count) {
+              UseDatabase::DatabaseRecordListPtr batch;
+              if (peerURI.hasData()) {
+                batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndexForPeerURI(peerURI, mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
               } else {
-                outLastVersion = String();
+                batch = mMasterDatase->databaseTable()->getBatchByPeerLocationIndex(mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
+              }
+              if (!batch) batch = UseDatabase::DatabaseRecordListPtr(new UseDatabase::DatabaseRecordList);
+
+              ZS_LOG_TRACE(log("getting batch of databases to notify") + ZS_PARAM("size", batch->size()))
+
+              for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
+                auto databaseRecord = (*batchIter);
+
+                DatabaseInfo info;
+                info.mDisposition = DatabaseInfo::Disposition_Add;
+                info.mDatabaseID = databaseRecord.mDatabaseID;
+                info.mCreated = databaseRecord.mCreated;
+                info.mExpires = databaseRecord.mExpires;
+                info.mMetaData = databaseRecord.mMetaData;
+                info.mVersion = databaseRecord.mUpdateVersion;
+
+                ioVersionData.mAfterIndex = databaseRecord.mIndex;
+
+                result->push_back(info);
+
+                String prehash = databaseRecord.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion;
+                String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
+                outLastVersion = String(VersionedData::toString(VersionedData::VersionType_FullList)) + "-" + hash + "-" + string(databaseRecord.mIndex);
+
+                ZS_LOG_TRACE(log("found additional updated record") + info.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
+              }
+
+              if (batch->size() < 1) {
+                ZS_LOG_DEBUG(log("no additional database records found"))
+                // nothing more to notify
+
+                if (OPENPEER_STACK_LOCATION_DATABASE_INDEX_UNKNOWN != ioVersionData.mAfterIndex) {
+                  ZS_LOG_TRACE(log("switching to change list subscription type"))
+                  UseDatabase::DatabaseChangeRecord changeRecord;
+                  auto result = mMasterDatase->databaseChangeTable()->getLast(changeRecord);
+                  if (!result) {
+                    ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
+                    return DatabaseInfoListPtr();
+                  }
+
+                  ioVersionData.mType = VersionedData::VersionType_ChangeList;
+                  ioVersionData.mAfterIndex = changeRecord.mIndex;
+
+                  String prehash = string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID;
+                  String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
+                  outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+
+                  ZS_LOG_TRACE(log("switched to change list view") + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
+                } else {
+                  outLastVersion = String();
+                  break;
+                }
               }
             }
             break;
@@ -1684,8 +1694,10 @@ namespace openpeer
             for (auto batchIter = batch->begin(); batchIter != batch->end(); ++batchIter) {
               auto changeRecord = (*batchIter);
 
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID));
+              String prehash = string(changeRecord.mDisposition) + ":" + string(changeRecord.mIndexPeerLocation) + ":" + changeRecord.mDatabaseID;
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
               outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
+              ioVersionData.mAfterIndex = changeRecord.mIndex;
 
               DatabaseInfo info;
               info.mDisposition = toDisposition(changeRecord.mDisposition);
@@ -1708,7 +1720,7 @@ namespace openpeer
                 }
               }
 
-              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug())
+              ZS_LOG_TRACE(log("found additional updated record") + info.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))
               result->push_back(info);
             }
             break;
@@ -1788,10 +1800,11 @@ namespace openpeer
             }
 
             if (updateVersion.hasData()) {
-              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(record.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion));
+              String prehash = record.mDatabaseID + ":" + mPeerLocationRecord.mUpdateVersion;
+              String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
 
               if (hash != updateVersion) {
-                ZS_LOG_WARNING(Detail, log("version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + mPeerLocationRecord.toDebug() + ZS_PARAMIZE(hash))
+                ZS_LOG_WARNING(Detail, log("version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + mPeerLocationRecord.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash))
                 return false;
               }
             }
@@ -1806,9 +1819,10 @@ namespace openpeer
               return false;
             }
 
-            String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(string(record.mDisposition) + ":" + string(record.mIndexPeerLocation) + ":" + record.mDatabaseID));
+            String prehash = string(record.mDisposition) + ":" + string(record.mIndexPeerLocation) + ":" + record.mDatabaseID;
+            String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
             if (hash != updateVersion) {
-              ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + ZS_PARAMIZE(hash))
+              ZS_LOG_WARNING(Detail, log("request version does not match current version") + ZS_PARAMIZE(version) + record.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash))
               return false;
             }
             break;
@@ -1996,6 +2010,7 @@ namespace openpeer
           subscription->mSubscribeMessageID = request->messageID();
           subscription->mExpires = request->expires();
           subscription->mLastVersion = request->version();
+          subscription->mNotified = false;
 
           if (!mMasterDatase) {
             ZS_LOG_WARNING(Detail, log("master database is gone"))
