@@ -1438,6 +1438,10 @@ namespace openpeer
           {2,   110},
           {2,   111},
           {2,   112},
+          {2,   120},
+          {2,   121},
+          {2,   130},
+          {2,   131},
           {40,  1000},
           {3,   1100},
           {0,0}
@@ -1576,13 +1580,14 @@ namespace openpeer
             TESTING_CHECK(notify->entries())
             TESTING_EQUAL(1, notify->entries()->size())
             auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
             TESTING_EQUAL("entry1", entry.mEntryID)
             TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya1i\",\"metaentrya1ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
             TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
             TESTING_CHECK(now > entry.mCreated)
-            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now < entry.mCreated + Seconds(6))
             TESTING_CHECK(now > entry.mUpdated)
-            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_CHECK(now < entry.mUpdated + Seconds(6))
             TESTING_EQUAL(1, entry.mVersion)
 
             mPreviousVersion = notify->version();
@@ -1607,6 +1612,7 @@ namespace openpeer
             TESTING_CHECK(result->entries())
             TESTING_EQUAL(1, result->entries()->size())
             auto entry = *(result->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
             TESTING_EQUAL("", UseServicesHelper::toString(entry.mMetaData))
             TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya1i\",\"entrya1ii\"]}}", UseServicesHelper::toString(entry.mData))
             TESTING_CHECK(Time() == entry.mCreated)
@@ -1631,13 +1637,14 @@ namespace openpeer
             TESTING_CHECK(notify->entries())
             TESTING_EQUAL(1, notify->entries()->size())
             auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
             TESTING_EQUAL("entry2", entry.mEntryID)
             TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya2i\",\"metaentrya2ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
             TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
             TESTING_CHECK(now > entry.mCreated)
-            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now < entry.mCreated + Seconds(6))
             TESTING_CHECK(now > entry.mUpdated)
-            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_CHECK(now < entry.mUpdated + Seconds(6))
             TESTING_EQUAL(1, entry.mVersion)
             break;
           }
@@ -1657,13 +1664,14 @@ namespace openpeer
             TESTING_CHECK(notify->entries())
             TESTING_EQUAL(1, notify->entries()->size())
             auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
             TESTING_EQUAL("entry3", entry.mEntryID)
             TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya3i\",\"metaentrya3ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
             TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
             TESTING_CHECK(now > entry.mCreated)
-            TESTING_CHECK(now < entry.mCreated + Seconds(4))
+            TESTING_CHECK(now < entry.mCreated + Seconds(6))
             TESTING_CHECK(now > entry.mUpdated)
-            TESTING_CHECK(now < entry.mUpdated + Seconds(4))
+            TESTING_CHECK(now < entry.mUpdated + Seconds(6))
             TESTING_EQUAL(1, entry.mVersion)
             break;
           }
@@ -1702,7 +1710,8 @@ namespace openpeer
             for (auto iter = entries->begin(); iter != entries->end(); ++iter, ++count) {
               switch (count) {
                 case 0: {
-                  auto entry = *(notify->entries()->begin());
+                  auto entry = *iter;
+                  TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
                   TESTING_EQUAL("entry2", entry.mEntryID)
                   TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya2i\",\"metaentrya2ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
                   TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya2i\",\"entrya2ii\"]}}", UseServicesHelper::toString(entry.mData))
@@ -1715,7 +1724,8 @@ namespace openpeer
                 }
                 case 1:
                 {
-                  auto entry = *(++(notify->entries()->begin()));
+                  auto entry = *iter;
+                  TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Add, entry.mDisposition)
                   TESTING_EQUAL("entry3", entry.mEntryID)
                   TESTING_EQUAL("{\"entries\":{\"entry\":[\"metaentrya3i\",\"metaentrya3ii\"]}}", UseServicesHelper::toString(entry.mMetaData))
                   TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya3i\",\"entrya3ii\"]}}", UseServicesHelper::toString(entry.mData))
@@ -1728,6 +1738,55 @@ namespace openpeer
                 }
               }
             }
+            break;
+          }
+          case 120: {
+            ElementPtr data = UseServicesHelper::toJSON("{\"entries\":{\"entry\":[\"entrya2iii\",\"entrya2iv\"]}}");
+            mLocalDatabaseApple1->update("entry2", data);
+            break;
+          }
+          case 121: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-4", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(1, notify->entries()->size())
+            auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Update, entry.mDisposition)
+            TESTING_EQUAL("entry2", entry.mEntryID)
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("{\"entries\":{\"entry\":[\"entrya2iii\",\"entrya2iv\"]}}", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(Time() == entry.mCreated)
+            TESTING_CHECK(now > entry.mUpdated)
+            TESTING_CHECK(now < entry.mUpdated + Seconds(6))
+            TESTING_EQUAL(2, entry.mVersion)
+            break;
+          }
+          case 130: {
+            mLocalDatabaseApple1->remove("entry2");
+            break;
+          }
+          case 131: {
+            message::MessagePtr message = mRemoteLocationBob->testPopSentMessage();
+            TESTING_CHECK(message)
+            SubscribeNotifyPtr notify = SubscribeNotify::convert(message);
+            TESTING_CHECK(notify)
+            TESTING_EQUAL("bob-message-id-4", notify->messageID())
+            TESTING_CHECK(notify->version().hasData())
+            TESTING_CHECK(notify->entries())
+            TESTING_EQUAL(1, notify->entries()->size())
+            auto entry = *(notify->entries()->begin());
+            TESTING_EQUAL(ILocationDatabaseTypes::EntryInfo::Disposition_Remove, entry.mDisposition)
+            TESTING_EQUAL("entry2", entry.mEntryID)
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mMetaData))
+            TESTING_EQUAL("", UseServicesHelper::toString(entry.mData))
+            TESTING_CHECK(Time() == entry.mCreated)
+            TESTING_CHECK(Time() == entry.mUpdated)
+            TESTING_EQUAL(0, entry.mVersion)
+            break;
           }
           case 1000: {
             ZS_LOG_BASIC(log("shutting down"))

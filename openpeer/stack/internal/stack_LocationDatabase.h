@@ -51,6 +51,8 @@
 
 #define OPENPEER_STACK_SETTING_P2P_DATABASE_SUBSCRIPTION_EXPIRES_TIMEOUT_IN_SECONDS "openpeer/stack/p2p-database-subscription-expires-timeout-in-seconds"
 
+#define OPENPEER_STACK_SETTING_LOCATION_DATABASE_MAX_CAPACITY_PREVIOUS_ENTRIES_IN_MEMORY "openpeer/stack/location-database-max-capacity-previous-entries-remembered-in-memory"
+
 namespace openpeer
 {
   namespace stack
@@ -160,6 +162,10 @@ namespace openpeer
 
         typedef LocationDatabasePtr SelfReferencePtr;
 
+        typedef String EntryID;
+        typedef decltype(UseDatabase::EntryRecord::mVersion) VersionType;
+        typedef std::map<EntryID, VersionType> PreviousFoundMap;
+
         ZS_DECLARE_STRUCT_PTR(VersionedData)
         ZS_DECLARE_STRUCT_PTR(IncomingSubscription)
 
@@ -190,6 +196,8 @@ namespace openpeer
 
         struct IncomingSubscription : public VersionedData
         {
+          PreviousFoundMap mPreviousFoundVersions;
+
           SelfReferencePtr mSelf;
           UseLocationSubscriptionPtr mLocationSubscription;
 
@@ -215,7 +223,6 @@ namespace openpeer
 
         typedef std::map<TimerPtr, SelfReferencePtr> TimedReferenceMap;
 
-        typedef String EntryID;
         typedef std::map<EntryID, Promise::PromiseList> PendingEntryMap;
 
         typedef std::list<EntryID> EntryList;
@@ -504,7 +511,8 @@ namespace openpeer
         EntryInfoListPtr getUpdates(
                                     VersionedData &ioVersionData,
                                     String &outLastVersion,
-                                    bool includeData
+                                    bool includeData,
+                                    PreviousFoundMap &ioPreviouslyFound
                                     ) const;
 
         bool validateVersionInfo(
@@ -572,6 +580,8 @@ namespace openpeer
         std::atomic<bool> mNotifiedUpdated {false};
         std::atomic<bool> mNotifiedRemoved {false};
         std::atomic<bool> mNotifiedShutdown {false};
+
+        size_t mMaxPreviouslyFoundEntries;
       };
 
       //-----------------------------------------------------------------------

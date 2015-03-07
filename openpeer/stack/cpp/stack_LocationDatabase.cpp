@@ -144,6 +144,8 @@ namespace openpeer
 
         mLocation = Location::convert(databases->getLocation());
         mIsLocal = mDatabases->isLocal();
+
+        mMaxPreviouslyFoundEntries = UseSettings::getUInt(OPENPEER_STACK_SETTING_LOCATION_DATABASE_MAX_CAPACITY_PREVIOUS_ENTRIES_IN_MEMORY);
       }
 
       //-----------------------------------------------------------------------
@@ -278,7 +280,8 @@ namespace openpeer
           return EntryInfoListPtr();
         }
 
-        return getUpdates(versionData, outNewVersion, true);
+        PreviousFoundMap localFilter;
+        return getUpdates(versionData, outNewVersion, true, localFilter);
       }
 
       //-----------------------------------------------------------------------
@@ -1222,6 +1225,9 @@ namespace openpeer
         UseServicesHelper::debugAppend(resultEl, "requested entries", mRequestedEntries.size());
         UseServicesHelper::debugAppend(resultEl, "last requested index", mLastRequestedIndex);
         UseServicesHelper::debugAppend(resultEl, "last requested index upon success", mLastRequestedIndexUponSuccess);
+
+        UseServicesHelper::debugAppend(resultEl, "max previously found entries", mMaxPreviouslyFoundEntries);
+
         return resultEl;
       }
 
@@ -1672,7 +1678,12 @@ namespace openpeer
           notify->before(subscription->mLastVersion);
           notify->expires(subscription->mExpires);
 
-          EntryInfoListPtr notifyList = getUpdates(*subscription, subscription->mLastVersion, subscription->mDownloadData);
+          EntryInfoListPtr notifyList = getUpdates(*subscription, subscription->mLastVersion, subscription->mDownloadData, subscription->mPreviousFoundVersions);
+
+          while (subscription->mPreviousFoundVersions.size() > mMaxPreviouslyFoundEntries) {
+            subscription->mPreviousFoundVersions.erase(subscription->mPreviousFoundVersions.begin());
+          }
+
           if (!notifyList) {
             ZS_LOG_WARNING(Detail, log("did not find any database change records (despite having database records)"))
             goto notify_failure;
@@ -2065,6 +2076,7 @@ namespace openpeer
           subscription->mExpires = request->expires();
           subscription->mLastVersion = request->version();
           subscription->mNotified = false;
+          subscription->mPreviousFoundVersions.clear();
 
           if (!mEntryDatabase) {
             ZS_LOG_WARNING(Detail, log("entry database is gone"))
@@ -2199,7 +2211,8 @@ namespace openpeer
       EntryInfoListPtr LocationDatabase::getUpdates(
                                                     VersionedData &ioVersionData,
                                                     String &outLastVersion,
-                                                    bool includeData
+                                                    bool includeData,
+                                                    PreviousFoundMap &ioPreviouslyFound
                                                     ) const
       {
         EntryInfoListPtr result(new EntryInfoList);
@@ -2226,6 +2239,8 @@ namespace openpeer
                 info.mDataSize = entryRecord.mDataLength;
 
                 ioVersionData.mAfterIndex = entryRecord.mIndex;
+
+                ioPreviouslyFound[entryRecord.mEntryID] = entryRecord.mVersion;
 
                 result->push_back(info);
 
@@ -2306,6 +2321,17 @@ namespace openpeer
                   ZS_LOG_WARNING(Detail, log("did not find any related database record (thus must have been removed later)"))
                   info.mDisposition = EntryInfo::Disposition_Remove;
                 }
+              }
+              auto found = ioPreviouslyFound.find(changeRecord.mEntryID);
+              if (found != ioPreviouslyFound.end()) {
+                auto version = (*found).second;
+                if (version == info.mVersion) {
+                  ZS_LOG_TRACE(log("filtering out previously found record as it is a duplicate") + info.toDebug())
+                  continue;
+                }
+                (*found).second = info.mVersion;
+              } else {
+                ioPreviouslyFound[changeRecord.mEntryID] = info.mVersion;
               }
 
               ZS_LOG_TRACE(log("found additional updated record") + info.toDebug() + ZS_PARAMIZE(prehash) + ZS_PARAMIZE(hash) + ZS_PARAMIZE(outLastVersion))

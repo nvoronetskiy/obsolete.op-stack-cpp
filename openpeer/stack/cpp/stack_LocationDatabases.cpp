@@ -1614,6 +1614,7 @@ namespace openpeer
                                                         String &outLastVersion
                                                         ) const
       {
+        typedef std::map<DatabaseID, bool> FilterPreviousFoundMap;
         DatabaseInfoListPtr result(new DatabaseInfoList);
 
         switch (ioVersionData.mType) {
@@ -1681,6 +1682,8 @@ namespace openpeer
             break;
           }
           case VersionedData::VersionType_ChangeList: {
+            FilterPreviousFoundMap previouslyFound;
+            
             UseDatabase::DatabaseChangeRecordListPtr batch;
             if (peerURI.hasData()) {
               batch = mMasterDatase->databaseChangeTable()->getChangeBatchForPeerURI(peerURI, mPeerLocationRecord.mIndex, ioVersionData.mAfterIndex);
@@ -1698,6 +1701,13 @@ namespace openpeer
               String hash = UseServicesHelper::convertToHex(*UseServicesHelper::hash(prehash));
               outLastVersion = String(VersionedData::toString(VersionedData::VersionType_ChangeList)) + "-" + hash + "-" + string(changeRecord.mIndex);
               ioVersionData.mAfterIndex = changeRecord.mIndex;
+
+              if (previouslyFound.end() != previouslyFound.find(changeRecord.mDatabaseID)) {
+                ZS_LOG_TRACE(log("already sent information about this database record (skipping it)") + changeRecord.toDebug())
+                continue;
+              }
+
+              previouslyFound[changeRecord.mDatabaseID] = true;
 
               DatabaseInfo info;
               info.mDisposition = toDisposition(changeRecord.mDisposition);
