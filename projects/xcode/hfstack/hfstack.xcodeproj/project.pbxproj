@@ -1396,7 +1396,7 @@
 		0095DEB216CA8C2F005F53D3 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0460;
+				LastUpgradeCheck = 0610;
 				ORGANIZATIONNAME = "SMB Phone Inc.";
 			};
 			buildConfigurationList = 0095DEB516CA8C2F005F53D3 /* Build configuration list for PBXProject "hfstack" */;
@@ -1615,7 +1615,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -1639,9 +1638,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					"../../../../ortc-lib/libs/op-services-cpp",
-					"../../../../ortc-lib/libs/zsLib",
-					"../../../../ortc-lib/libs",
+					"../../../../op-services-cpp",
+					../../../../zsLib,
+					../../../..,
 					../../../../easysqlite/easySQLite/easySQLite,
 					../../../../easysqlite/sqlite,
 					"$(inherited)",
@@ -1657,7 +1656,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -1680,9 +1678,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					"../../../../ortc-lib/libs/op-services-cpp",
-					"../../../../ortc-lib/libs/zsLib",
-					"../../../../ortc-lib/libs",
+					"../../../../op-services-cpp",
+					../../../../zsLib,
+					../../../..,
 					../../../../easysqlite/easySQLite/easySQLite,
 					../../../../easysqlite/sqlite,
 					"$(inherited)",
@@ -1696,6 +1694,7 @@
 		0095DEBF16CA8C2F005F53D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -1709,6 +1708,7 @@
 		0095DEC016CA8C2F005F53D3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",

@@ -1630,10 +1630,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					"../../../../ortc-lib/libs/op-services-cpp",
-					"../../../../ortc-lib/libs/zsLib",
-					"../../../../ortc-lib/libs",
-					"../../../../ortc-lib/libs/curl-build-scripts/curl",
+					"../../../../op-services-cpp",
+					../../../../zsLib,
+					../../../..,
+					../../../../curl/curl,
 					../../../../easysqlite/easySQLite/easySQLite,
 					../../../../easysqlite/sqlite,
 					"$(inherited)",
@@ -1669,10 +1669,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../..,
-					"../../../../ortc-lib/libs/op-services-cpp",
-					"../../../../ortc-lib/libs/zsLib",
-					"../../../../ortc-lib/libs",
-					"../../../../ortc-lib/libs/curl-build-scripts/curl",
+					"../../../../op-services-cpp",
+					../../../../zsLib,
+					../../../..,
+					../../../../curl/curl,
 					../../../../easysqlite/easySQLite/easySQLite,
 					../../../../easysqlite/sqlite,
 					"$(inherited)",
