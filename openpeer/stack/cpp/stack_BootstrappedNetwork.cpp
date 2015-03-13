@@ -173,7 +173,6 @@ namespace openpeer
         virtual bool isComplete() const {return true;}
         virtual bool wasSuccessful() const {return true;}
         virtual HTTPStatusCodes getStatusCode() const {return IHTTP::HTTPStatusCode_OK;}
-        virtual long getResponseCode() const {return 0;}
 
         virtual size_t getHeaderReadSizeAvailableInBytes() const {return 0;}
         virtual size_t readHeader(
@@ -457,10 +456,20 @@ namespace openpeer
           return Promise::createRejected(PromiseRejectionStatus::create((IHTTP::HTTPStatusCodes)ErrorCode_NotFound), UseStack::queueDelegate());
         }
 
+        struct QueryHolder : Any {
+          IHTTPQueryPtr mQuery;
+          QueryHolder(IHTTPQueryPtr query) : mQuery(query) {}
+        };
+        ZS_DECLARE_STRUCT_PTR(QueryHolder)
+
         PromisePtr sendPromise = Promise::create(UseStack::queueDelegate());
+
         IHTTPQueryPtr query = post(sendPromise, service->mURI, message, cachedCookieNameForResult, cacheExpires);
+        auto queryHolder = QueryHolderPtr(new QueryHolder(query));
+        sendPromise->userData(queryHolder);
         if (!query) {
           ZS_LOG_WARNING(Detail, log("failed to create query for message"))
+          sendPromise->reject();
         }
 
         return sendPromise;
